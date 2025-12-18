@@ -5,8 +5,18 @@ extension DialogCommand.ClickSubcommand: CommanderSignatureProviding {
         CommandSignature(
             options: [
                 .commandOption("button", help: "Button text to click", long: "button"),
-                .commandOption("window", help: "Specific window/sheet title", long: "window"),
-                .commandOption("app", help: "Application hosting the dialog", long: "app"),
+                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+                .commandOption(
+                    "windowTitle",
+                    help: "Target window by title (partial match supported)",
+                    long: "window-title"
+                ),
+                .commandOption(
+                    "windowIndex",
+                    help: "Target window by index (0-based, frontmost is 0)",
+                    long: "window-index"
+                ),
             ]
         )
     }
@@ -19,8 +29,18 @@ extension DialogCommand.InputSubcommand: CommanderSignatureProviding {
                 .commandOption("text", help: "Text to enter", long: "text"),
                 .commandOption("field", help: "Field label or placeholder", long: "field"),
                 .commandOption("index", help: "Field index (0-based)", long: "index"),
-                .commandOption("window", help: "Window/sheet title to target", long: "window"),
-                .commandOption("app", help: "Application hosting the dialog", long: "app"),
+                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+                .commandOption(
+                    "windowTitle",
+                    help: "Target window by title (partial match supported)",
+                    long: "window-title"
+                ),
+                .commandOption(
+                    "windowIndex",
+                    help: "Target window by index (0-based, frontmost is 0)",
+                    long: "window-index"
+                ),
             ],
             flags: [
                 .commandFlag("clear", help: "Clear existing text first", long: "clear"),
@@ -40,7 +60,18 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
                     help: "Button to click after entering path/name (omit or 'default' to click OKButton)",
                     long: "select"
                 ),
-                .commandOption("app", help: "Application hosting the dialog", long: "app"),
+                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+                .commandOption(
+                    "windowTitle",
+                    help: "Target window by title (partial match supported)",
+                    long: "window-title"
+                ),
+                .commandOption(
+                    "windowIndex",
+                    help: "Target window by index (0-based, frontmost is 0)",
+                    long: "window-index"
+                ),
             ],
             flags: [
                 .commandFlag(
@@ -57,8 +88,18 @@ extension DialogCommand.DismissSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
             options: [
-                .commandOption("window", help: "Window/sheet title to target", long: "window"),
-                .commandOption("app", help: "Application hosting the dialog", long: "app"),
+                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+                .commandOption(
+                    "windowTitle",
+                    help: "Target window by title (partial match supported)",
+                    long: "window-title"
+                ),
+                .commandOption(
+                    "windowIndex",
+                    help: "Target window by index (0-based, frontmost is 0)",
+                    long: "window-index"
+                ),
             ],
             flags: [
                 .commandFlag("force", help: "Force dismiss with Escape", long: "force"),
@@ -71,8 +112,18 @@ extension DialogCommand.ListSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
             options: [
-                .commandOption("window", help: "Specific window/sheet title to target", long: "window"),
-                .commandOption("app", help: "Application hosting the dialog", long: "app"),
+                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
+                .commandOption("pid", help: "Target application by process ID", long: "pid"),
+                .commandOption(
+                    "windowTitle",
+                    help: "Target window by title (partial match supported)",
+                    long: "window-title"
+                ),
+                .commandOption(
+                    "windowIndex",
+                    help: "Target window by index (0-based, frontmost is 0)",
+                    long: "window-index"
+                ),
             ]
         )
     }

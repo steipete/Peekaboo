@@ -67,11 +67,11 @@ struct CommanderBinderSpaceDialogTests {
             "dialog",
             "click",
             "--button", "OK",
-            "--window", "Save"
+            "--window-title", "Save"
         ])
         let values = invocation.parsedValues
         #expect(values.options["button"] == ["OK"])
-        #expect(values.options["window"] == ["Save"])
+        #expect(values.options["windowTitle"] == ["Save"])
     }
 
     @Test("Commander program resolves dialog input options")
@@ -84,10 +84,10 @@ struct CommanderBinderSpaceDialogTests {
             "dialog",
             "input",
             "--text", "Report generated",
-            "--window", "Export"
+            "--window-title", "Export"
         ])
         let values = invocation.parsedValues
         #expect(values.options["text"] == ["Report generated"])
-        #expect(values.options["window"] == ["Export"])
+        #expect(values.options["windowTitle"] == ["Export"])
     }
 }

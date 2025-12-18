@@ -59,7 +59,7 @@ struct DialogCommandTests {
 
         #expect(output.contains("Click a button in a dialog using DialogService"))
         #expect(output.contains("--button"))
-        #expect(output.contains("--window"))
+        #expect(output.contains("--window-title"))
         #expect(output.contains("--json"))
     }
 
@@ -96,7 +96,7 @@ struct DialogCommandTests {
 
         #expect(output.contains("Dismiss a dialog using DialogService"))
         #expect(output.contains("--force"))
-        #expect(output.contains("--window"))
+        #expect(output.contains("--window-title"))
     }
 
     @Test("dialog dismiss uses force flag")

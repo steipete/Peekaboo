@@ -15,6 +15,7 @@ public enum DialogError: Error {
     case noTextFields
     case noDismissButton
     case fileVerificationFailed(expectedPath: String)
+    case fileSavedToUnexpectedDirectory(expectedDirectory: String, actualDirectory: String, actualPath: String)
 }
 
 extension DialogError: LocalizedError {
@@ -38,6 +39,8 @@ extension DialogError: LocalizedError {
             "No dismiss button found in dialog."
         case let .fileVerificationFailed(expectedPath):
             "Dialog reported success, but the saved file did not appear at: \(expectedPath)"
+        case let .fileSavedToUnexpectedDirectory(expectedDirectory, actualDirectory, actualPath):
+            "Saved file landed in '\(actualDirectory)', expected '\(expectedDirectory)' (actual: \(actualPath))"
         }
     }
 }
@@ -195,6 +198,33 @@ extension DialogService {
             "found_via": resolution.foundVia,
         ]
 
+        func enforceExpectedDirectoryIfNeeded(
+            actualSavedPath: String,
+            expectedPath: String?,
+            details: inout [String: String]) throws
+        {
+            guard let expectedPath else { return }
+            let expectedDirectory = URL(fileURLWithPath: expectedPath)
+                .deletingLastPathComponent()
+                .standardizedFileURL
+                .path
+            let actualDirectory = URL(fileURLWithPath: actualSavedPath)
+                .deletingLastPathComponent()
+                .standardizedFileURL
+                .path
+
+            details["saved_path_expected_directory"] = expectedDirectory
+            details["saved_path_directory"] = actualDirectory
+            details["saved_path_matches_expected_directory"] = String(expectedDirectory == actualDirectory)
+
+            guard expectedDirectory == actualDirectory else {
+                throw DialogError.fileSavedToUnexpectedDirectory(
+                    expectedDirectory: expectedDirectory,
+                    actualDirectory: actualDirectory,
+                    actualPath: actualSavedPath)
+            }
+        }
+
         if ensureExpanded {
             try await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
             // Expanding can rebuild the AX tree; re-resolve.
@@ -280,6 +310,11 @@ extension DialogService {
                         details["saved_path_expected"] = expectedPath
                     }
                 }
+
+                try enforceExpectedDirectoryIfNeeded(
+                    actualSavedPath: verification.path,
+                    expectedPath: expectedPath,
+                    details: &details)
             } catch let error as DialogError {
                 guard case .fileVerificationFailed = error else { throw error }
                 let didReplace = await self.clickReplaceIfPresent(appName: appName)
@@ -306,6 +341,11 @@ extension DialogService {
                         details["saved_path_expected"] = expectedPath
                     }
                 }
+
+                try enforceExpectedDirectoryIfNeeded(
+                    actualSavedPath: verification.path,
+                    expectedPath: expectedPath,
+                    details: &details)
             }
         }
 
@@ -1298,7 +1338,7 @@ extension DialogService {
 
         var pathField = findPathField(in: dialog)
 
-        if ensureExpanded || pathField == nil {
+        if ensureExpanded {
             try await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
             pathField = findPathField(in: dialog)
         }

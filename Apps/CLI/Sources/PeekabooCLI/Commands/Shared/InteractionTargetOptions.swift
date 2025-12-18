@@ -59,4 +59,21 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
 
         return CGWindowID(window.windowID)
     }
+
+    func resolveWindowTitleOptional(services: any PeekabooServiceProviding) async throws -> String? {
+        if let windowTitle {
+            return windowTitle
+        }
+
+        guard let windowIndex = self.windowIndex else {
+            return nil
+        }
+
+        guard let appIdentifier = try self.resolveApplicationIdentifierOptional() else {
+            throw ValidationError("Missing --app/--pid for --window-index")
+        }
+
+        let windows = try await services.windows.listWindows(target: .index(app: appIdentifier, index: windowIndex))
+        return windows.first?.title
+    }
 }

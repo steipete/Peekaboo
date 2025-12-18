@@ -21,8 +21,8 @@ struct DialogCommand: ParsableCommand {
           peekaboo dialog input --text "password123" --field "Password"
 
           # Handle file dialogs
-          peekaboo dialog file --path "/Users/me/Documents/file.txt"
-          peekaboo dialog file --name "report.pdf" --select "Save"
+          peekaboo dialog file --path "/Users/me/Documents" --name "report.pdf" --select "Save"
+          peekaboo dialog file --app TextEdit --window-title "Untitled" --path "/tmp" --name "poem.rtf" --select default
 
           # Dismiss dialogs
           peekaboo dialog dismiss
@@ -46,11 +46,7 @@ struct DialogCommand: ParsableCommand {
         @Option(help: "Button text to click (e.g., 'OK', 'Cancel', 'Save')")
         var button: String
 
-        @Option(help: "Specific window/sheet title to target")
-        var window: String?
-
-        @Option(help: "Application hosting the dialog (focus hint)")
-        var app: String?
+        @OptionGroup var target: InteractionTargetOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -71,19 +67,23 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                // Provide both app and window hints so dialog detection can focus nested sheets.
-                await DialogCommand.focusDialogAppIfNeeded(
-                    appName: self.app,
-                    windowTitle: self.window,
-                    services: self.services,
-                    logger: self.logger
+                try self.target.validate()
+                let focusOptions = FocusCommandOptions()
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: focusOptions,
+                    services: self.services
                 )
+
+                let resolvedWindowTitle = try await self.target.resolveWindowTitleOptional(services: self.services)
+                let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
 
                 // Click the button using the service
                 let result = try await self.services.dialogs.clickButton(
                     buttonText: self.button,
-                    windowTitle: self.window,
-                    appName: self.app
+                    windowTitle: resolvedWindowTitle,
+                    appName: appHint
                 )
 
                 // Output result
@@ -91,12 +91,21 @@ struct DialogCommand: ParsableCommand {
                     struct DialogClickResult: Codable {
                         let action: String
                         let button: String
+                        let buttonIdentifier: String?
                         let window: String
+
+                        enum CodingKeys: String, CodingKey {
+                            case action
+                            case button
+                            case buttonIdentifier = "button_identifier"
+                            case window
+                        }
                     }
 
                     let outputData = DialogClickResult(
                         action: "dialog_click",
                         button: result.details["button"] ?? self.button,
+                        buttonIdentifier: result.details["button_identifier"],
                         window: result.details["window"] ?? "Dialog"
                     )
                     outputSuccessCodable(data: outputData, logger: self.outputLogger)
@@ -106,8 +115,8 @@ struct DialogCommand: ParsableCommand {
                 AutomationEventLogger.log(
                     .dialog,
                     "action=click button='\(result.details["button"] ?? self.button)' "
-                        + "window='\(result.details["window"] ?? self.window ?? "unknown")' "
-                        + "app='\(self.app ?? "unknown")'"
+                        + "window='\(result.details["window"] ?? resolvedWindowTitle ?? "unknown")' "
+                        + "app='\(appHint ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -138,14 +147,10 @@ struct DialogCommand: ParsableCommand {
         @Option(help: "Field index (0-based) if multiple fields")
         var index: Int?
 
-        @Option(help: "Window or sheet title to target")
-        var window: String?
-
         @Flag(help: "Clear existing text first")
         var clear = false
 
-        @Option(help: "Application hosting the dialog (focus hint)")
-        var app: String?
+        @OptionGroup var target: InteractionTargetOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -166,12 +171,17 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                await DialogCommand.focusDialogAppIfNeeded(
-                    appName: self.app,
-                    windowTitle: self.window,
-                    services: self.services,
-                    logger: self.logger
+                try self.target.validate()
+                let focusOptions = FocusCommandOptions()
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: focusOptions,
+                    services: self.services
                 )
+
+                let resolvedWindowTitle = try await self.target.resolveWindowTitleOptional(services: self.services)
+                let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
 
                 // Determine field identifier (index or label)
                 let fieldIdentifier = self.field ?? self.index.map { String($0) }
@@ -181,8 +191,8 @@ struct DialogCommand: ParsableCommand {
                     text: self.text,
                     fieldIdentifier: fieldIdentifier,
                     clearExisting: self.clear,
-                    windowTitle: self.window,
-                    appName: self.app
+                    windowTitle: resolvedWindowTitle,
+                    appName: appHint
                 )
 
                 // Output result
@@ -213,7 +223,7 @@ struct DialogCommand: ParsableCommand {
                 AutomationEventLogger.log(
                     .dialog,
                     "action=input field='\(fieldDescription)' chars=\(textLength) "
-                        + "cleared=\(clearedValue) app='\(self.app ?? "unknown")'"
+                        + "cleared=\(clearedValue) app='\(appHint ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -247,8 +257,7 @@ struct DialogCommand: ParsableCommand {
         @Flag(name: .long, help: "Ensure file dialogs are expanded (Show Details) before setting --path")
         var ensureExpanded = false
 
-        @Option(help: "Application hosting the dialog (focus hint)")
-        var app: String?
+        @OptionGroup var target: InteractionTargetOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -269,12 +278,16 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                await DialogCommand.focusDialogAppIfNeeded(
-                    appName: self.app,
-                    windowTitle: nil,
-                    services: self.services,
-                    logger: self.logger
+                try self.target.validate()
+                let focusOptions = FocusCommandOptions()
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: focusOptions,
+                    services: self.services
                 )
+
+                let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
 
                 // Handle file dialog using the service
                 let result = try await self.services.dialogs.handleFileDialog(
@@ -282,7 +295,7 @@ struct DialogCommand: ParsableCommand {
                     filename: self.name,
                     actionButton: self.select,
                     ensureExpanded: self.ensureExpanded,
-                    appName: self.app
+                    appName: appHint
                 )
 
                 // Output result
@@ -298,6 +311,13 @@ struct DialogCommand: ParsableCommand {
                         let savedPath: String?
                         let savedPathVerified: Bool
                         let savedPathFoundVia: String?
+                        let savedPathMatchesExpected: Bool?
+                        let savedPathExpected: String?
+                        let savedPathMatchesExpectedDirectory: Bool?
+                        let savedPathExpectedDirectory: String?
+                        let savedPathDirectory: String?
+                        let overwriteConfirmed: Bool?
+                        let ensureExpanded: Bool?
 
                         enum CodingKeys: String, CodingKey {
                             case action
@@ -310,8 +330,18 @@ struct DialogCommand: ParsableCommand {
                             case savedPath
                             case savedPathVerified
                             case savedPathFoundVia = "saved_path_found_via"
+                            case savedPathMatchesExpected = "saved_path_matches_expected"
+                            case savedPathExpected = "saved_path_expected"
+                            case savedPathMatchesExpectedDirectory = "saved_path_matches_expected_directory"
+                            case savedPathExpectedDirectory = "saved_path_expected_directory"
+                            case savedPathDirectory = "saved_path_directory"
+                            case overwriteConfirmed = "overwrite_confirmed"
+                            case ensureExpanded = "ensure_expanded"
                         }
                     }
+
+                    let savedPathVerified =
+                        result.details["saved_path_verified"] == "true" || result.details["saved_path_exists"] == "true"
 
                     let outputData = FileDialogResult(
                         action: "file_dialog",
@@ -322,8 +352,16 @@ struct DialogCommand: ParsableCommand {
                         buttonClicked: result.details["button_clicked"] ?? self.select ?? "default",
                         buttonIdentifier: result.details["button_identifier"],
                         savedPath: result.details["saved_path"],
-                        savedPathVerified: result.details["saved_path_exists"] == "true",
-                        savedPathFoundVia: result.details["saved_path_found_via"]
+                        savedPathVerified: savedPathVerified,
+                        savedPathFoundVia: result.details["saved_path_found_via"],
+                        savedPathMatchesExpected: result.details["saved_path_matches_expected"].map { $0 == "true" },
+                        savedPathExpected: result.details["saved_path_expected"],
+                        savedPathMatchesExpectedDirectory: result.details["saved_path_matches_expected_directory"]
+                            .map { $0 == "true" },
+                        savedPathExpectedDirectory: result.details["saved_path_expected_directory"],
+                        savedPathDirectory: result.details["saved_path_directory"],
+                        overwriteConfirmed: result.details["overwrite_confirmed"].map { $0 == "true" },
+                        ensureExpanded: result.details["ensure_expanded"].map { $0 == "true" }
                     )
                     outputSuccessCodable(data: outputData, logger: self.outputLogger)
                 } else {
@@ -344,7 +382,7 @@ struct DialogCommand: ParsableCommand {
                     .dialog,
                     "action=file path='\(resolvedPath)' name='\(resolvedName)' "
                         + "button='\(buttonClicked)' saved_path='\(savedPath)' "
-                        + "saved_path_verified=\(savedPathVerified) app='\(self.app ?? "unknown")'"
+                        + "saved_path_verified=\(savedPathVerified) app='\(appHint ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -369,11 +407,7 @@ struct DialogCommand: ParsableCommand {
         @Flag(help: "Force dismiss with Escape key")
         var force = false
 
-        @Option(help: "Specific window/sheet title to target")
-        var window: String?
-
-        @Option(help: "Application hosting the dialog (focus hint)")
-        var app: String?
+        @OptionGroup var target: InteractionTargetOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -394,18 +428,23 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                await DialogCommand.focusDialogAppIfNeeded(
-                    appName: self.app,
-                    windowTitle: self.window,
-                    services: self.services,
-                    logger: self.logger
+                try self.target.validate()
+                let focusOptions = FocusCommandOptions()
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: focusOptions,
+                    services: self.services
                 )
+
+                let resolvedWindowTitle = try await self.target.resolveWindowTitleOptional(services: self.services)
+                let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
 
                 // Dismiss dialog using the service
                 let result = try await self.services.dialogs.dismissDialog(
                     force: self.force,
-                    windowTitle: self.window,
-                    appName: self.app
+                    windowTitle: resolvedWindowTitle,
+                    appName: appHint
                 )
 
                 // Output result
@@ -436,7 +475,7 @@ struct DialogCommand: ParsableCommand {
                 AutomationEventLogger.log(
                     .dialog,
                     "action=dismiss method=\(method) button='\(dismissedButton)' "
-                        + "app='\(self.app ?? "unknown")'"
+                        + "app='\(appHint ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -458,11 +497,7 @@ struct DialogCommand: ParsableCommand {
             abstract: "List elements in current dialog using DialogService"
         )
 
-        @Option(help: "Specific window/sheet title to target")
-        var window: String?
-
-        @Option(help: "Application hosting the dialog (focus hint)")
-        var app: String?
+        @OptionGroup var target: InteractionTargetOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -484,17 +519,22 @@ struct DialogCommand: ParsableCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                await DialogCommand.focusDialogAppIfNeeded(
-                    appName: self.app,
-                    windowTitle: self.window,
-                    services: self.services,
-                    logger: self.logger
+                try self.target.validate()
+                let focusOptions = FocusCommandOptions()
+                try await ensureFocused(
+                    snapshotId: nil,
+                    target: self.target,
+                    options: focusOptions,
+                    services: self.services
                 )
+
+                let resolvedWindowTitle = try await self.target.resolveWindowTitleOptional(services: self.services)
+                let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
 
                 // List dialog elements using the service
                 let elements = try await self.services.dialogs.listDialogElements(
-                    windowTitle: self.window,
-                    appName: self.app
+                    windowTitle: resolvedWindowTitle,
+                    appName: appHint
                 )
 
                 // Output result
@@ -556,7 +596,7 @@ struct DialogCommand: ParsableCommand {
                 AutomationEventLogger.log(
                     .dialog,
                     "action=list title='\(elements.dialogInfo.title)' buttons=\(buttonCount) "
-                        + "text_fields=\(textFieldCount) app='\(self.app ?? "unknown")'"
+                        + "text_fields=\(textFieldCount) app='\(appHint ?? "unknown")'"
                 )
 
             } catch let error as DialogError {
@@ -570,20 +610,24 @@ struct DialogCommand: ParsableCommand {
     }
 
     @MainActor
-    private static func focusDialogAppIfNeeded(
-        appName: String?,
-        windowTitle: String?,
-        services: any PeekabooServiceProviding,
-        logger: Logger
-    ) async {
-        guard let appName, !appName.isEmpty else { return }
-
-        do {
-            try await services.applications.activateApplication(identifier: appName)
-            try await Task.sleep(nanoseconds: 150_000_000)
-        } catch {
-            logger.debug("Dialog focus hint failed for \(appName): \(String(describing: error))")
+    private static func resolveDialogAppHint(
+        target: InteractionTargetOptions,
+        services: any PeekabooServiceProviding
+    ) async throws -> String? {
+        if let app = target.app, !app.isEmpty, !app.hasPrefix("PID:") {
+            return app
         }
+
+        guard let pid = target.pid else {
+            return nil
+        }
+
+        let apps = try await services.applications.listApplications()
+        guard let match = apps.data.applications.first(where: { $0.processIdentifier == pid }) else {
+            return nil
+        }
+
+        return match.bundleIdentifier ?? match.name
     }
 }
 
@@ -598,7 +642,7 @@ extension DialogCommand.InputSubcommand: CommanderBindableCommand {
         self.field = values.singleOption("field")
         self.index = try values.decodeOption("index", as: Int.self)
         self.clear = values.flag("clear")
-        self.app = values.singleOption("app")
+        try values.fillInteractionTargetOptions(into: &self.target)
     }
 }
 
@@ -613,7 +657,7 @@ extension DialogCommand.FileSubcommand: CommanderBindableCommand {
         self.name = values.singleOption("name")
         self.select = values.singleOption("select")
         self.ensureExpanded = values.flag("ensureExpanded")
-        self.app = values.singleOption("app")
+        try values.fillInteractionTargetOptions(into: &self.target)
     }
 }
 
@@ -625,8 +669,7 @@ extension DialogCommand.DismissSubcommand: AsyncRuntimeCommand {}
 extension DialogCommand.DismissSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.force = values.flag("force")
-        self.window = values.singleOption("window")
-        self.app = values.singleOption("app")
+        try values.fillInteractionTargetOptions(into: &self.target)
     }
 }
 
@@ -637,8 +680,7 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension DialogCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.window = values.singleOption("window")
-        self.app = values.singleOption("app")
+        try values.fillInteractionTargetOptions(into: &self.target)
     }
 }
 
@@ -660,8 +702,7 @@ extension DialogCommand.ClickSubcommand: AsyncRuntimeCommand {}
 extension DialogCommand.ClickSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.button = try values.requireOption("button", as: String.self)
-        self.window = values.singleOption("window")
-        self.app = values.singleOption("app")
+        try values.fillInteractionTargetOptions(into: &self.target)
     }
 }
 
@@ -687,14 +728,25 @@ private func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool, lo
         .ELEMENT_NOT_FOUND
     case .fileVerificationFailed:
         .FILE_IO_ERROR
+    case .fileSavedToUnexpectedDirectory:
+        .FILE_IO_ERROR
     }
 
     if jsonOutput {
+        let details: String? = switch error {
+        case let .fileVerificationFailed(expectedPath):
+            "expected_path=\(expectedPath)"
+        case let .fileSavedToUnexpectedDirectory(expectedDirectory, actualDirectory, actualPath):
+            "expected_directory=\(expectedDirectory) actual_directory=\(actualDirectory) actual_path=\(actualPath)"
+        default:
+            nil
+        }
         let response = JSONResponse(
             success: false,
             error: ErrorInfo(
                 message: error.localizedDescription,
-                code: errorCode
+                code: errorCode,
+                details: details
             )
         )
         outputJSON(response, logger: logger)
