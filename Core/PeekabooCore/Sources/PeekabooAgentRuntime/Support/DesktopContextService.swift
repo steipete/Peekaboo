@@ -29,11 +29,16 @@ public final class DesktopContextService {
     // MARK: - Context Gathering
 
     /// Gather current desktop context as a formatted string for injection into agent prompts.
-    public func gatherContext() async -> DesktopContext {
+    public func gatherContext(includeClipboardPreview: Bool) async -> DesktopContext {
         async let focusedWindow = gatherFocusedWindowInfo()
         async let cursorPosition = gatherCursorPosition()
-        async let clipboardContent = gatherClipboardContent()
         async let recentApps = gatherRecentApps()
+
+        let clipboardContent: String? = if includeClipboardPreview {
+            await gatherClipboardContent()
+        } else {
+            nil
+        }
 
         return await DesktopContext(
             focusedWindow: focusedWindow,

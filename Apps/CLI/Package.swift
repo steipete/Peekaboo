@@ -62,6 +62,9 @@ var targets: [Target] = [
         dependencies: [
             "PeekabooCLI",
             .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
+            .product(name: "PeekabooAutomation", package: "PeekabooCore"),
+            .product(name: "PeekabooAgentRuntime", package: "PeekabooCore"),
+            .product(name: "PeekabooCore", package: "PeekabooCore"),
         ],
         path: "Tests/CoreCLITests",
         swiftSettings: swiftTestingSettings),

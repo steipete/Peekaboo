@@ -22,6 +22,7 @@
 - `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`; docs + tests cover precedence and errors.
 - `peekaboo learn` renders its guide as ANSI-styled markdown via Swiftdansi on rich terminals, while still emitting plain markdown when piped.
 - Agent providers now include `gemini-3-flash`, expanding the out-of-the-box model catalog for `peekaboo agent`.
+- Agent streaming loop now injects `DESKTOP_STATE` (focused app/window title, cursor position, and clipboard preview when the `clipboard` tool is enabled) as untrusted, delimited system context to improve situational awareness.
 - Peekaboo’s macOS app now surfaces About/Updates inside Settings (Sparkle update checks when signed/bundled).
 
 ### Changed

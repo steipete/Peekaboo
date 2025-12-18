@@ -39,11 +39,13 @@ extension PeekabooAgentService {
     /// Call this before each model invocation when contextAware is enabled.
     func injectDesktopContext(
         into messages: inout [ModelMessage],
-        options: AgentEnhancementOptions
+        options: AgentEnhancementOptions,
+        tools: [AgentTool]
     ) async {
         guard options.contextAware else { return }
 
-        let context = await desktopContext.gatherContext()
+        let hasClipboardTool = tools.contains(where: { $0.name == "clipboard" })
+        let context = await desktopContext.gatherContext(includeClipboardPreview: hasClipboardTool)
         let contextString = desktopContext.formatContextForPrompt(context)
 
         // Insert as system message before the last user message
@@ -85,7 +87,7 @@ extension PeekabooAgentService {
         let result = try await tool.execute(arguments, context: executionContext)
 
         // Check if we should verify
-        guard await actionVerifier.shouldVerify(toolName: tool.name, options: options) else {
+        guard actionVerifier.shouldVerify(toolName: tool.name, options: options) else {
             return (result, false)
         }
 
@@ -265,7 +267,8 @@ extension PeekabooAgentService {
         // Inject initial desktop context if enabled
         await injectDesktopContext(
             into: &messages,
-            options: configuration.enhancementOptions
+            options: configuration.enhancementOptions,
+            tools: configuration.tools
         )
 
         // Convert to standard configuration, passing through enhancement options
