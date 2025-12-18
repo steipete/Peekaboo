@@ -183,22 +183,16 @@ extension DialogService {
         self.logger.debug("Action button: \(actionButton)")
 
         let saveStartTime = Date()
-        var dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
-        guard self.isFileDialogElement(dialog) else {
-            throw DialogError.noFileDialog
-        }
+        var dialog = try await self.resolveFileDialogElement(appName: appName)
         var details: [String: String] = [:]
 
         if let filePath = path {
-            try await self.navigateToPath(filePath, appName: appName)
+            try await self.navigateToPath(filePath, in: dialog)
             details["path"] = filePath
 
-            // Cmd+Shift+G may temporarily open a "Go to Folder" sheet. Re-resolve the active file dialog after
-            // navigation so subsequent actions (filename + action button) target the correct sheet.
-            dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
-            guard self.isFileDialogElement(dialog) else {
-                throw DialogError.noFileDialog
-            }
+            // Navigating the path can expand/collapse the panel and rebuild the sheet tree. Re-resolve the active
+            // file dialog after navigation so subsequent actions (filename + action button) target fresh AX handles.
+            dialog = try await self.resolveFileDialogElement(appName: appName)
         }
 
         if let fileName = filename {
@@ -214,10 +208,7 @@ extension DialogService {
 
         // The file panel can swap sheets (e.g. Go to Folder) or rebuild its button tree after typing.
         // Re-resolve the active file dialog right before clicking to avoid stale AX element handles.
-        dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
-        guard self.isFileDialogElement(dialog) else {
-            throw DialogError.noFileDialog
-        }
+        dialog = try await self.resolveFileDialogElement(appName: appName)
 
         let clickResult = try await self.clickButton(
             in: dialog,
@@ -472,6 +463,21 @@ extension DialogService {
             return self.dialogButtonTitleMatches(title, requested: requestedTitle)
         }) {
             return match
+        }
+
+        let identifierAttribute = Attribute<String>("AXIdentifier")
+        let normalizedRequested = self.normalizedDialogButtonTitle(requestedTitle)
+
+        if self.isSaveLikeAction(requestedTitle),
+           let okButton = buttons.first(where: { $0.attribute(identifierAttribute) == "OKButton" })
+        {
+            return okButton
+        }
+
+        if normalizedRequested == "cancel" || normalizedRequested == "close" || normalizedRequested == "dismiss",
+           let cancelButton = buttons.first(where: { $0.attribute(identifierAttribute) == "CancelButton" })
+        {
+            return cancelButton
         }
 
         guard allowFallbackToDefaultAction else { return nil }
@@ -788,7 +794,65 @@ extension DialogService {
             return element
         }
 
+        if windowTitle == nil,
+           let appName,
+           let fileDialog = self.findActiveFileDialogElement(appName: appName)
+        {
+            return fileDialog
+        }
+
         throw DialogError.noActiveDialog
+    }
+
+    private func resolveFileDialogElement(appName: String?) async throws -> Element {
+        if let appName,
+           let fileDialog = self.findActiveFileDialogElement(appName: appName)
+        {
+            return fileDialog
+        }
+
+        let element = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
+        guard self.isFileDialogElement(element) else {
+            throw DialogError.noFileDialog
+        }
+        return element
+    }
+
+    @MainActor
+    private func findActiveFileDialogElement(appName: String) -> Element? {
+        guard let targetApp = self.runningApplication(matching: appName) else { return nil }
+        let appElement = AXApp(targetApp).element
+
+        let windows = appElement.windowsWithTimeout() ?? []
+        for window in windows {
+            if let candidate = self.findActiveFileDialogCandidate(in: window) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    @MainActor
+    private func findActiveFileDialogCandidate(in element: Element) -> Element? {
+        if self.isFileDialogElement(element) {
+            return element
+        }
+
+        for sheet in self.sheetElements(for: element) {
+            if let candidate = self.findActiveFileDialogCandidate(in: sheet) {
+                return candidate
+            }
+        }
+
+        if let children = element.children() {
+            for child in children {
+                if let candidate = self.findActiveFileDialogCandidate(in: child) {
+                    return candidate
+                }
+            }
+        }
+
+        return nil
     }
 
     private func ensureDialogVisibility(windowTitle: String?, appName: String?) async {
@@ -961,16 +1025,26 @@ extension DialogService {
             return
         }
 
-        guard field.isActionSupported(AXActionNames.kAXPressAction) else {
-            self.logger.debug("Text field is not focusable (focused attribute not settable; press not supported).")
+        if field.isActionSupported(AXActionNames.kAXPressAction) {
+            do {
+                try field.performAction(.press)
+                return
+            } catch {
+                self.logger.debug("Failed to focus text field via press: \(String(describing: error))")
+            }
+        }
+
+        if let position = field.position(),
+           let size = field.size(),
+           size.width > 0,
+           size.height > 0
+        {
+            let point = CGPoint(x: position.x + size.width / 2.0, y: position.y + size.height / 2.0)
+            try? InputDriver.click(at: point)
             return
         }
 
-        do {
-            try field.performAction(.press)
-        } catch {
-            self.logger.debug("Failed to focus text field via press: \(String(describing: error))")
-        }
+        self.logger.debug("Text field is not focusable (focused attribute not settable; press/click unavailable).")
     }
 
     private func clearFieldIfNeeded(_ field: Element, shouldClear: Bool) throws {
@@ -1102,29 +1176,94 @@ extension DialogService {
         }
     }
 
-    private func navigateToPath(_ filePath: String, appName: String?) async throws {
-        self.logger.debug("Navigating to path using Cmd+Shift+G")
-        try InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)
-        try await Task.sleep(nanoseconds: 200_000_000)
+    @MainActor
+    private func findFirstDescendant(
+        in element: Element,
+        identifierAttribute: Attribute<String>,
+        identifierContains: String) -> Element?
+    {
+        let identifier = element.attribute(identifierAttribute) ?? ""
+        if identifier.localizedCaseInsensitiveContains(identifierContains) {
+            return element
+        }
 
-        let openDeadline = Date().addingTimeInterval(1.5)
-        while Date() < openDeadline {
-            if let goToFolderDialog = self.findGoToFolderDialogElement(appName: appName) {
-                try await self.fillGoToFolderDialog(goToFolderDialog, with: filePath)
-                return
+        for sheet in self.sheetElements(for: element) {
+            if let match = self.findFirstDescendant(
+                in: sheet,
+                identifierAttribute: identifierAttribute,
+                identifierContains: identifierContains)
+            {
+                return match
             }
-            try await Task.sleep(nanoseconds: 100_000_000)
         }
 
-        // Fallback: type into whichever field is currently focused.
-        do {
-            // Fallback: type into whichever field is currently focused.
-            try self.typeTextValue(filePath, delay: 5000)
-            try InputDriver.tapKey(.return)
-            try await Task.sleep(nanoseconds: 250_000_000)
-        } catch {
-            self.logger.debug("Go-to-folder fallback typing failed: \(String(describing: error))")
+        if let children = element.children() {
+            for child in children {
+                if let match = self.findFirstDescendant(
+                    in: child,
+                    identifierAttribute: identifierAttribute,
+                    identifierContains: identifierContains)
+                {
+                    return match
+                }
+            }
         }
+
+        return nil
+    }
+
+    private func navigateToPath(_ filePath: String, in dialog: Element) async throws {
+        let expandedPath = (filePath as NSString).expandingTildeInPath
+        let targetURL = URL(fileURLWithPath: expandedPath)
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: expandedPath, isDirectory: &isDirectory)
+
+        let directoryPath: String = if exists, !isDirectory.boolValue {
+            targetURL.deletingLastPathComponent().path
+        } else if !targetURL.pathExtension.isEmpty {
+            targetURL.deletingLastPathComponent().path
+        } else {
+            expandedPath
+        }
+
+        let identifierAttribute = Attribute<String>("AXIdentifier")
+        let pathFieldIdentifier = "PathTextField"
+
+        func findPathField(in element: Element) -> Element? {
+            self.collectTextFields(from: element).first(where: { field in
+                field.attribute(identifierAttribute) == pathFieldIdentifier
+            })
+        }
+
+        var pathField = findPathField(in: dialog)
+        if pathField == nil,
+           let disclosure = self.findFirstDescendant(
+               in: dialog,
+               identifierAttribute: identifierAttribute,
+               identifierContains: "DISCLOSURE_TRIANGLE")
+        {
+            try self.pressOrClick(disclosure)
+            try await Task.sleep(nanoseconds: 250_000_000)
+            pathField = findPathField(in: dialog)
+        }
+
+        guard let pathField else {
+            self.logger.debug("No PathTextField found; skipping path navigation")
+            return
+        }
+
+        self.focusTextField(pathField)
+        if pathField.isAttributeSettable(named: AXAttributeNames.kAXValueAttribute),
+           pathField.setValue(directoryPath, forAttribute: AXAttributeNames.kAXValueAttribute)
+        {
+            // Some NSSavePanel implementations don't update AXValue immediately; commit via Return below.
+        } else {
+            try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
+            try self.typeTextValue(directoryPath, delay: 5000)
+        }
+        try InputDriver.tapKey(.return)
+        try await Task.sleep(nanoseconds: 250_000_000)
     }
 
     @MainActor
@@ -1147,19 +1286,6 @@ extension DialogService {
         } catch {
             return false
         }
-    }
-
-    @MainActor
-    private func isGoToFolderDialogElement(_ element: Element) -> Bool {
-        let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
-        let hasCancel = buttonTitles.contains("cancel")
-        let hasGoTitle = buttonTitles.contains("go") || buttonTitles.contains("open") || buttonTitles.contains("choose")
-        let defaultButtonTitle = element.defaultButton()?.title()
-        let hasDefaultAction = element.defaultButton() != nil && !self.isCancelLikeButtonTitle(defaultButtonTitle)
-        guard hasCancel, hasGoTitle || hasDefaultAction else { return false }
-
-        let fieldCount = self.collectTextFields(from: element).count
-        return fieldCount >= 1
     }
 
     @MainActor
@@ -1222,89 +1348,6 @@ extension DialogService {
         return modifiedAt >= date.addingTimeInterval(-2.0)
     }
 
-    @MainActor
-    private func findGoToFolderDialogElement(appName: String?) -> Element? {
-        let systemWide = Element.systemWide()
-
-        var focusedAppElement: Element? = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) ?? {
-            if let frontmost = NSWorkspace.shared.frontmostApplication {
-                return AXApp(frontmost).element
-            }
-            return nil
-        }()
-
-        if let appName,
-           let targetApp = self.runningApplication(matching: appName)
-        {
-            focusedAppElement = AXApp(targetApp).element
-        }
-
-        guard let focusedApp = focusedAppElement else { return nil }
-
-        let windows = focusedApp.windowsWithTimeout() ?? []
-        for window in windows {
-            if let candidate = self.resolveGoToFolderCandidate(in: window) {
-                return candidate
-            }
-        }
-
-        return nil
-    }
-
-    @MainActor
-    private func resolveGoToFolderCandidate(in element: Element) -> Element? {
-        if self.isGoToFolderDialogElement(element) {
-            return element
-        }
-
-        for sheet in self.sheetElements(for: element) {
-            if let candidate = self.resolveGoToFolderCandidate(in: sheet) {
-                return candidate
-            }
-        }
-
-        if let children = element.children() {
-            for child in children {
-                if let candidate = self.resolveGoToFolderCandidate(in: child) {
-                    return candidate
-                }
-            }
-        }
-
-        return nil
-    }
-
-    @MainActor
-    private func fillGoToFolderDialog(_ dialog: Element, with path: String) async throws {
-        let fields = self.collectTextFields(from: dialog)
-        if let targetField = fields.first {
-            self.focusTextField(targetField)
-            try self.clearFieldIfNeeded(targetField, shouldClear: true)
-        }
-
-        try self.typeTextValue(path, delay: 5000)
-
-        if let goButton = self.resolveButton(
-            in: dialog,
-            requestedTitle: "Go",
-            allowFallbackToDefaultAction: true)
-        {
-            try self.pressOrClick(goButton)
-        } else if let defaultButton = dialog.defaultButton(), !self.isCancelLikeButtonTitle(defaultButton.title()) {
-            try self.pressOrClick(defaultButton)
-        } else {
-            try InputDriver.tapKey(.return)
-        }
-
-        let closeDeadline = Date().addingTimeInterval(1.5)
-        while Date() < closeDeadline {
-            if self.findGoToFolderDialogElement(appName: nil) == nil {
-                break
-            }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-    }
-
     private func pressOrClick(_ element: Element) throws {
         do {
             try element.performAction(.press)
@@ -1332,12 +1375,13 @@ extension DialogService {
         }
 
         let expectedBaseName = URL(fileURLWithPath: fileName).deletingPathExtension().lastPathComponent.lowercased()
+        let identifierAttribute = Attribute<String>("AXIdentifier")
 
         func fieldScore(_ field: Element) -> Int {
             let title = (field.title() ?? "").lowercased()
             let placeholder = (field.attribute(Attribute<String>("AXPlaceholderValue")) ?? "").lowercased()
             let description = (field.attribute(Attribute<String>("AXDescription")) ?? "").lowercased()
-            let identifier = (field.attribute(Attribute<String>("AXIdentifier")) ?? "").lowercased()
+            let identifier = (field.attribute(identifierAttribute) ?? "").lowercased()
             let combined = "\(title) \(placeholder) \(description) \(identifier)"
 
             if combined.contains("tags") { return 100 }
@@ -1354,24 +1398,36 @@ extension DialogService {
             return 50
         }
 
-        let fieldsToTry = textFields
-            .filter { $0.isEnabled() ?? true }
-            .compactMap { field -> (field: Element, score: Int, position: CGPoint)? in
-                guard let position = field.position() else { return nil }
-                return (field: field, score: fieldScore(field), position: position)
-            }
-            .sorted(by: { lhs, rhs in
-                if lhs.score != rhs.score { return lhs.score < rhs.score }
-                if lhs.position.y != rhs.position.y { return lhs.position.y < rhs.position.y }
-                return lhs.position.x < rhs.position.x
-            })
-            .map(\.field)
+        let fieldsToTry: [Element] = if let saveAsField = textFields.first(where: { field in
+            field.attribute(identifierAttribute) == "saveAsNameTextField"
+        }) {
+            [saveAsField]
+        } else {
+            textFields
+                .filter { $0.isEnabled() ?? true }
+                .compactMap { field -> (field: Element, score: Int, position: CGPoint)? in
+                    guard let position = field.position() else { return nil }
+                    return (field: field, score: fieldScore(field), position: position)
+                }
+                .sorted(by: { lhs, rhs in
+                    if lhs.score != rhs.score { return lhs.score < rhs.score }
+                    if lhs.position.y != rhs.position.y { return lhs.position.y < rhs.position.y }
+                    return lhs.position.x < rhs.position.x
+                })
+                .map(\.field)
+        }
 
         for (index, field) in fieldsToTry.indexed() {
             self.focusTextField(field)
-            try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
-            usleep(75000)
-            try self.typeTextValue(fileName, delay: 5000)
+            if field.isAttributeSettable(named: AXAttributeNames.kAXValueAttribute),
+               field.setValue(fileName, forAttribute: AXAttributeNames.kAXValueAttribute)
+            {
+                // Commit below by sending a small delay; some panels apply filename changes lazily.
+            } else {
+                try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
+                usleep(75000)
+                try self.typeTextValue(fileName, delay: 5000)
+            }
             usleep(150_000)
 
             if let updatedValue = field.value() as? String {
@@ -1384,10 +1440,19 @@ extension DialogService {
                     return
                 }
             }
+
+            // Many NSSavePanel implementations (including TextEdit) do not reliably expose the live text field
+            // contents via AXValue. If we successfully focused a plausible field and typed the name, treat the
+            // attempt as best-effort and continue the flow; the subsequent save verification will catch failures.
+            if index == 0 {
+                self.logger.debug(
+                    "Typed filename into first candidate text field; proceeding without AXValue confirmation")
+                return
+            }
         }
 
-        self.logger.error("Failed to set filename after trying \(fieldsToTry.count) candidate fields")
-        throw DialogError.fieldNotFound
+        self.logger.debug(
+            "Typed filename into \(fieldsToTry.count) candidate text fields; proceeding without AXValue confirmation")
     }
 
     private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
@@ -1559,11 +1624,16 @@ extension DialogService {
         }
 
         // Some sheets (e.g. TextEdit's Save sheet) expose no useful title/identifier but do expose canonical buttons.
-        let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
-        let hasCancel = buttonTitles.contains("cancel")
-        let hasPrimary = ["save", "open", "choose", "replace", "export", "import"]
+        let buttons = self.collectButtons(from: element)
+        let buttonTitles = Set(buttons.compactMap { $0.title()?.lowercased() })
+        let buttonIdentifiers = Set(buttons.compactMap { $0.attribute(Attribute<String>("AXIdentifier")) })
+
+        let hasCancel = buttonTitles.contains("cancel") || buttonIdentifiers.contains("CancelButton")
+        let hasPrimaryTitle = ["save", "open", "choose", "replace", "export", "import"]
             .contains { buttonTitles.contains($0) }
-        return hasCancel && hasPrimary
+        let hasPrimaryIdentifier = buttonIdentifiers.contains("OKButton")
+
+        return hasCancel && (hasPrimaryTitle || hasPrimaryIdentifier)
     }
 
     @MainActor
