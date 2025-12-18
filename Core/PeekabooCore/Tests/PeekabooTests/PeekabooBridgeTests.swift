@@ -514,7 +514,12 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
         appName _: String?) async throws -> DialogActionResult
     { throw PeekabooError.notImplemented("stub") }
 
-    func handleFileDialog(path _: String?, filename _: String?, actionButton _: String, appName _: String?) async
+    func handleFileDialog(
+        path _: String?,
+        filename _: String?,
+        actionButton _: String?,
+        ensureExpanded _: Bool,
+        appName _: String?) async
         throws -> DialogActionResult
     { throw PeekabooError.notImplemented("stub") }
 

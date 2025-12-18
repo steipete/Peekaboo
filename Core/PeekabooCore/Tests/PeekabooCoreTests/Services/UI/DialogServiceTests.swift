@@ -116,7 +116,8 @@ struct DialogServiceTests {
             _ = try await service.handleFileDialog(
                 path: "/Users/test",
                 filename: "test.txt",
-                actionButton: "Save")
+                actionButton: "Save",
+                ensureExpanded: false)
             Issue.record("Should fail without an actual dialog")
         } catch {
             // Expected to fail without a real dialog

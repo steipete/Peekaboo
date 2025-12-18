@@ -230,7 +230,8 @@ public struct DialogTool: MCPTool {
         let result = try await service.handleFileDialog(
             path: selection.directory,
             filename: selection.filename,
-            actionButton: "Save")
+            actionButton: "Save",
+            ensureExpanded: false)
         let executionTime = Date().timeIntervalSince(startTime)
 
         if result.success {

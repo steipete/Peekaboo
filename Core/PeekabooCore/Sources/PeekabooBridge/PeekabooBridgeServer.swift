@@ -393,6 +393,7 @@ public final class PeekabooBridgeServer {
                     path: payload.path,
                     filename: payload.filename,
                     actionButton: payload.actionButton,
+                    ensureExpanded: payload.ensureExpanded ?? false,
                     appName: payload.appName)
                 return .dialogResult(result)
 

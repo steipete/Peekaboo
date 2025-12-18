@@ -46,6 +46,7 @@ enum CommandRegistry {
         .init(type: PressCommand.self, category: .interaction),
         .init(type: ScrollCommand.self, category: .interaction),
         .init(type: HotkeyCommand.self, category: .interaction),
+        .init(type: PasteCommand.self, category: .interaction),
         .init(type: SwipeCommand.self, category: .interaction),
         .init(type: DragCommand.self, category: .interaction),
         .init(type: MoveCommand.self, category: .interaction),

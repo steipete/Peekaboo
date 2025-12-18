@@ -337,13 +337,19 @@ public final class RemoteDialogService: DialogServiceProtocol {
             appName: appName)
     }
 
-    public func handleFileDialog(path: String?, filename: String?, actionButton: String, appName: String?) async throws
+    public func handleFileDialog(
+        path: String?,
+        filename: String?,
+        actionButton: String?,
+        ensureExpanded: Bool,
+        appName: String?) async throws
         -> DialogActionResult
     {
         try await self.client.dialogHandleFile(
             path: path,
             filename: filename,
             actionButton: actionButton,
+            ensureExpanded: ensureExpanded,
             appName: appName)
     }
 

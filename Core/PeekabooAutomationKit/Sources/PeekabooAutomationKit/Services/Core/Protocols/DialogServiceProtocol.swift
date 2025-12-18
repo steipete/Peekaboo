@@ -40,12 +40,14 @@ public protocol DialogServiceProtocol: Sendable {
     /// - Parameters:
     ///   - path: Full path to navigate to
     ///   - filename: File name to enter (for save dialogs)
-    ///   - actionButton: Button to click after entering path/name (default: "Save")
+    ///   - actionButton: Button to click after entering path/name. Pass nil (or "default") to click the OKButton.
+    ///   - ensureExpanded: Ensure the dialog is expanded ("Show Details") before interacting with path fields.
     /// - Returns: Result of the file dialog operation
     func handleFileDialog(
         path: String?,
         filename: String?,
-        actionButton: String,
+        actionButton: String?,
+        ensureExpanded: Bool,
         appName: String?) async throws -> DialogActionResult
 
     /// Dismiss the active dialog
@@ -92,9 +94,15 @@ extension DialogServiceProtocol {
     public func handleFileDialog(
         path: String?,
         filename: String?,
-        actionButton: String) async throws -> DialogActionResult
+        actionButton: String?,
+        ensureExpanded: Bool = false) async throws -> DialogActionResult
     {
-        try await self.handleFileDialog(path: path, filename: filename, actionButton: actionButton, appName: nil)
+        try await self.handleFileDialog(
+            path: path,
+            filename: filename,
+            actionButton: actionButton,
+            ensureExpanded: ensureExpanded,
+            appName: nil)
     }
 
     public func dismissDialog(force: Bool, windowTitle: String?) async throws -> DialogActionResult {

@@ -550,13 +550,15 @@ public actor PeekabooBridgeClient {
     public func dialogHandleFile(
         path: String?,
         filename: String?,
-        actionButton: String,
+        actionButton: String?,
+        ensureExpanded: Bool = false,
         appName: String?) async throws -> DialogActionResult
     {
         let response = try await self.send(.dialogHandleFile(PeekabooBridgeDialogHandleFileRequest(
             path: path,
             filename: filename,
             actionButton: actionButton,
+            ensureExpanded: ensureExpanded,
             appName: appName)))
         switch response {
         case let .dialogResult(result): return result

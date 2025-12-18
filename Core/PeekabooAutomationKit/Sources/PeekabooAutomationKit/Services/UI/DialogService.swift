@@ -170,7 +170,8 @@ extension DialogService {
     public func handleFileDialog(
         path: String?,
         filename: String?,
-        actionButton: String = "Save",
+        actionButton: String?,
+        ensureExpanded: Bool = false,
         appName: String?) async throws -> DialogActionResult
     {
         self.logger.info("Handling file dialog")
@@ -180,19 +181,40 @@ extension DialogService {
         if let filename {
             self.logger.debug("Filename: \(filename)")
         }
-        self.logger.debug("Action button: \(actionButton)")
+        if let actionButton {
+            self.logger.debug("Action button: \(actionButton)")
+        } else {
+            self.logger.debug("Action button: (default/OKButton)")
+        }
 
         let saveStartTime = Date()
-        var dialog = try await self.resolveFileDialogElement(appName: appName)
-        var details: [String: String] = [:]
+        var resolution = try await self.resolveFileDialogElementResolution(appName: appName)
+        var dialog = resolution.element
+        var details: [String: String] = [
+            "dialog_identifier": resolution.dialogIdentifier,
+            "found_via": resolution.foundVia,
+        ]
+
+        if ensureExpanded {
+            try await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
+            // Expanding can rebuild the AX tree; re-resolve.
+            resolution = try await self.resolveFileDialogElementResolution(appName: appName)
+            dialog = resolution.element
+            details["dialog_identifier"] = resolution.dialogIdentifier
+            details["found_via"] = resolution.foundVia
+            details["ensure_expanded"] = "true"
+        }
 
         if let filePath = path {
-            try await self.navigateToPath(filePath, in: dialog)
+            try await self.navigateToPath(filePath, in: dialog, ensureExpanded: ensureExpanded)
             details["path"] = filePath
 
             // Navigating the path can expand/collapse the panel and rebuild the sheet tree. Re-resolve the active
             // file dialog after navigation so subsequent actions (filename + action button) target fresh AX handles.
-            dialog = try await self.resolveFileDialogElement(appName: appName)
+            resolution = try await self.resolveFileDialogElementResolution(appName: appName)
+            dialog = resolution.element
+            details["dialog_identifier"] = resolution.dialogIdentifier
+            details["found_via"] = resolution.foundVia
         }
 
         if let fileName = filename {
@@ -200,7 +222,10 @@ extension DialogService {
             details["filename"] = fileName
         }
 
-        let priorDocumentPath: String? = if self.isSaveLikeAction(actionButton) {
+        let shouldCapturePriorDocumentPath = actionButton == nil ||
+            self.isSaveLikeAction(actionButton ?? "")
+
+        let priorDocumentPath: String? = if shouldCapturePriorDocumentPath {
             self.documentPathForApp(appName: appName)
         } else {
             nil
@@ -208,15 +233,30 @@ extension DialogService {
 
         // The file panel can swap sheets (e.g. Go to Folder) or rebuild its button tree after typing.
         // Re-resolve the active file dialog right before clicking to avoid stale AX element handles.
-        dialog = try await self.resolveFileDialogElement(appName: appName)
+        resolution = try await self.resolveFileDialogElementResolution(appName: appName)
+        dialog = resolution.element
+        details["dialog_identifier"] = resolution.dialogIdentifier
+        details["found_via"] = resolution.foundVia
+
+        let requestedButton = actionButton?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedRequested = requestedButton.map(self.normalizedDialogButtonTitle)
+        let resolvedActionButton: String = if normalizedRequested == "default" || requestedButton == nil {
+            "default"
+        } else {
+            requestedButton ?? "default"
+        }
 
         let clickResult = try await self.clickButton(
             in: dialog,
-            buttonText: actionButton,
+            buttonText: resolvedActionButton,
             allowFallbackToDefaultAction: true)
-        details["button_clicked"] = clickResult.details["button"] ?? actionButton
+        details["button_clicked"] = clickResult.details["button"] ?? resolvedActionButton
+        if let buttonIdentifier = clickResult.details["button_identifier"] {
+            details["button_identifier"] = buttonIdentifier
+        }
 
-        if self.isSaveLikeAction(actionButton) {
+        let clickedTitle = clickResult.details["button"] ?? resolvedActionButton
+        if self.isSaveLikeAction(clickedTitle) {
             let expectedPath = self.expectedSavedPath(path: path, filename: filename)
             let expectedBaseName = self.expectedSavedBaseName(filename: filename, expectedPath: expectedPath)
 
@@ -457,16 +497,23 @@ extension DialogService {
         allowFallbackToDefaultAction: Bool) -> Element?
     {
         let buttons = self.collectButtons(from: dialog)
+        let identifierAttribute = Attribute<String>("AXIdentifier")
+        let normalizedRequested = self.normalizedDialogButtonTitle(requestedTitle)
 
-        if let match = buttons.first(where: { btn in
-            guard let title = btn.title() else { return false }
-            return self.dialogButtonTitleMatches(title, requested: requestedTitle)
-        }) {
+        if normalizedRequested != "default",
+           let match = buttons.first(where: { btn in
+               guard let title = btn.title() else { return false }
+               return self.dialogButtonTitleMatches(title, requested: requestedTitle)
+           })
+        {
             return match
         }
 
-        let identifierAttribute = Attribute<String>("AXIdentifier")
-        let normalizedRequested = self.normalizedDialogButtonTitle(requestedTitle)
+        if normalizedRequested == "default",
+           let okButton = buttons.first(where: { $0.attribute(identifierAttribute) == "OKButton" })
+        {
+            return okButton
+        }
 
         if self.isSaveLikeAction(requestedTitle),
            let okButton = buttons.first(where: { $0.attribute(identifierAttribute) == "OKButton" })
@@ -481,7 +528,9 @@ extension DialogService {
         }
 
         guard allowFallbackToDefaultAction else { return nil }
-        guard self.isSaveLikeAction(requestedTitle) else { return nil }
+        if normalizedRequested != "default" {
+            guard self.isSaveLikeAction(requestedTitle) else { return nil }
+        }
 
         if let defaultButton = buttons.first(where: { btn in
             (btn.attribute(Attribute<Bool>("AXDefault")) ?? false) && (btn.isEnabled() ?? true)
@@ -521,7 +570,9 @@ extension DialogService {
             throw DialogError.buttonNotFound(buttonText)
         }
 
+        let identifierAttribute = Attribute<String>("AXIdentifier")
         let resolvedButtonTitle = targetButton.title() ?? buttonText
+        let resolvedButtonIdentifier = targetButton.attribute(identifierAttribute)
 
         let buttonBounds: CGRect = if let position = targetButton.position(), let size = targetButton.size() {
             CGRect(origin: position, size: size)
@@ -539,13 +590,18 @@ extension DialogService {
         self.logger.debug("Clicking button: \(resolvedButtonTitle)")
         try self.pressOrClick(targetButton)
 
+        var clickDetails: [String: String] = [
+            "button": resolvedButtonTitle,
+            "window": dialog.title() ?? "Dialog",
+        ]
+        if let resolvedButtonIdentifier, !resolvedButtonIdentifier.isEmpty {
+            clickDetails["button_identifier"] = resolvedButtonIdentifier
+        }
+
         let result = DialogActionResult(
             success: true,
             action: .clickButton,
-            details: [
-                "button": resolvedButtonTitle,
-                "window": dialog.title() ?? "Dialog",
-            ])
+            details: clickDetails)
 
         self.logger
             .info(
@@ -1212,7 +1268,7 @@ extension DialogService {
         return nil
     }
 
-    private func navigateToPath(_ filePath: String, in dialog: Element) async throws {
+    private func navigateToPath(_ filePath: String, in dialog: Element, ensureExpanded: Bool) async throws {
         let expandedPath = (filePath as NSString).expandingTildeInPath
         let targetURL = URL(fileURLWithPath: expandedPath)
 
@@ -1227,6 +1283,10 @@ extension DialogService {
             expandedPath
         }
 
+        try await self.navigateToDirectory(directoryPath: directoryPath, in: dialog, ensureExpanded: ensureExpanded)
+    }
+
+    private func navigateToDirectory(directoryPath: String, in dialog: Element, ensureExpanded: Bool) async throws {
         let identifierAttribute = Attribute<String>("AXIdentifier")
         let pathFieldIdentifier = "PathTextField"
 
@@ -1237,19 +1297,21 @@ extension DialogService {
         }
 
         var pathField = findPathField(in: dialog)
-        if pathField == nil,
-           let disclosure = self.findFirstDescendant(
-               in: dialog,
-               identifierAttribute: identifierAttribute,
-               identifierContains: "DISCLOSURE_TRIANGLE")
-        {
-            try self.pressOrClick(disclosure)
-            try await Task.sleep(nanoseconds: 250_000_000)
+
+        if ensureExpanded || pathField == nil {
+            try await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
             pathField = findPathField(in: dialog)
         }
 
         guard let pathField else {
-            self.logger.debug("No PathTextField found; skipping path navigation")
+            // Fallback: Cmd+Shift+G (Go to Folder) is the most reliable way to land in an arbitrary directory.
+            self.logger.debug("No PathTextField found; falling back to Go to Folder (Cmd+Shift+G)")
+            try? InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)
+            try await Task.sleep(nanoseconds: 200_000_000)
+            try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
+            try self.typeTextValue(directoryPath, delay: 5000)
+            try InputDriver.tapKey(.return)
+            try await Task.sleep(nanoseconds: 250_000_000)
             return
         }
 
@@ -1264,6 +1326,139 @@ extension DialogService {
         }
         try InputDriver.tapKey(.return)
         try await Task.sleep(nanoseconds: 250_000_000)
+    }
+
+    private func ensureFileDialogExpandedIfNeeded(dialog: Element) async throws {
+        let identifierAttribute = Attribute<String>("AXIdentifier")
+
+        func findDisclosureCandidate(in element: Element) -> Element? {
+            if element.role() == "AXDisclosureTriangle" {
+                return element
+            }
+
+            let identifier = element.attribute(identifierAttribute) ?? ""
+            if identifier.localizedCaseInsensitiveContains("DISCLOSURE_TRIANGLE") ||
+                identifier.localizedCaseInsensitiveContains("DISCLOSURE") ||
+                identifier.localizedCaseInsensitiveContains("ShowDetails") ||
+                identifier.localizedCaseInsensitiveContains("HideDetails")
+            {
+                return element
+            }
+
+            let title = (element.title() ?? "").lowercased()
+            if title.contains("show details") || title.contains("hide details") {
+                return element
+            }
+
+            let description = (element.attribute(Attribute<String>("AXDescription")) ?? "").lowercased()
+            if description.contains("show details") || description.contains("hide details") {
+                return element
+            }
+
+            for sheet in self.sheetElements(for: element) {
+                if let match = findDisclosureCandidate(in: sheet) {
+                    return match
+                }
+            }
+
+            if let children = element.children() {
+                for child in children {
+                    if let match = findDisclosureCandidate(in: child) {
+                        return match
+                    }
+                }
+            }
+
+            return nil
+        }
+
+        guard let disclosure = findDisclosureCandidate(in: dialog) else { return }
+
+        // Only click if it appears to be collapsed, or if we can't infer state (we'll still try once).
+        let title = (disclosure.title() ?? "").lowercased()
+        let description = (disclosure.attribute(Attribute<String>("AXDescription")) ?? "").lowercased()
+        let shouldClick = title.contains("show details") ||
+            description.contains("show details") ||
+            (title.isEmpty && description.isEmpty)
+        guard shouldClick else { return }
+
+        try self.pressOrClick(disclosure)
+        try await Task.sleep(nanoseconds: 250_000_000)
+    }
+
+    private func dialogIdentifier(for element: Element) -> String {
+        let role = element.role() ?? "unknown"
+        let subrole = element.subrole() ?? ""
+        let title = element.title() ?? "Untitled Dialog"
+        let axIdentifier = element.attribute(Attribute<String>("AXIdentifier")) ?? ""
+
+        return [role, subrole, axIdentifier, title]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "|")
+    }
+
+    private func resolveFileDialogElementResolution(appName: String?) async throws
+    -> (element: Element, dialogIdentifier: String, foundVia: String) {
+        if let appName,
+           let fileDialog = self.findActiveFileDialogElement(appName: appName)
+        {
+            return (
+                element: fileDialog,
+                dialogIdentifier: self.dialogIdentifier(for: fileDialog),
+                foundVia: "active_file_dialog")
+        }
+
+        let resolved = try await self.resolveDialogElementResolution(windowTitle: nil, appName: appName)
+        guard self.isFileDialogElement(resolved.element) else {
+            throw DialogError.noFileDialog
+        }
+
+        return resolved
+    }
+
+    private func resolveDialogElementResolution(
+        windowTitle: String?,
+        appName: String?) async throws -> (element: Element, dialogIdentifier: String, foundVia: String)
+    {
+        if let appName, !appName.isEmpty {
+            self.logger.debug("Resolving dialog with app hint: \(appName)")
+        }
+
+        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
+            return (
+                element: element,
+                dialogIdentifier: self.dialogIdentifier(for: element),
+                foundVia: "find_dialog_element")
+        }
+
+        await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
+
+        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
+            return (
+                element: element,
+                dialogIdentifier: self.dialogIdentifier(for: element),
+                foundVia: "ensure_visibility_then_find")
+        }
+
+        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
+            return (
+                element: element,
+                dialogIdentifier: self.dialogIdentifier(for: element),
+                foundVia: "application_service")
+        }
+
+        if windowTitle == nil,
+           let appName,
+           let fileDialog = self.findActiveFileDialogElement(appName: appName)
+        {
+            return (
+                element: fileDialog,
+                dialogIdentifier: self.dialogIdentifier(for: fileDialog),
+                foundVia: "active_file_dialog_fallback")
+        }
+
+        throw DialogError.noActiveDialog
     }
 
     @MainActor

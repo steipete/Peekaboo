@@ -35,8 +35,19 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
             options: [
                 .commandOption("path", help: "Full file path to navigate to", long: "path"),
                 .commandOption("name", help: "File name to enter", long: "name"),
-                .commandOption("select", help: "Button to click after entering path/name", long: "select"),
+                .commandOption(
+                    "select",
+                    help: "Button to click after entering path/name (omit or 'default' to click OKButton)",
+                    long: "select"
+                ),
                 .commandOption("app", help: "Application hosting the dialog", long: "app"),
+            ],
+            flags: [
+                .commandFlag(
+                    "ensureExpanded",
+                    help: "Ensure file dialogs are expanded (Show Details)",
+                    long: "ensure-expanded"
+                ),
             ]
         )
     }

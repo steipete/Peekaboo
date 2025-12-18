@@ -518,7 +518,8 @@ public struct PeekabooBridgeDialogEnterTextRequest: Codable, Sendable {
 public struct PeekabooBridgeDialogHandleFileRequest: Codable, Sendable {
     public let path: String?
     public let filename: String?
-    public let actionButton: String
+    public let actionButton: String?
+    public let ensureExpanded: Bool?
     public let appName: String?
 }
 

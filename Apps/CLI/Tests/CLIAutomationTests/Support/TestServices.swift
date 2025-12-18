@@ -981,7 +981,8 @@ final class StubDialogService: DialogServiceProtocol {
     func handleFileDialog(
         path: String?,
         filename: String?,
-        actionButton: String,
+        actionButton: String?,
+        ensureExpanded: Bool,
         appName: String?
     ) async throws -> DialogActionResult {
         guard let elements = self.dialogElements else {
@@ -993,7 +994,7 @@ final class StubDialogService: DialogServiceProtocol {
         if let result = self.handleFileDialogResult {
             return result
         }
-        throw DialogError.buttonNotFound(actionButton)
+        throw DialogError.buttonNotFound(actionButton ?? "default")
     }
 
     func dismissDialog(force: Bool, windowTitle: String?, appName: String?) async throws -> DialogActionResult {

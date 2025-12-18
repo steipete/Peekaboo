@@ -31,6 +31,7 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - [`type`](commands/type.md) – Send text and control keys; supports `--clear`, `--delay`, tab counts, etc.
 - [`press`](commands/press.md) – Fire `SpecialKey` sequences with repeat counts.
 - [`hotkey`](commands/hotkey.md) – Emit modifier combos like `cmd,shift,t` in one shot.
+- [`paste`](commands/paste.md) – Atomically set clipboard → paste (Cmd+V) → restore clipboard.
 - [`scroll`](commands/scroll.md) – Directional scrolling with optional element targeting and smooth mode.
 - [`swipe`](commands/swipe.md) – Gesture-style drags between IDs or coordinates (`--duration`, `--steps`).
 - [`drag`](commands/drag.md) – Drag-and-drop across elements, coordinates, or Dock destinations with modifiers.

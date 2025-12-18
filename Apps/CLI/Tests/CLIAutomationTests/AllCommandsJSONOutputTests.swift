@@ -19,6 +19,7 @@ struct AllCommandsJSONOutputTests {
         ["type"],
         ["scroll"],
         ["hotkey"],
+        ["paste"],
         ["swipe"],
         ["run"],
         ["sleep"],

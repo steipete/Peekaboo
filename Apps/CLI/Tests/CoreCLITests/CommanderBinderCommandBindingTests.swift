@@ -500,6 +500,27 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
+    @Test("Paste command binding (text + target)")
+    func bindPasteCommand() throws {
+        let parsed = ParsedValues(
+            positional: ["Hello"],
+            options: [
+                "app": ["TextEdit"],
+                "windowTitle": ["Untitled"],
+                "restoreDelayMs": ["250"],
+            ],
+            flags: ["allowLarge"]
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: PasteCommand.self, parsedValues: parsed)
+        #expect(command.text == "Hello")
+        #expect(command.textOption == nil)
+        #expect(command.target.app == "TextEdit")
+        #expect(command.target.windowTitle == "Untitled")
+        #expect(command.restoreDelayMs == 250)
+        #expect(command.allowLarge == true)
+    }
+
     @Test("See command respects capture-engine option")
     func bindSeeCommandCaptureEngine() throws {
         let parsed = ParsedValues(

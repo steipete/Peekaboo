@@ -355,7 +355,8 @@ struct DialogCommandTests {
             func handleFileDialog(
                 path: String?,
                 filename: String?,
-                actionButton: String,
+                actionButton: String?,
+                ensureExpanded: Bool,
                 appName: String?
             ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
             func dismissDialog(
