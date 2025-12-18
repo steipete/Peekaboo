@@ -81,6 +81,10 @@ public final class ClickService {
             // Click at element center
             let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
             try await self.performClick(at: center, clickType: clickType)
+            try await self.nudgeTextInputFocusIfNeeded(
+                afterClickAt: center,
+                clickType: clickType,
+                expectedIdentifier: element.attributes["identifier"])
             self.logger.debug("Clicked element \(id) at (\(center.x), \(center.y))")
         } else {
             throw NotFoundError.element(id)
@@ -92,6 +96,7 @@ public final class ClickService {
         // First try to find in snapshot data if available (much faster)
         var found = false
         var clickFrame: CGRect?
+        var resolvedElement: DetectedElement?
 
         if let snapshotId,
            let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId)
@@ -99,6 +104,7 @@ public final class ClickService {
             if let match = Self.resolveTargetElement(query: query, in: detectionResult) {
                 found = true
                 clickFrame = match.bounds
+                resolvedElement = match
                 self.logger.debug("Found element in snapshot matching query: \(query)")
             }
         }
@@ -117,10 +123,58 @@ public final class ClickService {
         if found, let frame = clickFrame {
             let center = CGPoint(x: frame.midX, y: frame.midY)
             try await self.performClick(at: center, clickType: clickType)
+            try await self.nudgeTextInputFocusIfNeeded(
+                afterClickAt: center,
+                clickType: clickType,
+                expectedIdentifier: resolvedElement?.attributes["identifier"])
             self.logger.debug("Clicked element matching '\(query)' at (\(center.x), \(center.y))")
         } else {
             throw NotFoundError.element(query)
         }
+    }
+
+    private func nudgeTextInputFocusIfNeeded(
+        afterClickAt point: CGPoint,
+        clickType: ClickType,
+        expectedIdentifier: String?) async throws
+    {
+        guard clickType == .single else { return }
+
+        let normalizedExpectedIdentifier = expectedIdentifier?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        // If we're already focused on a text input, don't introduce extra clicks.
+        if self.isFocusedTextInput(expectedIdentifier: normalizedExpectedIdentifier) {
+            return
+        }
+
+        // SwiftUI can report text input frames with a stable vertical offset (commonly ~28-32px).
+        // Retry a handful of small Y nudges to land inside the actual editable region.
+        let nudges: [CGFloat] = [-29, -24, -34, -20]
+
+        for dy in nudges {
+            let candidate = CGPoint(x: point.x, y: point.y + dy)
+            try await self.performClick(at: candidate, clickType: .single)
+            try await Task.sleep(nanoseconds: 60_000_000) // 60ms
+
+            if self.isFocusedTextInput(expectedIdentifier: normalizedExpectedIdentifier) {
+                return
+            }
+        }
+    }
+
+    private func isFocusedTextInput(expectedIdentifier: String?) -> Bool {
+        guard let frontApp = NSWorkspace.shared.frontmostApplication else { return false }
+        let appElement = AXApp(frontApp).element
+        guard let focused = appElement.focusedUIElement() else { return false }
+
+        let role = focused.role()?.lowercased() ?? ""
+        let isTextInput = role.contains("textfield") || role.contains("searchfield") || role.contains("textarea")
+        guard isTextInput else { return false }
+
+        guard let expectedIdentifier, !expectedIdentifier.isEmpty else { return true }
+        return focused.identifier()?.lowercased() == expectedIdentifier
     }
 
     @MainActor
@@ -161,6 +215,12 @@ public final class ClickService {
             if score > bestScore {
                 bestScore = score
                 bestMatch = element
+            } else if score == bestScore, let currentBest = bestMatch {
+                // Deterministic tie-break: prefer lower (smaller y) matches.
+                // This helps when SwiftUI reports multiple nodes with the same identifier.
+                if element.bounds.origin.y < currentBest.bounds.origin.y {
+                    bestMatch = element
+                }
             }
         }
 

@@ -201,6 +201,12 @@ public final class TypeService {
             if score > bestScore {
                 bestScore = score
                 bestMatch = element
+            } else if score == bestScore, let currentBest = bestMatch {
+                // Deterministic tie-break: prefer lower (smaller y) matches.
+                // This helps when SwiftUI reports multiple nodes with the same identifier.
+                if element.bounds.origin.y < currentBest.bounds.origin.y {
+                    bestMatch = element
+                }
             }
         }
 

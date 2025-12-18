@@ -60,4 +60,35 @@ struct TypeServiceTargetResolutionTests {
 
         #expect(TypeService.resolveTargetElement(query: "does-not-exist", in: detectionResult) == nil)
     }
+
+    @Test("resolveTargetElement breaks ties deterministically")
+    @MainActor
+    func resolvesDeterministicTieBreak() async throws {
+        let higher = DetectedElement(
+            id: "T_HIGH",
+            type: .textField,
+            label: "Type here...",
+            value: nil,
+            bounds: .init(x: 0, y: 100, width: 100, height: 20),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: ["identifier": "basic-text-field"])
+        let lower = DetectedElement(
+            id: "T_LOW",
+            type: .textField,
+            label: "Type here...",
+            value: nil,
+            bounds: .init(x: 0, y: 40, width: 100, height: 20),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: ["identifier": "basic-text-field"])
+
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot",
+            screenshotPath: "/tmp/shot.png",
+            elements: DetectedElements(textFields: [higher, lower]),
+            metadata: DetectionMetadata(detectionTime: 0.01, elementCount: 2, method: "test"))
+
+        #expect(TypeService.resolveTargetElement(query: "basic-text-field", in: detectionResult)?.id == "T_LOW")
+    }
 }
