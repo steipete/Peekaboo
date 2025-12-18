@@ -995,8 +995,6 @@ extension AgentCommand {
 
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
         .gpt51,
-        .gpt51Mini,
-        .gpt51Nano,
         .gpt5,
         .gpt5Pro,
         .gpt5Mini,
