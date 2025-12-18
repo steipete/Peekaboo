@@ -81,6 +81,8 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         let startTime = Date()
 
         do {
+            try self.validate()
+
             // Determine click target first to check if we need a snapshot
             let clickTarget: ClickTarget
             let waitResult: WaitForElementResult
@@ -89,10 +91,10 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             // Check if we're clicking by coordinates (doesn't need snapshot)
             if let coordString = coords {
                 // Click by coordinates (no snapshot needed)
-                let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                let x = Double(parts[0])!
-                let y = Double(parts[1])!
-                clickTarget = .coordinates(CGPoint(x: x, y: y))
+                guard let point = Self.parseCoordinates(coordString) else {
+                    throw ValidationError("Invalid coordinates format. Use: x,y")
+                }
+                clickTarget = .coordinates(point)
                 waitResult = WaitForElementResult(found: true, element: nil, waitTime: 0)
                 activeSnapshotId = "" // Not needed for coordinate clicks
                 try await self.focusApplicationIfNeeded(snapshotId: nil)
