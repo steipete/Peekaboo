@@ -2,6 +2,38 @@ import Commander
 import CoreGraphics
 import PeekabooCore
 
+enum FocusTargetRequest: Equatable, Sendable {
+    case windowId(CGWindowID)
+    case bestWindow(applicationName: String, windowTitle: String?)
+}
+
+enum FocusTargetResolver {
+    static func resolve(
+        windowID: CGWindowID?,
+        snapshot: UIAutomationSnapshot?,
+        applicationName: String?,
+        windowTitle: String?
+    ) -> FocusTargetRequest? {
+        if let windowID {
+            return .windowId(windowID)
+        }
+
+        if let snapshotWindowID = snapshot?.windowID {
+            return .windowId(snapshotWindowID)
+        }
+
+        let resolvedApplicationName =
+            applicationName ?? snapshot?.applicationBundleId ?? snapshot?.applicationName
+        let resolvedWindowTitle = windowTitle ?? snapshot?.windowTitle
+
+        if let resolvedApplicationName {
+            return .bestWindow(applicationName: resolvedApplicationName, windowTitle: resolvedWindowTitle)
+        }
+
+        return nil
+    }
+}
+
 /// Ensure the target window is focused before executing a command.
 func ensureFocused(
     snapshotId: String? = nil,
@@ -16,17 +48,26 @@ func ensureFocused(
     }
 
     let focusService = FocusManagementActor.shared
-    let targetWindow: CGWindowID? = if let windowID {
-        windowID
-    } else if let snapshotId,
-              let snapshot = try await services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId) {
-        snapshot.windowID
-    } else if let appName = applicationName {
-        try await focusService.findBestWindow(
-            applicationName: appName,
-            windowTitle: windowTitle
-        )
+
+    let snapshot = if let snapshotId {
+        try await services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId)
     } else {
+        nil as UIAutomationSnapshot?
+    }
+
+    let targetRequest = FocusTargetResolver.resolve(
+        windowID: windowID,
+        snapshot: snapshot,
+        applicationName: applicationName,
+        windowTitle: windowTitle
+    )
+
+    let targetWindow: CGWindowID? = switch targetRequest {
+    case let .windowId(windowID):
+        windowID
+    case let .bestWindow(applicationName, windowTitle):
+        try await focusService.findBestWindow(applicationName: applicationName, windowTitle: windowTitle)
+    case nil:
         nil
     }
 
