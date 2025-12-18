@@ -7,7 +7,7 @@ read_when:
 
 # `peekaboo dialog`
 
-`dialog` wraps `DialogService` so you can programmatically inspect, click, type into, dismiss, or drive file dialogs without re-running `see`. Pass `--app`/`--window` hints whenever possible; the command will focus the host app (via `WindowServiceBridge`) before interacting.
+`dialog` wraps `DialogService` so you can programmatically inspect, click, type into, dismiss, or drive file dialogs without re-running `see`. Pass `--app`/`--window` hints whenever possible; the command will activate the host app before interacting.
 
 ## Subcommands
 | Name | Purpose | Key options |
@@ -19,7 +19,7 @@ read_when:
 | `list` | Print dialog metadata (buttons, text fields, static text) for debugging. | `--window`, `--app`. |
 
 ## Implementation notes
-- Every subcommand calls `focusDialogAppIfNeeded` to bring the host window/sheet forward. If the window can’t be focused (e.g., already gone) the helper swallows the error so retries don’t crash.
+- Every subcommand calls `focusDialogAppIfNeeded` to bring the host app forward. If activation fails (e.g., already gone) the helper swallows the error so retries don’t crash.
 - Button clicks and text entry route through `services.dialogs` helpers, which return dictionaries describing what happened; JSON output exposes those details verbatim (`button`, `field`, `text_length`, etc.).
 - `dialog input` accepts either a field label (`--field`) or an index; when neither is provided it targets the first text field. `--clear` issues a Cmd+A/Delete before typing.
 - `dialog file` can both navigate to a path and fill the filename field, then clicks the action button you specify (`--select Save`, `--select Open`, etc.). Leave `--path` blank to simply confirm the current directory.

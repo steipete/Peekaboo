@@ -553,22 +553,10 @@ struct DialogCommand: ParsableCommand {
     ) async {
         guard let appName, !appName.isEmpty else { return }
 
-        let target: WindowTarget = if let windowTitle, !windowTitle.isEmpty {
-            .applicationAndTitle(app: appName, title: windowTitle)
-        } else {
-            .application(appName)
-        }
-
         do {
-            try await WindowServiceBridge.focusWindow(windows: services.windows, target: target)
+            try await services.applications.activateApplication(identifier: appName)
             try await Task.sleep(nanoseconds: 150_000_000)
         } catch {
-            if let focusError = error as? FocusError, case .windowNotFound = focusError {
-                return
-            }
-            if let peekabooError = error as? PeekabooError, case .operationError = peekabooError {
-                return
-            }
             logger.debug("Dialog focus hint failed for \(appName): \(String(describing: error))")
         }
     }

@@ -113,51 +113,10 @@ extension DialogService {
         }
 
         let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
-
-        // Find buttons
-        let buttons = self.collectButtons(from: dialog)
-        self.logger.debug("Found \(buttons.count) buttons in dialog")
-
-        // Find target button (exact match or contains)
-        guard let targetButton = buttons.first(where: { btn in
-            btn.title() == buttonText || btn.title()?.contains(buttonText) == true
-        }) else {
-            throw DialogError.buttonNotFound(buttonText)
-        }
-
-        let resolvedButtonTitle = targetButton.title() ?? buttonText
-
-        // Get button bounds for visual feedback
-        let buttonBounds: CGRect = if let position = targetButton.position(), let size = targetButton.size() {
-            CGRect(origin: position, size: size)
-        } else {
-            .zero
-        }
-
-        // Show dialog interaction visual feedback
-        if buttonBounds != .zero {
-            _ = await self.feedbackClient.showDialogInteraction(
-                element: .button,
-                elementRect: buttonBounds,
-                action: .clickButton)
-        }
-
-        // Click the button
-        self.logger.debug("Clicking button: \(resolvedButtonTitle)")
-        try targetButton.performAction(.press)
-
-        let result = DialogActionResult(
-            success: true,
-            action: .clickButton,
-            details: [
-                "button": resolvedButtonTitle,
-                "window": dialog.title() ?? "Dialog",
-            ])
-
-        self.logger
-            .info(
-                "\(AgentDisplayTokens.Status.success) Successfully clicked button: \(resolvedButtonTitle)")
-        return result
+        return try await self.clickButton(
+            in: dialog,
+            buttonText: buttonText,
+            allowFallbackToDefaultAction: false)
     }
 
     public func enterText(
@@ -224,16 +183,22 @@ extension DialogService {
         self.logger.debug("Action button: \(actionButton)")
 
         let saveStartTime = Date()
-        await self.ensureDialogVisibility(windowTitle: nil, appName: appName)
-        let dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
+        var dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
         guard self.isFileDialogElement(dialog) else {
             throw DialogError.noFileDialog
         }
         var details: [String: String] = [:]
 
         if let filePath = path {
-            try self.navigateToPath(filePath)
+            try await self.navigateToPath(filePath, appName: appName)
             details["path"] = filePath
+
+            // Cmd+Shift+G may temporarily open a "Go to Folder" sheet. Re-resolve the active file dialog after
+            // navigation so subsequent actions (filename + action button) target the correct sheet.
+            dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
+            guard self.isFileDialogElement(dialog) else {
+                throw DialogError.noFileDialog
+            }
         }
 
         if let fileName = filename {
@@ -241,19 +206,75 @@ extension DialogService {
             details["filename"] = fileName
         }
 
-        let clickResult = try await self.clickButton(buttonText: actionButton, windowTitle: nil, appName: appName)
+        let priorDocumentPath: String? = if self.isSaveLikeAction(actionButton) {
+            self.documentPathForApp(appName: appName)
+        } else {
+            nil
+        }
+
+        // The file panel can swap sheets (e.g. Go to Folder) or rebuild its button tree after typing.
+        // Re-resolve the active file dialog right before clicking to avoid stale AX element handles.
+        dialog = try await self.resolveDialogElement(windowTitle: nil, appName: appName)
+        guard self.isFileDialogElement(dialog) else {
+            throw DialogError.noFileDialog
+        }
+
+        let clickResult = try await self.clickButton(
+            in: dialog,
+            buttonText: actionButton,
+            allowFallbackToDefaultAction: true)
         details["button_clicked"] = clickResult.details["button"] ?? actionButton
 
         if self.isSaveLikeAction(actionButton) {
-            if let expectedPath = self.expectedSavedPath(path: path, filename: filename) {
-                let actualPath = try await self.waitForSavedFile(
+            let expectedPath = self.expectedSavedPath(path: path, filename: filename)
+            let expectedBaseName = self.expectedSavedBaseName(filename: filename, expectedPath: expectedPath)
+
+            do {
+                let verification = try await self.verifySavedFile(SavedFileVerificationRequest(
+                    appName: appName,
+                    priorDocumentPath: priorDocumentPath,
                     expectedPath: expectedPath,
+                    expectedBaseName: expectedBaseName,
                     startedAt: saveStartTime,
-                    timeout: 5.0)
-                details["saved_path"] = actualPath
+                    timeout: 5.0))
+
+                details["saved_path"] = verification.path
                 details["saved_path_exists"] = "true"
-            } else {
-                details["saved_path_exists"] = "unknown"
+                details["saved_path_verified"] = "true"
+                details["saved_path_found_via"] = verification.foundVia
+
+                if let expectedPath {
+                    details["saved_path_matches_expected"] = String(verification.path == expectedPath)
+                    if verification.path != expectedPath {
+                        details["saved_path_expected"] = expectedPath
+                    }
+                }
+            } catch let error as DialogError {
+                guard case .fileVerificationFailed = error else { throw error }
+                let didReplace = await self.clickReplaceIfPresent(appName: appName)
+                guard didReplace else { throw error }
+
+                let retryStart = Date()
+                let verification = try await self.verifySavedFile(SavedFileVerificationRequest(
+                    appName: appName,
+                    priorDocumentPath: priorDocumentPath,
+                    expectedPath: expectedPath,
+                    expectedBaseName: expectedBaseName,
+                    startedAt: retryStart,
+                    timeout: 5.0))
+
+                details["saved_path"] = verification.path
+                details["saved_path_exists"] = "true"
+                details["saved_path_verified"] = "true"
+                details["saved_path_found_via"] = verification.foundVia
+                details["overwrite_confirmed"] = "true"
+
+                if let expectedPath {
+                    details["saved_path_matches_expected"] = String(verification.path == expectedPath)
+                    if verification.path != expectedPath {
+                        details["saved_path_expected"] = expectedPath
+                    }
+                }
             }
         }
 
@@ -373,6 +394,159 @@ extension DialogService {
         return normalized.contains("save") || normalized.contains("export")
     }
 
+    private func fallbackFindRecentlyWrittenFile(preferredPath: String, startedAt: Date) -> String? {
+        let preferredURL = URL(fileURLWithPath: preferredPath)
+        let baseName = preferredURL.deletingPathExtension().lastPathComponent
+        return self.fallbackFindRecentlyWrittenFile(filenamePrefix: baseName, startedAt: startedAt)
+    }
+
+    private func fallbackFindRecentlyWrittenFile(filename: String, startedAt: Date) -> String? {
+        let baseName = URL(fileURLWithPath: filename).deletingPathExtension().lastPathComponent
+        return self.fallbackFindRecentlyWrittenFile(filenamePrefix: baseName, startedAt: startedAt)
+    }
+
+    private func fallbackFindRecentlyWrittenFile(filenamePrefix: String, startedAt: Date) -> String? {
+        let fileManager = FileManager.default
+
+        let candidates: [URL] = [
+            URL(fileURLWithPath: "/private/tmp"),
+            URL(fileURLWithPath: "/tmp"),
+            fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Desktop"),
+            fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Downloads"),
+            fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Documents"),
+            URL(fileURLWithPath: fileManager.currentDirectoryPath),
+        ]
+            .map(\.standardizedFileURL)
+            .filter { fileManager.fileExists(atPath: $0.path) }
+
+        for directory in candidates {
+            if let match = self.findRecentlyWrittenFile(
+                in: directory,
+                fileNamePrefix: filenamePrefix,
+                startedAt: startedAt)
+            {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    private func normalizedDialogButtonTitle(_ title: String) -> String {
+        title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "…", with: "")
+            .replacingOccurrences(of: "...", with: "")
+            .lowercased()
+    }
+
+    private func dialogButtonTitleMatches(_ candidate: String, requested: String) -> Bool {
+        if candidate == requested { return true }
+        if candidate.contains(requested) { return true }
+
+        let normalizedCandidate = self.normalizedDialogButtonTitle(candidate)
+        let normalizedRequested = self.normalizedDialogButtonTitle(requested)
+
+        if normalizedCandidate == normalizedRequested { return true }
+        if normalizedCandidate.contains(normalizedRequested) { return true }
+
+        return false
+    }
+
+    private func isCancelLikeButtonTitle(_ title: String?) -> Bool {
+        guard let title else { return false }
+        let normalized = self.normalizedDialogButtonTitle(title)
+        return normalized == "cancel" || normalized == "close" || normalized == "dismiss"
+    }
+
+    @MainActor
+    private func resolveButton(
+        in dialog: Element,
+        requestedTitle: String,
+        allowFallbackToDefaultAction: Bool) -> Element?
+    {
+        let buttons = self.collectButtons(from: dialog)
+
+        if let match = buttons.first(where: { btn in
+            guard let title = btn.title() else { return false }
+            return self.dialogButtonTitleMatches(title, requested: requestedTitle)
+        }) {
+            return match
+        }
+
+        guard allowFallbackToDefaultAction else { return nil }
+        guard self.isSaveLikeAction(requestedTitle) else { return nil }
+
+        if let defaultButton = buttons.first(where: { btn in
+            (btn.attribute(Attribute<Bool>("AXDefault")) ?? false) && (btn.isEnabled() ?? true)
+        }) {
+            return defaultButton
+        }
+
+        let enabledNonCancel = buttons.filter { btn in
+            (btn.isEnabled() ?? true) && !self.isCancelLikeButtonTitle(btn.title())
+        }
+
+        if enabledNonCancel.count == 1 {
+            return enabledNonCancel[0]
+        }
+
+        // Prefer the visually rightmost enabled non-cancel button (common in NSOpenPanel/NSSavePanel).
+        let positioned = enabledNonCancel.compactMap { button -> (element: Element, x: CGFloat)? in
+            guard let position = button.position() else { return nil }
+            return (element: button, x: position.x)
+        }
+        return positioned.max(by: { $0.x < $1.x })?.element
+    }
+
+    private func clickButton(
+        in dialog: Element,
+        buttonText: String,
+        allowFallbackToDefaultAction: Bool) async throws -> DialogActionResult
+    {
+        let buttons = self.collectButtons(from: dialog)
+        self.logger.debug("Found \(buttons.count) buttons in dialog")
+
+        guard let targetButton = self.resolveButton(
+            in: dialog,
+            requestedTitle: buttonText,
+            allowFallbackToDefaultAction: allowFallbackToDefaultAction)
+        else {
+            throw DialogError.buttonNotFound(buttonText)
+        }
+
+        let resolvedButtonTitle = targetButton.title() ?? buttonText
+
+        let buttonBounds: CGRect = if let position = targetButton.position(), let size = targetButton.size() {
+            CGRect(origin: position, size: size)
+        } else {
+            .zero
+        }
+
+        if buttonBounds != .zero {
+            _ = await self.feedbackClient.showDialogInteraction(
+                element: .button,
+                elementRect: buttonBounds,
+                action: .clickButton)
+        }
+
+        self.logger.debug("Clicking button: \(resolvedButtonTitle)")
+        try self.pressOrClick(targetButton)
+
+        let result = DialogActionResult(
+            success: true,
+            action: .clickButton,
+            details: [
+                "button": resolvedButtonTitle,
+                "window": dialog.title() ?? "Dialog",
+            ])
+
+        self.logger
+            .info(
+                "\(AgentDisplayTokens.Status.success) Successfully clicked button: \(resolvedButtonTitle)")
+        return result
+    }
+
     private func expectedSavedPath(path: String?, filename: String?) -> String? {
         guard let filename else { return nil }
         guard let path else { return nil }
@@ -387,44 +561,110 @@ extension DialogService {
         return baseURL.appendingPathComponent(filename).path
     }
 
-    private func waitForSavedFile(
-        expectedPath: String,
-        startedAt: Date,
-        timeout: TimeInterval) async throws -> String
-    {
-        let fileManager = FileManager.default
-        let deadline = startedAt.addingTimeInterval(timeout)
+    private struct SavedFileVerification {
+        let path: String
+        let foundVia: String
+    }
 
-        let expectedURL = URL(fileURLWithPath: expectedPath)
-        let expectedDirectory = expectedURL.deletingLastPathComponent()
-        let expectedBaseName = expectedURL.deletingPathExtension().lastPathComponent
+    private struct SavedFileVerificationRequest {
+        let appName: String?
+        let priorDocumentPath: String?
+        let expectedPath: String?
+        let expectedBaseName: String?
+        let startedAt: Date
+        let timeout: TimeInterval
+    }
+
+    private func expectedSavedBaseName(filename: String?, expectedPath: String?) -> String? {
+        if let filename {
+            return URL(fileURLWithPath: filename).deletingPathExtension().lastPathComponent
+        }
+        if let expectedPath {
+            return URL(fileURLWithPath: expectedPath).deletingPathExtension().lastPathComponent
+        }
+        return nil
+    }
+
+    private func verifySavedFile(_ request: SavedFileVerificationRequest) async throws -> SavedFileVerification {
+        let deadline = request.startedAt.addingTimeInterval(request.timeout)
+        let fileManager = FileManager.default
+
+        let expectedURL = request.expectedPath.map { URL(fileURLWithPath: $0) }
+        let expectedDirectory = expectedURL?.deletingLastPathComponent()
+        let expectedFileBaseName = expectedURL?.deletingPathExtension().lastPathComponent
 
         var lastDirectoryScan: Date?
 
         while Date() < deadline {
-            if fileManager.fileExists(atPath: expectedPath) {
-                return expectedPath
+            if let appName = request.appName,
+               let current = self.documentPathForApp(appName: appName)
+            {
+                let matchesName: Bool = if let expectedBaseName = request.expectedBaseName {
+                    URL(fileURLWithPath: current).deletingPathExtension().lastPathComponent.hasPrefix(expectedBaseName)
+                } else {
+                    true
+                }
+
+                if matchesName,
+                   fileManager.fileExists(atPath: current),
+                   self.fileWasModified(atPath: current, since: request.startedAt)
+                {
+                    return SavedFileVerification(path: current, foundVia: "document_path")
+                }
+
+                if matchesName,
+                   let priorDocumentPath = request.priorDocumentPath,
+                   current != priorDocumentPath,
+                   fileManager.fileExists(atPath: current)
+                {
+                    return SavedFileVerification(path: current, foundVia: "document_path")
+                }
+            }
+
+            if let expectedPath = request.expectedPath,
+               fileManager.fileExists(atPath: expectedPath)
+            {
+                return SavedFileVerification(path: expectedPath, foundVia: "expected_path")
             }
 
             let shouldScanDirectory = lastDirectoryScan == nil ||
                 Date().timeIntervalSince(lastDirectoryScan ?? Date.distantPast) > 0.5
 
-            if shouldScanDirectory, let candidate = self.findRecentlyWrittenFile(
-                in: expectedDirectory,
-                fileNamePrefix: expectedBaseName,
-                startedAt: startedAt)
+            if shouldScanDirectory,
+               let expectedDirectory,
+               let expectedBaseName = expectedFileBaseName ?? request.expectedBaseName,
+               let candidate = self.findRecentlyWrittenFile(
+                   in: expectedDirectory,
+                   fileNamePrefix: expectedBaseName,
+                   startedAt: request.startedAt)
             {
-                return candidate
+                return SavedFileVerification(path: candidate, foundVia: "expected_directory_scan")
             }
 
             if shouldScanDirectory {
                 lastDirectoryScan = Date()
             }
 
-            try await Task.sleep(nanoseconds: 100_000_000)
+            try await Task.sleep(nanoseconds: 125_000_000)
         }
 
-        throw DialogError.fileVerificationFailed(expectedPath: expectedPath)
+        if let expectedBaseName = request.expectedBaseName,
+           let fallback = self.fallbackFindRecentlyWrittenFile(
+               filenamePrefix: expectedBaseName,
+               startedAt: request.startedAt)
+        {
+            return SavedFileVerification(path: fallback, foundVia: "fallback_search")
+        }
+
+        let expectedDescription: String = if let expectedPath = request.expectedPath {
+            expectedPath
+        } else if let expectedBaseName = request.expectedBaseName {
+            "(unknown directory; name prefix: \(expectedBaseName))"
+        } else {
+            "(unknown path)"
+        }
+
+        throw DialogError.fileVerificationFailed(expectedPath: expectedDescription)
     }
 
     private func findRecentlyWrittenFile(
@@ -484,8 +724,8 @@ extension DialogService {
             return nil
         }()
 
-        if focusedAppElement == nil,
-           let appName,
+        // Always prefer an explicit app hint over whatever currently has system-wide focus.
+        if let appName,
            let targetApp = self.runningApplication(matching: appName)
         {
             focusedAppElement = AXApp(targetApp).element
@@ -862,27 +1102,292 @@ extension DialogService {
         }
     }
 
-    private func navigateToPath(_ filePath: String) throws {
+    private func navigateToPath(_ filePath: String, appName: String?) async throws {
         self.logger.debug("Navigating to path using Cmd+Shift+G")
-        self.pressKey(0x05, modifiers: [.maskCommand, .maskShift]) // G
-        usleep(200_000)
-        try self.typeTextValue(filePath, delay: 5000)
-        self.pressKey(0x24) // Return
-        usleep(100_000)
+        try InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)
+        try await Task.sleep(nanoseconds: 200_000_000)
+
+        let openDeadline = Date().addingTimeInterval(1.5)
+        while Date() < openDeadline {
+            if let goToFolderDialog = self.findGoToFolderDialogElement(appName: appName) {
+                try await self.fillGoToFolderDialog(goToFolderDialog, with: filePath)
+                return
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        // Fallback: type into whichever field is currently focused.
+        do {
+            // Fallback: type into whichever field is currently focused.
+            try self.typeTextValue(filePath, delay: 5000)
+            try InputDriver.tapKey(.return)
+            try await Task.sleep(nanoseconds: 250_000_000)
+        } catch {
+            self.logger.debug("Go-to-folder fallback typing failed: \(String(describing: error))")
+        }
+    }
+
+    @MainActor
+    private func clickReplaceIfPresent(appName: String?) async -> Bool {
+        guard let dialog = try? await self.resolveDialogElement(windowTitle: nil, appName: appName) else {
+            return false
+        }
+
+        let buttons = self.collectButtons(from: dialog)
+        guard let replace = buttons.first(where: { btn in
+            guard let title = btn.title() else { return false }
+            return self.dialogButtonTitleMatches(title, requested: "Replace")
+        }) else {
+            return false
+        }
+
+        do {
+            try self.pressOrClick(replace)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    @MainActor
+    private func isGoToFolderDialogElement(_ element: Element) -> Bool {
+        let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
+        let hasCancel = buttonTitles.contains("cancel")
+        let hasGoTitle = buttonTitles.contains("go") || buttonTitles.contains("open") || buttonTitles.contains("choose")
+        let defaultButtonTitle = element.defaultButton()?.title()
+        let hasDefaultAction = element.defaultButton() != nil && !self.isCancelLikeButtonTitle(defaultButtonTitle)
+        guard hasCancel, hasGoTitle || hasDefaultAction else { return false }
+
+        let fieldCount = self.collectTextFields(from: element).count
+        return fieldCount >= 1
+    }
+
+    @MainActor
+    private func documentPathForApp(appName: String?) -> String? {
+        guard let appName, let running = self.runningApplication(matching: appName) else { return nil }
+        let appElement = AXApp(running).element
+
+        let windows = appElement.windowsWithTimeout() ?? []
+        let preferredWindows: [Element] = [
+            appElement.mainWindow(),
+            appElement.focusedWindow(),
+        ].compactMap(\.self)
+
+        let candidates = (preferredWindows + windows)
+
+        func isDialogLike(_ window: Element) -> Bool {
+            let subrole = window.subrole() ?? ""
+            if subrole == "AXDialog" || subrole == "AXSystemDialog" || subrole == "AXAlert" { return true }
+
+            let roleDescription = window.attribute(Attribute<String>("AXRoleDescription")) ?? ""
+            if roleDescription.localizedCaseInsensitiveContains("dialog") { return true }
+
+            let identifier = window.attribute(Attribute<String>("AXIdentifier")) ?? ""
+            if identifier.contains("NSOpenPanel") || identifier.contains("NSSavePanel") { return true }
+
+            return false
+        }
+
+        for window in candidates where !isDialogLike(window) {
+            let document = window.attribute(Attribute<String>(AXAttributeNames.kAXDocumentAttribute))
+            if let normalized = self.normalizeDocumentAttributeToPath(document) {
+                return normalized
+            }
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func normalizeDocumentAttributeToPath(_ raw: String?) -> String? {
+        guard let raw, !raw.isEmpty else { return nil }
+
+        if raw.hasPrefix("file://"),
+           let url = URL(string: raw),
+           url.isFileURL
+        {
+            return url.path
+        }
+
+        return raw
+    }
+
+    private func fileWasModified(atPath path: String, since date: Date) -> Bool {
+        guard let values = try? URL(fileURLWithPath: path).resourceValues(forKeys: [.contentModificationDateKey]),
+              let modifiedAt = values.contentModificationDate
+        else {
+            return false
+        }
+
+        return modifiedAt >= date.addingTimeInterval(-2.0)
+    }
+
+    @MainActor
+    private func findGoToFolderDialogElement(appName: String?) -> Element? {
+        let systemWide = Element.systemWide()
+
+        var focusedAppElement: Element? = systemWide.attribute(Attribute<Element>("AXFocusedApplication")) ?? {
+            if let frontmost = NSWorkspace.shared.frontmostApplication {
+                return AXApp(frontmost).element
+            }
+            return nil
+        }()
+
+        if let appName,
+           let targetApp = self.runningApplication(matching: appName)
+        {
+            focusedAppElement = AXApp(targetApp).element
+        }
+
+        guard let focusedApp = focusedAppElement else { return nil }
+
+        let windows = focusedApp.windowsWithTimeout() ?? []
+        for window in windows {
+            if let candidate = self.resolveGoToFolderCandidate(in: window) {
+                return candidate
+            }
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func resolveGoToFolderCandidate(in element: Element) -> Element? {
+        if self.isGoToFolderDialogElement(element) {
+            return element
+        }
+
+        for sheet in self.sheetElements(for: element) {
+            if let candidate = self.resolveGoToFolderCandidate(in: sheet) {
+                return candidate
+            }
+        }
+
+        if let children = element.children() {
+            for child in children {
+                if let candidate = self.resolveGoToFolderCandidate(in: child) {
+                    return candidate
+                }
+            }
+        }
+
+        return nil
+    }
+
+    @MainActor
+    private func fillGoToFolderDialog(_ dialog: Element, with path: String) async throws {
+        let fields = self.collectTextFields(from: dialog)
+        if let targetField = fields.first {
+            self.focusTextField(targetField)
+            try self.clearFieldIfNeeded(targetField, shouldClear: true)
+        }
+
+        try self.typeTextValue(path, delay: 5000)
+
+        if let goButton = self.resolveButton(
+            in: dialog,
+            requestedTitle: "Go",
+            allowFallbackToDefaultAction: true)
+        {
+            try self.pressOrClick(goButton)
+        } else if let defaultButton = dialog.defaultButton(), !self.isCancelLikeButtonTitle(defaultButton.title()) {
+            try self.pressOrClick(defaultButton)
+        } else {
+            try InputDriver.tapKey(.return)
+        }
+
+        let closeDeadline = Date().addingTimeInterval(1.5)
+        while Date() < closeDeadline {
+            if self.findGoToFolderDialogElement(appName: nil) == nil {
+                break
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+
+    private func pressOrClick(_ element: Element) throws {
+        do {
+            try element.performAction(.press)
+            return
+        } catch {
+            guard let position = element.position(),
+                  let size = element.size(),
+                  size.width > 0,
+                  size.height > 0
+            else {
+                throw error
+            }
+
+            let point = CGPoint(x: position.x + size.width / 2.0, y: position.y + size.height / 2.0)
+            try InputDriver.click(at: point)
+        }
     }
 
     private func updateFilename(_ fileName: String, in dialog: Element) throws {
         self.logger.debug("Setting filename in dialog")
         let textFields = self.collectTextFields(from: dialog)
-        guard let field = textFields.first else {
+        guard !textFields.isEmpty else {
             self.logger.error("No text fields found in file dialog")
             throw DialogError.noTextFields
         }
 
-        self.focusTextField(field)
-        self.pressKey(0x00, modifiers: .maskCommand)
-        usleep(50000)
-        try self.typeTextValue(fileName, delay: 5000)
+        let expectedBaseName = URL(fileURLWithPath: fileName).deletingPathExtension().lastPathComponent.lowercased()
+
+        func fieldScore(_ field: Element) -> Int {
+            let title = (field.title() ?? "").lowercased()
+            let placeholder = (field.attribute(Attribute<String>("AXPlaceholderValue")) ?? "").lowercased()
+            let description = (field.attribute(Attribute<String>("AXDescription")) ?? "").lowercased()
+            let identifier = (field.attribute(Attribute<String>("AXIdentifier")) ?? "").lowercased()
+            let combined = "\(title) \(placeholder) \(description) \(identifier)"
+
+            if combined.contains("tags") { return 100 }
+            if combined.contains("save") ||
+                combined.contains("file name") ||
+                combined.contains("filename") ||
+                combined.contains("name")
+            {
+                return 0
+            }
+
+            let value = (field.value() as? String) ?? ""
+            if !value.isEmpty { return 10 }
+            return 50
+        }
+
+        let fieldsToTry = textFields
+            .filter { $0.isEnabled() ?? true }
+            .compactMap { field -> (field: Element, score: Int, position: CGPoint)? in
+                guard let position = field.position() else { return nil }
+                return (field: field, score: fieldScore(field), position: position)
+            }
+            .sorted(by: { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score < rhs.score }
+                if lhs.position.y != rhs.position.y { return lhs.position.y < rhs.position.y }
+                return lhs.position.x < rhs.position.x
+            })
+            .map(\.field)
+
+        for (index, field) in fieldsToTry.indexed() {
+            self.focusTextField(field)
+            try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
+            usleep(75000)
+            try self.typeTextValue(fileName, delay: 5000)
+            usleep(150_000)
+
+            if let updatedValue = field.value() as? String {
+                let actualBaseName = URL(fileURLWithPath: updatedValue)
+                    .deletingPathExtension()
+                    .lastPathComponent
+                    .lowercased()
+                if actualBaseName == expectedBaseName || actualBaseName.hasPrefix(expectedBaseName) {
+                    self.logger.debug("Filename set using text field index \(index)")
+                    return
+                }
+            }
+        }
+
+        self.logger.error("Failed to set filename after trying \(fieldsToTry.count) candidate fields")
+        throw DialogError.fieldNotFound
     }
 
     private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
@@ -1000,9 +1505,7 @@ extension DialogService {
             return true
         }
 
-        if subrole == "AXDialog" || subrole == "AXSystemDialog" || subrole == "AXAlert" ||
-            subrole == "AXUnknown"
-        {
+        if subrole == "AXDialog" || subrole == "AXSystemDialog" || subrole == "AXAlert" {
             return true
         }
 
@@ -1016,6 +1519,27 @@ extension DialogService {
 
         if self.dialogTitleHints.contains(where: { windowTitle.localizedCaseInsensitiveContains($0) }) {
             return true
+        }
+
+        // Some apps expose sheets as AXWindow/AXUnknown instead of AXSheet. Avoid treating every AXUnknown
+        // window as a dialog (TextEdit's main document window can be AXUnknown), and instead require at
+        // least one dialog-ish signal.
+        if subrole == "AXUnknown" {
+            let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
+            let hasCancel = buttonTitles.contains("cancel")
+            let hasDialogButton = hasCancel ||
+                buttonTitles.contains("ok") ||
+                buttonTitles.contains("open") ||
+                buttonTitles.contains("save") ||
+                buttonTitles.contains("choose") ||
+                buttonTitles.contains("replace") ||
+                buttonTitles.contains("export") ||
+                buttonTitles.contains("import") ||
+                buttonTitles.contains("don't save")
+
+            if hasDialogButton {
+                return true
+            }
         }
 
         return false
