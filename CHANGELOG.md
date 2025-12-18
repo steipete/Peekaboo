@@ -22,12 +22,15 @@
 - `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`; docs + tests cover precedence and errors.
 - `peekaboo learn` renders its guide as ANSI-styled markdown via Swiftdansi on rich terminals, while still emitting plain markdown when piped.
 - Agent providers now include `gemini-3-flash`, expanding the out-of-the-box model catalog for `peekaboo agent`.
+- Peekaboo’s macOS app now surfaces About/Updates inside Settings (Sparkle update checks when signed/bundled).
 
 ### Changed
 - Bridge host discovery order is now: **Peekaboo.app → Clawdis.app → local in-process** (no auto-launch).
 - Capture defaults favor the classic engine for speed/reliability, with explicit capture-engine flags when you need SCKit behavior.
 - Menu bar helper now returns a lightweight list of window IDs and menu extras enrich metadata locally (keeps menubar discovery robust after helper refactors).
 - `scripts/poltergeist-wrapper.sh` always allocates a PTY for `peekaboo` targets so ANSI rendering stays enabled in CI and scripted runs.
+- Agent defaults now prefer Claude Opus 4.5 when available, with improved streaming output for supported providers.
+- OpenAI model aliases now map to the latest GPT-5.1 variants for `peekaboo agent`.
 
 ### Fixed
 - Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of requested timing.
