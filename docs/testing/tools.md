@@ -32,6 +32,7 @@ read_when:
    LOG_FILE="$LOG_ROOT/$(date +%Y%m%d-%H%M%S)-${TOOL,,}.log"
    ./Apps/Playground/scripts/playground-log.sh -c "$TOOL" --last 10m --all -o "$LOG_FILE"
    ```
+   - **Note**: On some macOS 26 setups, unified logging may not retain `info` lines for long. When collecting evidence, prefer smaller windows (e.g. `--last 2m`) immediately after each action.
 5. Keep the Playground UI on the matching view (ClickTestingView, TextInputView, etc.) and run `pnpm run peekaboo -- see --app Playground` anytime you need a fresh snapshot ID for element targeting. Record the snapshot ID in your notes.
 6. After executing the tool, append verification notes (log file path, snapshot ID, observed behavior) to the table below and add detailed findings to `Apps/Playground/PLAYGROUND_TEST.md`.
 
@@ -244,7 +245,8 @@ The following subsections spell out the concrete steps, required Playground surf
   1. Query-based click: `polter peekaboo -- click "Single Click"` (expect `Click` log + counter increment).
   2. ID-based click: `polter peekaboo -- click --on B1 --snapshot <id>` targeting `single-click-button`.
   3. Coordinate click: `polter peekaboo -- click --coords 400,400` hitting the nested area.
-  4. Error path: attempt to click disabled button and confirm descriptive `elementNotFound` guidance.
+  4. Coordinate validation: `polter peekaboo -- click --coords , --json-output` should fail with `VALIDATION_ERROR` (no crash).
+  5. Error path: attempt to click disabled button and confirm descriptive `elementNotFound` guidance.
 - **Verification**: Playground counter increments, log file shows `[Click] Single click...` entries.
 - **2025-11-16 run**:
   - Captured Click logs to `.artifacts/playground-tools/20251116-051025-click.log`.

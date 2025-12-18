@@ -206,6 +206,20 @@
 - **2025-12-18 rerun**: Verified swipe-right plus long-press hold using the Scroll Fixture gesture tiles.
 - **Artifacts**: `.artifacts/playground-tools/20251218-012323-gesture.log`, `.artifacts/playground-tools/20251218-012323-swipe-right.json`, `.artifacts/playground-tools/20251218-012323-long-press.json`
 
+## 2025-12-18
+
+### ✅ `click --coords` invalid input crash (fixed)
+- **Repro**: `polter peekaboo -- click --coords , --json-output` crashed with `Fatal error: Index out of range` in `ClickCommand.run(using:)` when coordinate parsing ran without validation.
+- **Fix**: `ClickCommand.run(using:)` now calls `validate()` up front and uses `parseCoordinates` with a guarded error instead of force-unwrapping.
+- **Regression**: `Apps/CLI/Tests/CoreCLITests/ClickCommandCoordsCrashRegressionTests.swift` asserts the command returns `EXIT_FAILURE` (no crash).
+
+### ✅ Controls Fixture – “bottom controls” recipes
+- **Discrete slider**: coordinate-click the left/right ends of the `discrete-slider` frame to jump `1…5` and verify `[Control] Discrete slider changed` logs.
+- **Stepper**: coordinate-click the top/bottom halves of the `stepper-control` frame to increment/decrement and verify `[Control] Stepper …` logs.
+- **Date picker**: coordinate-click the up/down arrow buttons nearest the `date-picker` control (often `elem_53` / `elem_54`) to flip the day and verify `[Control] Date changed` logs.
+- **Color picker**: open the `Colors` window from `color-picker`, then adjust the first `slider` in that window (coordinate-click near the right edge) to force a new color and verify `[Control] Color changed` logs.
+- **Note**: Capture `Control` logs immediately (e.g. `playground-log.sh -c Control --last 2m --all -o ...`) as `info` lines can rotate out quickly on some machines.
+
 ### ✅ `drag` command – element-based drag/drop (resolved)
 - **Resolved on 2025-12-17**: Drag Fixture exposes stable identifiers and logs drop outcomes.
 - **Artifacts**: `.artifacts/playground-tools/20251217-152934-drag.log`
