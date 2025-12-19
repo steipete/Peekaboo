@@ -5,7 +5,6 @@ import os.log
 import PeekabooAutomation
 import PeekabooFoundation
 import Tachikoma
-import TachikomaMCP
 
 // MARK: - Helper Types
 
@@ -671,39 +670,7 @@ extension PeekabooAgentService {
     }
 
     private func buildToolset(for model: LanguageModel) async -> [AgentTool] {
-        var tools = self.createAgentTools()
-        let mcpToolsByServer = await TachikomaMCPClientManager.shared.getExternalToolsByServer()
-
-        for (serverName, serverTools) in mcpToolsByServer {
-            for tool in serverTools {
-                let parameters = self.convertMCPValueToAgentParameters(tool.inputSchema)
-                let prefixedTool = AgentTool(
-                    name: "\(serverName)_\(tool.name)",
-                    description: tool.description ?? "",
-                    parameters: parameters,
-                    execute: { args in
-                        var argDict: [String: Any] = [:]
-                        for key in args.keys {
-                            if let value = args[key] {
-                                argDict[key] = try value.toJSON()
-                            }
-                        }
-
-                        let result = try await TachikomaMCPClientManager.shared.executeTool(
-                            serverName: serverName,
-                            toolName: tool.name,
-                            arguments: argDict)
-
-                        for contentItem in result.content {
-                            if case let .text(text) = contentItem {
-                                return AnyAgentToolValue(string: text)
-                            }
-                        }
-                        return AnyAgentToolValue(string: "Tool executed successfully")
-                    })
-                tools.append(prefixedTool)
-            }
-        }
+        let tools = self.createAgentTools()
 
         let filters = ToolFiltering.currentFilters()
         let filtered = ToolFiltering.apply(

@@ -35,10 +35,9 @@ public struct ToolFilters: Sendable {
     }
 }
 
-@usableFromInline
-enum ToolFiltering {
+public enum ToolFiltering {
     /// Resolve filters from environment + config with the defined precedence rules.
-    static func currentFilters(configuration: ConfigurationManager = .shared) -> ToolFilters {
+    public static func currentFilters(configuration: ConfigurationManager = .shared) -> ToolFilters {
         let env = ProcessInfo.processInfo.environment
         let envAllow = self.parseList(env["PEEKABOO_ALLOW_TOOLS"])
         let envDeny = self.parseList(env["PEEKABOO_DISABLE_TOOLS"])
@@ -71,7 +70,7 @@ enum ToolFiltering {
     }
 
     /// Filter AgentTool list.
-    static func apply(
+    public static func apply(
         _ tools: [AgentTool],
         filters: ToolFilters,
         log: ((String) -> Void)? = nil) -> [AgentTool]
@@ -80,7 +79,7 @@ enum ToolFiltering {
     }
 
     /// Filter MCPTool list.
-    static func apply(
+    public static func apply(
         _ tools: [any MCPTool],
         filters: ToolFilters,
         log: ((String) -> Void)? = nil) -> [any MCPTool]

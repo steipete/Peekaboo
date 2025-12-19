@@ -20,7 +20,7 @@ extension MCPCommand {
             Peekaboo's automation capabilities.
 
             USAGE WITH CLAUDE CODE:
-              claude mcp add peekaboo -- peekaboo mcp serve
+              claude mcp add peekaboo -- peekaboo mcp
 
             USAGE WITH MCP INSPECTOR:
               npx @modelcontextprotocol/inspector peekaboo mcp serve
@@ -32,11 +32,9 @@ extension MCPCommand {
 
         @Option(help: "Port for HTTP/SSE transport")
         var port: Int = 8080
-        var service: any MCPClientService = DefaultMCPClientService.shared
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
-            let context = MCPCommandContext(runtime: runtime, service: self.service)
             do {
                 // Convert string transport to PeekabooCore.TransportType
                 let transportType: PeekabooCore.TransportType = switch self.transport.lowercased() {
@@ -49,7 +47,7 @@ extension MCPCommand {
                 let server = try await PeekabooMCPServer()
                 try await server.serve(transport: transportType, port: self.port)
             } catch {
-                context.logger.error("Failed to start MCP server: \(error)")
+                runtime.logger.error("Failed to start MCP server: \(error)")
                 throw ExitCode.failure
             }
         }

@@ -8,7 +8,6 @@ import PeekabooCore
 import PeekabooFoundation
 import Spinner
 import Tachikoma
-import TachikomaMCP
 import TauTUI
 
 // Temporary session info struct until PeekabooAgentService implements session management
@@ -34,8 +33,6 @@ private var isDebugLoggingEnabled: Bool {
     }
     return false
 }
-
-private let defaultMCPServerName = "chrome-devtools"
 
 private func aiDebugPrint(_ message: String) {
     if isDebugLoggingEnabled {
@@ -314,10 +311,6 @@ extension AgentCommand {
 
         let shouldSuppressMCPLogs = !self.verbose && !self.debugTerminal
         self.configureLogging(suppressingMCPLogs: shouldSuppressMCPLogs)
-        // Warm up MCP servers off the main actor so chat can start immediately.
-        Task.detached(priority: .utility) {
-            await Self.initializeMCP()
-        }
 
         guard let peekabooAgent = agentService as? PeekabooAgentService else {
             throw PeekabooError.commandFailed("Agent service not properly initialized")
@@ -410,15 +403,6 @@ extension AgentCommand {
         } else {
             LoggingSystem.bootstrap(StreamLogHandler.standardOutput)
         }
-    }
-
-    private static func initializeMCP() async {
-        if ProcessInfo.processInfo.environment["PEEKABOO_ENABLE_BROWSER_MCP"] == "1" {
-            let defaultChromeDevTools = ChromeDevToolsServerFactory.tachikomaConfig(timeout: 60.0, autoReconnect: true)
-            TachikomaMCPClientManager.shared.registerDefaultServers(
-                [defaultMCPServerName: defaultChromeDevTools])
-        }
-        await TachikomaMCPClientManager.shared.initializeFromProfile()
     }
 
     private func ensureAgentHasCredentials(

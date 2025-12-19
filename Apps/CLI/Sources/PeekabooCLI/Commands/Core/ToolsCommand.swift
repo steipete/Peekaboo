@@ -12,35 +12,18 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
         commandName: "tools",
         abstract: Self.abstractText,
         discussion: """
-        Display all available Peekaboo tools, including both native tools and external MCP server tools.
+        Display all available Peekaboo tools exposed to agents and the MCP server.
 
         Examples:
-          peekaboo tools                    # Show all tools (native + external)
-          peekaboo tools --native-only      # Show only native Peekaboo tools
-          peekaboo tools --mcp-only         # Show only external MCP tools
-          peekaboo tools --mcp github       # Show only tools from GitHub server
+          peekaboo tools                    # Show all tools
           peekaboo tools --verbose          # Show detailed information
           peekaboo tools --json-output      # Output in JSON format
         """
     )
 
-    @Flag(name: .customLong("native-only"), help: "Show only native Peekaboo tools")
-    var nativeOnly = false
-
-    @Flag(name: .customLong("mcp-only"), help: "Show only external MCP tools")
-    var mcpOnly = false
-
-    @Option(name: .long, help: "Show tools from specific MCP server")
-    var mcp: String?
-
-    @Flag(name: .customLong("include-disabled"), help: "Include disabled servers in output")
-    var includeDisabled = false
-
     @Flag(name: .customLong("no-sort"), help: "Disable alphabetical sorting")
     var noSort = false
 
-    @Flag(name: .customLong("group-by-server"), help: "Group external tools by server")
-    var groupByServer = false
 
     var runtimeOptions = CommandRuntimeOptions()
     @RuntimeStorage private var runtime: CommandRuntime?
@@ -67,8 +50,6 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
 
-        let toolRegistry = MCPToolRegistry()
-        let clientManager = TachikomaMCPClientManager.shared
         let toolContext = MCPToolContext(services: self.services)
 
         let nativeTools: [any MCPTool] = [
@@ -95,95 +76,43 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
             SpaceTool(context: toolContext),
         ]
 
-        toolRegistry.register(nativeTools)
-        await toolRegistry.registerExternalTools(from: clientManager)
-
-        let categorizedTools = await toolRegistry.getToolsBySource()
-        let filter = ToolFilter(
-            showNativeOnly: nativeOnly,
-            showMcpOnly: mcpOnly,
-            specificServer: mcp,
-            includeDisabled: includeDisabled
+        let filters = ToolFiltering.currentFilters()
+        let filteredTools = ToolFiltering.apply(
+            nativeTools,
+            filters: filters,
+            log: { [logger] message in
+                logger.notice("\(message, privacy: .public)")
+            }
         )
-
-        let filteredTools = ToolOrganizer.filter(categorizedTools, with: filter)
-        let sortedTools = ToolOrganizer.sort(filteredTools, alphabetically: !self.noSort)
-
-        let displayOptions = ToolDisplayOptions(
-            useServerPrefixes: true,
-            groupByServer: groupByServer,
-            showToolCount: !self.jsonOutput,
-            sortAlphabetically: !self.noSort,
-            showDescription: self.showDetailedInfo
-        )
+        let sortedTools = self.noSort
+            ? filteredTools
+            : filteredTools.sorted { $0.name < $1.name }
 
         if self.jsonOutput {
             try self.outputJSON(tools: sortedTools)
         } else {
-            self.outputFormatted(tools: sortedTools, options: displayOptions)
+            self.outputFormatted(tools: sortedTools, showDescription: self.showDetailedInfo)
         }
     }
 
     // MARK: - JSON Output
 
     @MainActor
-    private func outputJSON(tools: CategorizedTools) throws {
+    private func outputJSON(tools: [any MCPTool]) throws {
         struct ToolInfo: Encodable {
             let name: String
             let description: String
-            let source: String
-            let server: String?
-        }
-
-        struct ExternalTools: Encodable {
-            let server: String
-            let tools: [ToolInfo]
-        }
-
-        struct Summary: Encodable {
-            let nativeCount: Int
-            let externalCount: Int
-            let externalServers: Int
-            let totalCount: Int
         }
 
         struct Payload: Encodable {
-            let native: [ToolInfo]
-            let external: [ExternalTools]
-            let summary: Summary
+            let tools: [ToolInfo]
+            let count: Int
         }
 
-        let nativeTools = tools.native.map { tool in
-            ToolInfo(
-                name: tool.name,
-                description: tool.description,
-                source: "native",
-                server: nil
-            )
-        }
-
-        let externalTools = tools.external.map { serverName, serverTools in
-            ExternalTools(
-                server: serverName,
-                tools: serverTools.map { tool in
-                    ToolInfo(
-                        name: tool.name,
-                        description: tool.description,
-                        source: "external",
-                        server: serverName
-                    )
-                }
-            )
-        }
-
-        let summary = Summary(
-            nativeCount: tools.native.count,
-            externalCount: tools.externalCount,
-            externalServers: tools.external.count,
-            totalCount: tools.totalCount
+        let payload = Payload(
+            tools: tools.map { ToolInfo(name: $0.name, description: $0.description) },
+            count: tools.count
         )
-
-        let payload = Payload(native: nativeTools, external: externalTools, summary: summary)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -195,53 +124,23 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     // MARK: - Formatted Output
 
-    private func outputFormatted(tools: CategorizedTools, options: ToolDisplayOptions) {
-        if !tools.native.isEmpty || !tools.external.isEmpty {
+    private func outputFormatted(tools: [any MCPTool], showDescription: Bool) {
+        if !tools.isEmpty {
             print("Available Tools")
             print("===============")
             print()
         }
 
-        if !tools.native.isEmpty {
-            print("Native Peekaboo Tools")
-            print("---------------------")
-            print()
-            for tool in tools.native {
-                print("• \(tool.name)")
-                if options.showDescription {
-                    print("  \(tool.description)")
-                }
-            }
-            print()
-        }
-
-        if !tools.external.isEmpty {
-            print("External MCP Tools")
-            print("------------------")
-            print()
-            for (server, serverTools) in tools.external {
-                let serverHeader = options.useServerPrefixes ? "[server] " : ""
-                print(
-                    "\(serverHeader)Server: \(server) — \(serverTools.count) tool\(serverTools.count == 1 ? "" : "s")"
-                )
-
-                for tool in serverTools {
-                    print("  • \(tool.name)")
-                    if options.showDescription {
-                        print("    \(tool.description)")
-                    }
-                }
-                print()
+        for tool in tools {
+            print("• \(tool.name)")
+            if showDescription {
+                print("  \(tool.description)")
             }
         }
 
-        if options.showToolCount {
-            print("Summary")
-            print("-------")
-            print("Native tools: \(tools.native.count)")
-            print("External tools: \(tools.externalCount)")
-            print("Servers: \(tools.external.count)")
-            print("Total: \(tools.totalCount)")
+        if !tools.isEmpty {
+            print()
+            print("Total tools: \(tools.count)")
         }
     }
 }
@@ -253,11 +152,6 @@ extension ToolsCommand: AsyncRuntimeCommand {}
 @MainActor
 extension ToolsCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.nativeOnly = values.flag("nativeOnly")
-        self.mcpOnly = values.flag("mcpOnly")
-        self.mcp = values.singleOption("mcp")
-        self.includeDisabled = values.flag("includeDisabled")
         self.noSort = values.flag("noSort")
-        self.groupByServer = values.flag("groupByServer")
     }
 }

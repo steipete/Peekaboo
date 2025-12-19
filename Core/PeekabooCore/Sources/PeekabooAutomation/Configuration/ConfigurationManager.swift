@@ -7,7 +7,6 @@ import Configuration
 #endif
 import PeekabooFoundation
 import Tachikoma
-import TachikomaMCP
 
 /// Manages configuration loading and precedence resolution.
 ///
@@ -627,39 +626,6 @@ public final class ConfigurationManager: @unchecked Sendable {
         "test"
     }
 
-    // MARK: - MCP Client Configuration
-
-    /// Get MCP client servers dictionary
-    public func getMCPClientServers() -> [String: Configuration.MCPClientConfig] {
-        // Get MCP client servers dictionary
-        self.getConfiguration()?.mcpClients ?? [:]
-    }
-
-    /// Initialize MCP client with Peekaboo defaults and user overrides via TachikomaMCP
-    public func initializeMCPClient() async {
-        // TEMPORARILY DISABLED: MCP servers for debugging Grok issues (too many tools)
-        // Register Peekaboo's default Chrome DevTools MCP as a host default
-        // let defaultChromeDevTools = TachikomaMCP.MCPServerConfig(
-        //     transport: "stdio",
-        //     command: "npx",
-        //     args: ["-y", "chrome-devtools-mcp@latest"],
-        //     env: [:],
-        //     enabled: true,
-        //     timeout: 15.0,
-        //     autoReconnect: true,
-        //     description: "Chrome DevTools automation"
-        // )
-        // await TachikomaMCPClientManager.shared.registerDefaultServers(["chrome-devtools": defaultChromeDevTools])
-
-        // Let TachikomaMCP handle parsing ~/.peekaboo/config.json and merging overrides
-        // await TachikomaMCPClientManager.shared.initializeFromProfile()
-    }
-
-    /// Persist current MCP client configurations back to ~/.peekaboo/config.json
-    @MainActor
-    public func persistMCPClientConfigs() throws {
-        try TachikomaMCPClientManager.shared.persist()
-    }
 }
 
 // MARK: - Custom Provider Management
@@ -1050,7 +1016,6 @@ private enum ConfigurationDefaults {
       "aiProviders": {
         "providers": "openai/gpt-5.1,anthropic/claude-sonnet-4.5"
       },
-      "mcpClients": {},
       "defaults": {
         "savePath": "~/Desktop/Screenshots",
         "imageFormat": "png",

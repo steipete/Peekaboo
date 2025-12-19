@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Breaking
+- Removed external MCP client support (`peekaboo mcp add/list/test/call/enable/disable`). `peekaboo mcp` now defaults to `serve`, and `mcpClients` configuration is no longer supported.
+
 ## [3.0.0-beta2] - 2025-12-18
 
 ### Highlights
