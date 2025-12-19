@@ -20,7 +20,7 @@ struct ConfigGuidanceSnapshotTests {
             return
         }
 
-        let snapshot = try String(contentsOf: snapshotURL)
+        let snapshot = try String(contentsOf: snapshotURL, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         #expect(rendered.trimmingCharacters(in: .whitespacesAndNewlines) == snapshot)
     }

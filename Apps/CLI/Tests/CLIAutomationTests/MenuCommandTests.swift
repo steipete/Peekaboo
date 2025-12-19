@@ -155,7 +155,7 @@ struct MenuCommandTests {
         _ args: [String],
         configure: (@MainActor (StubMenuService, StubApplicationService) -> Void)? = nil
     ) async throws -> (CommandRunResult, MenuHarnessContext) {
-        let context = await self.makeMenuContext()
+        let context = await MainActor.run { self.makeMenuContext() }
         if let configure {
             await MainActor.run {
                 configure(context.menuService, context.applicationService)
