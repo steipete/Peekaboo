@@ -20,6 +20,12 @@ extension SeeCommand: CommanderSignatureProviding {
                     long: "window-title"
                 ),
                 .commandOption(
+                    "windowId",
+                    help: "Capture a specific window by CoreGraphics window id "
+                        + "(window_id from `peekaboo window list --json`)",
+                    long: "window-id"
+                ),
+                .commandOption(
                     "mode",
                     help: "Capture mode (screen, window, frontmost)",
                     long: "mode"

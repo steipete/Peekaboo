@@ -35,6 +35,11 @@ extension ImageCommand: CommanderSignatureProviding {
                     long: "window-index"
                 ),
                 .commandOption(
+                    "windowId",
+                    help: "Capture window by CoreGraphics window id (window_id from `peekaboo window list --json`)",
+                    long: "window-id"
+                ),
+                .commandOption(
                     "screenIndex",
                     help: "Screen index for screen captures",
                     long: "screen-index"
