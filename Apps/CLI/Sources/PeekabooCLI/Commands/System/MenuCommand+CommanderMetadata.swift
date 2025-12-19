@@ -5,16 +5,6 @@ extension MenuCommand.ClickSubcommand: CommanderSignatureProviding {
         CommandSignature(
             options: [
                 .commandOption(
-                    "app",
-                    help: "Target application by name, bundle ID, or 'PID:12345'",
-                    long: "app"
-                ),
-                .commandOption(
-                    "pid",
-                    help: "Target application by process ID",
-                    long: "pid"
-                ),
-                .commandOption(
                     "item",
                     help: "Menu item to click",
                     long: "item"
@@ -26,6 +16,7 @@ extension MenuCommand.ClickSubcommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )
@@ -54,18 +45,6 @@ extension MenuCommand.ClickExtraSubcommand: CommanderSignatureProviding {
 extension MenuCommand.ListSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
-            options: [
-                .commandOption(
-                    "app",
-                    help: "Target application by name, bundle ID, or 'PID:12345'",
-                    long: "app"
-                ),
-                .commandOption(
-                    "pid",
-                    help: "Target application by process ID",
-                    long: "pid"
-                ),
-            ],
             flags: [
                 .commandFlag(
                     "includeDisabled",
@@ -74,6 +53,7 @@ extension MenuCommand.ListSubcommand: CommanderSignatureProviding {
                 ),
             ],
             optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),
             ]
         )

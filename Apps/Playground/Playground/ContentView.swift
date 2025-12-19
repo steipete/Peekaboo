@@ -238,6 +238,12 @@ struct DialogTestingView: View {
                             .buttonStyle(.bordered)
                             .accessibilityIdentifier("dialog-show-save-overwrite")
 
+                            Button("Show Save Panel (TextEdit-like)") {
+                                self.showSavePanel(mode: .textEditLike)
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("dialog-show-save-textedit")
+
                             Spacer()
                         }
 
@@ -322,6 +328,7 @@ struct DialogTestingView: View {
     private enum SavePanelMode {
         case normal
         case overwriteTmp
+        case textEditLike
     }
 
     private func showSavePanel(mode: SavePanelMode) {
@@ -335,6 +342,31 @@ struct DialogTestingView: View {
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.allowedContentTypes = [.plainText]
+        panel.showsTagField = true
+
+        if mode == .textEditLike {
+            let formatLabel = NSTextField(labelWithString: "File Format:")
+            formatLabel.textColor = .secondaryLabelColor
+
+            let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+            popup.addItems(withTitles: [
+                "Rich Text Document (.rtf)",
+                "Plain Text (.txt)",
+            ])
+            popup.selectItem(at: 0)
+
+            let accessory = NSStackView(views: [formatLabel, popup])
+            accessory.orientation = .horizontal
+            accessory.alignment = .centerY
+            accessory.spacing = 8
+            panel.accessoryView = accessory
+
+            panel.allowedContentTypes = [.rtf, .plainText]
+            panel.nameFieldStringValue = URL(fileURLWithPath: self.filename)
+                .deletingPathExtension()
+                .appendingPathExtension("rtf")
+                .lastPathComponent
+        }
 
         if mode == .overwriteTmp {
             let tmpURL = URL(fileURLWithPath: "/tmp/playground-overwrite.txt")
@@ -347,7 +379,16 @@ struct DialogTestingView: View {
         panel.beginSheetModal(for: window) { response in
             if response == .OK, let url = panel.url {
                 do {
-                    try self.content.write(to: url, atomically: true, encoding: .utf8)
+                    if url.pathExtension.lowercased() == "rtf" {
+                        let attributed = NSAttributedString(string: self.content)
+                        let range = NSRange(location: 0, length: attributed.length)
+                        let data = try attributed.data(
+                            from: range,
+                            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+                        try data.write(to: url, options: .atomic)
+                    } else {
+                        try self.content.write(to: url, atomically: true, encoding: .utf8)
+                    }
                     self.lastSavedPath = url.path
                     self.actionLogger.log(.dialog, "Saved file", details: url.path)
                 } catch {

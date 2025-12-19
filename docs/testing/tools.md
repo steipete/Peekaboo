@@ -66,7 +66,7 @@ read_when:
 | `image` | Playground window (full or element-specific) | Use `Image` artifacts; note timestamp in `LOG_FILE` | `polter peekaboo -- image window --app Playground --output /tmp/playground-window.png` | Verified – window + screen captures succeed after capture fallback fix | `.artifacts/playground-tools/20251116-082109-image-window-playground.json`, `.artifacts/playground-tools/20251116-082125-image-screen0.json` |
 | `capture` | `capture live` against Playground (5–10s) + `capture video` ingest smoke | Verify artifacts (`metadata.json`, `contact.png`, frames) + optional MP4 (`--video-out`) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – live writes contact sheet + metadata; video ingest + `--video-out` covered | `.artifacts/playground-tools/20251217-133751-capture-live.json`, `.artifacts/playground-tools/20251217-180155-capture-video.json`, `.artifacts/playground-tools/20251217-184010-capture-live-videoout.json`, `.artifacts/playground-tools/20251217-184010-capture-video-videoout.json` |
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
-| `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --json-output` | Verified – native tool listing captured 2025-12-19 | `.artifacts/playground-tools/20251219-001215-tools.json` |
+| `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach output to notes | `polter peekaboo -- tools > $LOG_ROOT/tools.txt` | Verified – native tool listing captured 2025-12-19 | `.artifacts/playground-tools/20251219-001215-tools.txt` |
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – smoke script drives Text Fixture and `type` resolves `basic-text-field` deterministically | `.artifacts/playground-tools/20251217-221643-run-playground-smoke.json`, `.artifacts/playground-tools/20251217-221643-run-playground-smoke-text.log` |
 | `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
@@ -159,9 +159,9 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Logs**: Use `playground-log` `Window` category when forcing focus changes to validate `app switch` interplay.
 #### `tools`
 - **Steps**:
-  1. `polter peekaboo -- tools --json-output > "$LOG_ROOT/tools.json"`.
+  1. `polter peekaboo -- tools > "$LOG_ROOT/tools.txt"`.
   2. Compare entries to the Interaction/Window commands listed here; flag gaps.
-- **Verification**: JSON includes click/type/etc. with descriptions.
+- **Verification**: Output includes click/type/etc. with descriptions.
 
 #### `run`
 - **Setup**: Create a sample `.peekaboo.json` (store under `docs/testing/fixtures/` once defined) that performs `see`, `click`, `type`, and `scroll`.
@@ -459,7 +459,7 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Scenario**: Use Playground’s Dialogs tab to spawn deterministic Save/Open panels and alerts.
 - **Steps to spawn dialogs**:
   1. Launch Playground and switch to the Dialogs tab (Header button “Go to Dialogs”).
-  2. Click “Show Save Panel” (or “Show Save Panel (Overwrite /tmp)” to exercise Replace flows).
+  2. Click “Show Save Panel” (or “Show Save Panel (Overwrite /tmp)” to exercise Replace flows). Use “Show Save Panel (TextEdit-like)” to add a file-format accessory view + tags field closer to real-world apps.
   3. Optional: Click “Show Alert (Text Field)” to exercise `dialog input` against a sheet-local text field.
 - **Tests**:
   1. `polter peekaboo -- dialog list --app Playground --json-output > .artifacts/playground-tools/<timestamp>-dialog-list.json`.

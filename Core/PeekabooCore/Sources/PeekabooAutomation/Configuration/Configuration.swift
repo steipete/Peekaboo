@@ -297,5 +297,4 @@ public struct Configuration: Codable {
             self.parameters = parameters
         }
     }
-
 }

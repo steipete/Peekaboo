@@ -1,41 +1,40 @@
 ---
-summary: 'Paste into an app by temporarily setting clipboard content'
+summary: 'Paste text or rich content via peekaboo paste'
 read_when:
-  - 'you want fewer steps than clipboard set + hotkey cmd,v + clipboard restore'
-  - 'you need deterministic pastes without clobbering the user clipboard'
+  - 'you want fewer steps than clipboard set + menu/hotkey paste + clipboard restore'
+  - 'pasting rich text (RTF) into a targeted app/window without drift'
 ---
 
 # `peekaboo paste`
 
-`paste` is an atomic convenience wrapper:
+`paste` is an atomic “clipboard + Cmd+V + restore” helper. It temporarily replaces the system clipboard with your payload, pastes into the focused target, then restores the previous clipboard contents (or clears it if it was empty).
 
-1. Snapshot the current clipboard (if any)
-2. Set clipboard content
-3. Focus the target (optional, via `--app`/`--window-title`/`--window-index`)
-4. Paste (`Cmd+V`)
-5. Restore the previous clipboard (or clear if it was empty)
-
-This reduces drift compared to running multiple commands manually.
+This reduces drift by collapsing multiple CLI steps into one command.
 
 ## Key options
 | Flag | Description |
 | --- | --- |
-| `--app` / `--window-title` / `--window-index` | Target/focus the destination before pasting. |
-| `<text>` / `--text` | Paste plain text. |
-| `--data-base64` + `--uti` | Paste a raw payload with an explicit UTI (e.g. `public.rtf`). |
-| `--file-path` / `--image-path` | Load file bytes into the clipboard, then paste. |
-| `--also-text` | Add a plain-text companion when setting binary data. |
-| `--restore-delay-ms` | Wait before restoring the clipboard (helps apps that read clipboard lazily). |
+| `[text]` / `--text` | Plain text to paste. |
+| `--file-path` / `--image-path` | Copy a file or image into the clipboard, then paste. |
+| `--data-base64` + `--uti` | Paste raw base64 payload with explicit UTI (e.g. `public.rtf`). |
+| `--also-text` | Optional plain-text companion when pasting binary. |
+| `--restore-delay-ms` | Delay before restoring the previous clipboard (default 150ms). |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pasting. |
+| Focus flags | Same as `click`/`type` (`--space-switch`, `--no-auto-focus`, etc.). |
 
 ## Examples
 ```bash
-# Paste text into TextEdit
-peekaboo paste "Hello" --app TextEdit
+# Paste plain text into TextEdit
+polter peekaboo -- paste "Hello, world" --app TextEdit
 
-# Paste into a specific window
-peekaboo paste --text "Hello" --app TextEdit --window-title "Untitled"
+# Paste rich text (RTF) into a specific window title
+polter peekaboo -- paste --data-base64 "$RTF_B64" --uti public.rtf --also-text "fallback" --app TextEdit --window-title "Untitled"
 
-# Paste RTF (binary) with a text companion
-peekaboo paste --data-base64 "$BASE64" --uti public.rtf --also-text "(fallback)" --app TextEdit
+# Paste a PNG into Notes
+polter peekaboo -- paste --file-path /tmp/snippet.png --app Notes
 ```
 
+## Troubleshooting
+- Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
+- Re-run with `--json-output` or `--verbose` to surface detailed errors.

@@ -33,6 +33,8 @@ extension DialogService {
             "found_via": resolution.foundVia,
         ]
 
+        await self.ensureDialogFocus(dialog: dialog, appName: appName)
+
         if ensureExpanded {
             try await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
             // Expanding can rebuild the AX tree; re-resolve.
@@ -44,8 +46,13 @@ extension DialogService {
         }
 
         if let filePath = path {
-            try await self.navigateToPath(filePath, in: dialog, ensureExpanded: ensureExpanded)
+            let navigation = try await self.navigateToPath(
+                filePath,
+                in: dialog,
+                ensureExpanded: ensureExpanded,
+                appName: appName)
             details["path"] = filePath
+            details["path_navigation_method"] = navigation
 
             // Navigating the path can expand/collapse the panel and rebuild the sheet tree. Re-resolve the active
             // file dialog after navigation so subsequent actions (filename + action button) target fresh AX handles.
@@ -177,10 +184,12 @@ extension DialogService {
         let expectedDirectory = URL(fileURLWithPath: expectedPath)
             .deletingLastPathComponent()
             .standardizedFileURL
+            .resolvingSymlinksInPath()
             .path
         let actualDirectory = URL(fileURLWithPath: actualSavedPath)
             .deletingLastPathComponent()
             .standardizedFileURL
+            .resolvingSymlinksInPath()
             .path
 
         details["saved_path_expected_directory"] = expectedDirectory
@@ -241,7 +250,9 @@ extension DialogService {
         guard let path else { return nil }
 
         let expandedPath = (path as NSString).expandingTildeInPath
-        let baseURL = URL(fileURLWithPath: expandedPath).standardizedFileURL
+        let baseURL = URL(fileURLWithPath: expandedPath)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
 
         if baseURL.lastPathComponent == filename {
             return baseURL.path
@@ -474,7 +485,12 @@ extension DialogService {
         return modifiedAt >= date.addingTimeInterval(-2.0)
     }
 
-    private func navigateToPath(_ filePath: String, in dialog: Element, ensureExpanded: Bool) async throws {
+    private func navigateToPath(
+        _ filePath: String,
+        in dialog: Element,
+        ensureExpanded: Bool,
+        appName: String?) async throws -> String
+    {
         let expandedPath = (filePath as NSString).expandingTildeInPath
         let targetURL = URL(fileURLWithPath: expandedPath)
 
@@ -489,10 +505,19 @@ extension DialogService {
             expandedPath
         }
 
-        try await self.navigateToDirectory(directoryPath: directoryPath, in: dialog, ensureExpanded: ensureExpanded)
+        return try await self.navigateToDirectory(
+            directoryPath: directoryPath,
+            in: dialog,
+            ensureExpanded: ensureExpanded,
+            appName: appName)
     }
 
-    private func navigateToDirectory(directoryPath: String, in dialog: Element, ensureExpanded: Bool) async throws {
+    private func navigateToDirectory(
+        directoryPath: String,
+        in dialog: Element,
+        ensureExpanded: Bool,
+        appName: String?) async throws -> String
+    {
         let identifierAttribute = Attribute<String>("AXIdentifier")
         let pathFieldIdentifier = "PathTextField"
 
@@ -509,29 +534,102 @@ extension DialogService {
             pathField = findPathField(in: dialog)
         }
 
+        await self.ensureDialogFocus(dialog: dialog, appName: appName)
+
+        let requestedDirectory = URL(fileURLWithPath: directoryPath)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+            .path
+
         guard let pathField else {
-            // Fallback: Cmd+Shift+G (Go to Folder) is the most reliable way to land in an arbitrary directory.
-            self.logger.debug("No PathTextField found; falling back to Go to Folder (Cmd+Shift+G)")
-            try? InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)
-            try await Task.sleep(nanoseconds: 200_000_000)
-            try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
-            try self.typeTextValue(directoryPath, delay: 5000)
-            try InputDriver.tapKey(.return)
-            try await Task.sleep(nanoseconds: 250_000_000)
-            return
+            try await self.navigateViaGoToFolder(directoryPath: requestedDirectory, dialog: dialog, appName: appName)
+            return "go_to_folder"
         }
+
+        var method = "path_textfield"
 
         self.focusTextField(pathField)
         if pathField.isAttributeSettable(named: AXAttributeNames.kAXValueAttribute),
-           pathField.setValue(directoryPath, forAttribute: AXAttributeNames.kAXValueAttribute)
+           pathField.setValue(requestedDirectory, forAttribute: AXAttributeNames.kAXValueAttribute)
         {
             // Some NSSavePanel implementations don't update AXValue immediately; commit via Return below.
+            method = "path_textfield_axvalue"
         } else {
             try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
-            try self.typeTextValue(directoryPath, delay: 5000)
+            try await Task.sleep(nanoseconds: 75_000_000)
+            try self.typeTextValue(requestedDirectory, delay: 5000)
+            method = "path_textfield_typed"
         }
         try InputDriver.tapKey(.return)
         try await Task.sleep(nanoseconds: 250_000_000)
+
+        let rawValue = pathField.value() as? String
+        if let rawValue, !rawValue.isEmpty {
+            let actualDirectory = URL(fileURLWithPath: rawValue)
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+                .path
+            if actualDirectory != requestedDirectory {
+                self.logger.debug(
+                    "PathTextField mismatch; Go to Folder. requested: \(requestedDirectory), actual: \(actualDirectory)"
+                )
+                try await self.navigateViaGoToFolder(
+                    directoryPath: requestedDirectory,
+                    dialog: dialog,
+                    appName: appName)
+                method += "+fallback_go_to_folder"
+            }
+        } else {
+            self.logger.debug("PathTextField did not expose an AXValue; falling back to Go to Folder")
+            try await self.navigateViaGoToFolder(directoryPath: requestedDirectory, dialog: dialog, appName: appName)
+            method += "+fallback_go_to_folder"
+        }
+
+        return method
+    }
+
+    private func ensureDialogFocus(dialog: Element, appName: String?) async {
+        guard let appName, let running = self.runningApplication(matching: appName) else {
+            self.clickDialogCenterIfPossible(dialog)
+            return
+        }
+
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier != running.processIdentifier {
+            _ = running.activate(options: [.activateAllWindows])
+            try? await Task.sleep(nanoseconds: 150_000_000)
+        }
+
+        self.clickDialogCenterIfPossible(dialog)
+    }
+
+    private func clickDialogCenterIfPossible(_ dialog: Element) {
+        guard let position = dialog.position(),
+              let size = dialog.size(),
+              size.width > 0,
+              size.height > 0
+        else {
+            return
+        }
+
+        let point = CGPoint(x: position.x + size.width / 2.0, y: position.y + size.height / 2.0)
+        try? InputDriver.click(at: point)
+    }
+
+    private func navigateViaGoToFolder(directoryPath: String, dialog: Element, appName: String?) async throws {
+        await self.ensureDialogFocus(dialog: dialog, appName: appName)
+        self.logger.debug("Navigating via Go to Folder (Cmd+Shift+G): \(directoryPath)")
+
+        try? InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)
+        try await Task.sleep(nanoseconds: 250_000_000)
+
+        // Best effort: re-assert focus before typing into the Go-to sheet.
+        await self.ensureDialogFocus(dialog: dialog, appName: appName)
+
+        try? InputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.05)
+        try await Task.sleep(nanoseconds: 75_000_000)
+        try self.typeTextValue(directoryPath, delay: 5000)
+        try InputDriver.tapKey(.return)
+        try await Task.sleep(nanoseconds: 450_000_000)
     }
 
     private func ensureFileDialogExpandedIfNeeded(dialog: Element) async throws {

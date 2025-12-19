@@ -24,7 +24,6 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
     @Flag(name: .customLong("no-sort"), help: "Disable alphabetical sorting")
     var noSort = false
 
-
     var runtimeOptions = CommandRuntimeOptions()
     @RuntimeStorage private var runtime: CommandRuntime?
 
@@ -81,7 +80,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
             nativeTools,
             filters: filters,
             log: { [logger] message in
-                logger.notice("\(message, privacy: .public)")
+                logger.debug(message)
             }
         )
         let sortedTools = self.noSort

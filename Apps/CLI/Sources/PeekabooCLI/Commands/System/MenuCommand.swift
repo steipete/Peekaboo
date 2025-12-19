@@ -74,14 +74,8 @@ extension MenuCommand {
 
     @MainActor
 
-    struct ClickSubcommand: OutputFormattable, ApplicationResolvablePositional {
-        @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
-        var app: String
-
-        var positionalAppIdentifier: String { self.app }
-
-        @Option(name: .long, help: "Target application by process ID")
-        var pid: Int32?
+    struct ClickSubcommand: OutputFormattable {
+        @OptionGroup var target: InteractionTargetOptions
 
         @Option(help: "Menu item to click (for simple, non-nested items)")
         var item: String?
@@ -136,9 +130,15 @@ extension MenuCommand {
             }
 
             do {
-                let appIdentifier = try self.resolveApplicationIdentifier()
+                try self.target.validate()
+                let appIdentifier = try await self.resolveTargetApplicationIdentifier()
+                let windowID = try await self.target.resolveWindowID(services: self.services)
                 try await ensureFocusIgnoringMissingWindows(
-                    applicationName: appIdentifier,
+                    request: FocusIgnoringMissingWindowsRequest(
+                        windowID: windowID,
+                        applicationName: appIdentifier,
+                        windowTitle: self.target.windowTitle
+                    ),
                     options: self.focusOptions,
                     services: self.services,
                     logger: self.logger
@@ -188,6 +188,18 @@ extension MenuCommand {
                 self.handleGenericError(error)
                 throw ExitCode(1)
             }
+        }
+
+        private func resolveTargetApplicationIdentifier() async throws -> String {
+            if let appIdentifier = try self.target.resolveApplicationIdentifierOptional() {
+                return appIdentifier
+            }
+
+            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+                throw ValidationError("No frontmost app found; provide --app or --pid")
+            }
+
+            return frontmost.bundleIdentifier ?? frontmost.localizedName ?? "PID:\(frontmost.processIdentifier)"
         }
 
         private func handleMenuError(_ error: MenuError) {
@@ -356,14 +368,8 @@ extension MenuCommand {
 
     @MainActor
 
-    struct ListSubcommand: OutputFormattable, ApplicationResolvablePositional {
-        @Option(help: "Target application by name, bundle ID, or 'PID:12345'")
-        var app: String
-
-        var positionalAppIdentifier: String { self.app }
-
-        @Option(name: .long, help: "Target application by process ID")
-        var pid: Int32?
+    struct ListSubcommand: OutputFormattable {
+        @OptionGroup var target: InteractionTargetOptions
 
         @Flag(help: "Include disabled menu items")
         var includeDisabled = false
@@ -389,9 +395,15 @@ extension MenuCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
-                let appIdentifier = try self.resolveApplicationIdentifier()
+                try self.target.validate()
+                let appIdentifier = try await self.resolveTargetApplicationIdentifier()
+                let windowID = try await self.target.resolveWindowID(services: self.services)
                 try await ensureFocusIgnoringMissingWindows(
-                    applicationName: appIdentifier,
+                    request: FocusIgnoringMissingWindowsRequest(
+                        windowID: windowID,
+                        applicationName: appIdentifier,
+                        windowTitle: self.target.windowTitle
+                    ),
                     options: self.focusOptions,
                     services: self.services,
                     logger: self.logger
@@ -429,6 +441,18 @@ extension MenuCommand {
                 self.handleGenericError(error)
                 throw ExitCode(1)
             }
+        }
+
+        private func resolveTargetApplicationIdentifier() async throws -> String {
+            if let appIdentifier = try self.target.resolveApplicationIdentifierOptional() {
+                return appIdentifier
+            }
+
+            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+                throw ValidationError("No frontmost app found; provide --app or --pid")
+            }
+
+            return frontmost.bundleIdentifier ?? frontmost.localizedName ?? "PID:\(frontmost.processIdentifier)"
         }
 
         private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
@@ -825,24 +849,33 @@ extension MenuCommand {
 // MARK: - Focus Helpers
 
 @MainActor
+private struct FocusIgnoringMissingWindowsRequest {
+    let windowID: CGWindowID?
+    let applicationName: String
+    let windowTitle: String?
+}
+
+@MainActor
 private func ensureFocusIgnoringMissingWindows(
-    applicationName: String,
+    request: FocusIgnoringMissingWindowsRequest,
     options: any FocusOptionsProtocol,
     services: any PeekabooServiceProviding,
     logger: Logger
 ) async throws {
     do {
         try await ensureFocused(
-            applicationName: applicationName,
+            windowID: request.windowID,
+            applicationName: request.applicationName,
+            windowTitle: request.windowTitle,
             options: options,
             services: services
         )
     } catch let focusError as FocusError {
         switch focusError {
         case .noWindowsFound:
-            logger.debug("Skipping focus: no windows found for '\(applicationName)'")
+            logger.debug("Skipping focus: no windows found for '\(request.applicationName)'")
         case .windowNotFound, .axElementNotFound:
-            logger.debug("Skipping focus: window lookup failed for '\(applicationName)': \(focusError)")
+            logger.debug("Skipping focus: window lookup failed for '\(request.applicationName)': \(focusError)")
         default:
             throw focusError
         }
@@ -936,8 +969,7 @@ extension MenuCommand.ClickSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension MenuCommand.ClickSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.app = try values.requireOption("app", as: String.self)
-        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.target = try values.makeInteractionTargetOptions()
         self.item = values.singleOption("item")
         self.path = values.singleOption("path")
         self.focusOptions = try values.makeFocusOptions()
@@ -983,8 +1015,7 @@ extension MenuCommand.ListSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension MenuCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.app = try values.requireOption("app", as: String.self)
-        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.target = try values.makeInteractionTargetOptions()
         self.includeDisabled = values.flag("includeDisabled")
         self.focusOptions = try values.makeFocusOptions()
     }

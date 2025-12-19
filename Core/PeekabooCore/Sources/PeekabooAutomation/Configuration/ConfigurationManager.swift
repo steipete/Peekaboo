@@ -625,7 +625,6 @@ public final class ConfigurationManager: @unchecked Sendable {
         // Test method to verify module interface
         "test"
     }
-
 }
 
 // MARK: - Custom Provider Management

@@ -305,6 +305,7 @@ struct DialogCommand: ParsableCommand {
                         let dialogIdentifier: String?
                         let foundVia: String?
                         let path: String?
+                        let pathNavigationMethod: String?
                         let name: String?
                         let buttonClicked: String
                         let buttonIdentifier: String?
@@ -324,6 +325,7 @@ struct DialogCommand: ParsableCommand {
                             case dialogIdentifier = "dialog_identifier"
                             case foundVia = "found_via"
                             case path
+                            case pathNavigationMethod = "path_navigation_method"
                             case name
                             case buttonClicked
                             case buttonIdentifier = "button_identifier"
@@ -348,6 +350,7 @@ struct DialogCommand: ParsableCommand {
                         dialogIdentifier: result.details["dialog_identifier"],
                         foundVia: result.details["found_via"],
                         path: result.details["path"],
+                        pathNavigationMethod: result.details["path_navigation_method"],
                         name: result.details["filename"],
                         buttonClicked: result.details["button_clicked"] ?? self.select ?? "default",
                         buttonIdentifier: result.details["button_identifier"],

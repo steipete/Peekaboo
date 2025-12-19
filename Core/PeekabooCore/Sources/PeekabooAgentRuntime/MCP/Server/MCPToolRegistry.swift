@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import os.log
+import TachikomaMCP
 
 /// Registry for managing MCP tools
 @MainActor

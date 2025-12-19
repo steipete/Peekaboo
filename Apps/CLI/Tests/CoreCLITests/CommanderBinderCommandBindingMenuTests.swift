@@ -47,21 +47,20 @@ struct CommanderBinderMenuDockTests {
             ofType: MenuCommand.ClickSubcommand.self,
             parsedValues: parsed
         )
-        #expect(command.app == "Safari")
+        #expect(command.target.app == "Safari")
         #expect(command.item == "File")
         #expect(command.path == "File>New Window")
         #expect(command.focusOptions.spaceSwitch == true)
     }
 
-    @Test("Menu click requires app")
-    func bindMenuClickMissingApp() {
+    @Test("Menu click binding without app")
+    func bindMenuClickMissingApp() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
-        #expect(throws: CommanderBindingError.missingArgument(label: "app")) {
-            _ = try CommanderCLIBinder.instantiateCommand(
-                ofType: MenuCommand.ClickSubcommand.self,
-                parsedValues: parsed
-            )
-        }
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: MenuCommand.ClickSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.target.app == nil)
     }
 
     @Test("Menu click-extra binding")
@@ -95,19 +94,18 @@ struct CommanderBinderMenuDockTests {
             ofType: MenuCommand.ListSubcommand.self,
             parsedValues: parsed
         )
-        #expect(command.app == "Safari")
+        #expect(command.target.app == "Safari")
         #expect(command.includeDisabled == true)
     }
 
-    @Test("Menu list requires app")
-    func bindMenuListMissingApp() {
+    @Test("Menu list binding without app")
+    func bindMenuListMissingApp() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
-        #expect(throws: CommanderBindingError.missingArgument(label: "app")) {
-            _ = try CommanderCLIBinder.instantiateCommand(
-                ofType: MenuCommand.ListSubcommand.self,
-                parsedValues: parsed
-            )
-        }
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: MenuCommand.ListSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.target.app == nil)
     }
 
     @Test("Menu list-all binding")
