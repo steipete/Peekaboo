@@ -11,7 +11,7 @@ class Peekaboo < Formula
 
   def install
     odie "Peekaboo is Apple Silicon only (arm64)." if Hardware::CPU.intel?
-    bin.install "peekaboo-macos-arm64/peekaboo" => "peekaboo"
+    bin.install "peekaboo" => "peekaboo"
   end
 
   def post_install
