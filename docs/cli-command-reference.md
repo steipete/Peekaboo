@@ -22,6 +22,7 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - [`sleep`](commands/sleep.md) – Millisecond pauses between steps.
 - [`clean`](commands/clean.md) – Remove snapshot caches by ID, age, or all at once (`--dry-run` supported).
 - [`config`](commands/config.md) – Subcommands: `init`, `show`, `edit`, `validate`, `add`, `login`, `set-credential` (legacy), `add-provider`, `list-providers`, `test-provider`, `remove-provider`, `models`.
+- [`daemon`](commands/daemon.md) – Start/stop/status for the headless daemon (live window tracking, in-memory snapshots).
 - [`permissions`](commands/permissions.md) – `status` (default) and `grant` helpers for Screen Recording/Accessibility.
 - [`learn`](commands/learn.md) – Print the complete agent guide (system prompt, tool catalog, Commander signatures).
 
