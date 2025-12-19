@@ -98,7 +98,10 @@ public final class ActionVerifier {
         switch action.toolName {
         case "click":
             let element = action.targetElement ?? "element"
-            return "The \(element) should appear clicked/activated, possibly showing a new state, opening a menu, or navigating somewhere"
+            return [
+                "The \(element) should appear clicked/activated,",
+                "possibly showing a new state, opening a menu, or navigating somewhere",
+            ].joined(separator: " ")
 
         case "type":
             let text = action.arguments["text"] ?? ""
@@ -134,7 +137,12 @@ public final class ActionVerifier {
     }
 
     private func buildVerificationPrompt(action: ActionDescriptor, expected: String) -> String {
-        """
+        let exampleJSON = [
+            #"{"success": true, "confidence": 0.85, "observation": "#,
+            #""The button appears pressed and a dropdown menu is visible", "suggestion": null}"#,
+        ].joined()
+
+        return """
         I just performed this action on macOS:
         - Tool: \(action.toolName)
         - Target: \(action.targetElement ?? "unspecified")
@@ -149,7 +157,7 @@ public final class ActionVerifier {
         4. If it failed, what should I try instead?
 
         Respond in this exact JSON format:
-        {"success": true, "confidence": 0.85, "observation": "The button appears pressed and a dropdown menu is visible", "suggestion": null}
+        \(exampleJSON)
 
         Only respond with the JSON, no other text.
         """

@@ -157,10 +157,11 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 steps: movement.steps,
                 profile: movement.profile
             )
+            let snapshotLabel = snapshotIdForElements ?? "latest"
             AutomationEventLogger.log(
                 .gesture,
                 "swipe from=(\(Int(sourcePoint.x)),\(Int(sourcePoint.y))) to=(\(Int(destPoint.x)),\(Int(destPoint.y))) "
-                    + "profile=\(movement.profileName) steps=\(movement.steps) snapshot=\(snapshotIdForElements ?? "latest")"
+                    + "profile=\(movement.profileName) steps=\(movement.steps) snapshot=\(snapshotLabel)"
             )
 
             // Small delay to ensure swipe is processed

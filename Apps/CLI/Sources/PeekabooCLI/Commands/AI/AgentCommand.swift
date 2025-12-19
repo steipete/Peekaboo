@@ -461,11 +461,13 @@ extension AgentCommand {
             }
             try await self.resumeAgentSession(
                 agentService,
-                sessionId: sessionId,
-                task: continuationTask,
-                requestedModel: requestedModel,
-                maxSteps: maxSteps,
-                queueMode: queueMode
+                request: ResumeAgentSessionRequest(
+                    sessionId: sessionId,
+                    task: continuationTask,
+                    requestedModel: requestedModel,
+                    maxSteps: maxSteps,
+                    queueMode: queueMode
+                )
             )
             return true
         }
@@ -484,11 +486,13 @@ extension AgentCommand {
             if let mostRecent = sessions.first {
                 try await self.resumeAgentSession(
                     agentService,
-                    sessionId: mostRecent.id,
-                    task: continuationTask,
-                    requestedModel: requestedModel,
-                    maxSteps: maxSteps,
-                    queueMode: queueMode
+                    request: ResumeAgentSessionRequest(
+                        sessionId: mostRecent.id,
+                        task: continuationTask,
+                        requestedModel: requestedModel,
+                        maxSteps: maxSteps,
+                        queueMode: queueMode
+                    )
                 )
             } else {
                 if self.jsonOutput {
@@ -503,6 +507,14 @@ extension AgentCommand {
         }
 
         return false
+    }
+
+    private struct ResumeAgentSessionRequest {
+        let sessionId: String
+        let task: String
+        let requestedModel: LanguageModel?
+        let maxSteps: Int
+        let queueMode: QueueMode
     }
 
     func printMissingTaskError(message: String, usage: String) {
@@ -669,35 +681,31 @@ extension AgentCommand {
         print("   Last activity: \(timeAgo)")
     }
 
-    func resumeAgentSession(
+    private func resumeAgentSession(
         _ agentService: PeekabooAgentService,
-        sessionId: String,
-        task: String,
-        requestedModel: LanguageModel?,
-        maxSteps: Int,
-        queueMode: QueueMode
+        request: ResumeAgentSessionRequest
     ) async throws {
         if !self.jsonOutput {
             let resumingLine = [
                 "\(TerminalColor.cyan)\(TerminalColor.bold)",
                 "\(AgentDisplayTokens.Status.info)",
-                " Resuming session \(sessionId.prefix(8))...",
+                " Resuming session \(request.sessionId.prefix(8))...",
                 "\(TerminalColor.reset)",
                 "\n"
             ].joined()
             print(resumingLine)
         }
 
-        let outputDelegate = self.makeDisplayDelegate(for: task)
+        let outputDelegate = self.makeDisplayDelegate(for: request.task)
         let streamingDelegate = self.makeStreamingDelegate(using: outputDelegate)
         do {
             let result = try await agentService.continueSession(
-                sessionId: sessionId,
-                userMessage: task,
-                model: requestedModel,
-                maxSteps: maxSteps,
+                sessionId: request.sessionId,
+                userMessage: request.task,
+                model: request.requestedModel,
+                maxSteps: request.maxSteps,
                 dryRun: self.dryRun,
-                queueMode: queueMode,
+                queueMode: request.queueMode,
                 eventDelegate: streamingDelegate
             )
             self.displayResult(result, delegate: outputDelegate)

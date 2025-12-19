@@ -83,7 +83,7 @@ struct FocusedWindowInfoTests {
         )
 
         #expect(info.appName == "Finder")
-        #expect(info.title == "")
+        #expect(info.title.isEmpty)
         #expect(info.bounds == nil)
     }
 
