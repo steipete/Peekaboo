@@ -338,6 +338,45 @@ private final class FixtureCaptureOperator: ModernScreenCaptureOperating, Legacy
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
+    func captureWindow(
+        windowID: CGWindowID,
+        correlationId _: String,
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
+        let allWindows = self.fixtures.windowsByPID.values.flatMap(\.self)
+        guard let target = allWindows.first(where: { CGWindowID($0.title.hashValue) == windowID }) else {
+            throw PeekabooError.windowNotFound(criteria: "window_id \(windowID)")
+        }
+
+        let scaleFactor = scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0
+        let outputSize = CGSize(width: target.bounds.width * scaleFactor, height: target.bounds.height * scaleFactor)
+        let imageData = ScreenCaptureService.TestFixtures.makeImage(
+            width: Int(outputSize.width),
+            height: Int(outputSize.height),
+            color: .systemGreen)
+
+        let metadata = CaptureMetadata(
+            size: outputSize,
+            mode: .window,
+            applicationInfo: target.application,
+            windowInfo: ServiceWindowInfo(
+                windowID: Int(windowID),
+                title: target.title,
+                bounds: target.bounds,
+                isMinimized: false,
+                isMainWindow: true,
+                windowLevel: 0,
+                alpha: 1.0,
+                index: 0),
+            displayInfo: DisplayInfo(
+                index: 0,
+                name: self.fixtures.displays.first?.name,
+                bounds: self.fixtures.displays.first?.bounds ?? target.bounds,
+                scaleFactor: scale == .native ? (self.fixtures.displays.first?.scaleFactor ?? 1.0) : 1.0))
+        return CaptureResult(imageData: imageData, metadata: metadata)
+    }
+
     func captureArea(
         _ rect: CGRect,
         correlationId: String,
@@ -379,6 +418,15 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
         app: ServiceApplicationInfo,
         windowIndex: Int?,
         correlationId: String,
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
+    {
+        throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
+    }
+
+    func captureWindow(
+        windowID _: CGWindowID,
+        correlationId _: String,
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
