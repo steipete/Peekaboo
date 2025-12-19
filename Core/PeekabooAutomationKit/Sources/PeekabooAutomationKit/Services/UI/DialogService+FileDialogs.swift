@@ -581,7 +581,10 @@ extension DialogService {
             }
         } else {
             self.logger.debug("PathTextField did not expose an AXValue; falling back to Go to Folder")
-            try await self.navigateViaGoToFolder(directoryPath: requestedDirectory, dialog: dialog, appName: appName)
+            try await self.navigateViaGoToFolder(
+                directoryPath: requestedDirectory,
+                dialog: dialog,
+                appName: appName)
             method += "+fallback_go_to_folder"
         }
 
