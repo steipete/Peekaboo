@@ -35,6 +35,7 @@ enum CommandRegistry {
         .init(type: ImageCommand.self, category: .core),
         .init(type: CaptureCommand.self, category: .core),
         .init(type: BridgeCommand.self, category: .core),
+        .init(type: DaemonCommand.self, category: .core),
         .init(type: ListCommand.self, category: .core),
         .init(type: ToolsCommand.self, category: .core),
         .init(type: ConfigCommand.self, category: .core),

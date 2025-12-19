@@ -44,6 +44,9 @@ extension MCPCommand {
                 default: .stdio
                 }
 
+                let daemon = PeekabooDaemon(configuration: .mcp())
+                await daemon.start()
+
                 let server = try await PeekabooMCPServer()
                 try await server.serve(transport: transportType, port: self.port)
             } catch {
