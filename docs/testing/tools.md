@@ -20,7 +20,7 @@ read_when:
 ## Environment & Logging Setup
 1. Ensure Poltergeist is healthy: `pnpm run poltergeist:status`; start it with `pnpm run poltergeist:haunt` if needed.
 2. Launch Playground (`Apps/Playground/Playground.app` via Xcode or `open Apps/Playground/Playground.xcodeproj`). Keep it foregrounded on Space 1 to avoid focus surprises.
-   - Prefer the dedicated fixture windows (menu `Fixtures`, shortcuts `⌘⌃1…⌘⌃7`) so each tool targets a stable window title (“Click Fixture”, “Scroll Fixture”, etc.) instead of relying on TabView state.
+   - Prefer the dedicated fixture windows (menu `Fixtures`, shortcuts `⌘⌃1…⌘⌃8`) so each tool targets a stable window title (“Click Fixture”, “Dialog Fixture”, “Scroll Fixture”, etc.) instead of relying on TabView state.
 3. Prepare a log root once per session:
    ```bash
    LOG_ROOT=${LOG_ROOT:-$PWD/.artifacts/playground-tools}

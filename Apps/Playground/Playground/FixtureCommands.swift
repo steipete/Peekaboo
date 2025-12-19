@@ -25,6 +25,9 @@ struct FixtureCommands: Commands {
 
             Button("Open Keyboard Fixture") { self.openWindow(id: "fixture-keyboard") }
                 .keyboardShortcut("7", modifiers: [.command, .control])
+
+            Button("Open Dialog Fixture") { self.openWindow(id: "fixture-dialog") }
+                .keyboardShortcut("8", modifiers: [.command, .control])
         }
     }
 }

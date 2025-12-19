@@ -541,9 +541,18 @@ extension DialogService {
             .resolvingSymlinksInPath()
             .path
 
+        var autoExpandedForNavigation = false
+        if pathField == nil, !ensureExpanded {
+            // When NSSavePanel/NSSOpenPanel is collapsed, Cmd+Shift+G (Go to Folder) is often ignored and the
+            // PathTextField isn't in the AX tree. Best effort: expand once before falling back to Go to Folder.
+            try? await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
+            autoExpandedForNavigation = true
+            pathField = findPathField(in: dialog)
+        }
+
         guard let pathField else {
             try await self.navigateViaGoToFolder(directoryPath: requestedDirectory, dialog: dialog, appName: appName)
-            return "go_to_folder"
+            return autoExpandedForNavigation ? "go_to_folder+auto_expand" : "go_to_folder"
         }
 
         var method = "path_textfield"
@@ -619,6 +628,8 @@ extension DialogService {
 
     private func navigateViaGoToFolder(directoryPath: String, dialog: Element, appName: String?) async throws {
         await self.ensureDialogFocus(dialog: dialog, appName: appName)
+        // Cmd+Shift+G is unreliable when the panel is collapsed; try to expand first.
+        try? await self.ensureFileDialogExpandedIfNeeded(dialog: dialog)
         self.logger.debug("Navigating via Go to Folder (Cmd+Shift+G): \(directoryPath)")
 
         try? InputDriver.hotkey(keys: ["cmd", "shift", "g"], holdDuration: 0.05)

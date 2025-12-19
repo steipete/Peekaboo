@@ -324,6 +324,20 @@ extension PeekabooAgentService {
             })
     }
 
+    // MARK: - Paste
+
+    public func createPasteTool() -> AgentTool {
+        let tool = PasteTool(context: self.makeToolContext())
+        return AgentTool(
+            name: tool.name,
+            description: tool.description,
+            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
+                return await convertToolResponseToAgentToolResultAsync(response)
+            })
+    }
+
     // MARK: - Gesture Support
 
     public func createSwipeTool() -> AgentTool {

@@ -262,7 +262,7 @@
 - **Artifacts**: `.artifacts/playground-tools/20251217-153107-see-click-for-move.json` (Click Fixture returns click controls like “Single Click”, not TextInputView elements).
 
 ### ✅ Fixture windows (avoid TabView flakiness)
-- Added a `Fixtures` menu with `⌘⌃1…⌘⌃7` shortcuts opening dedicated windows (“Click Fixture”, “Text Fixture”, …).
+- Added a `Fixtures` menu with `⌘⌃1…⌘⌃8` shortcuts opening dedicated windows (“Click Fixture”, “Dialog Fixture”, “Text Fixture”, …).
 - This makes window-title targeting deterministic and keeps snapshots stable for tool tests.
 
 ### ✅ `scroll` evidence logging (Playground)

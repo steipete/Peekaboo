@@ -4,7 +4,7 @@ import os.log
 import PeekabooAutomation
 import TachikomaMCP
 
-/// MCP tool for interacting with system dialogs and alerts
+/// MCP tool for interacting with system dialogs and alerts.
 public struct DialogTool: MCPTool {
     private let logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "DialogTool")
     private let context: MCPToolContext
@@ -13,23 +13,24 @@ public struct DialogTool: MCPTool {
 
     public var description: String {
         """
-        Interact with system dialogs and alerts.
+        Interact with system dialogs and alerts (alerts, sheets, NSSavePanel/NSOpenPanel).
 
         Actions:
-        - click: Click buttons in dialogs
-        - input: Input text into dialog fields
-        - file: Select files in file dialogs
-        - dismiss: Dismiss dialogs
-        - list: List open dialogs
+        - list: inspect dialog structure (buttons, text fields, static text)
+        - click: press a dialog button
+        - input: type into a dialog text field
+        - file: drive NSOpenPanel/NSSavePanel dialogs (path/name/select/verify)
+        - dismiss: close the active dialog
 
-        Handles save/open dialogs, alerts, and other system prompts.
+        Targeting (recommended for determinism):
+        - Provide app/pid and optionally window_id/window_title/window_index to focus before interacting.
 
         Examples:
-        - Click OK button: { "action": "click", "button": "OK" }
-        - Input text: { "action": "input", "text": "Hello", "field": "Name" }
-        - Select file: { "action": "file", "path": "/Users/user/document.txt" }
-        - Dismiss dialog: { "action": "dismiss", "force": true }
-        Peekaboo MCP 3.0.0-beta1 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        - Click OK: { "action": "click", "button": "OK", "app": "TextEdit" }
+        - Default action: { "action": "click", "button": "default", "app": "TextEdit" }
+        - Input password: { "action": "input", "text": "hunter2", "field": "Password", "clear": true, "app": "Safari" }
+        - Save file (OKButton): { "action": "file", "path": "/tmp", "name": "poem.rtf",
+          "select": "default", "ensure_expanded": true, "app": "TextEdit" }
         """
     }
 
@@ -37,37 +38,38 @@ public struct DialogTool: MCPTool {
         SchemaBuilder.object(
             properties: [
                 "action": SchemaBuilder.string(
-                    description: """
-                    Action to perform:
-                    - list: discover dialogs
-                    - click: press buttons
-                    - input: enter text
-                    - file: select files
-                    - dismiss: close dialogs
-                    """,
-                    enum: ["list", "click", "input", "file", "dismiss"]),
-                "button": SchemaBuilder.string(
-                    description: "Button text to click (for click action)"),
-                "text": SchemaBuilder.string(
-                    description: "Text to input (for input action)"),
-                "field": SchemaBuilder.string(
-                    description: "Field name/index to target (for input action)"),
-                "clear": SchemaBuilder.boolean(
-                    description: "Clear field before input (default: false)",
-                    default: false),
-                "path": SchemaBuilder.string(
-                    description: "File path to select (for file action)"),
+                    description: "Action to perform",
+                    enum: DialogToolAction.allCases.map(\.rawValue)),
+
+                // Targeting
+                "app": SchemaBuilder.string(description: "Target app name/bundle ID, or 'PID:<n>'."),
+                "pid": SchemaBuilder.number(description: "Target process ID (alternative to app)."),
+                "window_id": SchemaBuilder.number(description: "Window ID (preferred stable selector)."),
+                "window_title": SchemaBuilder.string(description: "Window title (substring match)."),
+                "window_index": SchemaBuilder.number(description: "Window index (0-based); requires app/pid."),
+
+                // click
+                "button": SchemaBuilder.string(description: "Button text to click. Use 'default' to click OKButton."),
+
+                // input
+                "text": SchemaBuilder.string(description: "Text to input (for input action)."),
+                "field": SchemaBuilder.string(description: "Field label/placeholder to target (for input action)."),
+                "field_index": SchemaBuilder.number(description: "Field index (0-based) to target (for input action)."),
+                "clear": SchemaBuilder.boolean(description: "Clear existing text first.", default: false),
+
+                // file
+                "path": SchemaBuilder.string(description: "Directory (or full path) to navigate to (for file action)."),
+                "name": SchemaBuilder.string(description: "Filename to enter (for save dialogs)."),
                 "select": SchemaBuilder.string(
-                    description: "Multiple file paths to select (for file action)"),
-                "window": SchemaBuilder.string(
-                    description: "Window title or index to target"),
-                "name": SchemaBuilder.string(
-                    description: "Dialog name to target"),
-                "force": SchemaBuilder.boolean(
-                    description: "Force dismiss (for dismiss action)",
+                    description: """
+                    Button to click after setting path/name. Omit (or pass 'default') to click OKButton.
+                    """),
+                "ensure_expanded": SchemaBuilder.boolean(
+                    description: "Ensure file dialogs are expanded (Show Details) before applying path navigation.",
                     default: false),
-                "index": SchemaBuilder.number(
-                    description: "Dialog index when multiple dialogs are open"),
+
+                // dismiss
+                "force": SchemaBuilder.boolean(description: "Force dismiss (sends Escape).", default: false),
             ],
             required: ["action"])
     }
@@ -78,420 +80,359 @@ public struct DialogTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        guard let actionName = arguments.getString("action") else {
-            return ToolResponse.error("Missing required parameter: action")
-        }
-
-        guard let action = DialogAction(rawValue: actionName) else {
-            return ToolResponse.error(
-                "Unknown action: \(actionName). Supported actions: \(DialogAction.supportedList)")
-        }
-
-        let inputs = DialogInputs(arguments: arguments)
-        let dialogService = self.context.dialogs
         let startTime = Date()
 
         do {
+            let action = try DialogToolAction(arguments: arguments)
+            let inputs = DialogToolInputs(arguments: arguments)
+
+            let target = MCPInteractionTarget(
+                app: inputs.app,
+                pid: inputs.pid,
+                windowTitle: inputs.windowTitle,
+                windowIndex: inputs.windowIndex,
+                windowId: inputs.windowId)
+
+            if inputs.hasAnyTargeting {
+                _ = try await target.focusIfRequested(windows: self.context.windows)
+            }
+
+            let resolvedWindowTitle = try await target.resolveWindowTitleIfNeeded(windows: self.context.windows)
+            let appHint = target.appIdentifier
+
             return try await self.perform(
                 action: action,
                 inputs: inputs,
-                service: dialogService,
+                windowTitle: resolvedWindowTitle,
+                appHint: appHint,
                 startTime: startTime)
-        } catch let error as DialogInputError {
-            return ToolResponse.error(error.message)
+        } catch let error as MCPInteractionTargetError {
+            return ToolResponse.error(error.localizedDescription)
+        } catch let error as DialogToolInputError {
+            return ToolResponse.error(error.localizedDescription)
         } catch {
-            self.logger.error("Dialog operation execution failed: \(error)")
-            return ToolResponse.error("Failed to \(action.description) dialog: \(error.localizedDescription)")
+            self.logger.error("Dialog execution failed: \(error.localizedDescription)")
+            return ToolResponse.error("Dialog failed: \(error.localizedDescription)")
         }
     }
 
-    // MARK: - Action Handlers
-
     private func perform(
-        action: DialogAction,
-        inputs: DialogInputs,
-        service: any DialogServiceProtocol,
+        action: DialogToolAction,
+        inputs: DialogToolInputs,
+        windowTitle: String?,
+        appHint: String?,
         startTime: Date) async throws -> ToolResponse
     {
         switch action {
         case .list:
-            return try await self.handleList(service: service, window: inputs.window, startTime: startTime)
+            let elements = try await self.context.dialogs.listDialogElements(windowTitle: windowTitle, appName: appHint)
+            let executionTime = Date().timeIntervalSince(startTime)
+            return self.formatList(
+                elements: elements,
+                executionTime: executionTime,
+                windowTitle: windowTitle,
+                appHint: appHint)
+
         case .click:
             let button = try inputs.requireButton()
-            return try await self.handleClick(
-                service: service,
-                button: button,
-                window: inputs.window,
+            let result = try await self.context.dialogs.clickButton(
+                buttonText: button,
+                windowTitle: windowTitle,
+                appName: appHint)
+            return self.formatActionResult(
+                context: ActionResultContext(
+                    verb: "Clicked",
+                    notes: button,
+                    windowTitle: windowTitle,
+                    appHint: appHint),
+                result: result,
                 startTime: startTime)
+
         case .input:
-            let text = try inputs.requireText()
-            return try await self.handleInput(
-                service: service,
-                request: inputs.makeInputRequest(with: text),
+            let request = try inputs.requireInputRequest()
+            let result = try await self.context.dialogs.enterText(
+                text: request.text,
+                fieldIdentifier: request.fieldIdentifier,
+                clearExisting: request.clearExisting,
+                windowTitle: windowTitle,
+                appName: appHint)
+            let notes = request.fieldIdentifier ?? "field"
+            return self.formatActionResult(
+                context: ActionResultContext(
+                    verb: "Entered text",
+                    notes: notes,
+                    windowTitle: windowTitle,
+                    appHint: appHint),
+                result: result,
                 startTime: startTime)
+
         case .file:
-            let selection = try inputs.requireFileSelection()
-            return try await self.handleFile(service: service, selection: selection, startTime: startTime)
+            let request = inputs.fileRequest()
+            let actionButton: String?
+            if let select = request.select {
+                let normalized = select.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                actionButton = normalized == "default" ? nil : select
+            } else {
+                actionButton = nil
+            }
+
+            let result = try await self.context.dialogs.handleFileDialog(
+                path: request.path,
+                filename: request.name,
+                actionButton: actionButton,
+                ensureExpanded: request.ensureExpanded,
+                appName: appHint)
+
+            let executionTime = Date().timeIntervalSince(startTime)
+            let clicked = result.details["button_clicked"] ?? (request.select ?? "default")
+            let savedPath = result.details["saved_path"]
+            let savedVerified = result.details["saved_path_verified"] == "true" ||
+                result.details["saved_path_exists"] == "true"
+
+            var message = "\(AgentDisplayTokens.Status.success) Handled file dialog"
+            if let savedPath {
+                let verifySuffix = savedVerified ? " (verified)" : ""
+                message += ": \(clicked) → \(savedPath)\(verifySuffix)"
+            } else {
+                message += ": clicked \(clicked)"
+            }
+            message += " in \(Self.formattedDuration(executionTime))"
+
+            let meta: Value = .object([
+                "action": .string(result.action.rawValue),
+                "success": .bool(result.success),
+                "execution_time": .double(executionTime),
+                "details": .object(result.details.mapValues { .string($0) }),
+            ])
+
+            let summary = ToolEventSummary(
+                targetApp: appHint,
+                windowTitle: windowTitle,
+                actionDescription: "Dialog File",
+                notes: savedPath ?? clicked)
+
+            return ToolResponse(
+                content: [.text(message)],
+                meta: ToolEventSummary.merge(summary: summary, into: meta))
+
         case .dismiss:
-            return try await self.handleDismiss(
-                service: service,
-                request: inputs.makeDismissRequest(),
+            let force = inputs.force ?? false
+            let result = try await self.context.dialogs.dismissDialog(
+                force: force,
+                windowTitle: windowTitle,
+                appName: appHint)
+            let verb = force ? "Dismissed (forced)" : "Dismissed"
+            return self.formatActionResult(
+                context: ActionResultContext(
+                    verb: verb,
+                    notes: nil,
+                    windowTitle: windowTitle,
+                    appHint: appHint),
+                result: result,
                 startTime: startTime)
         }
     }
 
-    private func handleList(
-        service: any DialogServiceProtocol,
-        window: String?,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let elements = try await service.listDialogElements(windowTitle: window)
-        let executionTime = Date().timeIntervalSince(startTime)
-        return DialogListFormatter(elements: elements, executionTime: executionTime).response()
+    private struct ActionResultContext {
+        let verb: String
+        let notes: String?
+        let windowTitle: String?
+        let appHint: String?
     }
 
-    private func handleClick(
-        service: any DialogServiceProtocol,
-        button: String,
-        window: String?,
-        startTime: Date) async throws -> ToolResponse
+    private func formatActionResult(
+        context: ActionResultContext,
+        result: DialogActionResult,
+        startTime: Date) -> ToolResponse
     {
-        let result = try await service.clickButton(buttonText: button, windowTitle: window)
         let executionTime = Date().timeIntervalSince(startTime)
+        let message = "\(AgentDisplayTokens.Status.success) \(context.verb) in \(Self.formattedDuration(executionTime))"
 
-        if result.success {
-            let summary =
-                "\(AgentDisplayTokens.Status.success) Clicked button '\(button)' in " +
-                "\(Self.formattedDuration(executionTime))s"
-            let summaryMeta = ToolEventSummary(
-                targetApp: window,
-                actionDescription: "Dialog Button",
-                notes: button)
-            return self.successResponse(
-                message: summary,
-                meta: [
-                    "button_text": .string(button),
-                    "action": .string(result.action.rawValue),
-                    "success": .bool(result.success),
-                    "execution_time": .double(executionTime),
-                    "details": .object(result.details.mapValues { .string($0) }),
-                ],
-                summary: summaryMeta)
-        } else {
-            return ToolResponse
-                .error("Failed to click button '\(button)': \(result.details["error"] ?? "Unknown error")")
+        let meta: Value = .object([
+            "action": .string(result.action.rawValue),
+            "success": .bool(result.success),
+            "execution_time": .double(executionTime),
+            "details": .object(result.details.mapValues { .string($0) }),
+        ])
+
+        let summary = ToolEventSummary(
+            targetApp: context.appHint,
+            windowTitle: context.windowTitle,
+            actionDescription: "Dialog \(context.verb)",
+            notes: context.notes)
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: meta))
+    }
+
+    private func formatList(
+        elements: DialogElements,
+        executionTime: TimeInterval,
+        windowTitle: String?,
+        appHint: String?) -> ToolResponse
+    {
+        let dialogTitle = elements.dialogInfo.title
+        let buttonTitles = elements.buttons.map(\.title)
+        let textFields = elements.textFields.map { field in
+            [
+                "title": field.title ?? "",
+                "value": field.value ?? "",
+                "placeholder": field.placeholder ?? "",
+            ]
         }
+        let staticTexts = elements.staticTexts
+
+        let message = "\(AgentDisplayTokens.Status.success) Dialog '\(dialogTitle)' " +
+            "(buttons=\(buttonTitles.count), fields=\(textFields.count), text=\(staticTexts.count)) " +
+            "in \(Self.formattedDuration(executionTime))"
+
+        let meta: Value = .object([
+            "title": .string(dialogTitle),
+            "role": .string(elements.dialogInfo.role),
+            "buttons": .array(buttonTitles.map(Value.string)),
+            "text_fields": .array(textFields.map { .object($0.mapValues(Value.string)) }),
+            "text_elements": .array(staticTexts.map(Value.string)),
+            "execution_time": .double(executionTime),
+        ])
+
+        let summary = ToolEventSummary(
+            targetApp: appHint,
+            windowTitle: windowTitle,
+            actionDescription: "Dialog List",
+            notes: dialogTitle)
+
+        return ToolResponse(
+            content: [.text(message)],
+            meta: ToolEventSummary.merge(summary: summary, into: meta))
     }
 
-    private func handleInput(
-        service: any DialogServiceProtocol,
-        request: DialogInputRequest,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let result = try await service.enterText(
-            text: request.text,
-            fieldIdentifier: request.field,
-            clearExisting: request.clear,
-            windowTitle: request.window)
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        if result.success {
-            let fieldDesc = request.field ?? "field"
-            let clearSuffix = request.clear ? " (cleared first)" : ""
-            let message =
-                "\(AgentDisplayTokens.Status.success) Entered text '\(request.text)' into \(fieldDesc)\(clearSuffix) " +
-                "in \(Self.formattedDuration(executionTime))s"
-            let summaryMeta = ToolEventSummary(
-                targetApp: request.window,
-                actionDescription: "Dialog Input",
-                notes: fieldDesc)
-            return self.successResponse(
-                message: message,
-                meta: [
-                    "text": .string(request.text),
-                    "field": .string(request.field ?? ""),
-                    "clear": .bool(request.clear),
-                    "action": .string(result.action.rawValue),
-                    "success": .bool(result.success),
-                    "execution_time": .double(executionTime),
-                    "details": .object(result.details.mapValues { .string($0) }),
-                ],
-                summary: summaryMeta)
-        } else {
-            return ToolResponse.error("Failed to enter text: \(result.details["error"] ?? "Unknown error")")
-        }
-    }
-
-    private func handleFile(
-        service: any DialogServiceProtocol,
-        selection: DialogFileSelection,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let result = try await service.handleFileDialog(
-            path: selection.directory,
-            filename: selection.filename,
-            actionButton: "Save",
-            ensureExpanded: false)
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        if result.success {
-            let summary =
-                "\(AgentDisplayTokens.Status.success) Selected file '\(selection.path)' " +
-                "in \(Self.formattedDuration(executionTime))s"
-            let summaryMeta = ToolEventSummary(
-                actionDescription: "Dialog File",
-                notes: selection.filename)
-            return self.successResponse(
-                message: summary,
-                meta: [
-                    "path": .string(selection.path),
-                    "filename": .string(selection.filename),
-                    "directory": .string(selection.directory),
-                    "action": .string(result.action.rawValue),
-                    "success": .bool(result.success),
-                    "execution_time": .double(executionTime),
-                    "details": .object(result.details.mapValues { .string($0) }),
-                ],
-                summary: summaryMeta)
-        } else {
-            return ToolResponse.error("Failed to select file: \(result.details["error"] ?? "Unknown error")")
-        }
-    }
-
-    private func handleDismiss(
-        service: any DialogServiceProtocol,
-        request: DialogDismissRequest,
-        startTime: Date) async throws -> ToolResponse
-    {
-        let result = try await service.dismissDialog(force: request.force, windowTitle: request.window)
-        let executionTime = Date().timeIntervalSince(startTime)
-
-        if result.success {
-            let method = request.force ? "force (Escape key)" : "normal"
-            let summary =
-                "\(AgentDisplayTokens.Status.success) Dismissed dialog using \(method) in " +
-                "\(Self.formattedDuration(executionTime))s"
-            let summaryMeta = ToolEventSummary(
-                targetApp: request.window,
-                actionDescription: "Dialog Dismiss",
-                notes: method)
-            return self.successResponse(
-                message: summary,
-                meta: [
-                    "force": .bool(request.force),
-                    "action": .string(result.action.rawValue),
-                    "success": .bool(result.success),
-                    "execution_time": .double(executionTime),
-                    "details": .object(result.details.mapValues { .string($0) }),
-                ],
-                summary: summaryMeta)
-        } else {
-            return ToolResponse.error("Failed to dismiss dialog: \(result.details["error"] ?? "Unknown error")")
-        }
-    }
-
-    private func successResponse(message: String, meta: [String: Value], summary: ToolEventSummary) -> ToolResponse {
-        ToolResponse(content: [.text(message)], meta: ToolEventSummary.merge(summary: summary, into: .object(meta)))
-    }
-
-    static func formattedDuration(_ duration: TimeInterval) -> String {
-        String(format: "%.2f", duration)
+    private static func formattedDuration(_ duration: TimeInterval) -> String {
+        String(format: "%.2fs", duration)
     }
 }
 
-// MARK: - Dialog Inputs & Actions
-
-private enum DialogAction: String, CaseIterable {
+private enum DialogToolAction: String, CaseIterable {
     case list
     case click
     case input
     case file
     case dismiss
 
-    var description: String { self.rawValue }
-
-    static var supportedList: String {
-        allCases.map(\.rawValue).joined(separator: ", ")
+    init(arguments: ToolArguments) throws {
+        guard let raw = arguments.getString("action") else {
+            throw DialogToolInputError.missing("action")
+        }
+        guard let value = DialogToolAction(rawValue: raw) else {
+            throw DialogToolInputError.invalid("action", raw)
+        }
+        self = value
     }
 }
 
-private struct DialogInputs {
+private enum DialogToolInputError: LocalizedError {
+    case missing(String)
+    case invalid(String, String)
+    case missingForAction(action: DialogToolAction, field: String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .missing(field):
+            "Missing required parameter: \(field)"
+        case let .invalid(field, value):
+            "Invalid \(field): \(value)"
+        case let .missingForAction(action, field):
+            "Missing required parameter for \(action.rawValue): \(field)"
+        }
+    }
+}
+
+private struct DialogToolInputs {
+    let app: String?
+    let pid: Int?
+    let windowId: Int?
+    let windowTitle: String?
+    let windowIndex: Int?
+
     let button: String?
     let text: String?
     let field: String?
+    let fieldIndex: Int?
     let clear: Bool
+
     let path: String?
+    let name: String?
     let select: String?
-    let window: String?
-    let force: Bool
+    let ensureExpanded: Bool
+
+    let force: Bool?
 
     init(arguments: ToolArguments) {
+        self.app = arguments.getString("app")
+        self.pid = arguments.getInt("pid")
+        self.windowId = arguments.getInt("window_id")
+        self.windowTitle = arguments.getString("window_title")
+        self.windowIndex = arguments.getInt("window_index")
+
         self.button = arguments.getString("button")
         self.text = arguments.getString("text")
         self.field = arguments.getString("field")
+        self.fieldIndex = arguments.getInt("field_index")
         self.clear = arguments.getBool("clear") ?? false
+
         self.path = arguments.getString("path")
+        self.name = arguments.getString("name")
         self.select = arguments.getString("select")
-        self.window = arguments.getString("window")
-        self.force = arguments.getBool("force") ?? false
+        self.ensureExpanded = arguments.getBool("ensure_expanded") ?? false
+
+        self.force = arguments.getBool("force")
+    }
+
+    var hasAnyTargeting: Bool {
+        !(self.app?.isEmpty ?? true) ||
+            self.pid != nil ||
+            self.windowId != nil ||
+            !(self.windowTitle?.isEmpty ?? true) ||
+            self.windowIndex != nil
     }
 
     func requireButton() throws -> String {
-        guard let button else {
-            throw DialogInputError.missing("Click action requires 'button' parameter")
+        guard let button, !button.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw DialogToolInputError.missingForAction(action: .click, field: "button")
         }
         return button
     }
 
-    func requireText() throws -> String {
-        guard let text else {
-            throw DialogInputError.missing("Input action requires 'text' parameter")
+    struct DialogInputRequest {
+        let text: String
+        let fieldIdentifier: String?
+        let clearExisting: Bool
+    }
+
+    func requireInputRequest() throws -> DialogInputRequest {
+        guard let text, !text.isEmpty else {
+            throw DialogToolInputError.missingForAction(action: .input, field: "text")
         }
-        return text
-    }
 
-    func requireFileSelection() throws -> DialogFileSelection {
-        let target = self.path ?? self.select
-        guard let target else {
-            throw DialogInputError.missing("File action requires either 'path' or 'select' parameter")
+        let identifier: String? = if let field, !field.isEmpty {
+            field
+        } else if let fieldIndex {
+            String(fieldIndex)
+        } else {
+            nil
         }
-        let url = URL(fileURLWithPath: target)
-        return DialogFileSelection(
-            path: target,
-            directory: url.deletingLastPathComponent().path,
-            filename: url.lastPathComponent)
+
+        return DialogInputRequest(text: text, fieldIdentifier: identifier, clearExisting: self.clear)
     }
 
-    func makeInputRequest(with text: String) -> DialogInputRequest {
-        DialogInputRequest(text: text, field: self.field, clear: self.clear, window: self.window)
+    struct DialogFileRequest {
+        let path: String?
+        let name: String?
+        let select: String?
+        let ensureExpanded: Bool
     }
 
-    func makeDismissRequest() -> DialogDismissRequest {
-        DialogDismissRequest(force: self.force, window: self.window)
-    }
-}
-
-private enum DialogInputError: Error {
-    case missing(String)
-
-    var message: String {
-        switch self {
-        case let .missing(details):
-            details
-        }
-    }
-}
-
-private struct DialogInputRequest {
-    let text: String
-    let field: String?
-    let clear: Bool
-    let window: String?
-}
-
-private struct DialogFileSelection {
-    let path: String
-    let directory: String
-    let filename: String
-}
-
-private struct DialogDismissRequest {
-    let force: Bool
-    let window: String?
-}
-
-// MARK: - Dialog List Formatting
-
-private struct DialogListFormatter {
-    let elements: DialogElements
-    let executionTime: TimeInterval
-
-    func response() -> ToolResponse {
-        let summary = ToolEventSummary(
-            targetApp: self.elements.dialogInfo.title,
-            actionDescription: "List Dialog",
-            notes: self.elements.dialogInfo.title)
-        return ToolResponse(
-            content: [.text(self.renderContent())],
-            meta: ToolEventSummary.merge(summary: summary, into: .object(self.metaDictionary())))
-    }
-
-    private func renderContent() -> String {
-        var sections: [String] = []
-        sections.append(self.dialogSection())
-        if !self.elements.buttons.isEmpty { sections.append(self.buttonSection()) }
-        if !self.elements.textFields.isEmpty { sections.append(self.textFieldSection()) }
-        if !self.elements.staticTexts.isEmpty { sections.append(self.staticTextSection()) }
-        if !self.elements.otherElements.isEmpty { sections.append(self.otherElementsSection()) }
-        return sections.joined(separator: "\n")
-    }
-
-    private func dialogSection() -> String {
-        var lines: [String] = []
-        lines.append(
-            "\(AgentDisplayTokens.Status.success) Dialog Elements Found in " +
-                "\(DialogTool.formattedDuration(self.executionTime))s:\n")
-        lines.append("[menu] **Dialog**: \(self.elements.dialogInfo.title)")
-        lines.append("   Role: \(self.elements.dialogInfo.role)")
-        if let subrole = elements.dialogInfo.subrole {
-            lines.append("   Subrole: \(subrole)")
-        }
-        lines.append("   File Dialog: \(self.elements.dialogInfo.isFileDialog ? "Yes" : "No")")
-        let bounds = self.elements.dialogInfo.bounds
-        lines.append(
-            "   Bounds: \(Int(bounds.origin.x)), \(Int(bounds.origin.y)), " +
-                "\(Int(bounds.size.width)) × \(Int(bounds.size.height))\n")
-        return lines.joined(separator: "\n")
-    }
-
-    private func buttonSection() -> String {
-        var lines = ["[tap] **Buttons** (\(elements.buttons.count)):"]
-        for button in self.elements.buttons {
-            let status = button.isEnabled ? "enabled" : "disabled"
-            let defaultMark = button.isDefault ? " (default)" : ""
-            lines.append("   • \(button.title) (\(status))\(defaultMark)")
-        }
-        return lines.joined(separator: "\n") + "\n"
-    }
-
-    private func textFieldSection() -> String {
-        var lines = ["📝 **Text Fields** (\(elements.textFields.count)):"]
-        for textField in self.elements.textFields {
-            let title = textField.title ?? "Field \(textField.index)"
-            let value = textField.value ?? ""
-            let placeholder = textField.placeholder.map { " (placeholder: \($0))" } ?? ""
-            let status = textField.isEnabled ? "enabled" : "disabled"
-            lines.append("   • \(title): '\(value)' (\(status))\(placeholder)")
-        }
-        return lines.joined(separator: "\n") + "\n"
-    }
-
-    private func staticTextSection() -> String {
-        var lines = ["📄 **Static Text** (\(elements.staticTexts.count)):"]
-        self.elements.staticTexts.forEach { lines.append("   • \($0)") }
-        return lines.joined(separator: "\n") + "\n"
-    }
-
-    private func otherElementsSection() -> String {
-        var lines = ["**Other Elements** (\(elements.otherElements.count)):"]
-        for element in self.elements.otherElements {
-            let title = element.title ?? "Untitled"
-            let value = element.value.map { " = '\($0)'" } ?? ""
-            lines.append("   • \(element.role): \(title)\(value)")
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    private func metaDictionary() -> [String: Value] {
-        [
-            "dialog_title": .string(self.elements.dialogInfo.title),
-            "dialog_role": .string(self.elements.dialogInfo.role),
-            "is_file_dialog": .bool(self.elements.dialogInfo.isFileDialog),
-            "button_count": .double(Double(self.elements.buttons.count)),
-            "text_field_count": .double(Double(self.elements.textFields.count)),
-            "static_text_count": .double(Double(self.elements.staticTexts.count)),
-            "other_element_count": .double(Double(self.elements.otherElements.count)),
-            "execution_time": .double(self.executionTime),
-        ]
+    func fileRequest() -> DialogFileRequest {
+        DialogFileRequest(path: self.path, name: self.name, select: self.select, ensureExpanded: self.ensureExpanded)
     }
 }

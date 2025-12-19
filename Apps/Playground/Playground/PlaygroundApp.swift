@@ -334,6 +334,13 @@ struct PlaygroundApp: App {
         }
         .windowResizability(.contentSize)
 
+        WindowGroup("Dialog Fixture", id: "fixture-dialog") {
+            DialogFixtureView()
+                .environmentObject(self.actionLogger)
+                .frame(minWidth: 1200, minHeight: 800)
+        }
+        .windowResizability(.contentSize)
+
         WindowGroup("Scroll Fixture", id: "fixture-scroll") {
             ScrollTestingView()
                 .environmentObject(self.actionLogger)
