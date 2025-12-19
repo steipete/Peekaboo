@@ -2,63 +2,53 @@
 
 ## [Unreleased]
 
-### Breaking
-- Removed external MCP client support (`peekaboo mcp add/list/test/call/enable/disable`). `peekaboo mcp` now defaults to `serve`, and `mcpClients` configuration is no longer supported.
-
-## [3.0.0-beta2] - 2025-12-18
+## [3.0.0-beta2] - 2025-12-19
 
 ### Highlights
-- **Peekaboo Bridge is now socket-based**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdis.app) and the CLI connects over a UNIX socket instead of using the v3.0.0-beta1 XPC helper model.
-- **Automation “sessions” are now “snapshots”**: snapshots live in memory by default, are scoped **per target bundle ID**, and are reused automatically for follow-up actions (agent-friendly, fewer IDs to plumb around).
-- **CLI reliability improvements**: hard wall-clock timeouts and bounded AX traversal to prevent hangs and make “single action” automation dependable.
-- **Visualizer extracted + stabilized**: overlay UI lives in `PeekabooVisualizer`, with better preview timings and less clipping.
+- **Socket-based Peekaboo Bridge**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdis.app) and the CLI connects over a UNIX socket (replacing the v3.0.0-beta1 XPC helper model).
+- **Snapshots replace sessions**: snapshots live in memory by default, are scoped **per target bundle ID**, and are reused automatically for follow-up actions (agent-friendly; fewer IDs to plumb around).
+- **MCP server-only**: Peekaboo still runs as an MCP server for Claude Desktop/Cursor/etc, but no longer hosts/manages external MCP servers.
+- **Reliability upgrades for “single action” automation**: hard wall-clock timeouts and bounded AX traversal to prevent hangs.
+- **Visualizer extracted + stabilized**: overlay UI lives in `PeekabooVisualizer`, with improved preview timings and less clipping.
 
 ### Breaking
 - Removed the v3.0.0-beta1 XPC helper pathway; remote execution now uses the **Peekaboo Bridge** socket host model.
 - Renamed automation “sessions” → “snapshots” across CLI output, cache/paths, and APIs.
-- CLI builds now target **macOS 15+** (project baseline + Swiftdansi minimum).
-- Swiftdansi is now vendored as a **git submodule** (no sibling checkout path required).
+- Removed external MCP client support (`peekaboo mcp add/list/test/call/enable/disable` removed); `peekaboo mcp` now defaults to `serve`, and `mcpClients` configuration is no longer supported.
+- CLI builds now target **macOS 15+**.
 
 ### Added
+- `peekaboo paste`: set clipboard content, paste (Cmd+V), then restore the prior clipboard (text, files/images, base64 payloads).
+- Deterministic window targeting via `--window-id` to avoid title/index ambiguity.
 - `peekaboo bridge status` diagnostics for host selection/handshake/security; plus runtime controls `--bridge-socket` and `--no-remote`.
 - Bridge security: caller validation via **code signature TeamID allowlist** (and optional bundle allowlist), with a **debug-only** same-UID escape hatch (`PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1`).
-- `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`; docs + tests cover precedence and errors.
-- `peekaboo learn` renders its guide as ANSI-styled markdown via Swiftdansi on rich terminals, while still emitting plain markdown when piped.
+- `peekaboo hotkey` accepts the key combo as a positional argument (in addition to `--keys`) for quick one-liners like `peekaboo hotkey "cmd,shift,t"`.
+- `peekaboo learn` renders its guide as ANSI-styled markdown on rich terminals, while still emitting plain markdown when piped.
 - Agent providers now include `gemini-3-flash`, expanding the out-of-the-box model catalog for `peekaboo agent`.
-- Agent streaming loop now injects `DESKTOP_STATE` (focused app/window title, cursor position, and clipboard preview when the `clipboard` tool is enabled) as untrusted, delimited context (system policy + user data) to improve situational awareness.
+- Agent streaming loop now injects `DESKTOP_STATE` (focused app/window title, cursor position, and clipboard preview when the `clipboard` tool is enabled) as untrusted, delimited context to improve situational awareness.
 - Peekaboo’s macOS app now surfaces About/Updates inside Settings (Sparkle update checks when signed/bundled).
 
 ### Changed
 - Bridge host discovery order is now: **Peekaboo.app → Clawdis.app → local in-process** (no auto-launch).
 - Capture defaults favor the classic engine for speed/reliability, with explicit capture-engine flags when you need SCKit behavior.
-- Menu bar helper now returns a lightweight list of window IDs and menu extras enrich metadata locally (keeps menubar discovery robust after helper refactors).
-- `scripts/poltergeist-wrapper.sh` always allocates a PTY for `peekaboo` targets so ANSI rendering stays enabled in CI and scripted runs.
 - Agent defaults now prefer Claude Opus 4.5 when available, with improved streaming output for supported providers.
 - OpenAI model aliases now map to the latest GPT-5.1 variants for `peekaboo agent`.
 
 ### Fixed
-- Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of requested timing.
+- ScreenCaptureKit window capture no longer returns black frames for GPU-rendered windows (notably iOS Simulator), and display-bound crops now use display-local `sourceRect` coordinates on secondary monitors.
+- `peekaboo see` is now bounded for “single action” use (10s wall-clock timeout without `--analyze`), and timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
+- Dialog file automation is more reliable: can force “Show Details” (`--ensure-expanded`) and verifies the saved path when possible.
 - App resolution now prioritizes exact name matches over bundleID-contains matches, preventing `--app Safari` from accidentally matching helper processes with “Safari” in their bundle ID.
-- ScreenCaptureKit window capture no longer returns black frames for GPU-rendered windows (notably iOS Simulator), and display-bound crops now use display-local `sourceRect` coordinates on secondary monitors (thanks @bheemreddy-samsara).
-- `peekaboo see` is now bounded for “single action” use:
-  - Without `--analyze`, the overall wall-clock timeout is **10 seconds**.
-  - `--json` output skips menubar enumeration unless `--verbose` is set, and timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
 - UI element detection enforces conservative traversal limits (depth/node/child caps) plus a detection deadline, making runaway AX trees safe.
 - Listing apps via a bridge no longer risks timing out: window counts now use CGWindowList instead of per-app AX enumeration.
-- Screen capture waiting no longer leaves a continuation dangling after completion, eliminating rare leaks and stalled capture streams.
-- AppleScript Automation permission probing is more stable (fixes descriptor lifetime/double-free issues) and less flaky under load.
-- Video capture/ingest timestamps now come from the video timeline (not wall clock), and frame seeking is more accurate.
-- `peekaboo image`: when `--format` is omitted, infer the output encoding from `--path` extension (`.jpg/.jpeg` → JPEG, `.png` → PNG) to prevent writing PNG data into `.jpg` files.
-- `peekaboo image`: reject conflicting `--format` and `--path` extension values (e.g. `--format jpg --path /tmp/x.png`) to prevent mislabeled captures.
+- Visualizer previews now respect their full duration before fading out; overlays no longer disappear in ~0.3s regardless of requested timing.
+- `peekaboo image`: infer output encoding from `--path` extension when `--format` is omitted, and reject conflicting `--format` vs `--path` extension values.
+- `peekaboo image --analyze`: Ollama vision models are now supported.
 - `peekaboo click --coords` no longer crashes on invalid input; invalid coordinates now fail with a structured validation error.
 - Auto-focus no longer no-ops when a snapshot is missing a `windowID`, preventing follow-up actions from landing in the wrong frontmost app.
 - `peekaboo window list` no longer returns duplicate entries for the same window.
 - `peekaboo capture live` avoids window-index mismatches that could attach to the wrong window when multiple candidates are present.
 - Bridge hosts that reject the CLI now reply with a structured `unauthorizedClient` error response instead of closing the socket (EOF), and the CLI error message includes actionable guidance for older hosts.
-
-### Developer Workflow
-- Release build scripts now sign the CLI with `Identifier=boo.peekaboo.peekaboo` (aligns with bridge allowlists used by Peekaboo.app/hosts).
-- Added/updated local restart helpers and tightened CI reliability (Xcode pinning, SwiftPM trait cache cleanup, docs lint stability).
 
 ## [3.0.0-beta1] - 2025-11-25
 

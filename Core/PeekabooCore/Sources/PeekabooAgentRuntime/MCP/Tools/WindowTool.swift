@@ -34,7 +34,7 @@ public struct WindowTool: MCPTool {
         - { "action": "move", "app": "TextEdit", "x": 100, "y": 100 }
         - { "action": "set-bounds", "app": "Terminal", "x": 0, "y": 0, "width": 1280, "height": 720 }
         - { "action": "close", "app": "Safari", "title": "Grindr Web" }
-        Peekaboo MCP 3.0.0-beta1 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta2 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
         """
     }
 

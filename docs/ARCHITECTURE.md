@@ -51,7 +51,7 @@ This document provides a high-level overview of how Tachikoma and PeekabooCore w
 
 **PeekabooAgentRuntime**
 - Imports `PeekabooAutomation` for services/models and hosts MCP/agent tooling (`PeekabooAgentService`, `MCPToolContext`, `ToolRegistry`, CLI/MCP formatters).
-- Provides a clean `PeekabooServiceProviding` protocol so higher layers (CLI, macOS app, Tachikoma MCP host) can swap concrete service collections without touching globals.
+- Provides a clean `PeekabooServiceProviding` protocol so higher layers (CLI, macOS app, and the MCP server entrypoints) can swap concrete service collections without touching globals.
 
 **PeekabooVisualizer**
 - Stays decoupled from automation; only consumes `PeekabooProtocols` data (`DetectedElement`, `LogLevel`) so it can be embedded in other contexts later.

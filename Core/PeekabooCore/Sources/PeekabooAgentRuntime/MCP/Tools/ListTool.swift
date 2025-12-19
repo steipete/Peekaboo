@@ -22,7 +22,7 @@ public struct ListTool: MCPTool {
     - { "item_type": "running_applications" }
     - { "item_type": "application_windows", "app": "Notes", "include_window_details": ["ids", "bounds"] }
     - { "item_type": "server_status" }
-    Peekaboo MCP 3.0.0-beta1 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+    Peekaboo MCP 3.0.0-beta2 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
     """
 
     public var inputSchema: Value {
@@ -142,7 +142,7 @@ public struct ListTool: MCPTool {
         // 1. Server version
         sections.append("# Peekaboo MCP Server Status")
         sections.append("")
-        sections.append("Version: 3.0.0-beta1")
+        sections.append("Version: 3.0.0-beta2")
         sections.append("Platform: macOS")
         sections.append("")
 
