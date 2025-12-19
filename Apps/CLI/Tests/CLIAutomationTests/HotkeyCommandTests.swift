@@ -26,7 +26,7 @@ import Testing
 
         // Test with app
         let command5 = try HotkeyCommand.parse(["--keys", "cmd,c", "--app", "TextEdit"])
-        #expect(command5.app == "TextEdit")
+        #expect(command5.target.app == "TextEdit")
     }
 
     @Test func invalidInputHandling() async throws {
