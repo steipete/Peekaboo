@@ -46,6 +46,7 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             Configuration(
                 mode: .manual,
                 bridgeSocketPath: bridgeSocketPath,
+                allowlistedTeams: [],
                 windowTrackingEnabled: true,
                 windowPollInterval: windowPollInterval,
                 hostKind: .onDemand)
@@ -58,6 +59,7 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             Configuration(
                 mode: .mcp,
                 bridgeSocketPath: bridgeSocketPath,
+                allowlistedTeams: [],
                 windowTrackingEnabled: true,
                 windowPollInterval: windowPollInterval,
                 hostKind: .inProcess,
