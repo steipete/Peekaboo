@@ -7,19 +7,19 @@ read_when:
 
 # `peekaboo dialog`
 
-`dialog` wraps `DialogService` so you can programmatically inspect, click, type into, dismiss, or drive file dialogs without re-running `see`. Pass a target (`--app`/`--pid` plus optional `--window-title`/`--window-index`) whenever possible so Peekaboo can focus the right app/window before interacting.
+`dialog` wraps `DialogService` so you can programmatically inspect, click, type into, dismiss, or drive file dialogs without re-running `see`. Pass a target (`--app`/`--pid` plus optional `--window-id`/`--window-title`/`--window-index`) whenever possible so Peekaboo can focus the right app/window before interacting.
 
 ## Subcommands
 | Name | Purpose | Key options |
 | --- | --- | --- |
-| `click` | Press a dialog button. | `--button <label>` (required), optional `--app`/`--pid`, `--window-title`/`--window-index`. |
-| `input` | Enter text into a dialog field. | `--text`, optional `--field <label>` or `--index <0-based>`, `--clear`, plus `--app`/`--pid`, `--window-title`/`--window-index`. |
-| `file` | Drive NSOpenPanel/NSSavePanel style dialogs. | `--path <dir>`, `--name <filename>`, `--select <button>` (omit / `default` clicks OKButton), `--ensure-expanded`, optional `--app`/`--pid`, `--window-title`/`--window-index`. Save-like actions verify the file exists and return `saved_path`. |
-| `dismiss` | Close the current dialog. | `--force` (sends Esc), optional `--app`/`--pid`, `--window-title`/`--window-index`. |
-| `list` | Print dialog metadata (buttons, text fields, static text) for debugging. | Optional `--app`/`--pid`, `--window-title`/`--window-index`. |
+| `click` | Press a dialog button. | `--button <label>` (required), optional `--app`/`--pid`, optional `--window-id`/`--window-title`/`--window-index`. |
+| `input` | Enter text into a dialog field. | `--text`, optional `--field <label>` or `--index <0-based>`, `--clear`, plus `--app`/`--pid`, optional `--window-id`/`--window-title`/`--window-index`. |
+| `file` | Drive NSOpenPanel/NSSavePanel style dialogs. | `--path <dir>`, `--name <filename>`, `--select <button>` (omit / `default` clicks OKButton), `--ensure-expanded`, optional `--app`/`--pid`, optional `--window-id`/`--window-title`/`--window-index`. Save-like actions verify the file exists and return `saved_path`. |
+| `dismiss` | Close the current dialog. | `--force` (sends Esc), optional `--app`/`--pid`, optional `--window-id`/`--window-title`/`--window-index`. |
+| `list` | Print dialog metadata (buttons, text fields, static text) for debugging. | Optional `--app`/`--pid`, optional `--window-id`/`--window-title`/`--window-index`. |
 
 ## Implementation notes
-- `dialog` subcommands share the same targeting flags as other interaction commands (`--app`/`--pid` plus `--window-title`/`--window-index`) and use the same focus helpers before interacting.
+- `dialog` subcommands share the same targeting flags as other interaction commands (`--app`/`--pid` plus `--window-id`/`--window-title`/`--window-index`) and use the same focus helpers before interacting.
 - Button clicks and text entry route through `services.dialogs` helpers, which return dictionaries describing what happened; JSON output exposes those details verbatim (`button`, `field`, `text_length`, etc.).
 - `dialog input` accepts either a field label (`--field`) or an index; when neither is provided it targets the first text field. `--clear` issues a Cmd+A/Delete before typing.
 - `dialog file` can both navigate to a path and fill the filename field, then clicks the action button you specify (`--select Save`, `--select Open`, etc.). Leave `--path` blank to simply confirm the current directory.

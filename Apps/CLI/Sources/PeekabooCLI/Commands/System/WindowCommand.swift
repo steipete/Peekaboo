@@ -25,6 +25,7 @@ struct WindowCommand: ParsableCommand {
           # Close a window
           peekaboo window close --app Safari
           peekaboo window close --app Safari --window-title "GitHub"
+          peekaboo window close --window-id 12345
 
           # Minimize/maximize windows
           peekaboo window minimize --app Finder
@@ -38,6 +39,7 @@ struct WindowCommand: ParsableCommand {
           # Focus a window
           peekaboo window focus --app "Visual Studio Code"
           peekaboo window focus --app Safari --window-title "Apple"
+          peekaboo window focus --window-id 12345
 
           # List windows (convenience shortcut)
           peekaboo window list --app Safari
@@ -86,9 +88,16 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
     @Option(name: .long, help: "Target window by index (0-based, frontmost is 0)")
     var windowIndex: Int?
 
+    @Option(
+        name: .long,
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json-output`)"
+    )
+    var windowId: Int?
+
     enum CodingKeys: String, CodingKey {
         case app
         case pid
+        case windowId
         case windowTitle
         case windowIndex
     }
@@ -99,20 +108,33 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.app = try container.decodeIfPresent(String.self, forKey: .app)
         self.pid = try container.decodeIfPresent(Int32.self, forKey: .pid)
+        self.windowId = try container.decodeIfPresent(Int.self, forKey: .windowId)
         self.windowTitle = try container.decodeIfPresent(String.self, forKey: .windowTitle)
         self.windowIndex = try container.decodeIfPresent(Int.self, forKey: .windowIndex)
     }
 
     func validate() throws {
+        if let windowId = self.windowId, windowId <= 0 {
+            throw ValidationError("--window-id must be greater than 0")
+        }
+
         // Ensure we have some way to identify the window
-        if self.app == nil && self.pid == nil {
-            throw ValidationError("Either --app or --pid must be specified")
+        if self.app == nil && self.pid == nil && self.windowId == nil {
+            throw ValidationError("Either --app, --pid, or --window-id must be specified")
+        }
+
+        if let index = self.windowIndex, index < 0 {
+            throw ValidationError("--window-index must be 0 or greater")
         }
     }
 
     /// Convert to WindowTarget for service layer
     func toWindowTarget() throws -> WindowTarget {
         // Convert to WindowTarget for service layer
+        if let windowId = self.windowId {
+            return .windowId(windowId)
+        }
+
         let appIdentifier = try self.resolveApplicationIdentifier()
 
         if let index = windowIndex {

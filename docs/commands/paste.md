@@ -19,7 +19,7 @@ This reduces drift by collapsing multiple CLI steps into one command.
 | `--data-base64` + `--uti` | Paste raw base64 payload with explicit UTI (e.g. `public.rtf`). |
 | `--also-text` | Optional plain-text companion when pasting binary. |
 | `--restore-delay-ms` | Delay before restoring the previous clipboard (default 150ms). |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pasting. |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pasting. |
 | Focus flags | Same as `click`/`type` (`--space-switch`, `--no-auto-focus`, etc.). |
 
 ## Examples

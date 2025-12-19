@@ -18,7 +18,7 @@ read_when:
 | `--snapshot <id>` | Override the snapshot used to resolve `--on`. Omit when you want to scroll wherever the pointer is. |
 | `--delay <ms>` | Milliseconds between ticks (default `2`). |
 | `--smooth` | Use smaller increments (3 micro ticks per requested tick) for finer movement. |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before scrolling. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before scrolling. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | Focus flags | `FocusCommandOptions` control Space switching + retries. |
 
 ## Implementation notes

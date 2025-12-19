@@ -686,6 +686,9 @@ extension WindowIdentificationOptions {
     /// Create a window target from options
     func createTarget() -> WindowTarget {
         // Create a window target from options
+        if let windowId {
+            return .windowId(windowId)
+        }
         if let app {
             if let index = windowIndex {
                 return .index(app: app, index: index)
@@ -702,7 +705,9 @@ extension WindowIdentificationOptions {
     @MainActor
     func selectWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
         // Select a window from a list based on options
-        if let title = windowTitle {
+        if let windowId {
+            windows.first(where: { $0.windowID == windowId })
+        } else if let title = windowTitle {
             windows.first { $0.title.localizedCaseInsensitiveContains(title) }
         } else if let index = windowIndex, index < windows.count {
             windows[index]

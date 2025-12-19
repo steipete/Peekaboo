@@ -173,6 +173,9 @@ extension CommanderBindableValues {
         if let pid: Int32 = try decodeOption("pid", as: Int32.self) {
             options.pid = pid
         }
+        if let windowId: Int = try decodeOption("windowId", as: Int.self) {
+            options.windowId = windowId
+        }
         options.windowTitle = self.singleOption("windowTitle")
         if let index: Int = try decodeOption("windowIndex", as: Int.self) {
             options.windowIndex = index
@@ -189,6 +192,9 @@ extension CommanderBindableValues {
         options.app = self.singleOption("app")
         if let pid: Int32 = try decodeOption("pid", as: Int32.self) {
             options.pid = pid
+        }
+        if let windowId: Int = try decodeOption("windowId", as: Int.self) {
+            options.windowId = windowId
         }
         options.windowTitle = self.singleOption("windowTitle")
         if let index: Int = try decodeOption("windowIndex", as: Int.self) {

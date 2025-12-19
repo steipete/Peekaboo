@@ -12,13 +12,13 @@ read_when:
 ## Subcommands
 | Subcommand | Purpose | Key options |
 | --- | --- | --- |
-| `click` | Activate an application menu item via `--item` (single-level) or `--path "File > Export > PDF"`. | Target flags `--app <name|bundle|PID:1234>`, optional `--pid`, `--window-title`/`--window-index`, plus all focus flags. Paths are normalized automatically if you accidentally pass a `'>'` string to `--item`. |
+| `click` | Activate an application menu item via `--item` (single-level) or `--path "File > Export > PDF"`. | Target flags `--app <name|bundle|PID:1234>`, optional `--pid`, optional `--window-id`/`--window-title`/`--window-index`, plus all focus flags. Paths are normalized automatically if you accidentally pass a `'>'` string to `--item`. |
 | `click-extra` | Click status-bar menu extras (Wi-Fi, Bluetooth, custom icons). | `--title <menu-extra>` is required; `--item` is parsed but currently prints a warning because nested extra menus aren’t implemented yet. |
 | `list` | Dump the menu tree for a specific app (optionally showing disabled items). | Same target flags as `click`, plus `--include-disabled`. |
 | `list-all` | Snapshot the frontmost app’s full menu tree *and* all system menu extras in one go. | `--include-disabled`, `--include-frames` (adds pixel coordinates for extras). |
 
 ## Implementation notes
-- `click`/`list` accept the same target flags as other interaction commands (`--app`/`--pid` plus optional `--window-title`/`--window-index`) and focus the best matching window before interacting. When no `--app`/`--pid` is provided, Peekaboo targets the frontmost app.
+- `click`/`list` accept the same target flags as other interaction commands (`--app`/`--pid` plus optional `--window-id`/`--window-title`/`--window-index`) and focus the best matching window before interacting. When no `--app`/`--pid` is provided, Peekaboo targets the frontmost app.
 - Menu focus uses `ensureFocusIgnoringMissingWindows`, which tolerates apps that keep a menu bar without a visible window (e.g., Finder when all windows are closed).
 - Any `--item` string that already contains `'>'` is automatically interpreted as a `--path` so agents don’t have to rewrite their inputs. The command even prints a note when this normalization occurs.
 - Errors bubble up as typed `MenuError`s; JSON mode maps them to specific error codes (`MENU_ITEM_NOT_FOUND`, `MENU_BAR_NOT_FOUND`, etc.) so CI can distinguish between missing apps vs. absent menu items.

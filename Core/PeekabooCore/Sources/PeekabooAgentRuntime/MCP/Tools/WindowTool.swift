@@ -26,6 +26,7 @@ public struct WindowTool: MCPTool {
         - focus: Bring a window to the foreground
 
         Target windows by application name and optionally by window title or index.
+        For deterministic targeting, prefer `window_id` (from `peekaboo window list`).
         Supports partial title matching for convenience.
 
         JSON Examples (ALWAYS include `action`):
@@ -49,6 +50,8 @@ public struct WindowTool: MCPTool {
                     description: "Window title to target (partial matching supported)"),
                 "index": SchemaBuilder.number(
                     description: "Window index (0-based) for multi-window applications"),
+                "window_id": SchemaBuilder.number(
+                    description: "Window ID (from window list); preferred stable selector"),
                 "x": SchemaBuilder.number(
                     description: "X coordinate for move or set-bounds action"),
                 "y": SchemaBuilder.number(
@@ -79,6 +82,7 @@ public struct WindowTool: MCPTool {
         let app = arguments.getString("app")
         let title = arguments.getString("title")
         let index = arguments.getInt("index")
+        let windowId = arguments.getInt("window_id")
         let x = arguments.getNumber("x")
         let y = arguments.getNumber("y")
         let width = arguments.getNumber("width")
@@ -88,6 +92,7 @@ public struct WindowTool: MCPTool {
             app: app,
             title: title,
             index: index,
+            windowId: windowId,
             x: x,
             y: y,
             width: width,
@@ -115,7 +120,11 @@ public struct WindowTool: MCPTool {
         service: any WindowManagementServiceProtocol,
         startTime: Date) async throws -> ToolResponse
     {
-        let target = try self.createWindowTarget(app: inputs.app, title: inputs.title, index: inputs.index)
+        let target = try self.createWindowTarget(
+            app: inputs.app,
+            title: inputs.title,
+            index: inputs.index,
+            windowId: inputs.windowId)
 
         switch action {
         case .close:
@@ -430,7 +439,11 @@ public struct WindowTool: MCPTool {
         String(format: "%.2f", duration)
     }
 
-    private func createWindowTarget(app: String?, title: String?, index: Int?) throws -> WindowTarget {
+    private func createWindowTarget(app: String?, title: String?, index: Int?, windowId: Int?) throws -> WindowTarget {
+        if let windowId {
+            return .windowId(windowId)
+        }
+
         if let app, let title {
             return .applicationAndTitle(app: app, title: title)
         }
@@ -447,7 +460,8 @@ public struct WindowTool: MCPTool {
             return .title(title)
         }
 
-        throw PeekabooError.invalidInput("Must specify at least 'app' or 'title' parameter to target a window")
+        throw PeekabooError
+            .invalidInput("Must specify at least 'window_id', 'app', or 'title' parameter to target a window")
     }
 }
 
@@ -467,6 +481,7 @@ private struct WindowActionInputs {
     let app: String?
     let title: String?
     let index: Int?
+    let windowId: Int?
     let x: Double?
     let y: Double?
     let width: Double?

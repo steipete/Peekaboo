@@ -16,7 +16,7 @@ read_when:
 | `--on <id>` / `--id <id>` | Target a specific Peekaboo element ID (e.g., `B1`, `T2`). |
 | `--coords x,y` | Click exact coordinates without touching the snapshot cache. |
 | `--snapshot <id>` | Reuse a prior snapshot; defaults to `services.snapshots.getMostRecentSnapshot()` when omitted. |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before clicking. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before clicking. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | `--wait-for <ms>` | Millisecond timeout while waiting for the element to appear (default 5000). |
 | `--double` / `--right` | Perform double-click or secondary-click instead of the default single click. |
 | Focus flags | `--no-auto-focus`, `--focus-timeout-seconds`, `--focus-retry-count`, `--space-switch`, `--bring-to-current-space` (see `FocusCommandOptions`). |

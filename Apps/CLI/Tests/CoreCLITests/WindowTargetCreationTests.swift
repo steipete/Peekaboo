@@ -46,4 +46,30 @@ struct WindowTargetCreationTests {
             Issue.record("Expected .application")
         }
     }
+
+    @Test("windowId creates .windowId")
+    func windowIdCreatesWindowId() {
+        var options = WindowIdentificationOptions()
+        options.windowId = 12345
+
+        switch options.createTarget() {
+        case let .windowId(id):
+            #expect(id == 12345)
+        default:
+            Issue.record("Expected .windowId")
+        }
+    }
+
+    @Test("toWindowTarget prefers windowId without app")
+    func toWindowTargetPrefersWindowId() throws {
+        var options = WindowIdentificationOptions()
+        options.windowId = 12345
+        let target = try options.toWindowTarget()
+        switch target {
+        case let .windowId(id):
+            #expect(id == 12345)
+        default:
+            Issue.record("Expected .windowId")
+        }
+    }
 }

@@ -14,7 +14,7 @@ read_when:
 | --- | --- |
 | `keys` / `--keys "cmd,c"` | Required list of keys (positional or `--keys`). Use commas or spaces; modifiers (`cmd`, `alt`, `ctrl`, `shift`, `fn`) can be mixed with letters/numbers/special keys. |
 | `--hold-duration <ms>` | Milliseconds to hold the combo before releasing (default `50`). |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before firing the hotkey. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before firing the hotkey. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | `--snapshot <id>` | Optional snapshot ID used for validation/focus (no implicit “latest snapshot” lookup). |
 | Focus flags | All `FocusCommandOptions` flags apply; focus runs when `--snapshot` or a target flag is present. |
 

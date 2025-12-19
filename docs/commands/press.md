@@ -17,7 +17,7 @@ read_when:
 | `--delay <ms>` | Delay between key presses (default `100`). |
 | `--hold <ms>` | Planned hold duration per key (currently stored but not yet wired to the automation layer). |
 | `--snapshot <id>` | Optional snapshot ID used for validation/focus (no implicit “latest snapshot” lookup). |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pressing keys. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before pressing keys. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | Focus flags | Same `FocusCommandOptions` bundle as `click`/`type`. |
 
 ## Implementation notes

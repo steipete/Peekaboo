@@ -18,7 +18,7 @@ read_when:
 | `--to <query>` | Resolve an element by text/query using `waitForElement` (5 s timeout). |
 | `--center` | Move to the main screen’s center (exclusive with other targets). |
 | `--snapshot <id>` | Required when using `--id`/`--to`; defaults to the most recent snapshot. |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before moving. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before moving. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | Focus flags | `FocusCommandOptions` control Space switching + retries. |
 | `--smooth` | Animate the move over multiple steps (defaults to 500 ms, 20 steps). |
 | `--duration <ms>` / `--steps <n>` | Override the smooth-move timing/step count; instant moves use duration `0` unless overridden. |

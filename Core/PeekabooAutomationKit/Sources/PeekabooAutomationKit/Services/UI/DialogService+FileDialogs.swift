@@ -570,9 +570,8 @@ extension DialogService {
                 .resolvingSymlinksInPath()
                 .path
             if actualDirectory != requestedDirectory {
-                self.logger.debug(
-                    "PathTextField mismatch; Go to Folder. requested: \(requestedDirectory), actual: \(actualDirectory)"
-                )
+                self.logger.debug("PathTextField mismatch; Go to Folder.")
+                self.logger.debug("requested: \(requestedDirectory), actual: \(actualDirectory)")
                 try await self.navigateViaGoToFolder(
                     directoryPath: requestedDirectory,
                     dialog: dialog,

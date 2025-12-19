@@ -352,6 +352,7 @@ struct CommanderBinderCommandBindingTests {
                 "wpm": ["150"],
                 "tab": ["2"],
                 "app": ["Notes"],
+                "windowId": ["424242"],
                 "focusTimeoutSeconds": ["3.5"]
             ],
             flags: ["pressReturn", "escape", "delete", "clear", "spaceSwitch"]
@@ -368,6 +369,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.delete == true)
         #expect(command.clear == true)
         #expect(command.target.app == "Notes")
+        #expect(command.target.windowId == 424_242)
         #expect(command.focusOptions.spaceSwitch == true)
         #expect(command.focusOptions.focusTimeoutSeconds == 3.5)
     }

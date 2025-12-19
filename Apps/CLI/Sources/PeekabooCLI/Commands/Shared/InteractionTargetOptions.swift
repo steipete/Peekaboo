@@ -20,10 +20,16 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
     @Option(name: .long, help: "Target window by index (0-based, frontmost is 0)")
     var windowIndex: Int?
 
+    @Option(
+        name: .long,
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json-output`)"
+    )
+    var windowId: Int?
+
     init() {}
 
     var hasAnyTarget: Bool {
-        self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowIndex != nil
+        self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowIndex != nil || self.windowId != nil
     }
 
     mutating func validate() throws {
@@ -31,7 +37,11 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
             throw ValidationError("--window-index must be 0 or greater")
         }
 
-        if self.windowTitle != nil || self.windowIndex != nil, self.app == nil, self.pid == nil {
+        if let windowId = self.windowId, windowId <= 0 {
+            throw ValidationError("--window-id must be greater than 0")
+        }
+
+        if self.windowTitle != nil || self.windowIndex != nil, self.app == nil, self.pid == nil, self.windowId == nil {
             throw ValidationError("When using --window-title/--window-index, also provide --app or --pid.")
         }
     }
@@ -44,6 +54,10 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
     }
 
     func resolveWindowID(services: any PeekabooServiceProviding) async throws -> CGWindowID? {
+        if let windowId = self.windowId {
+            return CGWindowID(windowId)
+        }
+
         guard let windowIndex = self.windowIndex else {
             return nil
         }
@@ -63,6 +77,11 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
     func resolveWindowTitleOptional(services: any PeekabooServiceProviding) async throws -> String? {
         if let windowTitle {
             return windowTitle
+        }
+
+        if let windowId = self.windowId {
+            let windows = try await services.windows.listWindows(target: .windowId(windowId))
+            return windows.first?.title
         }
 
         guard let windowIndex = self.windowIndex else {

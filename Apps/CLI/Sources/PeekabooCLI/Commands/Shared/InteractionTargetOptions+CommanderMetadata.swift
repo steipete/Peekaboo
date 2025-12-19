@@ -15,6 +15,11 @@ extension InteractionTargetOptions {
                     long: "pid"
                 ),
                 .commandOption(
+                    "windowId",
+                    help: "Target window by CoreGraphics window id (window_id)",
+                    long: "window-id"
+                ),
+                .commandOption(
                     "windowTitle",
                     help: "Target window by title (partial match supported)",
                     long: "window-title"

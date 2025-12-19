@@ -19,7 +19,7 @@ read_when:
 | `--profile <human|linear>` | Switch between human (default, honors `--wpm`) and linear (honors `--delay`). |
 | `--clear` | Issue Cmd+A, Delete before typing any new text. |
 | `--return`, `--tab <count>`, `--escape`, `--delete` | Append those keypresses after (or without) the text payload. |
-| Target flags | `--app <name>`, `--pid <pid>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before typing. (`--window-*` requires `--app` or `--pid`.) |
+| Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before typing. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | Focus flags | Same as `click` (`--no-auto-focus`, `--space-switch`, etc.). |
 
 ## Implementation notes
