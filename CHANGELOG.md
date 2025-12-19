@@ -38,6 +38,7 @@
 - ScreenCaptureKit window capture no longer returns black frames for GPU-rendered windows (notably iOS Simulator), and display-bound crops now use display-local `sourceRect` coordinates on secondary monitors.
 - `peekaboo see` is now bounded for “single action” use (10s wall-clock timeout without `--analyze`), and timeouts surface as `TIMEOUT` exit codes instead of silent hangs.
 - Dialog file automation is more reliable: can force “Show Details” (`--ensure-expanded`) and verifies the saved path when possible.
+- `peekaboo dialog` subcommands now expose the full interaction targeting + focus options (Commander parity).
 - App resolution now prioritizes exact name matches over bundleID-contains matches, preventing `--app Safari` from accidentally matching helper processes with “Safari” in their bundle ID.
 - UI element detection enforces conservative traversal limits (depth/node/child caps) plus a detection deadline, making runaway AX trees safe.
 - Listing apps via a bridge no longer risks timing out: window counts now use CGWindowList instead of per-app AX enumeration.

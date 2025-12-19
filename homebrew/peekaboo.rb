@@ -2,7 +2,7 @@ class Peekaboo < Formula
   desc "Lightning-fast macOS screenshots & AI vision analysis"
   homepage "https://github.com/steipete/peekaboo"
   url "https://github.com/steipete/peekaboo/releases/download/v3.0.0-beta2/peekaboo-macos-arm64.tar.gz"
-  sha256 "0ba82f82bfc489d44c794f2233b2a41495ddc97a5c81aa6235693031d6997a26"
+  sha256 "ae5d5dc5dc8b881cdc1519309c177a545071291821333c9ecdd144cdb7190b28"
   license "MIT"
   version "3.0.0-beta2"
 

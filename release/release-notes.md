@@ -25,7 +25,7 @@ npm install -g @steipete/peekaboo
 - **Socket-based Peekaboo Bridge**: privileged automation now runs in a long-lived, signed bridge host and the CLI connects over a UNIX socket.
 - **Snapshots replace sessions**: snapshots are scoped per target bundle ID and auto-reused for follow-up actions.
 - **New `peekaboo paste`**: set clipboard content, paste (Cmd+V), then restore the prior clipboard.
-- **Deterministic window targeting** via `--window-id`.
+- **Deterministic window targeting** via `--window-id` (now also exposed for `peekaboo dialog` subcommands).
 - **MCP server-only**: Peekaboo still runs as an MCP server, but no longer hosts/manages external MCP servers.
 - **Visualizer extracted + stabilized**: improved preview timings, less clipping.
 
@@ -38,6 +38,6 @@ npm install -g @steipete/peekaboo
 ## Checksums
 
 ```
-0ba82f82bfc489d44c794f2233b2a41495ddc97a5c81aa6235693031d6997a26  peekaboo-macos-arm64.tar.gz
-228a37ff5e307a2322212ce63291dd2a2399a88982e5ff0c808be7fa89e6844d  steipete-peekaboo-3.0.0-beta2.tgz
+ae5d5dc5dc8b881cdc1519309c177a545071291821333c9ecdd144cdb7190b28  peekaboo-macos-arm64.tar.gz
+b8d0cb91b1d907fdaacb7bc41509b16af451fe38ae26f9869ec4813f1f782bc4  steipete-peekaboo-3.0.0-beta2.tgz
 ```
