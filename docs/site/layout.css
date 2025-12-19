@@ -1,0 +1,102 @@
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(14px);
+  background: rgba(10, 11, 15, 0.72);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.top > .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  gap: 16px;
+}
+
+.brandLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.brandText {
+  display: grid;
+  gap: 1px;
+}
+
+.brandName {
+  font-family: var(--serif);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.brandTag {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.navLink {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.navLink:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.navLinkStrong {
+  color: var(--text);
+  border-color: rgba(0, 245, 160, 0.24);
+  background: rgba(0, 245, 160, 0.06);
+}
+
+.section {
+  padding: 54px 0;
+}
+
+.sectionAlt {
+  background: rgba(0, 0, 0, 0.18);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sectionHead {
+  margin-bottom: 18px;
+}
+
+.h2 {
+  margin: 0 0 10px;
+  font-family: var(--serif);
+  font-size: 30px;
+  letter-spacing: 0.01em;
+}
+
+.sub {
+  margin: 0;
+  color: var(--muted);
+  max-width: 72ch;
+}
+
+@media (max-width: 920px) {
+  .nav {
+    gap: 10px;
+  }
+}
+

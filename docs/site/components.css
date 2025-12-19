@@ -1,0 +1,347 @@
+.mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background:
+    radial-gradient(14px 14px at 35% 35%, rgba(255, 255, 255, 0.18), transparent 60%),
+    radial-gradient(22px 22px at 80% 20%, rgba(0, 245, 160, 0.22), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.markSmall {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+}
+
+.eye {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(6px 6px at 40% 40%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.7) 55%, transparent 60%),
+    radial-gradient(9px 9px at 55% 55%, rgba(0, 245, 160, 0.65), transparent 62%),
+    radial-gradient(10px 10px at 50% 50%, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 0 22px rgba(0, 245, 160, 0.2);
+  transition: transform 160ms ease;
+}
+
+.eye::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: radial-gradient(6px 6px at 40% 35%, rgba(255, 255, 255, 0.45), transparent 60%);
+}
+
+.mark::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(120px 60px at 40% 20%, rgba(0, 245, 160, 0.18), transparent 60%);
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.hero {
+  padding: 56px 0 22px;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.18fr 0.82fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.kicker {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.kickerEm {
+  color: var(--text);
+  position: relative;
+}
+
+.kickerEm::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--ecto), var(--moon));
+  opacity: 0.85;
+}
+
+.h1 {
+  margin: 0 0 14px;
+  font-family: var(--serif);
+  font-size: clamp(40px, 5vw, 62px);
+  line-height: 0.98;
+  letter-spacing: 0.01em;
+}
+
+.h1Em {
+  background: linear-gradient(90deg, rgba(0, 245, 160, 0.95), rgba(255, 210, 74, 0.95));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  margin: 0 0 18px;
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+.cta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 16px 0 14px;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid rgba(0, 245, 160, 0.25);
+  background: linear-gradient(180deg, rgba(0, 245, 160, 0.18), rgba(0, 245, 160, 0.08));
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 650;
+  font-size: 14px;
+  text-decoration: none;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  transition: transform 120ms ease;
+}
+
+.btnGhost {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pill {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.heroViz {
+  justify-self: end;
+}
+
+.hauntStage {
+  position: relative;
+  width: min(460px, 100%);
+  aspect-ratio: 1 / 1;
+}
+
+.ghost {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96%;
+  height: auto;
+  transform: translate(-52%, -55%) rotate(-2deg);
+  opacity: 0.95;
+  filter: drop-shadow(0 44px 80px rgba(0, 0, 0, 0.65));
+  animation: floaty 6.5s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translate(-52%, -55%) rotate(-2deg);
+  }
+  50% {
+    transform: translate(-50%, -58%) rotate(1deg);
+  }
+}
+
+.screen {
+  position: absolute;
+  right: 0;
+  bottom: 8%;
+  width: min(420px, 92%);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(420px 280px at 50% 0%, rgba(0, 245, 160, 0.14), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  box-shadow:
+    0 40px 70px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.15) inset;
+  overflow: hidden;
+}
+
+.screenTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  opacity: 0.95;
+}
+.dotRed {
+  background: #ff5f57;
+}
+.dotYellow {
+  background: #febc2e;
+}
+.dotGreen {
+  background: #28c840;
+}
+
+.screenTitle {
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-family: var(--mono);
+  letter-spacing: 0.01em;
+}
+
+.screenBody {
+  padding: 14px;
+}
+
+.uiRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.uiChip {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.uiGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-rows: 86px 86px;
+  gap: 10px;
+}
+
+.uiPane {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  position: relative;
+  overflow: hidden;
+}
+
+.uiPane::after {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(120px 70px at 25% 35%, rgba(0, 245, 160, 0.13), transparent 60%),
+    radial-gradient(120px 80px at 80% 70%, rgba(255, 210, 74, 0.1), transparent 65%);
+  transform: rotate(6deg);
+}
+
+.uiPaneA {
+  grid-row: 1 / span 2;
+}
+.uiPaneB::after {
+  background: radial-gradient(140px 70px at 70% 25%, rgba(255, 61, 120, 0.12), transparent 62%);
+}
+.uiPaneC::after {
+  background: radial-gradient(140px 70px at 30% 70%, rgba(0, 245, 160, 0.12), transparent 62%);
+}
+.uiPaneD::after {
+  background: radial-gradient(140px 70px at 70% 70%, rgba(255, 210, 74, 0.12), transparent 62%);
+}
+
+.uiFooter {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.uiHint {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.uiHintStrong {
+  color: rgba(0, 245, 160, 0.78);
+}
+
+.beam {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 72px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 245, 160, 0.07) 55%, rgba(0, 245, 160, 0.16) 100%);
+  opacity: 0.9;
+  transform: translateY(20px);
+  filter: blur(0.2px);
+  animation: beam 4.8s ease-in-out infinite;
+}
+
+@keyframes beam {
+  0%,
+  100% {
+    transform: translateY(20px);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 0.95;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam,
+  .ghost {
+    animation: none;
+  }
+  .btn:hover {
+    transform: none;
+  }
+}

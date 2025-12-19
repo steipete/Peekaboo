@@ -26,7 +26,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..800&family=Space+Grotesk:wght@300..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..800&family=Recursive:wght@300..800&family=JetBrains+Mono:wght@400..700&display=swap"
       rel="stylesheet"
     />
 
@@ -63,24 +63,24 @@
       <section class="hero">
         <div class="wrap heroGrid">
           <div class="heroCopy">
-            <p class="kicker">
+            <p class="kicker" data-reveal>
               Give your agents <span class="kickerEm">eyes</span>.
             </p>
-            <h1 class="h1">
+            <h1 class="h1" data-reveal>
               macOS automation that <span class="h1Em">sees</span> the screen and <span class="h1Em">does</span> the clicks.
             </h1>
-            <p class="lead">
+            <p class="lead" data-reveal>
               Peekaboo brings high‑fidelity screen capture, AI analysis, and end‑to‑end GUI automation to macOS — as a native CLI
               and an MCP server.
             </p>
 
-            <div class="cta">
+            <div class="cta" data-reveal>
               <a class="btn" href="#install">Install</a>
               <a class="btn btnGhost" href="https://github.com/steipete/Peekaboo/releases/latest">Download</a>
               <a class="btn btnGhost" href="https://www.npmjs.com/package/@steipete/peekaboo">npm</a>
             </div>
 
-            <div class="metaRow" aria-label="Quick facts">
+            <div class="metaRow" aria-label="Quick facts" data-reveal>
               <span class="pill">macOS 15+</span>
               <span class="pill">Swift 6.2</span>
               <span class="pill">Node 22+ (MCP)</span>
@@ -89,7 +89,81 @@
           </div>
 
           <div class="heroViz" aria-hidden="true">
-            <div class="screen">
+            <div class="hauntStage" data-reveal>
+              <svg class="ghost" viewBox="0 0 320 360" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="ecto" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stop-color="#00f5a0" stop-opacity="0.85" />
+                    <stop offset="0.55" stop-color="#b7ffe4" stop-opacity="0.55" />
+                    <stop offset="1" stop-color="#ffd24a" stop-opacity="0.55" />
+                  </linearGradient>
+                  <radialGradient id="glow" cx="0.45" cy="0.2" r="0.9">
+                    <stop offset="0" stop-color="#00f5a0" stop-opacity="0.55" />
+                    <stop offset="1" stop-color="#00f5a0" stop-opacity="0" />
+                  </radialGradient>
+                  <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+                    <feGaussianBlur stdDeviation="10" result="blur" />
+                    <feColorMatrix
+                      in="blur"
+                      type="matrix"
+                      values="
+                        1 0 0 0 0
+                        0 1 0 0 0
+                        0 0 1 0 0
+                        0 0 0 0.7 0"
+                      result="glow"
+                    />
+                    <feMerge>
+                      <feMergeNode in="glow" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <ellipse cx="165" cy="70" rx="130" ry="70" fill="url(#glow)" opacity="0.9" />
+
+                <path
+                  filter="url(#softGlow)"
+                  d="M160 26
+                     C210 26 252 60 266 108
+                     C279 152 274 232 274 264
+                     C274 298 252 316 236 312
+                     C217 307 214 282 194 282
+                     C172 282 173 316 148 316
+                     C122 316 124 282 100 282
+                     C80 282 78 306 61 312
+                     C46 317 46 294 46 264
+                     C46 226 41 151 54 108
+                     C68 60 110 26 160 26 Z"
+                  fill="url(#ecto)"
+                  opacity="0.92"
+                />
+                <path
+                  d="M92 105 C118 74 154 58 195 64"
+                  stroke="rgba(255,255,255,0.35)"
+                  stroke-width="10"
+                  stroke-linecap="round"
+                  opacity="0.35"
+                />
+
+                <!-- eyes -->
+                <g opacity="0.85">
+                  <circle cx="132" cy="150" r="18" fill="rgba(0,0,0,0.66)" />
+                  <circle cx="200" cy="150" r="18" fill="rgba(0,0,0,0.66)" />
+                  <circle cx="137" cy="145" r="6" fill="rgba(255,255,255,0.85)" />
+                  <circle cx="205" cy="145" r="6" fill="rgba(255,255,255,0.85)" />
+                </g>
+
+                <!-- lens / camera -->
+                <g transform="translate(0 6)">
+                  <circle cx="168" cy="210" r="44" fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.16)" stroke-width="4" />
+                  <circle cx="176" cy="206" r="28" fill="rgba(0,245,160,0.18)" />
+                  <circle cx="160" cy="196" r="12" fill="rgba(255,255,255,0.28)" />
+                  <circle cx="168" cy="210" r="10" fill="rgba(255,255,255,0.75)" opacity="0.2" />
+                </g>
+              </svg>
+
+              <div class="screen">
               <div class="screenTop">
                 <span class="dot dotRed"></span>
                 <span class="dot dotYellow"></span>
@@ -116,6 +190,7 @@
                 </div>
               </div>
               <div class="beam"></div>
+            </div>
             </div>
           </div>
         </div>
@@ -146,6 +221,14 @@
           <div class="note">
             Requires macOS Screen Recording + Accessibility permissions.
             <a href="https://github.com/steipete/Peekaboo/blob/main/docs/permissions.md">Grant guide</a>.
+          </div>
+
+          <div class="incantation">
+            <div class="incantHead">
+              <span class="incantLabel">One-liner</span>
+              <button class="copy copySmall" type="button" data-copy="#incant">Copy</button>
+            </div>
+            <pre class="cmd cmdMini"><code id="incant">peekaboo "Open Safari, go to github.com, and search for Peekaboo"</code></pre>
           </div>
         </div>
       </section>
@@ -265,4 +348,3 @@
     <script src="./app.js"></script>
   </body>
 </html>
-
