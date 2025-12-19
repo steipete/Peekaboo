@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.0.0-beta3] - Unreleased
+
 ## [3.0.0-beta2] - 2025-12-19
 
 ### Highlights
