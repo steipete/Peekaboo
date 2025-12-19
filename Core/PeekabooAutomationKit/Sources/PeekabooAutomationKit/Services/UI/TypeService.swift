@@ -50,6 +50,7 @@ public final class TypeService {
         if let target {
             var elementFound = false
             var elementFrame: CGRect?
+            var elementId: String?
 
             // Try to find element by ID first
             if let snapshotId,
@@ -58,6 +59,7 @@ public final class TypeService {
             {
                 elementFound = true
                 elementFrame = element.bounds
+                elementId = element.id
             }
 
             // If not found by ID, search by query
@@ -67,13 +69,20 @@ public final class TypeService {
                 elementFrame = searchResult.frame
             }
 
-            if elementFound, let frame = elementFrame {
-                // Click on the element to focus it
-                let center = CGPoint(x: frame.midX, y: frame.midY)
-                try await self.clickService.click(
-                    target: .coordinates(center),
-                    clickType: .single,
-                    snapshotId: snapshotId)
+            if elementFound {
+                if let elementId {
+                    try await self.clickService.click(
+                        target: .elementId(elementId),
+                        clickType: .single,
+                        snapshotId: snapshotId)
+                } else if let frame = elementFrame {
+                    let center = CGPoint(x: frame.midX, y: frame.midY)
+                    let adjusted = try await self.resolveAdjustedPoint(center, snapshotId: snapshotId)
+                    try await self.clickService.click(
+                        target: .coordinates(adjusted),
+                        clickType: .single,
+                        snapshotId: snapshotId)
+                }
 
                 // Small delay after click
                 try await Task.sleep(nanoseconds: 100_000_000) // 100ms
@@ -164,6 +173,23 @@ public final class TypeService {
         }
 
         return (false, nil)
+    }
+
+    private func resolveAdjustedPoint(_ point: CGPoint, snapshotId: String?) async throws -> CGPoint {
+        guard let snapshotId,
+              let snapshot = try? await self.snapshotManager.getUIAutomationSnapshot(snapshotId: snapshotId)
+        else {
+            return point
+        }
+
+        switch WindowMovementTracking.adjustPoint(point, snapshot: snapshot) {
+        case let .unchanged(original):
+            return original
+        case let .adjusted(adjusted, _):
+            return adjusted
+        case let .stale(message):
+            throw PeekabooError.snapshotStale(message)
+        }
     }
 
     @MainActor

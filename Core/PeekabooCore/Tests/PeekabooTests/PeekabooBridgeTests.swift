@@ -209,6 +209,67 @@ struct PeekabooBridgeTests {
         #expect(status.missingPermissions.count <= 3)
     }
 
+    @Test("daemon status not advertised without provider")
+    func daemonStatusNotAdvertised() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: PeekabooServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(handshake.supportedOperations.contains(.daemonStatus) == false)
+    }
+
+    @Test("daemon status round trips")
+    func daemonStatusRoundTrips() async throws {
+        let daemon = StubDaemonControl()
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .onDemand,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                daemonControl: daemon)
+        }
+
+        let request = PeekabooBridgeRequest.daemonStatus
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .daemonStatus(status) = response else {
+            Issue.record("Expected daemon status response, got \(response)")
+            return
+        }
+
+        #expect(status.running == true)
+        #expect(status.mode == .manual)
+        #expect(status.bridge?.hostKind == .onDemand)
+    }
+
     @Test("capture round trips through bridge")
     func captureRoundTrip() async throws {
         let stub = await MainActor.run { StubServices() }
@@ -529,5 +590,24 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
 
     func listDialogElements(windowTitle _: String?, appName _: String?) async throws -> DialogElements {
         throw PeekabooError.notImplemented("stub")
+    }
+}
+
+@MainActor
+private final class StubDaemonControl: PeekabooDaemonControlProviding {
+    func daemonStatus() async -> PeekabooDaemonStatus {
+        PeekabooDaemonStatus(
+            running: true,
+            pid: getpid(),
+            startedAt: Date(),
+            mode: .manual,
+            bridge: PeekabooDaemonBridgeStatus(
+                socketPath: "/tmp/peekaboo.sock",
+                hostKind: .onDemand,
+                allowedOperations: [.daemonStatus]))
+    }
+
+    func requestStop() async -> Bool {
+        true
     }
 }

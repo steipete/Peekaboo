@@ -80,12 +80,13 @@ public final class ClickService {
         {
             // Click at element center
             let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
-            try await self.performClick(at: center, clickType: clickType)
+            let adjusted = try await self.resolveAdjustedPoint(center, snapshotId: snapshotId)
+            try await self.performClick(at: adjusted, clickType: clickType)
             try await self.nudgeTextInputFocusIfNeeded(
-                afterClickAt: center,
+                afterClickAt: adjusted,
                 clickType: clickType,
                 expectedIdentifier: element.attributes["identifier"])
-            self.logger.debug("Clicked element \(id) at (\(center.x), \(center.y))")
+            self.logger.debug("Clicked element \(id) at (\(adjusted.x), \(adjusted.y))")
         } else {
             throw NotFoundError.element(id)
         }
@@ -122,14 +123,34 @@ public final class ClickService {
         // Perform click if element found
         if found, let frame = clickFrame {
             let center = CGPoint(x: frame.midX, y: frame.midY)
-            try await self.performClick(at: center, clickType: clickType)
+            let adjusted = try await self.resolveAdjustedPoint(
+                center,
+                snapshotId: resolvedElement != nil ? snapshotId : nil)
+            try await self.performClick(at: adjusted, clickType: clickType)
             try await self.nudgeTextInputFocusIfNeeded(
-                afterClickAt: center,
+                afterClickAt: adjusted,
                 clickType: clickType,
                 expectedIdentifier: resolvedElement?.attributes["identifier"])
-            self.logger.debug("Clicked element matching '\(query)' at (\(center.x), \(center.y))")
+            self.logger.debug("Clicked element matching '\(query)' at (\(adjusted.x), \(adjusted.y))")
         } else {
             throw NotFoundError.element(query)
+        }
+    }
+
+    private func resolveAdjustedPoint(_ point: CGPoint, snapshotId: String?) async throws -> CGPoint {
+        guard let snapshotId,
+              let snapshot = try? await self.snapshotManager.getUIAutomationSnapshot(snapshotId: snapshotId)
+        else {
+            return point
+        }
+
+        switch WindowMovementTracking.adjustPoint(point, snapshot: snapshot) {
+        case let .unchanged(original):
+            return original
+        case let .adjusted(adjusted, _):
+            return adjusted
+        case let .stale(message):
+            throw PeekabooError.snapshotStale(message)
         }
     }
 

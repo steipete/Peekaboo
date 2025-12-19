@@ -31,6 +31,7 @@ public final class PeekabooBridgeServer {
     private let allowlistedBundles: Set<String>
     private let supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion>
     private let allowedOperations: Set<PeekabooBridgeOperation>
+    private let daemonControl: (any PeekabooDaemonControlProviding)?
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let logger = Logger(subsystem: "boo.peekaboo.bridge", category: "server")
@@ -42,6 +43,7 @@ public final class PeekabooBridgeServer {
         allowlistedBundles: Set<String>,
         supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion> = PeekabooBridgeConstants.supportedProtocolRange,
         allowedOperations: Set<PeekabooBridgeOperation> = PeekabooBridgeOperation.remoteDefaultAllowlist,
+        daemonControl: (any PeekabooDaemonControlProviding)? = nil,
         encoder: JSONEncoder = .peekabooBridgeEncoder(),
         decoder: JSONDecoder = .peekabooBridgeDecoder())
     {
@@ -51,6 +53,7 @@ public final class PeekabooBridgeServer {
         self.allowlistedBundles = allowlistedBundles
         self.supportedVersions = supportedVersions
         self.allowedOperations = allowedOperations
+        self.daemonControl = daemonControl
         self.encoder = encoder
         self.decoder = decoder
     }
@@ -119,6 +122,24 @@ public final class PeekabooBridgeServer {
 
             case .permissionsStatus:
                 return .permissionsStatus(self.services.permissions.checkAllPermissions())
+
+            case .daemonStatus:
+                guard let daemonControl = self.daemonControl else {
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .operationNotSupported,
+                        message: "Daemon status is not supported by this host")
+                }
+                let status = await daemonControl.daemonStatus()
+                return .daemonStatus(status)
+
+            case .daemonStop:
+                guard let daemonControl = self.daemonControl else {
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .operationNotSupported,
+                        message: "Daemon stop is not supported by this host")
+                }
+                let stopped = await daemonControl.requestStop()
+                return .bool(stopped)
 
             case let .captureScreen(payload):
                 let capture = try await self.services.screenCapture.captureScreen(
@@ -563,8 +584,8 @@ public final class PeekabooBridgeServer {
         }
 
         let permissions = self.services.permissions.checkAllPermissions()
+        let advertisedOps = Array(self.allowedOperationsToAdvertise()).sorted { $0.rawValue < $1.rawValue }
         let enabledOps = self.effectiveAllowedOperations(permissions: permissions)
-        let advertisedOps = Array(self.allowedOperations).sorted { $0.rawValue < $1.rawValue }
         let permissionTags = Dictionary(
             uniqueKeysWithValues: advertisedOps.map { op in
                 (op.rawValue, Array(op.requiredPermissions).sorted { $0.rawValue < $1.rawValue })
@@ -592,6 +613,15 @@ public final class PeekabooBridgeServer {
         return .handshake(response)
     }
 
+    private func allowedOperationsToAdvertise() -> Set<PeekabooBridgeOperation> {
+        var operations = self.allowedOperations
+        if self.daemonControl == nil {
+            operations.remove(.daemonStatus)
+            operations.remove(.daemonStop)
+        }
+        return operations
+    }
+
     private func effectiveAllowedOperations(permissions: PermissionsStatus) -> Set<PeekabooBridgeOperation> {
         var granted: Set<PeekabooBridgePermissionKind> = []
         if permissions.screenRecording {
@@ -605,7 +635,7 @@ public final class PeekabooBridgeServer {
         }
 
         return Set(
-            self.allowedOperations.filter { operation in
+            self.allowedOperationsToAdvertise().filter { operation in
                 operation.requiredPermissions.isSubset(of: granted)
             })
     }

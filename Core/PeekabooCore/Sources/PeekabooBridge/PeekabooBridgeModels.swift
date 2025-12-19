@@ -33,6 +33,8 @@ public enum PeekabooBridgePermissionKind: String, Codable, Sendable {
 public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Hashable {
     // Core
     case permissionsStatus
+    case daemonStatus
+    case daemonStop
     // Capture
     case captureScreen
     case captureWindow
@@ -128,6 +130,8 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
             [.appleScript]
         case ._appleScriptProbe,
              .permissionsStatus,
+             .daemonStatus,
+             .daemonStop,
              .createSnapshot,
              .storeDetectionResult,
              .getDetectionResult,
@@ -149,6 +153,8 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     /// Operations enabled by default for remote helper hosts.
     public static let remoteDefaultAllowlist: Set<PeekabooBridgeOperation> = [
         .permissionsStatus,
+        .daemonStatus,
+        .daemonStop,
         .captureScreen,
         .captureWindow,
         .captureFrontmost,
@@ -574,6 +580,8 @@ public struct PeekabooBridgeCleanSnapshotsOlderRequest: Codable, Sendable {
 public enum PeekabooBridgeRequest: Codable, Sendable {
     case handshake(PeekabooBridgeHandshake)
     case permissionsStatus
+    case daemonStatus
+    case daemonStop
     case captureScreen(PeekabooBridgeCaptureScreenRequest)
     case captureWindow(PeekabooBridgeCaptureWindowRequest)
     case captureFrontmost(PeekabooBridgeCaptureFrontmostRequest)
@@ -648,6 +656,8 @@ extension PeekabooBridgeRequest {
         switch self {
         case .handshake: .permissionsStatus
         case .permissionsStatus: .permissionsStatus
+        case .daemonStatus: .daemonStatus
+        case .daemonStop: .daemonStop
         case .captureScreen: .captureScreen
         case .captureWindow: .captureWindow
         case .captureFrontmost: .captureFrontmost
@@ -722,6 +732,7 @@ extension PeekabooBridgeRequest {
 public enum PeekabooBridgeResponse: Codable, Sendable {
     case handshake(PeekabooBridgeHandshakeResponse)
     case permissionsStatus(PermissionsStatus)
+    case daemonStatus(PeekabooDaemonStatus)
     case capture(CaptureResult)
     case elementDetection(ElementDetectionResult)
     case ok

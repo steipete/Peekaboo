@@ -61,6 +61,30 @@ public actor PeekabooBridgeClient {
         }
     }
 
+    public func daemonStatus() async throws -> PeekabooDaemonStatus {
+        let response = try await self.send(.daemonStatus)
+        switch response {
+        case let .daemonStatus(status):
+            return status
+        case let .error(envelope):
+            throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected daemon status response")
+        }
+    }
+
+    public func daemonStop() async throws -> Bool {
+        let response = try await self.send(.daemonStop)
+        switch response {
+        case let .bool(stopped):
+            return stopped
+        case let .error(envelope):
+            throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected daemon stop response")
+        }
+    }
+
     public func captureScreen(
         displayIndex: Int?,
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,

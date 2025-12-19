@@ -9,6 +9,7 @@ public enum PeekabooBridgeBootstrap {
         socketPath: String,
         allowlistedTeams: Set<String>,
         allowlistedBundles: Set<String>,
+        daemonControl: (any PeekabooDaemonControlProviding)? = nil,
         allowedOperations: Set<PeekabooBridgeOperation> = PeekabooBridgeOperation.remoteDefaultAllowlist,
         maxMessageBytes: Int = 64 * 1024 * 1024,
         requestTimeoutSec: TimeInterval = 10) -> PeekabooBridgeHost
@@ -18,7 +19,8 @@ public enum PeekabooBridgeBootstrap {
             hostKind: hostKind,
             allowlistedTeams: allowlistedTeams,
             allowlistedBundles: allowlistedBundles,
-            allowedOperations: allowedOperations)
+            allowedOperations: allowedOperations,
+            daemonControl: daemonControl)
 
         let host = PeekabooBridgeHost(
             socketPath: socketPath,
