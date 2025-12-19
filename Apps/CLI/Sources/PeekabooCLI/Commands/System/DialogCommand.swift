@@ -47,6 +47,7 @@ struct DialogCommand: ParsableCommand {
         var button: String
 
         @OptionGroup var target: InteractionTargetOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -68,11 +69,10 @@ struct DialogCommand: ParsableCommand {
 
             do {
                 try self.target.validate()
-                let focusOptions = FocusCommandOptions()
                 try await ensureFocused(
                     snapshotId: nil,
                     target: self.target,
-                    options: focusOptions,
+                    options: self.focusOptions,
                     services: self.services
                 )
 
@@ -151,6 +151,7 @@ struct DialogCommand: ParsableCommand {
         var clear = false
 
         @OptionGroup var target: InteractionTargetOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -172,11 +173,10 @@ struct DialogCommand: ParsableCommand {
 
             do {
                 try self.target.validate()
-                let focusOptions = FocusCommandOptions()
                 try await ensureFocused(
                     snapshotId: nil,
                     target: self.target,
-                    options: focusOptions,
+                    options: self.focusOptions,
                     services: self.services
                 )
 
@@ -258,6 +258,7 @@ struct DialogCommand: ParsableCommand {
         var ensureExpanded = false
 
         @OptionGroup var target: InteractionTargetOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -279,11 +280,10 @@ struct DialogCommand: ParsableCommand {
 
             do {
                 try self.target.validate()
-                let focusOptions = FocusCommandOptions()
                 try await ensureFocused(
                     snapshotId: nil,
                     target: self.target,
-                    options: focusOptions,
+                    options: self.focusOptions,
                     services: self.services
                 )
 
@@ -411,6 +411,7 @@ struct DialogCommand: ParsableCommand {
         var force = false
 
         @OptionGroup var target: InteractionTargetOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -432,11 +433,10 @@ struct DialogCommand: ParsableCommand {
 
             do {
                 try self.target.validate()
-                let focusOptions = FocusCommandOptions()
                 try await ensureFocused(
                     snapshotId: nil,
                     target: self.target,
-                    options: focusOptions,
+                    options: self.focusOptions,
                     services: self.services
                 )
 
@@ -501,6 +501,7 @@ struct DialogCommand: ParsableCommand {
         )
 
         @OptionGroup var target: InteractionTargetOptions
+        @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -523,11 +524,10 @@ struct DialogCommand: ParsableCommand {
 
             do {
                 try self.target.validate()
-                let focusOptions = FocusCommandOptions()
                 try await ensureFocused(
                     snapshotId: nil,
                     target: self.target,
-                    options: focusOptions,
+                    options: self.focusOptions,
                     services: self.services
                 )
 
@@ -646,6 +646,7 @@ extension DialogCommand.InputSubcommand: CommanderBindableCommand {
         self.index = try values.decodeOption("index", as: Int.self)
         self.clear = values.flag("clear")
         try values.fillInteractionTargetOptions(into: &self.target)
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 
@@ -661,6 +662,7 @@ extension DialogCommand.FileSubcommand: CommanderBindableCommand {
         self.select = values.singleOption("select")
         self.ensureExpanded = values.flag("ensureExpanded")
         try values.fillInteractionTargetOptions(into: &self.target)
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 
@@ -673,6 +675,7 @@ extension DialogCommand.DismissSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.force = values.flag("force")
         try values.fillInteractionTargetOptions(into: &self.target)
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 
@@ -684,6 +687,7 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 extension DialogCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         try values.fillInteractionTargetOptions(into: &self.target)
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 
@@ -706,6 +710,7 @@ extension DialogCommand.ClickSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.button = try values.requireOption("button", as: String.self)
         try values.fillInteractionTargetOptions(into: &self.target)
+        self.focusOptions = try values.makeFocusOptions()
     }
 }
 

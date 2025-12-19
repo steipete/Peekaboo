@@ -5,18 +5,11 @@ extension DialogCommand.ClickSubcommand: CommanderSignatureProviding {
         CommandSignature(
             options: [
                 .commandOption("button", help: "Button text to click", long: "button"),
-                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
-                .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption(
-                    "windowTitle",
-                    help: "Target window by title (partial match supported)",
-                    long: "window-title"
-                ),
-                .commandOption(
-                    "windowIndex",
-                    help: "Target window by index (0-based, frontmost is 0)",
-                    long: "window-index"
-                ),
+            ],
+
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }
@@ -29,21 +22,14 @@ extension DialogCommand.InputSubcommand: CommanderSignatureProviding {
                 .commandOption("text", help: "Text to enter", long: "text"),
                 .commandOption("field", help: "Field label or placeholder", long: "field"),
                 .commandOption("index", help: "Field index (0-based)", long: "index"),
-                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
-                .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption(
-                    "windowTitle",
-                    help: "Target window by title (partial match supported)",
-                    long: "window-title"
-                ),
-                .commandOption(
-                    "windowIndex",
-                    help: "Target window by index (0-based, frontmost is 0)",
-                    long: "window-index"
-                ),
             ],
             flags: [
                 .commandFlag("clear", help: "Clear existing text first", long: "clear"),
+            ],
+
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }
@@ -60,18 +46,6 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
                     help: "Button to click after entering path/name (omit or 'default' to click OKButton)",
                     long: "select"
                 ),
-                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
-                .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption(
-                    "windowTitle",
-                    help: "Target window by title (partial match supported)",
-                    long: "window-title"
-                ),
-                .commandOption(
-                    "windowIndex",
-                    help: "Target window by index (0-based, frontmost is 0)",
-                    long: "window-index"
-                ),
             ],
             flags: [
                 .commandFlag(
@@ -79,6 +53,11 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
                     help: "Ensure file dialogs are expanded (Show Details)",
                     long: "ensure-expanded"
                 ),
+            ],
+
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }
@@ -87,22 +66,13 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
 extension DialogCommand.DismissSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
-            options: [
-                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
-                .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption(
-                    "windowTitle",
-                    help: "Target window by title (partial match supported)",
-                    long: "window-title"
-                ),
-                .commandOption(
-                    "windowIndex",
-                    help: "Target window by index (0-based, frontmost is 0)",
-                    long: "window-index"
-                ),
-            ],
             flags: [
                 .commandFlag("force", help: "Force dismiss with Escape", long: "force"),
+            ],
+
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }
@@ -111,19 +81,9 @@ extension DialogCommand.DismissSubcommand: CommanderSignatureProviding {
 extension DialogCommand.ListSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
-            options: [
-                .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
-                .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption(
-                    "windowTitle",
-                    help: "Target window by title (partial match supported)",
-                    long: "window-title"
-                ),
-                .commandOption(
-                    "windowIndex",
-                    help: "Target window by index (0-based, frontmost is 0)",
-                    long: "window-index"
-                ),
+            optionGroups: [
+                InteractionTargetOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(),
             ]
         )
     }
