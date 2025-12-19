@@ -44,28 +44,12 @@ struct CLIRuntimeSmokeTests {
         #expect(result.standardOutput.contains("Paused"))
     }
 
-    @Test("peekaboo mcp without subcommand errors via Commander")
-    func commanderMcpMissingSubcommand() async throws {
+    @Test("peekaboo mcp help renders without starting server")
+    func commanderMcpHelp() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo(["mcp", "--no-remote"])
-        #expect(result.status != .exited(0))
-        #expect(result.standardError.contains("requires a subcommand"))
-    }
-
-    @Test("peekaboo mcp add requires a command payload")
-    func commanderMcpAddRequiresCommand() async throws {
-        guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo([
-            "mcp",
-            "add",
-            "demo",
-            "--transport",
-            "stdio",
-            "--no-remote",
-        ])
-        #expect(result.status != .exited(0))
-        let errorOutput = result.standardError + result.standardOutput
-        #expect(errorOutput.contains("Command is required"))
+        let result = try await TestChildProcess.runPeekaboo(["mcp", "--help"])
+        #expect(result.status == .exited(0))
+        #expect(result.standardOutput.contains("Start Peekaboo as an MCP server"))
     }
 
     @Test("peekaboo agent warns when no provider credentials exist")

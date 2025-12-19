@@ -21,67 +21,6 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.options["port"] == ["9090"])
     }
 
-    @Test("Commander program resolves MCP call options")
-    @MainActor
-    func commanderResolvesMcpCall() throws {
-        let descriptors = CommanderRegistryBuilder.buildDescriptors()
-        let program = Program(descriptors: descriptors.map(\.metadata))
-        let invocation = try program.resolve(argv: [
-            "peekaboo",
-            "mcp",
-            "call",
-            "claude-code",
-            "--tool", "edit_file",
-            "--args", #"{"path":"main.swift"}"#
-        ])
-        let values = invocation.parsedValues
-        #expect(values.positional == ["claude-code"])
-        #expect(values.options["tool"] == ["edit_file"])
-        #expect(values.options["args"] == [#"{"path":"main.swift"}"#])
-    }
-
-    @Test("Commander program resolves MCP add options")
-    @MainActor
-    func commanderResolvesMcpAdd() throws {
-        let descriptors = CommanderRegistryBuilder.buildDescriptors()
-        let program = Program(descriptors: descriptors.map(\.metadata))
-        let invocation = try program.resolve(argv: [
-            "peekaboo",
-            "mcp",
-            "add",
-            "github",
-            "-e", "API_KEY=xyz",
-            "--transport", "stdio",
-            "--description", "GitHub tools",
-            "--disabled",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-github"
-        ])
-        let values = invocation.parsedValues
-        #expect(values.positional == ["github", "npx", "-y", "@modelcontextprotocol/server-github"])
-        #expect(values.options["env"] == ["API_KEY=xyz"])
-        #expect(values.options["transport"] == ["stdio"])
-        #expect(values.options["description"] == ["GitHub tools"])
-        #expect(values.flags.contains("disabled"))
-    }
-
-    @Test("Commander program resolves MCP list flag")
-    @MainActor
-    func commanderResolvesMcpList() throws {
-        let descriptors = CommanderRegistryBuilder.buildDescriptors()
-        let program = Program(descriptors: descriptors.map(\.metadata))
-        let invocation = try program.resolve(argv: [
-            "peekaboo",
-            "mcp",
-            "list",
-            "--skip-health-check"
-        ])
-        let values = invocation.parsedValues
-        #expect(values.flags.contains("skipHealthCheck"))
-    }
-
     @Test("Commander program resolves window close options")
     @MainActor
     func commanderResolvesWindowClose() throws {
@@ -218,18 +157,11 @@ struct CommanderBinderMCPWindowTests {
         let invocation = try program.resolve(argv: [
             "peekaboo",
             "tools",
-            "--native-only",
-            "--include-disabled",
             "--no-sort",
-            "--group-by-server",
-            "--mcp",
-            "github"
+            "--verbose"
         ])
         let values = invocation.parsedValues
-        #expect(values.flags.contains("nativeOnly"))
-        #expect(values.flags.contains("includeDisabled"))
         #expect(values.flags.contains("noSort"))
-        #expect(values.flags.contains("groupByServer"))
-        #expect(values.options["mcp"] == ["github"])
+        #expect(values.flags.contains("verbose"))
     }
 }

@@ -160,16 +160,11 @@ struct CommanderBinderCommandBindingTests {
     func bindToolsCommand() throws {
         let parsed = ParsedValues(
             positional: [],
-            options: ["mcp": ["github"]],
-            flags: ["nativeOnly", "includeDisabled", "noSort", "groupByServer"]
+            options: [:],
+            flags: ["noSort"]
         )
         let command = try CommanderCLIBinder.instantiateCommand(ofType: ToolsCommand.self, parsedValues: parsed)
-        #expect(command.nativeOnly == true)
-        #expect(command.mcpOnly == false)
-        #expect(command.includeDisabled == true)
         #expect(command.noSort == true)
-        #expect(command.groupByServer == true)
-        #expect(command.mcp == "github")
     }
 
     @Test("List menubar binding")
