@@ -26,7 +26,7 @@ echo "Version: $VERSION"
 echo "SHA256: $SHA256"
 
 # Update the formula
-sed -i.bak "s|url \".*\"|url \"https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-universal.tar.gz\"|" "$FORMULA_PATH"
+sed -i.bak "s|url \".*\"|url \"https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-arm64.tar.gz\"|" "$FORMULA_PATH"
 sed -i.bak "s|sha256 \".*\"|sha256 \"${SHA256}\"|" "$FORMULA_PATH"
 sed -i.bak "s|version \".*\"|version \"${VERSION}\"|" "$FORMULA_PATH"
 

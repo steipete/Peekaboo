@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test publishing script for Peekaboo MCP
+# Test publishing script for Peekaboo
 # This script tests the npm package in a local registry before public release
 
 set -e
@@ -37,9 +37,9 @@ echo "🔑 Setting up authentication..."
 TOKEN=$(echo -n "testuser:testpass" | base64)
 npm set //localhost:4873/:_authToken "$TOKEN"
 
-# Build the package
-echo "🔨 Building package..."
-npm run build:all
+# Build the binary that ships inside the package
+echo "🔨 Building arm64 binary..."
+npm run build:swift
 
 # Publish to local registry
 echo "📤 Publishing to local registry..."
@@ -58,16 +58,16 @@ cd "$TEMP_DIR"
 npm init -y > /dev/null 2>&1
 
 # Install the package
-echo "📦 Installing @steipete/peekaboo-mcp from local registry..."
-npm install @steipete/peekaboo-mcp --registry http://localhost:4873/
+echo "📦 Installing @steipete/peekaboo from local registry..."
+npm install @steipete/peekaboo --registry http://localhost:4873/
 
 # Check if binary exists
-if [ -f "node_modules/@steipete/peekaboo-mcp/peekaboo" ]; then
+if [ -f "node_modules/@steipete/peekaboo/peekaboo" ]; then
     echo "✅ Binary found in package"
     
     # Test the binary
     echo "🧪 Testing binary..."
-    if node_modules/@steipete/peekaboo-mcp/peekaboo --version; then
+    if node_modules/@steipete/peekaboo/peekaboo --version; then
         echo "✅ Binary works!"
     else
         echo "❌ Binary failed to execute"
@@ -82,7 +82,7 @@ echo "🧪 Testing MCP server..."
 cat > test-mcp.js << 'EOF'
 const { spawn } = require('child_process');
 
-const server = spawn('npx', ['@steipete/peekaboo-mcp'], {
+const server = spawn('node', ['node_modules/@steipete/peekaboo/peekaboo-mcp.js'], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 

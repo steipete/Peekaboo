@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Release preparation script for @steipete/peekaboo-mcp
+ * Release preparation script for @steipete/peekaboo
  * 
  * This script performs comprehensive checks before release:
  * 1. Git status checks (branch, uncommitted files, sync with origin)

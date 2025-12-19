@@ -34,13 +34,13 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.tag }}"
           echo "Downloading release artifact for ${TAG}..."
-          curl -L -o peekaboo-macos-universal.tar.gz \
-            "https://github.com/steipete/peekaboo/releases/download/${TAG}/peekaboo-macos-universal.tar.gz"
+          curl -L -o peekaboo-macos-arm64.tar.gz \
+            "https://github.com/steipete/peekaboo/releases/download/${TAG}/peekaboo-macos-arm64.tar.gz"
 
       - name: Calculate SHA256
         id: sha256
         run: |
-          SHA256=$(sha256sum peekaboo-macos-universal.tar.gz | cut -d' ' -f1)
+          SHA256=$(sha256sum peekaboo-macos-arm64.tar.gz | cut -d' ' -f1)
           echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
           echo "SHA256: ${SHA256}"
 
@@ -50,7 +50,7 @@ jobs:
           SHA256="${{ steps.sha256.outputs.sha256 }}"
           
           # Update the formula file
-          sed -i "s|url \".*\"|url \"https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-universal.tar.gz\"|" homebrew/peekaboo.rb
+          sed -i "s|url \".*\"|url \"https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-arm64.tar.gz\"|" homebrew/peekaboo.rb
           sed -i "s|sha256 \".*\"|sha256 \"${SHA256}\"|" homebrew/peekaboo.rb
           sed -i "s|version \".*\"|version \"${VERSION}\"|" homebrew/peekaboo.rb
 

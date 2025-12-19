@@ -72,7 +72,7 @@ If needed, update the formula manually:
 ./scripts/release-binaries.sh
 
 # Get the SHA256
-shasum -a 256 release/peekaboo-macos-universal.tar.gz
+shasum -a 256 release/peekaboo-macos-arm64.tar.gz
 
 # Update formula
 ./scripts/update-homebrew-formula.sh 2.0.1 <sha256>
@@ -92,7 +92,7 @@ git push
 
 ```bash
 # Test from your tap
-brew tap steipete/peekaboo
+brew tap steipete/tap
 brew install --verbose --debug peekaboo
 brew test peekaboo
 ```

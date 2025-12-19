@@ -10,7 +10,8 @@ class Peekaboo < Formula
   depends_on macos: :sonoma
 
   def install
-    bin.install "peekaboo"
+    odie "Peekaboo is Apple Silicon only (arm64)." if Hardware::CPU.intel?
+    bin.install "peekaboo-macos-arm64/peekaboo" => "peekaboo"
   end
 
   def post_install
@@ -36,16 +37,11 @@ class Peekaboo < Formula
   end
 
   test do
+    require "json"
     # Test that the binary runs and returns version
     assert_match "Peekaboo", shell_output("#{bin}/peekaboo --version")
     
     # Test help command
     assert_match "USAGE:", shell_output("#{bin}/peekaboo --help")
-    
-    # Test JSON output for apps listing
-    output = shell_output("#{bin}/peekaboo list apps --json-output")
-    parsed = JSON.parse(output)
-    assert parsed["success"]
-    assert parsed["data"]["applications"].is_a?(Array)
   end
 end

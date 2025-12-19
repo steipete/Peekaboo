@@ -2,7 +2,7 @@
 set -e
 
 # Release script for Peekaboo binaries
-# This script builds universal binaries and prepares GitHub release artifacts
+# Default: arm64-only. Use --universal for a fat binary.
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -23,6 +23,7 @@ echo -e "${BLUE}🚀 Peekaboo Release Build Script${NC}"
 SKIP_CHECKS=false
 CREATE_GITHUB_RELEASE=false
 PUBLISH_NPM=false
+UNIVERSAL=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -38,12 +39,17 @@ while [[ $# -gt 0 ]]; do
             PUBLISH_NPM=true
             shift
             ;;
+        --universal)
+            UNIVERSAL=true
+            shift
+            ;;
         --help)
             echo "Usage: $0 [options]"
             echo "Options:"
             echo "  --skip-checks          Skip pre-release checks"
             echo "  --create-github-release Create draft GitHub release"
             echo "  --publish-npm          Publish to npm after building"
+            echo "  --universal            Build universal (arm64+x86_64) binary"
             echo "  --help                 Show this help message"
             exit 0
             ;;
@@ -57,7 +63,8 @@ done
 # Step 1: Run pre-release checks (unless skipped)
 if [ "$SKIP_CHECKS" = false ]; then
     echo -e "\n${BLUE}Running pre-release checks...${NC}"
-    if ! npm run prepare-release; then
+    # `prepare-release` is intentionally not runner-wrapped here: it can exceed runner timeouts.
+    if ! node scripts/prepare-release.js; then
         echo -e "${RED}❌ Pre-release checks failed!${NC}"
         exit 1
     fi
@@ -73,9 +80,20 @@ mkdir -p "$BUILD_DIR" "$RELEASE_DIR"
 VERSION=$(node -p "require('$PROJECT_ROOT/package.json').version")
 echo -e "${BLUE}Building version: ${VERSION}${NC}"
 
-# Step 4: Build universal binary
-echo -e "\n${BLUE}Building universal binary...${NC}"
-if ! npm run build:swift:all; then
+# Step 4: Build binary
+if [ "$UNIVERSAL" = true ]; then
+    echo -e "\n${BLUE}Building universal binary...${NC}"
+    BUILD_SCRIPT="build:swift:all"
+    CLI_ARTIFACT_DIR="peekaboo-macos-universal"
+    CLI_TARBALL_NAME="peekaboo-macos-universal.tar.gz"
+else
+    echo -e "\n${BLUE}Building arm64 binary...${NC}"
+    BUILD_SCRIPT="build:swift"
+    CLI_ARTIFACT_DIR="peekaboo-macos-arm64"
+    CLI_TARBALL_NAME="peekaboo-macos-arm64.tar.gz"
+fi
+
+if ! npm run "$BUILD_SCRIPT"; then
     echo -e "${RED}❌ Swift build failed!${NC}"
     exit 1
 fi
@@ -84,7 +102,7 @@ fi
 echo -e "\n${BLUE}Creating release artifacts...${NC}"
 
 # Create CLI release directory
-CLI_RELEASE_DIR="$BUILD_DIR/peekaboo-macos-universal"
+CLI_RELEASE_DIR="$BUILD_DIR/$CLI_ARTIFACT_DIR"
 mkdir -p "$CLI_RELEASE_DIR"
 
 # Copy files for CLI release
@@ -136,7 +154,7 @@ EOF
 # Create tarball
 echo -e "${BLUE}Creating tarball...${NC}"
 cd "$BUILD_DIR"
-tar -czf "$RELEASE_DIR/peekaboo-macos-universal.tar.gz" "peekaboo-macos-universal"
+tar -czf "$RELEASE_DIR/$CLI_TARBALL_NAME" "$CLI_ARTIFACT_DIR"
 
 # Create npm package tarball
 echo -e "${BLUE}Creating npm package...${NC}"
@@ -155,7 +173,7 @@ cd "$RELEASE_DIR"
 
 # Generate SHA256 checksums
 if command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 peekaboo-macos-universal.tar.gz > checksums.txt
+    shasum -a 256 "$CLI_TARBALL_NAME" > checksums.txt
     shasum -a 256 "$(basename "$NPM_PACKAGE")" >> checksums.txt
 else
     echo -e "${YELLOW}⚠️  shasum not found, skipping checksum generation${NC}"
@@ -170,19 +188,19 @@ cat > "$RELEASE_DIR/release-notes.md" << EOF
 
 ### Homebrew (Recommended)
 \`\`\`bash
-brew tap steipete/peekaboo
+brew tap steipete/tap
 brew install peekaboo
 \`\`\`
 
 ### Direct Download
 \`\`\`bash
-curl -L https://github.com/steipete/peekaboo/releases/download/v${VERSION}/peekaboo-macos-universal.tar.gz | tar xz
-sudo mv peekaboo-macos-universal/peekaboo /usr/local/bin/
+curl -L https://github.com/steipete/peekaboo/releases/download/v${VERSION}/${CLI_TARBALL_NAME} | tar xz
+sudo mv ${CLI_ARTIFACT_DIR}/peekaboo /usr/local/bin/
 \`\`\`
 
 ### npm (includes MCP server)
 \`\`\`bash
-npm install -g @steipete/peekaboo-mcp
+npm install -g @steipete/peekaboo
 \`\`\`
 
 ## What's New
@@ -216,7 +234,7 @@ if [ "$CREATE_GITHUB_RELEASE" = true ]; then
         --draft \
         --title "v${VERSION}" \
         --notes-file "$RELEASE_DIR/release-notes.md" \
-        "$RELEASE_DIR/peekaboo-macos-universal.tar.gz" \
+        "$RELEASE_DIR/$CLI_TARBALL_NAME" \
         "$RELEASE_DIR/$(basename "$NPM_PACKAGE")" \
         "$RELEASE_DIR/checksums.txt"
     
@@ -229,7 +247,7 @@ if [ "$PUBLISH_NPM" = true ]; then
     echo -e "\n${BLUE}Publishing to npm...${NC}"
     
     # Confirm before publishing
-    echo -e "${YELLOW}About to publish @steipete/peekaboo-mcp@${VERSION} to npm${NC}"
+    echo -e "${YELLOW}About to publish @steipete/peekaboo@${VERSION} to npm${NC}"
     read -p "Continue? (y/N) " -n 1 -r
     echo
     
@@ -244,7 +262,7 @@ fi
 echo -e "\n${GREEN}🎉 Release build complete!${NC}"
 echo -e "${BLUE}Next steps:${NC}"
 echo "1. Review artifacts in: $RELEASE_DIR"
-echo "2. Test the binary: tar -xzf $RELEASE_DIR/peekaboo-macos-universal.tar.gz && ./peekaboo-macos-universal/peekaboo --version"
+echo "2. Test the binary: tar -xzf $RELEASE_DIR/$CLI_TARBALL_NAME && ./$CLI_ARTIFACT_DIR/peekaboo --version"
 if [ "$CREATE_GITHUB_RELEASE" = false ]; then
     echo "3. Create GitHub release: $0 --create-github-release"
 fi
