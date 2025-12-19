@@ -230,6 +230,16 @@ public final actor PeekabooBridgeHost {
         let r = getsockopt(fd, SOL_LOCAL, LOCAL_PEERPID, &pid, &pidSize)
         guard r == 0, pid > 0 else { return nil }
 
+        if allowedTeamIDs.isEmpty, let callerUID = self.uid(for: pid), callerUID == getuid() {
+            let bundleID = self.bundleIdentifier(pid: pid)
+            let teamID = self.teamID(pid: pid)
+            return PeekabooBridgePeer(
+                processIdentifier: pid,
+                userIdentifier: callerUID,
+                bundleIdentifier: bundleID,
+                teamIdentifier: teamID)
+        }
+
         let teamID = self.teamID(pid: pid)
         if let teamID, allowedTeamIDs.contains(teamID) {
             let bundleID = self.bundleIdentifier(pid: pid)
