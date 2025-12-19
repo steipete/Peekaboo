@@ -38,6 +38,12 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Window index to capture")
     var windowIndex: Int?
 
+    @Option(
+        name: .long,
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json`)"
+    )
+    var windowId: Int?
+
     @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
 
@@ -133,8 +139,12 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         case .screen:
             results = try await self.captureScreens()
         case .window:
-            let identifier = try self.resolveApplicationIdentifier()
-            results = try await self.captureApplicationWindow(identifier)
+            if let windowId = self.windowId {
+                results = try await self.captureWindowById(windowId)
+            } else {
+                let identifier = try self.resolveApplicationIdentifier()
+                results = try await self.captureApplicationWindow(identifier)
+            }
         case .multi:
             if self.app != nil || self.pid != nil {
                 let identifier = try self.resolveApplicationIdentifier()
@@ -191,11 +201,30 @@ extension ImageCommand {
             return mode
         }
 
-        if self.app != nil || self.pid != nil || self.windowTitle != nil {
+        if self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowIndex != nil || self
+            .windowId != nil {
             return .window
         }
 
         return .frontmost
+    }
+
+    private func captureWindowById(_ windowId: Int) async throws -> [SavedFile] {
+        let result = try await ImageCaptureBridge.captureWindowById(
+            services: self.services,
+            windowId: windowId,
+            scale: self.captureScale
+        )
+
+        let title = result.metadata.windowInfo?.title
+        let preferredName = if let title, !title.isEmpty {
+            title
+        } else {
+            "window-\(windowId)"
+        }
+
+        let saved = try self.saveCaptureResult(result, preferredName: preferredName, index: nil)
+        return [saved]
     }
 
     private func captureScreens() async throws -> [SavedFile] {
@@ -645,6 +674,20 @@ private enum ImageCaptureBridge {
         }.value
     }
 
+    static func captureWindowById(
+        services: any PeekabooServiceProviding,
+        windowId: Int,
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureWindow(
+                windowID: CGWindowID(windowId),
+                visualizerMode: .screenshotFlash,
+                scale: scale
+            )
+        }.value
+    }
+
     static func captureFrontmost(
         services: any PeekabooServiceProviding,
         scale: CaptureScalePreference
@@ -698,6 +741,7 @@ extension ImageCommand: CommanderBindableCommand {
         }
         self.windowTitle = values.singleOption("windowTitle")
         self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
+        self.windowId = try values.decodeOption("windowId", as: Int.self)
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
         let parsedFormat: ImageFormat? = try values.decodeOptionEnum("format")
         if let parsedFormat {

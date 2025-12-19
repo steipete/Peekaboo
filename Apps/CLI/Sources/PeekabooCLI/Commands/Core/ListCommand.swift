@@ -19,19 +19,19 @@ struct ListCommand: ParsableCommand {
         EXAMPLES:
           peekaboo list                                  # List all applications (default)
           peekaboo list apps                             # List all running applications
-          peekaboo list apps --json-output               # Output as JSON
+          peekaboo list apps --json                      # Output as JSON
 
           peekaboo list windows --app Safari             # List Safari windows
           peekaboo list windows --app "Visual Studio Code"
           peekaboo list windows --app Chrome --include-details bounds,ids
 
           peekaboo list menubar                          # List menu bar items
-          peekaboo list menubar --json-output            # Output as JSON
+          peekaboo list menubar --json                   # Output as JSON
 
           peekaboo list permissions                      # Check permissions
 
           peekaboo list screens                          # List all displays
-          peekaboo list screens --json-output            # Output as JSON
+          peekaboo list screens --json                   # Output as JSON
 
         SUBCOMMANDS:
           apps          List all running applications with process IDs

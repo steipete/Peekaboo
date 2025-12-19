@@ -22,7 +22,7 @@ struct InteractionTargetOptions: CommanderParsable, ApplicationResolvable {
 
     @Option(
         name: .long,
-        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json-output`)"
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json`)"
     )
     var windowId: Int?
 

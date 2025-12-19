@@ -27,6 +27,12 @@ extension SCWindow: @retroactive @unchecked Sendable {}
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws
         -> CaptureResult
+    func captureWindow(
+        windowID: CGWindowID,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws
+        -> CaptureResult
     func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult
 }
 
@@ -40,6 +46,12 @@ extension SCWindow: @retroactive @unchecked Sendable {}
     func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
+        correlationId: String,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws
+        -> CaptureResult
+    func captureWindow(
+        windowID: CGWindowID,
         correlationId: String,
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws

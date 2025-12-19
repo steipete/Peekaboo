@@ -36,6 +36,14 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
 
+    /// Capture a specific window by CoreGraphics window id (CGWindowID).
+    ///
+    /// Use this when you need deterministic window targeting (e.g. multiple same-titled documents).
+    func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+
     /// Capture the frontmost window of the frontmost application
     /// - Returns: Result containing the captured image and metadata
     func captureFrontmost(
@@ -67,6 +75,24 @@ extension ScreenCaptureServiceProtocol {
         try await self.captureWindow(
             appIdentifier: appIdentifier,
             windowIndex: windowIndex,
+            visualizerMode: .screenshotFlash,
+            scale: .logical1x)
+    }
+
+    public func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
+        throw NSError(
+            domain: "Peekaboo",
+            code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "captureWindow(windowID:) is not supported by this capture service"])
+    }
+
+    public func captureWindow(windowID: CGWindowID) async throws -> CaptureResult {
+        try await self.captureWindow(
+            windowID: windowID,
             visualizerMode: .screenshotFlash,
             scale: .logical1x)
     }

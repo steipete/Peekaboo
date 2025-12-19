@@ -164,6 +164,26 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
     /// Whether our own NSWindow asked to hide from the Windows menu
     public let isExcludedFromWindowsMenu: Bool
 
+    enum CodingKeys: String, CodingKey {
+        case windowID = "window_id"
+        case title
+        case bounds
+        case isMinimized
+        case isMainWindow
+        case windowLevel
+        case alpha
+        case index
+        case spaceID
+        case spaceName
+        case screenIndex
+        case screenName
+        case isOffScreen
+        case layer
+        case isOnScreen
+        case sharingState
+        case isExcludedFromWindowsMenu
+    }
+
     public init(
         windowID: Int,
         title: String,

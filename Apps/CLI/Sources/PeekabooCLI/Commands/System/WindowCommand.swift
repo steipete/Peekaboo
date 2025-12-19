@@ -56,7 +56,7 @@ struct WindowCommand: ParsableCommand {
 
         OUTPUT FORMAT:
           Default output is human-readable text.
-          Use --json-output for machine-readable JSON format.
+          Use --json for machine-readable JSON format.
         """,
         subcommands: [
             CloseSubcommand.self,
@@ -90,7 +90,7 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
 
     @Option(
         name: .long,
-        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json-output`)"
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json`)"
     )
     var windowId: Int?
 

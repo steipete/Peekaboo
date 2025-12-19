@@ -344,6 +344,23 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
+    public func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
+    {
+        let metadata: Metadata = [
+            "windowID": Int(windowID),
+        ]
+
+        return try await self.performOperation(.window, metadata: metadata) { correlationId in
+            try await self.captureWindow(
+                windowID: windowID,
+                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
+                context: CaptureInvocationContext(operation: .window, correlationId: correlationId))
+        }
+    }
+
     private func captureWindow(
         app: ServiceApplicationInfo,
         windowIndex: Int?,
@@ -371,6 +388,39 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 return try await self.legacyOperator.captureWindow(
                     app: app,
                     windowIndex: windowIndex,
+                    correlationId: context.correlationId,
+                    visualizerMode: options.visualizerMode,
+                    scale: options.scale)
+            }
+        }
+    }
+
+    private func captureWindow(
+        windowID: CGWindowID,
+        options: WindowCaptureOptions,
+        context: CaptureInvocationContext) async throws -> CaptureResult
+    {
+        try await self.fallbackRunner.run(
+            operationName: context.operation.metricName,
+            logger: self.logger,
+            correlationId: context.correlationId)
+        { api in
+            switch api {
+            case .modern:
+                self.logger.debug(
+                    "Using ScreenCaptureKit window-id capture path",
+                    correlationId: context.correlationId)
+                return try await self.modernOperator.captureWindow(
+                    windowID: windowID,
+                    correlationId: context.correlationId,
+                    visualizerMode: options.visualizerMode,
+                    scale: options.scale)
+            case .legacy:
+                self.logger.debug(
+                    "Using legacy CGWindowList API window-id capture path",
+                    correlationId: context.correlationId)
+                return try await self.legacyOperator.captureWindow(
+                    windowID: windowID,
                     correlationId: context.correlationId,
                     visualizerMode: options.visualizerMode,
                     scale: options.scale)
@@ -674,6 +724,94 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     bundleIdentifier: app.bundleIdentifier,
                     name: app.name,
                     bundlePath: app.bundlePath),
+                windowInfo: ServiceWindowInfo(
+                    windowID: Int(targetWindow.windowID),
+                    title: targetWindow.title ?? "",
+                    bounds: targetWindow.frame,
+                    isMinimized: false,
+                    isMainWindow: targetWindow.isOnScreen,
+                    windowLevel: 0,
+                    alpha: 1.0,
+                    index: resolvedIndex,
+                    layer: 0,
+                    isOnScreen: targetWindow.isOnScreen),
+                displayInfo: DisplayInfo(
+                    index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
+                    name: targetDisplay.displayID.description,
+                    bounds: targetDisplay.frame,
+                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0))
+
+            return CaptureResult(imageData: imageData, metadata: metadata)
+        }
+
+        func captureWindow(
+            windowID: CGWindowID,
+            correlationId: String,
+            visualizerMode: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
+        {
+            let content = try await withTimeout(seconds: 5.0) {
+                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            }
+
+            guard let targetWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+                throw PeekabooError.windowNotFound(criteria: "window_id \(windowID)")
+            }
+
+            let owningPid = targetWindow.owningApplication?.processID
+            let appWindows: [SCWindow] = if let owningPid {
+                content.windows.filter { $0.owningApplication?.processID == owningPid }
+            } else {
+                [targetWindow]
+            }
+
+            let resolvedIndex = appWindows.firstIndex(where: { $0.windowID == windowID }) ?? 0
+
+            self.logger.debug(
+                "Capturing window by id",
+                metadata: [
+                    "title": targetWindow.title ?? "untitled",
+                    "windowID": targetWindow.windowID,
+                ],
+                correlationId: correlationId)
+
+            guard let targetDisplay = self.display(for: targetWindow, displays: content.displays) else {
+                throw OperationError.captureFailed(reason: "Window is not on any available display")
+            }
+            let targetScale = self.nativeScale(for: targetDisplay)
+
+            let image = try await RetryHandler.withRetry(policy: .standard) {
+                try await self.createScreenshot(
+                    of: targetWindow,
+                    scale: scale,
+                    targetScale: targetScale,
+                    display: targetDisplay)
+            }
+
+            let imageData = try image.pngData()
+
+            await self.emitVisualizer(mode: visualizerMode, rect: targetWindow.frame)
+
+            let applicationInfo: ServiceApplicationInfo? = if let owningPid,
+                                                              let runningApplication =
+                                                              NSRunningApplication(processIdentifier: owningPid)
+            {
+                ServiceApplicationInfo(
+                    processIdentifier: runningApplication.processIdentifier,
+                    bundleIdentifier: runningApplication.bundleIdentifier,
+                    name: runningApplication.localizedName ?? runningApplication.bundleIdentifier ?? "Unknown",
+                    bundlePath: runningApplication.bundleURL?.path,
+                    isActive: runningApplication.isActive,
+                    isHidden: runningApplication.isHidden,
+                    windowCount: appWindows.count)
+            } else {
+                nil
+            }
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .window,
+                applicationInfo: applicationInfo,
                 windowInfo: ServiceWindowInfo(
                     windowID: Int(targetWindow.windowID),
                     title: targetWindow.title ?? "",
@@ -1034,6 +1172,126 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     }),
                 displayInfo: DisplayInfo(
                     index: resolvedIndex,
+                    name: nil,
+                    bounds: bounds,
+                    scaleFactor: self.outputScale(for: scale, fallback: self.scaleFactor(for: bounds))))
+
+            return CaptureResult(
+                imageData: imageData,
+                metadata: metadata)
+        }
+
+        func captureWindow(
+            windowID: CGWindowID,
+            correlationId: String,
+            visualizerMode _: CaptureVisualizerMode,
+            scale: CaptureScalePreference) async throws -> CaptureResult
+        {
+            let windowList = CGWindowListCopyWindowInfo(
+                [.optionAll, .excludeDesktopElements],
+                kCGNullWindowID) as? [[String: Any]] ?? []
+
+            guard let targetWindow = windowList.first(where: { windowInfo in
+                (windowInfo[kCGWindowNumber as String] as? CGWindowID) == windowID
+            }) else {
+                throw PeekabooError.windowNotFound(criteria: "window_id \(windowID)")
+            }
+
+            guard let owningPid = targetWindow[kCGWindowOwnerPID as String] as? Int32 else {
+                throw OperationError.captureFailed(reason: "Failed to resolve owning PID for window \(windowID)")
+            }
+
+            let appWindows = windowList.filter { windowInfo in
+                guard let pid = windowInfo[kCGWindowOwnerPID as String] as? Int32 else { return false }
+                return pid == owningPid
+            }
+
+            let resolvedIndex = appWindows.firstIndex(where: { windowInfo in
+                (windowInfo[kCGWindowNumber as String] as? CGWindowID) == windowID
+            }) ?? 0
+
+            let windowTitle = targetWindow[kCGWindowName as String] as? String ?? "untitled"
+            self.logger.debug(
+                "Capturing window by id (legacy)",
+                metadata: [
+                    "title": windowTitle,
+                    "windowID": windowID,
+                ],
+                correlationId: correlationId)
+
+            let image: CGImage
+            if self.shouldUseLegacyCGCapture() {
+                do {
+                    image = try self.captureWindowWithCGWindowList(windowID: windowID)
+                } catch {
+                    self.logger.warning(
+                        "CGWindowList capture failed, falling back to SCScreenshotManager",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: correlationId)
+                    image = try await self.captureWindowWithScreenshotManager(
+                        windowID: windowID,
+                        correlationId: correlationId)
+                }
+            } else {
+                image = try await self.captureWindowWithScreenshotManager(
+                    windowID: windowID,
+                    correlationId: correlationId)
+            }
+
+            let bounds = if let boundsDict = targetWindow[kCGWindowBounds as String] as? [String: Any],
+                            let x = boundsDict["X"] as? CGFloat,
+                            let y = boundsDict["Y"] as? CGFloat,
+                            let width = boundsDict["Width"] as? CGFloat,
+                            let height = boundsDict["Height"] as? CGFloat
+            {
+                CGRect(x: x, y: y, width: width, height: height)
+            } else {
+                CGRect(x: 0, y: 0, width: image.width, height: image.height)
+            }
+
+            let imageData: Data
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: self.scaleFactor(for: bounds))
+            do {
+                imageData = try scaledImage.pngData()
+            } catch {
+                throw OperationError.captureFailed(reason: "Failed to convert image to PNG format")
+            }
+
+            let applicationInfo: ServiceApplicationInfo? = if let runningApplication = NSRunningApplication(
+                processIdentifier: owningPid)
+            {
+                ServiceApplicationInfo(
+                    processIdentifier: runningApplication.processIdentifier,
+                    bundleIdentifier: runningApplication.bundleIdentifier,
+                    name: runningApplication.localizedName ?? runningApplication.bundleIdentifier ?? "Unknown",
+                    bundlePath: runningApplication.bundleURL?.path,
+                    isActive: runningApplication.isActive,
+                    isHidden: runningApplication.isHidden,
+                    windowCount: appWindows.count)
+            } else {
+                nil
+            }
+
+            let metadata = CaptureMetadata(
+                size: CGSize(width: scaledImage.width, height: scaledImage.height),
+                mode: .window,
+                applicationInfo: applicationInfo,
+                windowInfo: ServiceWindowInfo(
+                    windowID: Int(windowID),
+                    title: windowTitle,
+                    bounds: bounds,
+                    isMinimized: false,
+                    isMainWindow: true,
+                    windowLevel: 0,
+                    alpha: 1.0,
+                    index: resolvedIndex,
+                    layer: targetWindow[kCGWindowLayer as String] as? Int ?? 0,
+                    isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
+                    sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap {
+                        WindowSharingState(rawValue: $0)
+                    }),
+                displayInfo: DisplayInfo(
+                    index: 0,
                     name: nil,
                     bounds: bounds,
                     scaleFactor: self.outputScale(for: scale, fallback: self.scaleFactor(for: bounds))))

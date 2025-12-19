@@ -25,6 +25,15 @@ private enum ScreenCaptureBridge {
         }.value
     }
 
+    static func captureWindowById(
+        services: any PeekabooServiceProviding,
+        windowId: Int
+    ) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
+        }.value
+    }
+
     static func captureArea(services: any PeekabooServiceProviding, rect: CGRect) async throws -> CaptureResult {
         try await Task { @MainActor in
             try await services.screenCapture.captureArea(rect)
@@ -52,6 +61,12 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     @Option(help: "Specific window title to capture")
     var windowTitle: String?
+
+    @Option(
+        name: .long,
+        help: "Target window by CoreGraphics window id (window_id from `peekaboo window list --json`)"
+    )
+    var windowId: Int?
 
     @Option(help: "Capture mode (screen, window, frontmost)")
     var mode: PeekabooCore.CaptureMode?
@@ -374,7 +389,20 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             return result
 
         case .window:
-            if self.app != nil || self.pid != nil {
+            if let windowId = self.windowId {
+                self.logger.verbose("Initiating window capture (by id)", category: "Capture", metadata: [
+                    "windowId": windowId,
+                ])
+
+                self.logger.startTimer("window_capture")
+                let result = try await ScreenCaptureBridge.captureWindowById(
+                    services: self.services,
+                    windowId: windowId
+                )
+                self.logger.stopTimer("window_capture")
+                self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+                return result
+            } else if self.app != nil || self.pid != nil {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 self.logger.verbose("Initiating window capture", category: "Capture", metadata: [
                     "app": appIdentifier,
@@ -396,7 +424,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                 return result
             } else {
-                throw ValidationError("--app or --pid is required for window mode")
+                throw ValidationError("Provide --window-id, or --app/--pid for window mode")
             }
 
         case .frontmost:
@@ -889,7 +917,7 @@ extension SeeCommand {
     private func determineMode() -> PeekabooCore.CaptureMode {
         if let mode = self.mode {
             mode
-        } else if self.app != nil || self.windowTitle != nil {
+        } else if self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowId != nil {
             // If app or window title is specified, default to window mode
             .window
         } else {
@@ -1243,6 +1271,7 @@ extension SeeCommand: CommanderBindableCommand {
         self.app = values.singleOption("app")
         self.pid = try values.decodeOption("pid", as: Int32.self)
         self.windowTitle = values.singleOption("windowTitle")
+        self.windowId = try values.decodeOption("windowId", as: Int.self)
         if let parsedMode: PeekabooCore.CaptureMode = try values.decodeOptionEnum("mode", caseInsensitive: false) {
             self.mode = parsedMode
         }
