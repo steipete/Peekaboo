@@ -33,7 +33,7 @@ Peekaboo ships powerful automation tools (clicking, typing, shell, window manage
   ```
   Empty providers short-circuit every AI call, and the deny list keeps AI-only tools off the registry. Combine with `PEEKABOO_ALLOW_TOOLS`/`PEEKABOO_DISABLE_TOOLS` if you need per-run overrides.
 
-Filters apply everywhere tools are surfaced: CLI `peekaboo tools`, the agent toolset, the MCP server’s tool registry, and external MCP servers registered through Peekaboo.
+Filters apply everywhere tools are surfaced: CLI `peekaboo tools`, the agent toolset, and the MCP server’s tool registry.
 
 ## Desktop context injection (DESKTOP_STATE)
 
@@ -67,5 +67,4 @@ If you disable the `clipboard` tool via allow/deny filters, the injected DESKTOP
 ### Recommendations
 
 - In production or shared machines: start with `PEEKABOO_ALLOW_TOOLS="see,click,type"` and add more only as required.  
-- When connecting to external MCP servers (GitHub, Jira, custom tools), pair the allow list with denies for any server-prefixed tools you do not trust.  
 - Document your chosen policy in team runbooks so other operators apply the same filters.

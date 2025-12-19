@@ -64,11 +64,10 @@
 - **Verification**: Playground identified as bundle `boo.peekaboo.mac.debug` with six windows; menubar payload includes Wi-Fi and Clock items; permissions report Accessibility + Screen Recording both granted.
 - **Notes**: Each command completed <3s. No additional log capture necessary; JSON artifacts are sufficient evidence.
 
-### ✅ `tools` command – native + MCP catalog
+### ✅ `tools` command – native catalog
 - **Command(s)**:
-  - `polter peekaboo -- tools --native-only --json-output > .artifacts/playground-tools/20251116-142009-tools-native.json`
-  - `polter peekaboo -- tools --mcp-only --group-by-server > .artifacts/playground-tools/20251116-142009-tools-mcp.txt`
-- **Verification**: Native JSON enumerates all built-in tools referenced in docs; MCP output remains empty (no remote servers enabled), which matches CLI expectations.
+  - `polter peekaboo -- tools --json-output > .artifacts/playground-tools/20251219-001215-tools.json`
+- **Verification**: JSON enumerates all built-in tools referenced in docs; tool count matches the MCP server catalog.
 - **Notes**: No Playground interaction needed; artifacts captured for comparison when new tools land.
 
 ### ✅ `clipboard` command – file/image set/get + cross-invocation save/restore
@@ -447,14 +446,14 @@
   - JSON output now reports the correct tool count (see `.artifacts/playground-tools/20251117-012655-agent-hi.json`, which shows `toolCallCount: 1` for the `done` tool). Use that artifact to confirm the regression is fixed.
   - Non-trivial agent runs exceed the runner’s 120 s timeout; always invoke those through `./runner tmux …` so they can finish, then collect the artifacts/logs afterward.
 
-### ✅ `mcp` command – chrome-devtools navigate/eval
-- **Logs**: `.artifacts/playground-tools/20251116-210340-mcp.log`
-- **Artifacts**: `.artifacts/playground-tools/20251116-210313-mcp-list.json`, `.artifacts/playground-tools/20251116-210325-mcp-call-chrome-nav.json`, `.artifacts/playground-tools/20251116-210334-mcp-call-chrome-eval.json`
+### ✅ `mcp` command – stdio server smoke
+- **Logs**: `.artifacts/playground-tools/20251219-001255-mcp.log`
+- **Artifacts**: `.artifacts/playground-tools/20251219-001230-mcp-list.json`, `.artifacts/playground-tools/20251219-001245-mcp-call-permissions.json`
 - **Commands**:
-  1. `polter peekaboo -- mcp list --json-output`
-  2. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output`
-  3. `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log("Playground MCP"); return document.title; }"}' --json-output`
-- **Findings**: Both calls succeed via chrome-devtools-mcp (Peekaboo now appends `--isolated` automatically). The MCP log shows `[MCP] call server=chrome-devtools tool=navigate_page` and `tool=evaluate_script`, so Playground evidence exists alongside the CLI JSON.
+  1. `MCPORTER list peekaboo-local --stdio "$PEEKABOO_BIN mcp" --timeout 20 --schema > .artifacts/playground-tools/20251219-001230-mcp-list.json`
+  2. `MCPORTER call peekaboo-local.permissions --stdio "$PEEKABOO_BIN mcp" --timeout 15 > .artifacts/playground-tools/20251219-001245-mcp-call-permissions.json`
+  3. `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o .artifacts/playground-tools/20251219-001255-mcp.log`
+- **Findings**: MCPORTER successfully enumerates tools and executes a basic `permissions` call over stdio; Playground `[MCP]` log captures the interaction for regression evidence.
 
 ### ✅ `dialog` command – TextEdit Save sheet
 - **Commands**:
@@ -547,15 +546,15 @@
 - **Result**: Moves succeed and `--coords` is accepted as an alias for the positional coordinates; conflicting targets now fail with `VALIDATION_ERROR` (fixed in `MoveCommand` + Commander metadata).
 - **Notes**: `playground-log -c Focus` remains empty during these runs; prefer the Click Fixture probe + `playground-log -c Control` for durable move evidence.
 
-### ✅ `mcp` command – list + chrome-devtools nav/eval
+### ✅ `mcp` command – stdio server smoke
 - **Commands**:
-  1. `pnpm run polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-091934-mcp-list.json`
-  2. `pnpm run polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-183614-mcp-call-chrome-nav.json`
-  3. `pnpm run polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Playground MCP log capture\"); return \"ok\"; }"}' --json-output > .artifacts/playground-tools/20251116-183617-mcp-call-chrome-eval.json`
+  1. `MCPORTER list peekaboo-local --stdio "$PEEKABOO_BIN mcp" --timeout 20 --schema > .artifacts/playground-tools/20251219-001230-mcp-list.json`
+  2. `MCPORTER call peekaboo-local.permissions --stdio "$PEEKABOO_BIN mcp" --timeout 15 > .artifacts/playground-tools/20251219-001245-mcp-call-permissions.json`
+  3. `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o .artifacts/playground-tools/20251219-001255-mcp.log`
 - **Result**:
-  - `mcp list` succeeds after ~45s (no local MCP servers respond quickly, but the command eventually returns with an empty/default list).
-  - `mcp call chrome-devtools navigate_page` succeeds once chrome-devtools-mcp is launched with `--isolated`. The tool reports the navigation + tab selection, and a follow-up `evaluate_script` returns `"ok"` as expected.
-- **Notes**: Each `mcp call` spins up a fresh chrome-devtools-mcp process, so calls that rely on shared console history (e.g., `list_console_messages`) will return empty unless they happen within the same invocation. The Playground log capture `.artifacts/playground-tools/20251116-183634-mcp.log` now records the `[MCP] call server=chrome-devtools …` entries for the two commands above, so future runs should continue to archive that log alongside the JSON artifacts.
+  - MCPORTER enumerates the Peekaboo MCP tool catalog over stdio.
+  - The `permissions` tool responds with expected Screen Recording + Accessibility status.
+- **Notes**: Keep the MCP log capture alongside the JSON artifacts so future runs can diff tool schemas and request logs.
 
 ### ✅ `dialog` command – TextEdit Save sheet
 - **Setup**:

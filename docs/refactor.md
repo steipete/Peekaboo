@@ -32,8 +32,8 @@ read_when:
 
 ## Archived refactor highlights (Nov 2025)
 - **AgentCommand split (Nov 17)** — extracted chat/audio flows, added launch policy scaffolding; needs tighter cancellation and more UI/tests (see `docs/archive/refactor/agent-command-split.md`).
-- **ConfigCommand split/refactor (Nov 17)** — broke the 1.2k-line command into subcommands and helpers; next steps include shared MCP client service and consistent formatting/error handling (`config-command-split.md`, `config-refactor-2025-11-17.md`).
-- **MCPCommand split (Nov 17)** — per-subcommand files plus shared parsing/formatting helpers; add mockable MCPClientService and broaden tests.
+- **ConfigCommand split/refactor (Nov 17)** — broke the 1.2k-line command into subcommands and helpers; next steps include consistent formatting/error handling (`config-command-split.md`, `config-refactor-2025-11-17.md`).
+- **MCPCommand split (Nov 17)** — per-subcommand files plus shared parsing/formatting helpers; MCP command later simplified to serve-only as external MCP client support was removed.
 - **MenuService refactor (Nov 18)** — split traversal/actions/extras, added traversal budgets; needs ContinuousClock timings, stronger title matching, and injected visualizer/logger seams.
 - **AXorcist boundary logs (Nov 19 + undated)** — keep AXorcist lean (AX toolkit) and push heuristics into Peekaboo; catalog follow-ups in `axorcist-2025-11-19.md` and `axorcist.md`.
 - **Agent improvements (pi-mono learnings, Nov 21)** — queue mode, streamed tool-call diffs/redaction, event unification, and session logging plans (`agent-improvements.md`).

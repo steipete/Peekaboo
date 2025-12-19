@@ -66,7 +66,7 @@ read_when:
 | `image` | Playground window (full or element-specific) | Use `Image` artifacts; note timestamp in `LOG_FILE` | `polter peekaboo -- image window --app Playground --output /tmp/playground-window.png` | Verified – window + screen captures succeed after capture fallback fix | `.artifacts/playground-tools/20251116-082109-image-window-playground.json`, `.artifacts/playground-tools/20251116-082125-image-screen0.json` |
 | `capture` | `capture live` against Playground (5–10s) + `capture video` ingest smoke | Verify artifacts (`metadata.json`, `contact.png`, frames) + optional MP4 (`--video-out`) | `polter peekaboo -- capture live --mode window --app Playground --duration 5 --threshold 0 --json-output` | Verified – live writes contact sheet + metadata; video ingest + `--video-out` covered | `.artifacts/playground-tools/20251217-133751-capture-live.json`, `.artifacts/playground-tools/20251217-180155-capture-video.json`, `.artifacts/playground-tools/20251217-184010-capture-live-videoout.json`, `.artifacts/playground-tools/20251217-184010-capture-video-videoout.json` |
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
-| `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --native-only --json-output` | Verified – native + MCP listings captured 2025-11-16 | `.artifacts/playground-tools/20251116-142009-tools-native.json`, `.artifacts/playground-tools/20251116-142009-tools-mcp.txt` |
+| `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach JSON to notes | `polter peekaboo -- tools --json-output` | Verified – native tool listing captured 2025-12-19 | `.artifacts/playground-tools/20251219-001215-tools.json` |
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – smoke script drives Text Fixture and `type` resolves `basic-text-field` deterministically | `.artifacts/playground-tools/20251217-221643-run-playground-smoke.json`, `.artifacts/playground-tools/20251217-221643-run-playground-smoke-text.log` |
 | `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
@@ -105,7 +105,7 @@ read_when:
 | Tool | Playground coverage | Log category | Sample CLI | Status | Latest log |
 | --- | --- | --- | --- | --- | --- |
 | `agent` | Run natural-language tasks scoped to Playground (“click the single button”) | Captures whichever sub-tools fire (`Click`, `Text`, etc.) | `polter peekaboo -- agent "Say hi" --max-steps 1` | Verified – GPT-5.1 runs logged 2025-11-17 (see notes re: tool count bug) | `.artifacts/playground-tools/20251117-011345-agent.log` |
-| `mcp` | Ensure Playground-focused MCP servers still enumerate & test (esp. Tachikoma) | `MCP` | `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}'` | Verified – chrome-devtools list/navigate/eval captured with `[MCP]` logs (2025-11-16) | `.artifacts/playground-tools/20251116-210340-mcp.log` |
+| `mcp` | Verify MCP server can enumerate tools via stdio | `MCP` | `MCPORTER list peekaboo-local --stdio "$PEEKABOO_BIN mcp" --timeout 20` | Verified – MCP tools list captured (2025-12-19) | `.artifacts/playground-tools/20251219-001200-mcp-list.log` |
 
 > **Status Legend:** `Not started` = no logs yet, `In progress` = partial run logged, `Blocked` = awaiting fix, `Verified` = passing with log path recorded.
 
@@ -159,9 +159,8 @@ The following subsections spell out the concrete steps, required Playground surf
 - **Logs**: Use `playground-log` `Window` category when forcing focus changes to validate `app switch` interplay.
 #### `tools`
 - **Steps**:
-  1. `polter peekaboo -- tools --native-only --json-output > "$LOG_ROOT/tools-native.json"`.
-  2. `polter peekaboo -- tools --mcp-only --group-by-server > "$LOG_ROOT/tools-mcp.txt"`.
-  3. Compare native entries to the Interaction/Window commands listed here; flag gaps.
+  1. `polter peekaboo -- tools --json-output > "$LOG_ROOT/tools.json"`.
+  2. Compare entries to the Interaction/Window commands listed here; flag gaps.
 - **Verification**: JSON includes click/type/etc. with descriptions.
 
 #### `run`
@@ -499,15 +498,13 @@ The following subsections spell out the concrete steps, required Playground surf
 
 #### `mcp`
 - **Steps**:
-  1. `polter peekaboo -- mcp list --json-output > .artifacts/playground-tools/20251116-210313-mcp-list.json`.
-  2. `polter peekaboo -- mcp call chrome-devtools navigate_page --args '{"url":"https://example.com"}' --json-output > .artifacts/playground-tools/20251116-210325-mcp-call-chrome-nav.json`.
-  3. `polter peekaboo -- mcp call chrome-devtools evaluate_script --args '{"function":"() => { console.log(\"Playground MCP\"); return document.title; }"}' --json-output > .artifacts/playground-tools/20251116-210334-mcp-call-chrome-eval.json`.
-  4. Capture the OSLog stream with `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o .artifacts/playground-tools/20251116-210340-mcp.log`.
-- **2025-11-16 verification**:
-  - `mcp list` still takes ~45s but now deterministically returns the chrome-devtools catalog; Peekaboo appends `--isolated`, so Chrome profile locks never block.
-  - `navigate_page` hits https://example.com and `evaluate_script` returns the page title (and console log) with `success: true`; the JSON artifacts capture the payloads for regression diffs.
-  - Playground `[MCP]` log records both invocations (`tool=navigate_page`, `tool=evaluate_script`), so the regression plan has deterministic log + artifact coverage.
-  - Reminder: each `mcp call` runs in its own chrome-devtools-mcp process; tools needing console history must execute within one call or script multiple actions inside the tool.
+  1. `MCPORTER list peekaboo-local --stdio "$PEEKABOO_BIN mcp" --timeout 20 --schema > .artifacts/playground-tools/20251219-001230-mcp-list.json`.
+  2. `MCPORTER call peekaboo-local.permissions --stdio "$PEEKABOO_BIN mcp" --timeout 15 > .artifacts/playground-tools/20251219-001245-mcp-call-permissions.json`.
+  3. Capture the OSLog stream with `./Apps/Playground/scripts/playground-log.sh -c MCP --last 15m --all -o .artifacts/playground-tools/20251219-001255-mcp.log`.
+- **2025-12-19 verification**:
+  - `MCPORTER list` returns the native Peekaboo tool catalog via stdio.
+  - `permissions` call returns the expected `Screen Recording` + `Accessibility` statuses.
+  - Playground `[MCP]` log records the server requests for later regression diffs.
 
 ## Reporting & Follow-Up
 - Record every executed test case (command, arguments, snapshot ID, log file path, outcome) in `Apps/Playground/PLAYGROUND_TEST.md`.

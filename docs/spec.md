@@ -41,7 +41,7 @@ Not in scope: backwards compatibility with pre-3.0 CLIs, legacy argument parser 
 | Peekaboo.app | `Apps/Peekaboo` | Menu-bar UI + inspector. Shares `PeekabooServices()` with CLI and registers defaults via `services.installAgentRuntimeDefaults()`. | Launching via `polter peekaboo …` starts the UI alongside the CLI binary. |
 | Visualizer | `PeekabooVisualizer` target | Animations, overlays, and progress indicators consumed by both CLI and app. | Communicates through the service layer (no direct AppKit glue inside commands). |
 | Agent runtime | `PeekabooAgentRuntime` + Tachikoma | Implements `peekaboo agent`, GPT‑5/Sonnet integrations, dry-run planners, audio input, and MCP tools. | System prompt + tool descriptions live in `PeekabooAgentService.generateSystemPrompt()` and `create*Tool()` helpers. |
-| MCP server/client | `peekaboo mcp` | Exposes native tools via Model Context Protocol and manages external servers (add/list/test/call). | Uses `TachikomaMCPClientManager` and `PeekabooMCPServer`. |
+| MCP server | `peekaboo mcp` | Exposes native tools via Model Context Protocol. | Uses `PeekabooMCPServer`. |
 
 ---
 
@@ -123,8 +123,8 @@ Common helpers:
 
 ### 7.2 MCP (`peekaboo mcp`)
 - `serve` starts `PeekabooMCPServer` over stdio/HTTP/SSE.
-- Client management commands (`list`, `add`, `remove`, `enable`, `disable`, `info`, `test`, `call`, `inspect` placeholder) interact with `TachikomaMCPClientManager` and persist config through the MCP profile.
-- Native Peekaboo tools are registered via `MCPToolRegistry`; external tools are fetched from enabled servers so agents see a unified catalog (also surfaced by `peekaboo tools`).
+- `peekaboo mcp` defaults to `serve` so server startup does not require a subcommand.
+- Native Peekaboo tools are registered via `MCPToolRegistry`.
 
 ---
 
@@ -143,9 +143,8 @@ Common helpers:
    - `.peekaboo.json` scripts (executed via `peekaboo run`) call the same commands internally; results are aggregated into `ScriptExecutionResult` for CI-friendly logging.
    - `peekaboo agent` builds on top of those tools: it plans via GPT‑5/Sonnet, emits progress (Visualizer + stderr), and stores session history so users can resume or inspect steps. Agents always call the public CLI tools, so debugging any failure is as simple as rerunning the emitted sequence manually.
 
-4. **MCP & External Tools**
-   - Running `peekaboo mcp serve` lets Claude Desktop / MCP Inspector consume Peekaboo tools directly.
-   - Conversely, `peekaboo mcp add/list/test/call` allows Peekaboo to invoke remote MCP servers, making `peekaboo tools` the union of native and external capabilities.
+4. **MCP Server**
+   - Running `peekaboo mcp` or `peekaboo mcp serve` lets Claude Desktop / MCP Inspector consume Peekaboo tools directly.
 
 ---
 
@@ -154,6 +153,5 @@ Common helpers:
 - **Space/window telemetry:** continue refining `SpaceCommand` outputs so CLI/app/agent logs include explicit display + Space IDs for every focused window.
 - **Right-button swipes:** `SwipeCommand` currently rejects `--right-button`; hooking that path up through `AutomationServiceBridge.swipe` is tracked separately.
 - **Inspector unification:** Peekaboo.app, CLI overlays, and `docs/research/interaction-debugging.md` fixtures should share a single component catalog so new detectors (e.g., hidden web fields) land once and benefit all surfaces.
-- **MCP inspect tooling:** `peekaboo mcp inspect` is a stub today; once the inspector is implemented, document its flags under `docs/commands/mcp.md` and surface it in the CLI help output.
 
 For flag-level behavior, troubleshooting steps, and real-world examples, refer to the per-command docs in `docs/commands/`. This spec focuses on how the pieces fit together; the command docs capture day-to-day usage.

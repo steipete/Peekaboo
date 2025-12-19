@@ -69,6 +69,6 @@ struct TestChildProcess {
 - Cancellation: wrapping the spawn in `withTimeout` or explicitly calling `process.terminate()` cooperates with async tasks. This will help us enforce per-test timeouts instead of blocking on `waitUntilExit()`.
 
 ## Open Questions
-- PTY support is currently experimental. Even though our MCP client now sticks to pipes, confirm Subprocess’ pseudo-terminal roadmap before depending on it for future CLI integrations.
+- PTY support is currently experimental. Even though our MCP server relies on stdio pipes, confirm Subprocess’ pseudo-terminal roadmap before depending on it for future CLI integrations.
 - Some of our tests rely on combined stdout/stderr ordering. Subprocess exposes them separately; we need to decide whether to merge streams manually or only capture stderr when non-empty.
 - Monitor the upstream issue tracker for breaking changes ahead of `1.0.0`; update this doc with any migration notes after each dependency bump.

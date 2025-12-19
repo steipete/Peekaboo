@@ -82,14 +82,14 @@ npx -y @steipete/peekaboo
 | [dialog](docs/commands/dialog.md) | `list`, `click`, `input`, `file`, `dismiss` | Drive system dialogs (open/save/etc.) |
 | [image](docs/commands/image.md) | `--mode screen/window/menu`, `--retina`, `--analyze` | Screenshot screen/window/menu bar (+analyze) |
 | [list](docs/commands/list.md) | `apps`, `windows`, `screens`, `menubar`, `permissions` | Enumerate apps, windows, screens, permissions |
-| [tools](docs/commands/tools.md) | `--source native\|mcp`, `--server <name>` | Inspect native + MCP tools |
+| [tools](docs/commands/tools.md) | `--verbose`, `--json-output`, `--no-sort` | Inspect native Peekaboo tools |
 | [config](docs/commands/config.md) | `init`, `show`, `add`, `login`, `models` | Manage credentials/providers/settings |
 | [permissions](docs/commands/permissions.md) | `status`, `grant` | Check/grant required macOS permissions |
 | [run](docs/commands/run.md) | `.peekaboo.json`, `--output`, `--no-fail-fast` | Execute `.peekaboo.json` automation scripts |
 | [sleep](docs/commands/sleep.md) | `--duration` (ms) | Millisecond delays between steps |
 | [clean](docs/commands/clean.md) | `--all-snapshots`, `--older-than`, `--snapshot` | Prune snapshots and caches |
 | [agent](docs/commands/agent.md) | `--model`, `--dry-run`, `--resume`, `--max-steps`, audio | Natural-language multi-step automation |
-| [mcp](docs/commands/mcp.md) | `serve`, `list`, `add`, `enable/disable`, `test` | Manage external MCP servers and serve Peekaboo |
+| [mcp](docs/commands/mcp.md) | `serve` (default) | Run Peekaboo as an MCP server |
 
 ## Models and providers
 - OpenAI: GPT-5.1 (default) and GPT-4.1/4o vision

@@ -22,7 +22,7 @@ This guide explains how to install the Peekaboo MCP server in Claude Desktop app
 1. **Build Peekaboo** (if not already built):
    ```bash
    cd /Users/steipete/Projects/Peekaboo
-   npm run build:swift
+   pnpm run build:swift
    ```
 
 2. **Edit Claude Desktop configuration**:
@@ -37,7 +37,7 @@ This guide explains how to install the Peekaboo MCP server in Claude Desktop app
      "mcpServers": {
        "peekaboo": {
          "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-         "args": ["mcp", "serve"],
+         "args": ["mcp"],
          "env": {
            "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4-20250514,ollama/llava:latest"
          }
@@ -47,28 +47,6 @@ This guide explains how to install the Peekaboo MCP server in Claude Desktop app
    ```
 
 4. **Restart Claude Desktop** to apply changes.
-
-### Method 2: Using NPM Package (When Published)
-
-Once the npm package is published:
-
-```bash
-# Install globally
-npm install -g @steipete/peekaboo-mcp
-
-# Configure Claude Desktop
-```
-
-Then add to `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "peekaboo": {
-      "command": "peekaboo-mcp"
-    }
-  }
-}
-```
 
 ## Configuration Options
 
@@ -81,7 +59,7 @@ You can add environment variables to configure Peekaboo:
   "mcpServers": {
     "peekaboo": {
       "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-      "args": ["mcp", "serve"],
+      "args": ["mcp"],
       "env": {
         "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4-20250514",
         "PEEKABOO_LOG_LEVEL": "info",
@@ -138,7 +116,7 @@ You can add environment variables to configure Peekaboo:
 
 3. **MCP server not starting**
    - Check Claude Desktop logs for errors
-   - Try running the command manually: `/path/to/peekaboo mcp serve`
+   - Try running the command manually: `/path/to/peekaboo mcp`
    - Verify the binary exists and is the correct architecture
 
 4. **API key issues**
@@ -154,7 +132,7 @@ Enable debug logging to troubleshoot issues:
   "mcpServers": {
     "peekaboo": {
       "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-      "args": ["mcp", "serve", "--log-level", "debug"],
+      "args": ["mcp", "--log-level", "debug"],
       "env": {
         "PEEKABOO_LOG_LEVEL": "debug"
       }
@@ -174,14 +152,14 @@ You can run multiple Peekaboo instances with different configurations:
   "mcpServers": {
     "peekaboo-local": {
       "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-      "args": ["mcp", "serve"],
+      "args": ["mcp"],
       "env": {
         "PEEKABOO_AI_PROVIDERS": "ollama/llama3.3"
       }
     },
     "peekaboo-cloud": {
       "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-      "args": ["mcp", "serve"],
+      "args": ["mcp"],
       "env": {
         "PEEKABOO_AI_PROVIDERS": "anthropic/claude-opus-4,openai/gpt-4.1"
       }
@@ -199,7 +177,7 @@ Set a custom working directory for file operations:
   "mcpServers": {
     "peekaboo": {
       "command": "/Users/steipete/Projects/Peekaboo/peekaboo",
-      "args": ["mcp", "serve"],
+      "args": ["mcp"],
       "cwd": "/Users/steipete/Desktop"
     }
   }
