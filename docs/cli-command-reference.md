@@ -7,7 +7,7 @@ read_when:
 
 # CLI Command Reference
 
-Peekaboo’s CLI mirrors everything the agent can do. Commands share the same snapshot cache and most support `--json-output` for scripting. Run `peekaboo` with no arguments to print the root help menu, and `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
+Peekaboo’s CLI mirrors everything the agent can do. Commands share the same snapshot cache and most support `--json` (alias: `--json-output`) for scripting. Run `peekaboo` with no arguments to print the root help menu, and `peekaboo --version` at any time to see the embedded build/commit metadata that Poltergeist stamped into the binary.
 
 Use `peekaboo <command> --help` for inline flag descriptions; this page links to the authoritative docs in `docs/commands/`.
 
@@ -55,4 +55,4 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - [`agent`](commands/agent.md) – Natural-language automation with dry-run planning, resume, audio modes, and model overrides.
 - [`mcp`](commands/mcp.md) – `serve`, `list`, `add`, `remove`, `enable`, `disable`, `info`, `test`, `call`, `inspect` (stub) for Model Context Protocol workflows.
 
-Need structured payloads? Pass `--json-output` (where supported) or orchestrate multiple commands inside `.peekaboo.json` scripts executed via [`peekaboo run`](commands/run.md).
+Need structured payloads? Pass `--json` (or `--json-output`) where supported, or orchestrate multiple commands inside `.peekaboo.json` scripts executed via [`peekaboo run`](commands/run.md).
