@@ -6,6 +6,8 @@ PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SWIFT_PROJECT_PATH="$PROJECT_ROOT/Apps/CLI"
 FINAL_BINARY_NAME="peekaboo"
 FINAL_BINARY_PATH="$PROJECT_ROOT/$FINAL_BINARY_NAME"
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+CODESIGN_TIMESTAMP="${CODESIGN_TIMESTAMP:-auto}"
 
 ARM64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-arm64"
 X86_64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-x86_64"
@@ -28,6 +30,55 @@ pipe_build_output() {
     else
         cat
     fi
+}
+
+select_identity() {
+    local preferred available first
+    preferred="$(security find-identity -p codesigning -v 2>/dev/null \
+        | awk -F'\"' '/Developer ID Application/ { print $2; exit }')"
+    if [ -n "$preferred" ]; then
+        echo "$preferred"
+        return
+    fi
+    available="$(security find-identity -p codesigning -v 2>/dev/null \
+        | sed -n 's/.*\"\\(.*\\)\"/\\1/p')"
+    if [ -n "$available" ]; then
+        first="$(printf '%s\n' "$available" | head -n1)"
+        echo "$first"
+        return
+    fi
+    return 1
+}
+
+resolve_signing_identity() {
+    if [ -n "$SIGN_IDENTITY" ]; then
+        return 0
+    fi
+    if ! SIGN_IDENTITY="$(select_identity)"; then
+        echo "ERROR: No signing identity found. Set SIGN_IDENTITY to a valid codesigning certificate." >&2
+        exit 1
+    fi
+}
+
+resolve_timestamp_arg() {
+    TIMESTAMP_ARG="--timestamp=none"
+    case "$CODESIGN_TIMESTAMP" in
+        1|on|yes|true)
+            TIMESTAMP_ARG="--timestamp"
+            ;;
+        0|off|no|false)
+            TIMESTAMP_ARG="--timestamp=none"
+            ;;
+        auto)
+            if [[ "$SIGN_IDENTITY" == *"Developer ID Application"* ]]; then
+                TIMESTAMP_ARG="--timestamp"
+            fi
+            ;;
+        *)
+            echo "ERROR: Unknown CODESIGN_TIMESTAMP value: $CODESIGN_TIMESTAMP (use auto|on|off)" >&2
+            exit 1
+            ;;
+    esac
 }
 
 set_plist_value() {
@@ -104,24 +155,15 @@ strip -Sxu "$FINAL_BINARY_PATH.tmp"
 
 echo "🔏 Code signing the universal binary..."
 ENTITLEMENTS_PATH="$SWIFT_PROJECT_PATH/Sources/Resources/peekaboo.entitlements"
-if security find-identity -p codesigning -v | grep -q "Developer ID Application"; then
-    # Sign with Developer ID if available
-    SIGNING_IDENTITY=$(security find-identity -p codesigning -v | grep "Developer ID Application" | head -1 | awk '{print $2}')
-    codesign --force --sign "$SIGNING_IDENTITY" \
-        --options runtime \
-        --identifier "boo.peekaboo.peekaboo" \
-        --entitlements "$ENTITLEMENTS_PATH" \
-        --timestamp \
-        "$FINAL_BINARY_PATH.tmp"
-    echo "✅ Signed with Developer ID: $SIGNING_IDENTITY"
-else
-    # Fall back to ad-hoc signing for local builds
-    codesign --force --sign - \
-        --identifier "boo.peekaboo.peekaboo" \
-        --entitlements "$ENTITLEMENTS_PATH" \
-        "$FINAL_BINARY_PATH.tmp"
-    echo "⚠️  Ad-hoc signed (no Developer ID found)"
-fi
+resolve_signing_identity
+resolve_timestamp_arg
+codesign --force --sign "$SIGN_IDENTITY" \
+    --options runtime \
+    $TIMESTAMP_ARG \
+    --identifier "boo.peekaboo.peekaboo" \
+    --entitlements "$ENTITLEMENTS_PATH" \
+    "$FINAL_BINARY_PATH.tmp"
+echo "✅ Signed with identity: $SIGN_IDENTITY"
 
 # Verify the signature and embedded info
 echo "🔍 Verifying code signature..."
