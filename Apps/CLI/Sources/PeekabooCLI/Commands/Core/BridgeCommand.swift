@@ -16,8 +16,9 @@ struct BridgeCommand: ParsableCommand {
 
         By default, Peekaboo prefers a remote host when available:
           1) Peekaboo.app
-          2) Clawdis.app
-          3) Local in-process fallback (caller needs permissions)
+          2) Claude.app
+          3) Clawdis.app
+          4) Local in-process fallback (caller needs permissions)
 
         Examples:
           peekaboo bridge status
@@ -216,6 +217,7 @@ private struct BridgeDiagnostics: Sendable {
         } else {
             [
                 PeekabooBridgeConstants.peekabooSocketPath,
+                PeekabooBridgeConstants.claudeSocketPath,
                 PeekabooBridgeConstants.clawdisSocketPath,
             ]
         }

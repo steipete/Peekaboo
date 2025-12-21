@@ -8,6 +8,11 @@ public enum PeekabooBridgeConstants {
         self.applicationSupportSocketPath(appDirectoryName: "Peekaboo")
     }
 
+    /// Socket hosted by Claude.app (fallback host; piggyback on Claude Desktop TCC grants).
+    public static var claudeSocketPath: String {
+        self.applicationSupportSocketPath(appDirectoryName: "Claude")
+    }
+
     /// Socket hosted by Clawdis.app (fallback host).
     public static var clawdisSocketPath: String {
         self.applicationSupportSocketPath(appDirectoryName: "clawdis")

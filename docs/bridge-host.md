@@ -18,9 +18,11 @@ Clients try hosts in this order:
 
 1. **Peekaboo.app** (primary host)
    - Socket: `~/Library/Application Support/Peekaboo/bridge.sock`
-2. **Clawdis.app** (fallback host)
+2. **Claude.app** (fallback host; piggyback on Claude Desktop TCC grants)
+   - Socket: `~/Library/Application Support/Claude/bridge.sock`
+3. **Clawdis.app** (fallback host)
    - Socket: `~/Library/Application Support/clawdis/bridge.sock`
-3. **Local in-process** (no host available; requires the caller process to have TCC grants)
+4. **Local in-process** (no host available; requires the caller process to have TCC grants)
 
 There is **no auto-launch** of Peekaboo.app.
 

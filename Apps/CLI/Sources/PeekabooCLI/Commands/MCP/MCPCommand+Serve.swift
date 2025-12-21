@@ -44,8 +44,12 @@ extension MCPCommand {
                 default: .stdio
                 }
 
-                let daemon = PeekabooDaemon(configuration: .mcp())
-                await daemon.start()
+                if runtime.services is RemotePeekabooServices {
+                    runtime.logger.debug("MCP: using remote Bridge host; skipping local daemon startup")
+                } else {
+                    let daemon = PeekabooDaemon(configuration: .mcp())
+                    await daemon.start()
+                }
 
                 let server = try await PeekabooMCPServer()
                 try await server.serve(transport: transportType, port: self.port)

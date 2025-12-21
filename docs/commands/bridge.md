@@ -34,6 +34,10 @@ polter peekaboo -- bridge status --verbose --json-output | jq '.data'
 polter peekaboo -- bridge status --bridge-socket \
   ~/Library/Application\ Support/clawdis/bridge.sock
 
+# Probe Claude Desktop host socket path (if Claude.app hosts PeekabooBridge)
+polter peekaboo -- bridge status --bridge-socket \
+  ~/Library/Application\ Support/Claude/bridge.sock
+
 # Force local (skip Peekaboo.app / Clawdis.app hosts)
 polter peekaboo -- bridge status --no-remote
 ```

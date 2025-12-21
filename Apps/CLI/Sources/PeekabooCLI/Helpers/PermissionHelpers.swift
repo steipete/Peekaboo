@@ -27,6 +27,7 @@ enum PermissionHelpers {
         } else {
             [
                 PeekabooBridgeConstants.peekabooSocketPath,
+                PeekabooBridgeConstants.claudeSocketPath,
                 PeekabooBridgeConstants.clawdisSocketPath,
             ]
         }
