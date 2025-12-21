@@ -260,11 +260,10 @@ extension DaemonCommand {
             let pollInterval = TimeInterval(Double(self.pollIntervalMs ?? 1000) / 1000.0)
             let socketPath = self.bridgeSocket ?? PeekabooBridgeConstants.peekabooSocketPath
 
-            let config: PeekabooDaemon.Configuration
-            if self.mode.lowercased() == "mcp" {
-                config = .mcp(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
+            let config: PeekabooDaemon.Configuration = if self.mode.lowercased() == "mcp" {
+                .mcp(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
             } else {
-                config = .manual(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
+                .manual(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
             }
 
             let daemon = PeekabooDaemon(configuration: config)
@@ -346,13 +345,15 @@ private struct DaemonControlClient {
             bundleIdentifier: Bundle.main.bundleIdentifier,
             teamIdentifier: nil,
             processIdentifier: getpid(),
-            hostname: Host.current().name)
+            hostname: Host.current().name
+        )
         do {
             let handshake = try await client.handshake(client: identity)
             let bridge = PeekabooDaemonBridgeStatus(
                 socketPath: self.socketPath,
                 hostKind: handshake.hostKind,
-                allowedOperations: handshake.supportedOperations)
+                allowedOperations: handshake.supportedOperations
+            )
             return PeekabooDaemonStatus(
                 running: true,
                 pid: nil,
@@ -361,7 +362,8 @@ private struct DaemonControlClient {
                 bridge: bridge,
                 permissions: handshake.permissions,
                 snapshots: nil,
-                windowTracker: nil)
+                windowTracker: nil
+            )
         } catch {
             return nil
         }

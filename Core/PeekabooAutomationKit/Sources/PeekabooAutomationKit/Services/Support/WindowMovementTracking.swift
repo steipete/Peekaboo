@@ -17,7 +17,7 @@ public enum WindowMovementTracking {
     private static let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowMovementTracking")
     private static let identityService = WindowIdentityService()
 
-    public static weak var provider: (any WindowTrackingProviding)?
+    public weak static var provider: (any WindowTrackingProviding)?
 
     public static func adjustPoint(
         _ point: CGPoint,

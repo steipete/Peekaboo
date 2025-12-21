@@ -172,7 +172,7 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
     }
 
     private func snapshotStatus() async -> PeekabooDaemonSnapshotStatus {
-        let list = (try? await self.services.snapshots.listSnapshots()) ?? []
+        let list = await (try? self.services.snapshots.listSnapshots()) ?? []
         let lastAccessed = list.map(\ .lastAccessedAt).max()
         let backend: String = self.services.snapshots is InMemorySnapshotManager ? "memory" : "disk"
         return PeekabooDaemonSnapshotStatus(

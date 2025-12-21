@@ -8,4 +8,3 @@ struct PeekabooBridgeConstantsTests {
         #expect(PeekabooBridgeConstants.claudeSocketPath.hasSuffix("/Claude/bridge.sock"))
     }
 }
-

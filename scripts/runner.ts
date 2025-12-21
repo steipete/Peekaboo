@@ -54,7 +54,7 @@ const EXTENDED_SCRIPT_KEYWORDS = ['lint', 'test', 'playwright', 'check', 'docker
 const SINGLE_TEST_SCRIPTS = new Set(['test:file']);
 const SINGLE_TEST_FLAGS = new Set(['--run', '--filter']);
 const TEST_BINARIES = new Set(['vitest', 'playwright', 'jest']);
-const LINT_BINARIES = new Set(['eslint', 'biome', 'oxlint', 'knip']);
+const LINT_BINARIES = new Set(['eslint', 'biome', 'oxlint', 'knip', 'swiftlint']);
 
 type RunnerExecutionContext = {
   commandArgs: string[];
