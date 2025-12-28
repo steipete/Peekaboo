@@ -1,4 +1,5 @@
 import Darwin
+import CoreGraphics
 import Foundation
 import os.log
 import PeekabooAutomationKit
@@ -107,6 +108,22 @@ public actor PeekabooBridgeClient {
         let payload = PeekabooBridgeCaptureWindowRequest(
             appIdentifier: appIdentifier,
             windowIndex: windowIndex,
+            windowId: nil,
+            visualizerMode: visualizerMode,
+            scale: scale)
+        let response = try await self.send(.captureWindow(payload))
+        return try Self.unwrapCapture(from: response)
+    }
+
+    public func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode = .screenshotFlash,
+        scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
+    {
+        let payload = PeekabooBridgeCaptureWindowRequest(
+            appIdentifier: "",
+            windowIndex: nil,
+            windowId: Int(windowID),
             visualizerMode: visualizerMode,
             scale: scale)
         let response = try await self.send(.captureWindow(payload))

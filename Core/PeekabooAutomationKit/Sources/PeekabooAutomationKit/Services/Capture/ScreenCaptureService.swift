@@ -510,18 +510,22 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         filter: SCContentFilter,
         configuration: SCStreamConfiguration) async throws -> CGImage
     {
-        // Create a stream delegate to handle errors
-        let streamDelegate = StreamDelegate()
-
         // Create a stream for single frame capture
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: streamDelegate)
+        let output = CaptureOutput()
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: output)
 
         // Add stream output
-        let output = CaptureOutput()
         try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
 
-        // Start capture
-        try await stream.startCapture()
+        // Start capture with a bounded timeout so ScreenCaptureKit stalls can fall back.
+        do {
+            try await withTimeout(seconds: 3.0) {
+                try await stream.startCapture()
+            }
+        } catch {
+            try? await stream.stopCapture()
+            throw OperationError.captureFailed(reason: error.localizedDescription)
+        }
 
         // Wait for frame with error handling
         let image: CGImage
@@ -958,12 +962,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             filter: SCContentFilter,
             configuration: SCStreamConfiguration) async throws -> CGImage
         {
-            let streamDelegate = StreamDelegate()
-            let stream = SCStream(filter: filter, configuration: configuration, delegate: streamDelegate)
             let output = CaptureOutput()
+            let stream = SCStream(filter: filter, configuration: configuration, delegate: output)
             try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
             do {
-                try await stream.startCapture()
+                try await withTimeout(seconds: 3.0) {
+                    try await stream.startCapture()
+                }
             } catch {
                 try? await stream.stopCapture()
                 throw OperationError.captureFailed(reason: error.localizedDescription)
@@ -1585,27 +1590,20 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
 // swiftlint:enable type_body_length
 
-// MARK: - Stream Delegate
-
-private final class StreamDelegate: NSObject, SCStreamDelegate, @unchecked Sendable {
-    func stream(_ stream: SCStream, didStopWithError error: any Error) {
-        // Log the error but don't need to do anything else since CaptureOutput handles errors
-        print("SCStream stopped with error: \(error)")
-    }
-}
-
 // MARK: - Capture Output Handler
 
 @MainActor
 final class CaptureOutput: NSObject, @unchecked Sendable {
     private var continuation: CheckedContinuation<CGImage, any Error>?
     private var timeoutTask: Task<Void, Never>?
+    private var pendingCancellation = false
 
     @MainActor
     fileprivate func finish(_ result: Result<CGImage, any Error>) {
         // Single exit hatch for all completion paths: ensures timeout is canceled and continuation
         // is resumed exactly once, eliminating the racey scatter of resumes that existed before.
         // Cancel any pending timeout
+        self.pendingCancellation = false
         self.timeoutTask?.cancel()
         self.timeoutTask = nil
 
@@ -1623,6 +1621,10 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
     fileprivate func setContinuation(_ cont: CheckedContinuation<CGImage, any Error>) {
         // Tests inject their own continuation; production uses waitForImage().
         self.continuation = cont
+        if self.pendingCancellation {
+            self.pendingCancellation = false
+            self.finish(.failure(CancellationError()))
+        }
     }
 
     deinit {
@@ -1639,10 +1641,9 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
 
     /// Suspend until the next captured frame arrives, throwing if the stream stalls.
     func waitForImage() async throws -> CGImage {
-        defer { self.continuation = nil }
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                self.continuation = continuation
+                self.setContinuation(continuation)
 
                 // Add a timeout to ensure the continuation is always resumed.
                 self.timeoutTask = Task { [weak self] in
@@ -1656,8 +1657,9 @@ final class CaptureOutput: NSObject, @unchecked Sendable {
                 }
             }
         } onCancel: { [weak self] in
-            Task { @MainActor [weak self] in
+            Task.detached { @MainActor [weak self] in
                 guard let self else { return }
+                self.pendingCancellation = true
                 self.finish(.failure(CancellationError()))
             }
         }

@@ -340,8 +340,23 @@ public struct PeekabooBridgeCaptureScreenRequest: Codable, Sendable {
 public struct PeekabooBridgeCaptureWindowRequest: Codable, Sendable {
     public let appIdentifier: String
     public let windowIndex: Int?
+    public let windowId: Int?
     public let visualizerMode: CaptureVisualizerMode
     public let scale: CaptureScalePreference
+
+    public init(
+        appIdentifier: String,
+        windowIndex: Int?,
+        windowId: Int? = nil,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference)
+    {
+        self.appIdentifier = appIdentifier
+        self.windowIndex = windowIndex
+        self.windowId = windowId
+        self.visualizerMode = visualizerMode
+        self.scale = scale
+    }
 }
 
 public struct PeekabooBridgeCaptureFrontmostRequest: Codable, Sendable {

@@ -313,27 +313,21 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 windowBounds: captureContext.captureBounds ?? captureResult.metadata.windowInfo?.bounds
             )
 
-            if !ocrElements.isEmpty {
-                let metadata = DetectionMetadata(
-                    detectionTime: Date().timeIntervalSince(detectionStart),
-                    elementCount: ocrElements.count,
-                    method: captureContext.ocrMethod ?? "OCR",
-                    warnings: [],
-                    windowContext: windowContext,
-                    isDialog: false
-                )
-                detectionResult = ElementDetectionResult(
-                    snapshotId: UUID().uuidString,
-                    screenshotPath: "",
-                    elements: DetectedElements(other: ocrElements),
-                    metadata: metadata
-                )
-            } else {
-                detectionResult = try await self.detectElements(
-                    imageData: captureResult.imageData,
-                    windowContext: windowContext
-                )
-            }
+            let warnings = ocrElements.isEmpty ? ["OCR produced no elements"] : []
+            let metadata = DetectionMetadata(
+                detectionTime: Date().timeIntervalSince(detectionStart),
+                elementCount: ocrElements.count,
+                method: captureContext.ocrMethod ?? "OCR",
+                warnings: warnings,
+                windowContext: windowContext,
+                isDialog: false
+            )
+            detectionResult = ElementDetectionResult(
+                snapshotId: UUID().uuidString,
+                screenshotPath: "",
+                elements: DetectedElements(other: ocrElements),
+                metadata: metadata
+            )
         } else {
             detectionResult = try await self.detectElements(
                 imageData: captureResult.imageData,
@@ -506,6 +500,24 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                     "windowTitle": self.windowTitle ?? "any",
                 ])
 
+                if let resolvedWindowId = try await self.resolveWindowId(
+                    appIdentifier: appIdentifier,
+                    titleFragment: self.windowTitle
+                ) {
+                    self.logger.verbose("Resolved window id for capture", category: "Capture", metadata: [
+                        "windowId": resolvedWindowId
+                    ])
+
+                    self.logger.startTimer("window_capture")
+                    let result = try await ScreenCaptureBridge.captureWindowById(
+                        services: self.services,
+                        windowId: resolvedWindowId
+                    )
+                    self.logger.stopTimer("window_capture")
+                    self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
+                    return result
+                }
+
                 let windowIndex = try await self.resolveSeeWindowIndex(
                     appIdentifier: appIdentifier,
                     titleFragment: self.windowTitle
@@ -542,8 +554,22 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func captureMenuBarPopover() async throws -> MenuBarPopoverCapture? {
         let extras = try await self.services.menu.listMenuExtras()
-        let ownerPids = Set(extras.compactMap(\.ownerPID))
+        var ownerPids = Set(extras.compactMap(\.ownerPID))
         guard !ownerPids.isEmpty else { return nil }
+
+        if let openExtra = try await self.resolveOpenMenuExtra(from: extras),
+           let openPid = openExtra.ownerPID
+        {
+            ownerPids = [openPid]
+            self.logger.verbose(
+                "Detected open menu extra",
+                category: "Capture",
+                metadata: [
+                    "title": openExtra.title,
+                    "ownerPID": openPid
+                ]
+            )
+        }
 
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements],
@@ -600,6 +626,18 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             )
         }
 
+        return nil
+    }
+
+    private func resolveOpenMenuExtra(from extras: [MenuExtraInfo]) async throws -> MenuExtraInfo? {
+        for extra in extras {
+            let isOpen = (try? await self.services.menu.isMenuExtraMenuOpen(
+                title: extra.title,
+                ownerPID: extra.ownerPID)) == true
+            if isOpen {
+                return extra
+            }
+        }
         return nil
     }
 
@@ -782,6 +820,17 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         }
 
         return nil
+    }
+
+    private func resolveWindowId(appIdentifier: String, titleFragment: String?) async throws -> Int? {
+        guard let fragment = titleFragment, !fragment.isEmpty else {
+            return nil
+        }
+
+        let windows = try await self.services.windows.listWindows(
+            target: .applicationAndTitle(app: appIdentifier, title: fragment)
+        )
+        return windows.first?.windowID
     }
 
     // swiftlint:disable function_body_length

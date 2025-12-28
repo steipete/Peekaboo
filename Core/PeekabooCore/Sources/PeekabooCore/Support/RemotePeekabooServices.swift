@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import PeekabooAgentRuntime
 import PeekabooAutomation
@@ -31,6 +32,14 @@ public final class RemoteScreenCaptureService: ScreenCaptureServiceProtocol {
             windowIndex: windowIndex,
             visualizerMode: visualizerMode,
             scale: scale)
+    }
+
+    public func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
+        try await self.client.captureWindow(windowID: windowID, visualizerMode: visualizerMode, scale: scale)
     }
 
     public func captureFrontmost(

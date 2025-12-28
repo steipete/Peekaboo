@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import os.log
 import PeekabooAutomationKit
@@ -149,6 +150,20 @@ public final class PeekabooBridgeServer {
                 return .capture(capture)
 
             case let .captureWindow(payload):
+                if let windowId = payload.windowId {
+                    let capture = try await self.services.screenCapture.captureWindow(
+                        windowID: CGWindowID(windowId),
+                        visualizerMode: payload.visualizerMode,
+                        scale: payload.scale)
+                    return .capture(capture)
+                }
+
+                guard !payload.appIdentifier.isEmpty else {
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .invalidRequest,
+                        message: "captureWindow requires appIdentifier or windowId")
+                }
+
                 let capture = try await self.services.screenCapture.captureWindow(
                     appIdentifier: payload.appIdentifier,
                     windowIndex: payload.windowIndex,

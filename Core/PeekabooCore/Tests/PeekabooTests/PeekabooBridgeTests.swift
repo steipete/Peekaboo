@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import PeekabooAutomation
 import PeekabooAutomationKit
@@ -298,6 +299,37 @@ struct PeekabooBridgeTests {
         #expect(result.metadata.mode == CaptureMode.frontmost)
     }
 
+    @Test("captureWindow forwards windowId when provided")
+    func captureWindowById() async throws {
+        let stub = await MainActor.run { StubServices() }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let request = PeekabooBridgeRequest.captureWindow(
+            PeekabooBridgeCaptureWindowRequest(
+                appIdentifier: "",
+                windowIndex: nil,
+                windowId: 9001,
+                visualizerMode: CaptureVisualizerMode.screenshotFlash,
+                scale: CaptureScalePreference.logical1x))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case .capture = response else {
+            Issue.record("Expected capture response, got \(response)")
+            return
+        }
+
+        let lastWindowId = await MainActor.run { stub.screenCaptureStub.lastWindowId }
+        #expect(lastWindowId == CGWindowID(9001))
+    }
+
     @Test("automation click is forwarded")
     func automationClick() async throws {
         let stub = await MainActor.run { StubServices() }
@@ -334,7 +366,8 @@ struct PeekabooBridgeTests {
 
 @MainActor
 private final class StubServices: PeekabooBridgeServiceProviding {
-    let screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
+    let screenCaptureStub = StubScreenCaptureService()
+    let screenCapture: any ScreenCaptureServiceProtocol
     let automationStub = StubAutomationService()
     let automation: any UIAutomationServiceProtocol
     let applications: any ApplicationServiceProtocol = StubApplicationService()
@@ -346,12 +379,14 @@ private final class StubServices: PeekabooBridgeServiceProviding {
     let permissions: PermissionsService = .init()
 
     init() {
+        self.screenCapture = self.screenCaptureStub
         self.automation = self.automationStub
     }
 }
 
 private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     static let sampleData = Data("stub-capture".utf8)
+    private(set) var lastWindowId: CGWindowID?
 
     func captureScreen(
         displayIndex: Int?,
@@ -369,6 +404,17 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
         _ = (appIdentifier, windowIndex, visualizerMode, scale)
+        self.lastWindowId = nil
+        return self.makeResult(mode: .window)
+    }
+
+    func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode: CaptureVisualizerMode,
+        scale: CaptureScalePreference) async throws -> CaptureResult
+    {
+        _ = (visualizerMode, scale)
+        self.lastWindowId = windowID
         return self.makeResult(mode: .window)
     }
 
