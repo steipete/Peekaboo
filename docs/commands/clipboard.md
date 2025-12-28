@@ -13,7 +13,7 @@ Work with the macOS pasteboard. Supports text, files/images, raw base64 payloads
 | Action | Description |
 | --- | --- |
 | `get` | Read the clipboard. Use `--prefer <uti>` to bias type selection and `--output <path|->` to write binary data. |
-| `set` | Write text (`--text`), file/image (`--file-path`/`--image-path`), or base64 + `--uti`. Optional `--also-text` sets a plain-text companion. |
+| `set` | Write text (`--text`), file/image (`--file-path`/`--image-path`), or base64 + `--uti`. Optional `--also-text` sets a plain-text companion. Use `--verify` to read back. |
 | `load` | Shortcut for `set` with a file path. |
 | `clear` | Empty the clipboard. |
 | `save` / `restore` | Snapshot and restore clipboard contents. Default slot is `"0"`; use `--slot` to name slots. |
@@ -30,11 +30,15 @@ Work with the macOS pasteboard. Supports text, files/images, raw base64 payloads
 | `--slot <name>` | Save/restore slot (default `0`). |
 | `--also-text <string>` | Add a text representation when setting binary data. |
 | `--allow-large` | Permit payloads over 10 MB (guard is 10 MB by default). |
+| `--verify` | Read back clipboard after `set`/`load` and validate contents. |
 
 ## Examples
 ```bash
 # Copy text
 peekaboo clipboard --action set --text "hello world"
+
+# Copy text and verify readback
+peekaboo clipboard --action set --text "hello world" --verify
 
 # Read clipboard and save binary to a file
 peekaboo clipboard --action get --output /tmp/clip.bin

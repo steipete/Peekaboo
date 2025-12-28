@@ -14,7 +14,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
                 discussion: """
                 Actions:
                   get     Read the clipboard. Use --prefer <uti> or --output <path|-> for binary.
-                  set     Write text, file/image, or base64+UTI. --also-text adds a text companion.
+                  set     Write text, file/image, or base64+UTI. --also-text adds a text companion. --verify reads back.
                   clear   Empty the clipboard.
                   save    Snapshot clipboard to a slot (default: \"0\").
                   restore Restore a previously saved slot.
@@ -57,6 +57,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     @Flag(name: .long, help: "Allow payloads larger than 10 MB")
     var allowLarge = false
+
+    @Flag(name: .long, help: "Read back clipboard after set/load and validate contents")
+    var verify = false
 
     @RuntimeStorage private var runtime: CommandRuntime?
     var runtimeOptions = CommandRuntimeOptions()
@@ -122,7 +125,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: output,
             slot: nil,
-            textPreview: result.textPreview
+            textPreview: result.textPreview,
+            verification: nil
         )
 
         self.output(payload) {
@@ -141,17 +145,20 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
     private func handleSet() throws {
         let request = try self.makeWriteRequest()
         let result = try self.services.clipboard.set(request)
+        let verification = try self.verifyWriteIfNeeded(request: request)
         let payload = ClipboardCommandResult(
             action: "set",
             uti: result.utiIdentifier,
             size: result.data.count,
             filePath: nil,
             slot: nil,
-            textPreview: result.textPreview
+            textPreview: result.textPreview,
+            verification: verification
         )
 
         self.output(payload) {
             print("✅ Set clipboard (\(result.utiIdentifier), \(result.data.count) bytes)")
+            self.printVerificationSummary(verification)
         }
     }
 
@@ -161,17 +168,20 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         }
         let request = try self.makeWriteRequest(overridePath: path)
         let result = try self.services.clipboard.set(request)
+        let verification = try self.verifyWriteIfNeeded(request: request)
         let payload = ClipboardCommandResult(
             action: "load",
             uti: result.utiIdentifier,
             size: result.data.count,
             filePath: path,
             slot: nil,
-            textPreview: result.textPreview
+            textPreview: result.textPreview,
+            verification: verification
         )
 
         self.output(payload) {
             print("✅ Loaded \(result.data.count) bytes (\(result.utiIdentifier)) from \(path) into clipboard")
+            self.printVerificationSummary(verification)
         }
     }
 
@@ -183,7 +193,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: nil,
             filePath: nil,
             slot: nil,
-            textPreview: nil
+            textPreview: nil,
+            verification: nil
         )
         self.output(payload) {
             print("🧹 Cleared clipboard")
@@ -199,7 +210,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: nil,
             filePath: nil,
             slot: slotName,
-            textPreview: nil
+            textPreview: nil,
+            verification: nil
         )
         self.output(payload) {
             print("💾 Saved clipboard to slot \"\(slotName)\"")
@@ -215,7 +227,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: nil,
             slot: slotName,
-            textPreview: result.textPreview
+            textPreview: result.textPreview,
+            verification: nil
         )
         self.output(payload) {
             print("♻️  Restored slot \"\(slotName)\" (\(result.utiIdentifier), \(result.data.count) bytes)")
@@ -226,9 +239,11 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     private func makeWriteRequest(overridePath: String? = nil) throws -> ClipboardWriteRequest {
         if let text {
+            let data = Data(text.utf8)
             return ClipboardWriteRequest(
                 representations: [
-                    ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: Data(text.utf8)),
+                    ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data),
+                    ClipboardRepresentation(utiIdentifier: UTType.utf8PlainText.identifier, data: data),
                 ],
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
@@ -259,6 +274,73 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         throw ValidationError("Provide --text, --file-path/--image-path, or --data-base64 with --uti")
     }
+
+    private func verifyWriteIfNeeded(request: ClipboardWriteRequest) throws -> ClipboardVerifyResult? {
+        guard self.verify else { return nil }
+
+        var verifiedTypes: [String] = []
+        var skippedTypes: [String] = []
+
+        for representation in request.representations {
+            guard let preferredType = UTType(representation.utiIdentifier) else {
+                skippedTypes.append(representation.utiIdentifier)
+                continue
+            }
+
+            guard let readBack = try self.services.clipboard.get(prefer: preferredType) else {
+                throw ValidationError("Clipboard verify failed: missing \(representation.utiIdentifier)")
+            }
+
+            guard readBack.utiIdentifier == representation.utiIdentifier else {
+                throw ValidationError(
+                    "Clipboard verify failed: expected \(representation.utiIdentifier), got \(readBack.utiIdentifier)"
+                )
+            }
+
+            if Self.isTextUTI(representation.utiIdentifier) {
+                guard let expected = Self.normalizedTextData(representation.data),
+                      let actual = Self.normalizedTextData(readBack.data) else {
+                    throw ValidationError(
+                        "Clipboard verify failed: unable to decode text for \(representation.utiIdentifier)"
+                    )
+                }
+                guard expected == actual else {
+                    throw ValidationError("Clipboard verify failed: text mismatch for \(representation.utiIdentifier)")
+                }
+            } else if readBack.data != representation.data {
+                throw ValidationError("Clipboard verify failed: data mismatch for \(representation.utiIdentifier)")
+            }
+
+            verifiedTypes.append(representation.utiIdentifier)
+        }
+
+        return ClipboardVerifyResult(
+            ok: true,
+            verifiedTypes: verifiedTypes,
+            skippedTypes: skippedTypes.isEmpty ? nil : skippedTypes
+        )
+    }
+
+    private func printVerificationSummary(_ verification: ClipboardVerifyResult?) {
+        guard let verification else { return }
+        let types = verification.verifiedTypes.joined(separator: ", ")
+        print("✅ Verified clipboard readback (\(types))")
+        if let skipped = verification.skippedTypes, !skipped.isEmpty {
+            print("⚠️  Skipped verify for: \(skipped.joined(separator: ", "))")
+        }
+    }
+
+    private static func isTextUTI(_ utiIdentifier: String) -> Bool {
+        utiIdentifier == UTType.plainText.identifier || utiIdentifier == UTType.utf8PlainText.identifier
+    }
+
+    private static func normalizedTextData(_ data: Data) -> Data? {
+        guard let string = String(data: data, encoding: .utf8) else { return nil }
+        let normalized = string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(
+            of: "\r",
+            with: "\n")
+        return normalized.data(using: .utf8)
+    }
 }
 
 struct ClipboardCommandResult: Codable {
@@ -268,6 +350,13 @@ struct ClipboardCommandResult: Codable {
     let filePath: String?
     let slot: String?
     let textPreview: String?
+    let verification: ClipboardVerifyResult?
+}
+
+struct ClipboardVerifyResult: Codable {
+    let ok: Bool
+    let verifiedTypes: [String]
+    let skippedTypes: [String]?
 }
 
 @MainActor
@@ -300,5 +389,6 @@ extension ClipboardCommand: CommanderBindableCommand {
             self.alsoText = try values.decodeOption("also-text", as: String.self)
         }
         self.allowLarge = values.flag("allowLarge") || values.flag("allow-large")
+        self.verify = values.flag("verify")
     }
 }

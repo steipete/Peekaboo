@@ -34,6 +34,11 @@ public enum VisionToolDefinitions {
                 description: "Generate an annotated screenshot with interaction markers",
                 required: false),
             ParameterDefinition(
+                name: "menubar",
+                type: .boolean,
+                description: "Capture menu bar popovers via window list + OCR",
+                required: false),
+            ParameterDefinition(
                 name: "session",
                 type: .string,
                 description: "Session ID for UI automation state tracking",

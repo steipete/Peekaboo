@@ -63,6 +63,11 @@ extension SeeCommand: CommanderSignatureProviding {
                     long: "annotate"
                 ),
                 .commandFlag(
+                    "menubar",
+                    help: "Capture menu bar popovers via window list + OCR",
+                    long: "menubar"
+                ),
+                .commandFlag(
                     "noWebFocus",
                     help: "Skip web-content focus fallback when no text fields are detected",
                     long: "no-web-focus"

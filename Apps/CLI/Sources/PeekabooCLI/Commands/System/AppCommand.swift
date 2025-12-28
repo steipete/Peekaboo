@@ -625,6 +625,9 @@ struct AppCommand: ParsableCommand {
 
         @Flag(help: "Cycle to next app (Cmd+Tab)")
         var cycle = false
+
+        @Flag(help: "Verify the target app becomes frontmost")
+        var verify = false
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -654,6 +657,9 @@ struct AppCommand: ParsableCommand {
 
             do {
                 if self.cycle {
+                    if self.verify {
+                        throw ValidationError("Verify is only supported with --to (not --cycle)")
+                    }
                     // Simulate Cmd+Tab
                     let source = CGEventSource(stateID: .hidSystemState)
                     let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: true) // Tab
@@ -687,6 +693,9 @@ struct AppCommand: ParsableCommand {
                     }
 
                     let success = runningApp.activate()
+                    if self.verify {
+                        try await self.verifyFrontmostApp(expected: appInfo)
+                    }
 
                     struct SwitchResult: Codable {
                         let action: String
@@ -717,6 +726,31 @@ struct AppCommand: ParsableCommand {
                 handleError(error)
                 throw ExitCode(1)
             }
+        }
+
+        private func verifyFrontmostApp(expected: ServiceApplicationInfo) async throws {
+            let deadline = Date().addingTimeInterval(1.5)
+            while Date() < deadline {
+                let frontmost = try await self.services.applications.getFrontmostApplication()
+                if self.matches(frontmost: frontmost, expected: expected) {
+                    return
+                }
+                try await Task.sleep(nanoseconds: 120_000_000)
+            }
+
+            let frontmost = try await self.services.applications.getFrontmostApplication()
+            throw PeekabooError.operationError(
+                message: "App switch verification failed: frontmost is \(frontmost.name)"
+            )
+        }
+
+        private func matches(frontmost: ServiceApplicationInfo, expected: ServiceApplicationInfo) -> Bool {
+            if let expectedBundle = expected.bundleIdentifier,
+               let frontmostBundle = frontmost.bundleIdentifier,
+               expectedBundle == frontmostBundle {
+                return true
+            }
+            return frontmost.name.compare(expected.name, options: .caseInsensitive) == .orderedSame
         }
     }
 
@@ -1035,6 +1069,7 @@ extension AppCommand.SwitchSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.to = values.singleOption("to")
         self.cycle = values.flag("cycle")
+        self.verify = values.flag("verify")
     }
 }
 

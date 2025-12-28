@@ -63,7 +63,16 @@ extension WindowCommand.SetBoundsSubcommand: CommanderSignatureProviding {
 
 extension WindowCommand.FocusSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
-        CommandSignature(optionGroups: [WindowCommandSignatures.windowOptions, WindowCommandSignatures.focusOptions])
+        CommandSignature(
+            flags: [
+                .commandFlag(
+                    "verify",
+                    help: "Verify the window is focused after the action",
+                    long: "verify"
+                ),
+            ],
+            optionGroups: [WindowCommandSignatures.windowOptions, WindowCommandSignatures.focusOptions]
+        )
     }
 }
 

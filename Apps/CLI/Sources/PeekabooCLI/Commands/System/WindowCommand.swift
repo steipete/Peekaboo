@@ -410,6 +410,9 @@ extension WindowCommand {
         @OptionGroup var windowOptions: WindowIdentificationOptions
 
         @OptionGroup var focusOptions: FocusCommandOptions
+
+        @Flag(help: "Verify the window is focused after the action")
+        var verify = false
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -473,6 +476,14 @@ extension WindowCommand {
                     context: "window-focus"
                 )
                 let finalWindowInfo = refreshedWindowInfo ?? windowInfo
+
+                if self.verify {
+                    try await self.verifyFocus(
+                        expectedWindowId: finalWindowInfo?.windowID,
+                        expectedTitle: self.windowOptions.windowTitle,
+                        expectedApp: appInfo
+                    )
+                }
                 logWindowAction(
                     action: "focus",
                     appName: appName,
@@ -498,6 +509,48 @@ extension WindowCommand {
                 handleError(error)
                 throw ExitCode(1)
             }
+        }
+
+        private func verifyFocus(
+            expectedWindowId: Int?,
+            expectedTitle: String?,
+            expectedApp: ServiceApplicationInfo
+        ) async throws {
+            let deadline = Date().addingTimeInterval(1.5)
+            while Date() < deadline {
+                let frontmost = try await self.services.applications.getFrontmostApplication()
+                if let expectedBundle = expectedApp.bundleIdentifier,
+                   let frontBundle = frontmost.bundleIdentifier,
+                   expectedBundle != frontBundle {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+
+                if frontmost.name.compare(expectedApp.name, options: .caseInsensitive) != .orderedSame,
+                   expectedApp.bundleIdentifier == nil {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+
+                if let expectedWindowId,
+                   let focused = try await self.services.windows.getFocusedWindow(),
+                   focused.windowID != expectedWindowId {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+
+                if expectedWindowId == nil,
+                   let expectedTitle,
+                   let focused = try await self.services.windows.getFocusedWindow(),
+                   !focused.title.localizedCaseInsensitiveContains(expectedTitle) {
+                    try await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+
+                return
+            }
+
+            throw PeekabooError.operationError(message: "Window focus verification failed")
         }
     }
 
@@ -1059,6 +1112,7 @@ extension WindowCommand.FocusSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.windowOptions = try values.makeWindowOptions()
         self.focusOptions = try values.makeFocusOptions()
+        self.verify = values.flag("verify")
     }
 }
 

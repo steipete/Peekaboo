@@ -86,6 +86,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     @Flag(help: "Generate annotated screenshot with interaction markers")
     var annotate = false
 
+    @Flag(name: .long, help: "Capture menu bar popovers via window list + OCR")
+    var menubar = false
+
     @Option(help: "Analyze captured content with AI")
     var analyze: String?
 
@@ -138,6 +141,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             "app": self.app ?? "none",
             "mode": self.mode?.rawValue ?? "auto",
             "annotate": self.annotate,
+            "menubar": self.menubar,
             "hasAnalyzePrompt": self.analyze != nil,
         ])
 
@@ -281,25 +285,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
-        // Handle special app cases
-        let captureResult: CaptureResult
-
-        if let appName = self.app?.lowercased() {
-            switch appName {
-            case "menubar":
-                self.logger.verbose("Capturing menu bar area", category: "Capture")
-                captureResult = try await self.captureMenuBar()
-            case "frontmost":
-                self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
-                captureResult = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
-            default:
-                // Use normal capture logic
-                captureResult = try await self.performStandardCapture()
-            }
-        } else {
-            // Use normal capture logic
-            captureResult = try await self.performStandardCapture()
-        }
+        let captureContext = try await self.resolveCaptureContext()
+        let captureResult = captureContext.captureResult
 
         // Save screenshot
         self.logger.startTimer("file_write")
@@ -312,27 +299,47 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             applicationBundleId: captureResult.metadata.applicationInfo?.bundleIdentifier,
             applicationProcessId: captureResult.metadata.applicationInfo?.processIdentifier,
             windowTitle: captureResult.metadata.windowInfo?.title,
-            windowID: captureResult.metadata.windowInfo?.windowID,
-            windowBounds: captureResult.metadata.windowInfo?.bounds,
+            windowID: captureContext.windowIdOverride ?? captureResult.metadata.windowInfo?.windowID,
+            windowBounds: captureContext.captureBounds ?? captureResult.metadata.windowInfo?.bounds,
             shouldFocusWebContent: self.noWebFocus ? false : true
         )
 
-        // Detect UI elements with window context
-        self.logger.operationStart("element_detection")
+        let detectionStart = Date()
         let detectionResult: ElementDetectionResult
-        do {
-            detectionResult = try await Self.withWallClockTimeout(seconds: 20.0) {
-                try await AutomationServiceBridge.detectElements(
-                    automation: self.services.automation,
+        if captureContext.prefersOCR {
+            self.logger.verbose("Running OCR for menu bar popover", category: "Capture")
+            let ocrElements = try self.ocrElements(
+                imageData: captureResult.imageData,
+                windowBounds: captureContext.captureBounds ?? captureResult.metadata.windowInfo?.bounds
+            )
+
+            if !ocrElements.isEmpty {
+                let metadata = DetectionMetadata(
+                    detectionTime: Date().timeIntervalSince(detectionStart),
+                    elementCount: ocrElements.count,
+                    method: captureContext.ocrMethod ?? "OCR",
+                    warnings: [],
+                    windowContext: windowContext,
+                    isDialog: false
+                )
+                detectionResult = ElementDetectionResult(
+                    snapshotId: UUID().uuidString,
+                    screenshotPath: "",
+                    elements: DetectedElements(other: ocrElements),
+                    metadata: metadata
+                )
+            } else {
+                detectionResult = try await self.detectElements(
                     imageData: captureResult.imageData,
-                    snapshotId: nil,
                     windowContext: windowContext
                 )
             }
-        } catch is TimeoutError {
-            throw CaptureError.detectionTimedOut(20.0)
+        } else {
+            detectionResult = try await self.detectElements(
+                imageData: captureResult.imageData,
+                windowContext: windowContext
+            )
         }
-        self.logger.operationComplete("element_detection")
 
         // Update the result with the correct screenshot path
         let resultWithPath = ElementDetectionResult(
@@ -363,6 +370,96 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             screenshotPath: outputPath,
             elements: detectionResult.elements,
             metadata: detectionResult.metadata
+        )
+    }
+
+    private func detectElements(
+        imageData: Data,
+        windowContext: WindowContext?
+    ) async throws -> ElementDetectionResult {
+        self.logger.operationStart("element_detection")
+        defer { self.logger.operationComplete("element_detection") }
+
+        do {
+            return try await Self.withWallClockTimeout(seconds: 20.0) {
+                try await AutomationServiceBridge.detectElements(
+                    automation: self.services.automation,
+                    imageData: imageData,
+                    snapshotId: nil,
+                    windowContext: windowContext
+                )
+            }
+        } catch is TimeoutError {
+            throw CaptureError.detectionTimedOut(20.0)
+        }
+    }
+
+    private func resolveCaptureContext() async throws -> CaptureContext {
+        if self.menubar {
+            if let popover = try await self.captureMenuBarPopover() {
+                return CaptureContext(
+                    captureResult: popover.captureResult,
+                    captureBounds: popover.windowBounds,
+                    prefersOCR: true,
+                    ocrMethod: "OCR",
+                    windowIdOverride: popover.windowId
+                )
+            }
+
+            self.logger.verbose("No menu bar popover detected; capturing menu bar area", category: "Capture")
+            let rect = try self.menuBarRect()
+            let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+            return CaptureContext(
+                captureResult: result,
+                captureBounds: rect,
+                prefersOCR: false,
+                ocrMethod: nil,
+                windowIdOverride: nil
+            )
+        }
+
+        if let appName = self.app?.lowercased() {
+            switch appName {
+            case "menubar":
+                self.logger.verbose("Capturing menu bar area", category: "Capture")
+                let rect = try self.menuBarRect()
+                let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+                return CaptureContext(
+                    captureResult: result,
+                    captureBounds: rect,
+                    prefersOCR: false,
+                    ocrMethod: nil,
+                    windowIdOverride: nil
+                )
+            case "frontmost":
+                self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
+                let result = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
+                return CaptureContext(
+                    captureResult: result,
+                    captureBounds: nil,
+                    prefersOCR: false,
+                    ocrMethod: nil,
+                    windowIdOverride: nil
+                )
+            default:
+                let result = try await self.performStandardCapture()
+                return CaptureContext(
+                    captureResult: result,
+                    captureBounds: nil,
+                    prefersOCR: false,
+                    ocrMethod: nil,
+                    windowIdOverride: nil
+                )
+            }
+        }
+
+        let result = try await self.performStandardCapture()
+        return CaptureContext(
+            captureResult: result,
+            captureBounds: nil,
+            prefersOCR: false,
+            ocrMethod: nil,
+            windowIdOverride: nil
         )
     }
 
@@ -439,22 +536,163 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func captureMenuBar() async throws -> CaptureResult {
-        // Get the main screen bounds
-        guard let mainScreen = NSScreen.main else {
+        let rect = try self.menuBarRect()
+        return try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+    }
+
+    private func captureMenuBarPopover() async throws -> MenuBarPopoverCapture? {
+        let extras = try await self.services.menu.listMenuExtras()
+        let ownerPids = Set(extras.compactMap(\.ownerPID))
+        guard !ownerPids.isEmpty else { return nil }
+
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return nil
+        }
+
+        let menuBarHeight = self.menuBarHeight(for: NSScreen.main ?? NSScreen.screens.first)
+
+        for windowInfo in windowList {
+            guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t,
+                  ownerPids.contains(ownerPID),
+                  let bounds = self.windowBounds(from: windowInfo)
+            else {
+                continue
+            }
+
+            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
+            if windowId == 0 { continue }
+
+            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            if !isOnScreen || alpha < 0.05 { continue }
+
+            if bounds.width < 40 || bounds.height < 40 { continue }
+            if (layer == 24 || layer == 25), bounds.height <= menuBarHeight + 4 { continue }
+
+            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
+            let title = windowInfo[kCGWindowName as String] as? String ?? ""
+            if ownerName == "Window Server", title == "Menubar" { continue }
+
+            self.logger.verbose(
+                "Selected menu bar popover window",
+                category: "Capture",
+                metadata: [
+                    "windowId": windowId,
+                    "owner": ownerName,
+                    "title": title,
+                    "layer": layer
+                ]
+            )
+
+            let captureResult = try await ScreenCaptureBridge.captureWindowById(
+                services: self.services,
+                windowId: windowId
+            )
+
+            return MenuBarPopoverCapture(
+                captureResult: captureResult,
+                windowBounds: bounds,
+                windowId: windowId
+            )
+        }
+
+        return nil
+    }
+
+    private func menuBarRect() throws -> CGRect {
+        guard let mainScreen = NSScreen.main ?? NSScreen.screens.first else {
             throw PeekabooError.captureFailed("No main screen found")
         }
 
-        // Menu bar is at the top of the screen
-        let menuBarHeight: CGFloat = 24.0 // Standard macOS menu bar height
-        let menuBarRect = CGRect(
+        let menuBarHeight = self.menuBarHeight(for: mainScreen)
+        return CGRect(
             x: mainScreen.frame.origin.x,
             y: mainScreen.frame.origin.y + mainScreen.frame.height - menuBarHeight,
             width: mainScreen.frame.width,
             height: menuBarHeight
         )
+    }
 
-        // Capture the menu bar area
-        return try await ScreenCaptureBridge.captureArea(services: self.services, rect: menuBarRect)
+    private func menuBarHeight(for screen: NSScreen?) -> CGFloat {
+        guard let screen else { return 24.0 }
+        let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        return height > 0 ? height : 24.0
+    }
+
+    private func windowBounds(from windowInfo: [String: Any]) -> CGRect? {
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat
+        else {
+            return nil
+        }
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
+    private func ocrElements(imageData: Data, windowBounds: CGRect?) throws -> [DetectedElement] {
+        guard let windowBounds else { return [] }
+        let result = try OCRService.recognizeText(in: imageData)
+        return self.buildOCRElements(from: result, windowBounds: windowBounds)
+    }
+
+    private func buildOCRElements(from result: OCRTextResult, windowBounds: CGRect) -> [DetectedElement] {
+        let minConfidence: Float = 0.3
+        var elements: [DetectedElement] = []
+        var index = 1
+
+        for observation in result.observations where observation.confidence >= minConfidence {
+            let rect = self.screenRect(
+                from: observation.boundingBox,
+                imageSize: result.imageSize,
+                windowBounds: windowBounds
+            )
+
+            guard rect.width > 2, rect.height > 2 else { continue }
+
+            let attributes = [
+                "description": "ocr",
+                "confidence": String(format: "%.2f", observation.confidence)
+            ]
+
+            elements.append(
+                DetectedElement(
+                    id: "ocr_\(index)",
+                    type: .staticText,
+                    label: observation.text,
+                    value: nil,
+                    bounds: rect,
+                    isEnabled: true,
+                    isSelected: nil,
+                    attributes: attributes
+                )
+            )
+            index += 1
+        }
+
+        return elements
+    }
+
+    private func screenRect(
+        from normalizedBox: CGRect,
+        imageSize: CGSize,
+        windowBounds: CGRect
+    ) -> CGRect {
+        let width = normalizedBox.width * imageSize.width
+        let height = normalizedBox.height * imageSize.height
+        let x = normalizedBox.origin.x * imageSize.width
+        let y = (1.0 - normalizedBox.origin.y - normalizedBox.height) * imageSize.height
+        return CGRect(
+            x: windowBounds.origin.x + x,
+            y: windowBounds.origin.y + y,
+            width: width,
+            height: height
+        )
     }
 
     private func saveScreenshot(_ imageData: Data) throws -> String {
@@ -777,6 +1015,20 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 }
 
 // MARK: - Supporting Types
+
+private struct CaptureContext {
+    let captureResult: CaptureResult
+    let captureBounds: CGRect?
+    let prefersOCR: Bool
+    let ocrMethod: String?
+    let windowIdOverride: Int?
+}
+
+private struct MenuBarPopoverCapture {
+    let captureResult: CaptureResult
+    let windowBounds: CGRect
+    let windowId: Int
+}
 
 private struct CaptureAndDetectionResult {
     let snapshotId: String
@@ -1280,6 +1532,7 @@ extension SeeCommand: CommanderBindableCommand {
         self.annotate = values.flag("annotate")
         self.analyze = values.singleOption("analyze")
         self.noWebFocus = values.flag("noWebFocus")
+        self.menubar = values.flag("menubar")
     }
 }
 

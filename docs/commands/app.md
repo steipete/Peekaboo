@@ -16,7 +16,7 @@ read_when:
 | `quit` | Quit one app or *all* regular apps (with optional exclusions). | `--app <name>`, `--pid`, `--all`, `--except "Finder,Terminal"`, `--force`. |
 | `relaunch` | Quit + relaunch the same app in one step. | Positional `<app>`, `--wait <seconds>` between quit/launch, `--force`, `--wait-until-ready`. |
 | `hide` / `unhide` | Toggle app visibility. | Accept the same targeting flags as `launch`/`quit`. |
-| `switch` | Activate a specific app (`--to`) or cycle Cmd+Tab style (`--cycle`). | `--to <name|bundle|PID:1234>`, `--cycle`. |
+| `switch` | Activate a specific app (`--to`) or cycle Cmd+Tab style (`--cycle`). | `--to <name|bundle|PID:1234>`, `--cycle`, `--verify` (only with `--to`). |
 | `list` | Enumerate running apps. | `--include-hidden`, `--include-background`. |
 
 ## Implementation notes
@@ -24,6 +24,7 @@ read_when:
 - Quit mode supports `--all` plus `--except`, automatically ignoring core system processes (`Finder`, `Dock`, `SystemUIServer`, `WindowServer`). When quits fail, the command prints hints about unsaved changes and suggests `--force`.
 - Hide/unhide uses `NSRunningApplication.hide()` / `.unhide()` and surfaces JSON output with per-app success data.
 - `switch --cycle` synthesizes Cmd+Tab events using `CGEvent` so it behaves like the real keyboard shortcut; `switch --to` activates the exact PID resolved via AX.
+- `switch --verify` confirms the requested app is frontmost after activation (only supported with `--to`).
 - `relaunch` polls for termination (up to 5 s), waits the requested interval, then launches via bundle ID or bundle path and optionally waits for `isFinishedLaunching` before reporting success.
 
 ## Examples
@@ -36,6 +37,9 @@ polter peekaboo -- app quit --all --except "Finder,Terminal"
 
 # Cycle to the next app exactly once
 polter peekaboo -- app switch --cycle
+
+# Switch and verify the app is frontmost
+polter peekaboo -- app switch --to Safari --verify
 ```
 
 ## Troubleshooting

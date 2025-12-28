@@ -1,3 +1,4 @@
+import AppKit
 import AXorcist
 import Commander
 import CoreGraphics
@@ -56,6 +57,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
     var includeRawDebug: Bool = false
+
+    @Flag(help: "Verify the click by checking for a matching popover window")
+    var verify: Bool = false
     @RuntimeStorage private var runtime: CommandRuntime?
 
     private var resolvedRuntime: CommandRuntime {
@@ -159,6 +163,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         let startTime = Date()
 
         do {
+            let verifyTarget = try await self.resolveVerificationTargetIfNeeded()
             let result: PeekabooCore.ClickResult
             if let idx = self.index {
                 result = try await MenuServiceBridge.clickMenuBarItem(at: idx, menu: self.services.menu)
@@ -168,15 +173,21 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }
 
+            let verification = try await self.verifyClickIfNeeded(target: verifyTarget)
+
             if self.jsonOutput {
                 let output = ClickJSONOutput(
                     success: true,
                     clicked: result.elementDescription,
-                    executionTime: Date().timeIntervalSince(startTime)
+                    executionTime: Date().timeIntervalSince(startTime),
+                    verified: verification?.verified
                 )
                 outputSuccessCodable(data: output, logger: self.outputLogger)
             } else {
                 print("✅ Clicked menu bar item: \(result.elementDescription)")
+                if let verification {
+                    print("🔎 Verified menu bar click (\(verification.method))")
+                }
                 if self.isVerbose {
                     print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
                 }
@@ -202,6 +213,221 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 }
             }
         }
+    }
+
+    private func resolveVerificationTargetIfNeeded() async throws -> MenuBarVerifyTarget? {
+        guard self.verify else { return nil }
+
+        let items = try await MenuServiceBridge.listMenuBarItems(
+            menu: self.services.menu,
+            includeRaw: true
+        )
+
+        if let idx = self.index {
+            guard let item = items.first(where: { $0.index == idx }) else {
+                throw PeekabooError.invalidInput("Menu bar item index \(idx) is out of range")
+            }
+            return MenuBarVerifyTarget(
+                title: item.title ?? item.rawTitle,
+                ownerPID: item.rawOwnerPID
+            )
+        }
+
+        guard let name = self.itemName?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty else {
+            throw PeekabooError.invalidInput("Please provide a menu bar item name or use --index")
+        }
+
+        guard let item = self.matchMenuBarItem(named: name, items: items) else {
+            throw PeekabooError.operationError(message: "Unable to resolve '\(name)' for verification")
+        }
+
+        return MenuBarVerifyTarget(
+            title: item.title ?? item.rawTitle ?? name,
+            ownerPID: item.rawOwnerPID
+        )
+    }
+
+    private func verifyClickIfNeeded(target: MenuBarVerifyTarget?) async throws -> MenuBarClickVerification? {
+        guard self.verify else { return nil }
+        guard let target else {
+            throw PeekabooError.operationError(message: "Menu bar verification requested but no target resolved")
+        }
+
+        let timeout: TimeInterval = 1.5
+
+        if let ownerPID = target.ownerPID {
+            if let candidate = await self.waitForPopover(ownerPID: ownerPID, timeout: timeout) {
+                return MenuBarClickVerification(verified: true, method: "owner_pid", windowId: candidate.windowId)
+            }
+        }
+
+        if let expectedTitle = target.title, !expectedTitle.isEmpty {
+            if let candidate = try await self.waitForPopoverByOCR(
+                expectedTitle: expectedTitle,
+                timeout: timeout
+            ) {
+                return MenuBarClickVerification(verified: true, method: "ocr", windowId: candidate.windowId)
+            }
+        }
+
+        throw PeekabooError.operationError(message: "Menu bar verification failed: popover not detected")
+    }
+
+    private func matchMenuBarItem(named name: String, items: [MenuBarItemInfo]) -> MenuBarItemInfo? {
+        let normalized = name.lowercased()
+        let candidates: [(MenuBarItemInfo, [String])] = items.map { item in
+            let fields = [
+                item.title,
+                item.rawTitle,
+                item.identifier,
+                item.axDescription,
+                item.ownerName,
+            ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            return (item, fields)
+        }
+
+        if let exact = candidates.first(where: { _, fields in
+            fields.contains(where: { $0.lowercased() == normalized })
+        })?.0 {
+            return exact
+        }
+
+        return candidates.first(where: { _, fields in
+            fields.contains(where: { $0.lowercased().contains(normalized) })
+        })?.0
+    }
+
+    private func waitForPopover(ownerPID: pid_t, timeout: TimeInterval) async -> MenuBarPopoverCandidate? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let candidate = self.findMenuBarPopoverCandidates(ownerPID: ownerPID).first {
+                return candidate
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return nil
+    }
+
+    private func waitForPopoverByOCR(
+        expectedTitle: String,
+        timeout: TimeInterval
+    ) async throws -> MenuBarPopoverCandidate? {
+        let normalized = expectedTitle.lowercased()
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let candidates = self.findMenuBarPopoverCandidates(ownerPID: nil)
+            for candidate in candidates {
+                guard let result = try? await self.captureWindow(windowId: candidate.windowId) else { continue }
+                guard let ocr = try? OCRService.recognizeText(in: result.imageData) else { continue }
+                let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
+                if text.contains(normalized) {
+                    return candidate
+                }
+            }
+            try? await Task.sleep(nanoseconds: 150_000_000)
+        }
+        return nil
+    }
+
+    private func findMenuBarPopoverCandidates(ownerPID: pid_t?) -> [MenuBarPopoverCandidate] {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return []
+        }
+
+        var candidates: [MenuBarPopoverCandidate] = []
+
+        for windowInfo in windowList {
+            guard let bounds = self.windowBounds(from: windowInfo) else { continue }
+            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
+            if windowId == 0 { continue }
+
+            let ownerPIDValue = windowInfo[kCGWindowOwnerPID as String] as? pid_t ?? -1
+            if let ownerPID, ownerPIDValue != ownerPID { continue }
+
+            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            if !isOnScreen || alpha < 0.05 { continue }
+
+            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
+            let title = windowInfo[kCGWindowName as String] as? String ?? ""
+            if ownerName == "Window Server", title == "Menubar" { continue }
+
+            if bounds.width < 40 || bounds.height < 40 { continue }
+
+            let screen = self.screenContainingWindow(bounds: bounds) ??
+                NSScreen.main ??
+                NSScreen.screens.first
+            let menuBarHeight = self.menuBarHeight(for: screen)
+            if (layer == 24 || layer == 25), bounds.height <= menuBarHeight + 4 { continue }
+
+            if let screen {
+                let maxHeight = screen.frame.height * 0.8
+                if bounds.height > maxHeight { continue }
+
+                let menuBarY = screen.visibleFrame.maxY
+                if bounds.maxY < menuBarY - 8 { continue }
+            }
+
+            candidates.append(
+                MenuBarPopoverCandidate(
+                    windowId: windowId,
+                    ownerPID: ownerPIDValue,
+                    bounds: bounds
+                )
+            )
+        }
+
+        return candidates
+    }
+
+    private func captureWindow(windowId: Int) async throws -> CaptureResult {
+        try await Task { @MainActor in
+            try await self.services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
+        }.value
+    }
+
+    private func windowBounds(from windowInfo: [String: Any]) -> CGRect? {
+        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat
+        else {
+            return nil
+        }
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
+    private func menuBarHeight(for screen: NSScreen?) -> CGFloat {
+        guard let screen else { return 24.0 }
+        let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        return height > 0 ? height : 24.0
+    }
+
+    private func screenContainingWindow(bounds: CGRect) -> NSScreen? {
+        let screens = NSScreen.screens
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        if let screen = screens.first(where: { $0.frame.contains(center) }) {
+            return screen
+        }
+
+        var bestScreen: NSScreen?
+        var maxOverlap: CGFloat = 0
+        for screen in screens {
+            let intersection = screen.frame.intersection(bounds)
+            let overlapArea = intersection.width * intersection.height
+            if overlapArea > maxOverlap {
+                maxOverlap = overlapArea
+                bestScreen = screen
+            }
+        }
+
+        return bestScreen
     }
 }
 
@@ -234,6 +460,24 @@ private struct ClickJSONOutput: Codable {
     let success: Bool
     let clicked: String
     let executionTime: TimeInterval
+    let verified: Bool?
+}
+
+private struct MenuBarVerifyTarget {
+    let title: String?
+    let ownerPID: pid_t?
+}
+
+private struct MenuBarClickVerification {
+    let verified: Bool
+    let method: String
+    let windowId: Int?
+}
+
+private struct MenuBarPopoverCandidate {
+    let windowId: Int
+    let ownerPID: pid_t
+    let bounds: CGRect
 }
 
 private struct JSONErrorOutput: Codable {
@@ -251,5 +495,6 @@ extension MenuBarCommand: CommanderBindableCommand {
         self.itemName = try values.decodeOptionalPositional(1, label: "itemName")
         self.index = try values.decodeOption("index", as: Int.self)
         self.includeRawDebug = values.flag("includeRawDebug")
+        self.verify = values.flag("verify")
     }
 }

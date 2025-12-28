@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+- `peekaboo clipboard` now supports `--verify` to read back clipboard writes after `set`/`load`.
+- `peekaboo see --menubar` captures active menu bar popovers via window list + OCR.
+- `peekaboo menubar click --verify` validates the popover owner after clicking a status item (with OCR fallback).
+- `peekaboo dock launch --verify`, `peekaboo window focus --verify`, and `peekaboo app switch --verify` add lightweight post-action checks.
+
 ### Fixed
 - Menu bar extras now combine CGWindow data with AX fallbacks to surface third-party items like Trimmy, and clicks target the owning window for reliability.
 - Menu bar screenshot captures now use the real menu bar height derived from the screen’s visible frame.

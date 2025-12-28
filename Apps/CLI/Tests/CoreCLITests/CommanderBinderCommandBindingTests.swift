@@ -75,7 +75,7 @@ struct CommanderBinderCommandBindingTests {
                 "filePath": ["/tmp/demo.txt"],
                 "alsoText": ["Peekaboo clipboard file smoke"]
             ],
-            flags: ["allowLarge"]
+            flags: ["allowLarge", "verify"]
         )
 
         let command = try CommanderCLIBinder.instantiateCommand(ofType: ClipboardCommand.self, parsedValues: parsed)
@@ -85,6 +85,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.text == nil)
         #expect(command.alsoText == "Peekaboo clipboard file smoke")
         #expect(command.allowLarge == true)
+        #expect(command.verify == true)
     }
 
     @Test("Image command binding")
@@ -154,6 +155,46 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.screenIndex == 2)
         #expect(command.annotate == true)
         #expect(command.analyze == "describe")
+    }
+
+    @Test("App switch command binding with verify")
+    func bindAppSwitchCommandVerify() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "to": ["Safari"],
+            ],
+            flags: ["verify"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: AppCommand.SwitchSubcommand.self, parsedValues: parsed)
+        #expect(command.to == "Safari")
+        #expect(command.verify == true)
+        #expect(command.cycle == false)
+    }
+
+    @Test("Window focus command binding with verify")
+    func bindWindowFocusCommandVerify() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "app": ["Safari"],
+            ],
+            flags: ["verify"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: WindowCommand.FocusSubcommand.self, parsedValues: parsed)
+        #expect(command.verify == true)
+    }
+
+    @Test("Dock launch command binding with verify")
+    func bindDockLaunchCommandVerify() throws {
+        let parsed = ParsedValues(
+            positional: ["Safari"],
+            options: [:],
+            flags: ["verify"]
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: DockCommand.LaunchSubcommand.self, parsedValues: parsed)
+        #expect(command.app == "Safari")
+        #expect(command.verify == true)
     }
 
     @Test("Tools command binding")

@@ -3,6 +3,7 @@ import AXorcist
 import Commander
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Interact with the macOS Dock
 @MainActor
@@ -49,6 +50,9 @@ extension DockCommand {
     struct LaunchSubcommand: OutputFormattable {
         @Argument(help: "Application name in the Dock")
         var app: String
+
+        @Flag(help: "Verify the app is running after launch")
+        var verify = false
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -71,6 +75,9 @@ extension DockCommand {
             do {
                 try await DockServiceBridge.launchFromDock(dock: self.services.dock, appName: self.app)
                 let dockItem = try await DockServiceBridge.findDockItem(dock: self.services.dock, name: self.app)
+                if self.verify {
+                    try await self.verifyLaunch(dockItem: dockItem)
+                }
                 AutomationEventLogger.log(.dock, "launch app=\(dockItem.title)")
 
                 if self.jsonOutput {
@@ -91,6 +98,18 @@ extension DockCommand {
                 handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
                 throw ExitCode(1)
             }
+        }
+
+        private func verifyLaunch(dockItem: DockItem) async throws {
+            let identifier = dockItem.bundleIdentifier ?? dockItem.title
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline {
+                if await self.services.applications.isApplicationRunning(identifier: identifier) {
+                    return
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            throw PeekabooError.operationError(message: "Dock launch verification failed for \(dockItem.title)")
         }
     }
 
@@ -348,6 +367,7 @@ extension DockCommand.LaunchSubcommand: AsyncRuntimeCommand {}
 extension DockCommand.LaunchSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.app = try values.decodePositional(0, label: "app")
+        self.verify = values.flag("verify")
     }
 }
 

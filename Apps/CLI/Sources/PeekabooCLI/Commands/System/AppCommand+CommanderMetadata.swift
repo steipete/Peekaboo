@@ -136,6 +136,11 @@ extension AppCommand.SwitchSubcommand: CommanderSignatureProviding {
                     help: "Cycle to next app (Cmd+Tab)",
                     long: "cycle"
                 ),
+                .commandFlag(
+                    "verify",
+                    help: "Verify the target app becomes frontmost",
+                    long: "verify"
+                ),
             ]
         )
     }

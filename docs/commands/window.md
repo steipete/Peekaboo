@@ -13,7 +13,7 @@ read_when:
 | Name | Purpose | Key options |
 | --- | --- | --- |
 | `close` / `minimize` / `maximize` | Perform the respective window chrome action. | Standard window-identification flags. |
-| `focus` | Bring the window forward, optionally hopping Spaces or moving it to the current Space. | Adds `FocusCommandOptions` (`--no-auto-focus`, `--space-switch`, `--bring-to-current-space`, `--focus-timeout-seconds`, `--focus-retry-count`). |
+| `focus` | Bring the window forward, optionally hopping Spaces or moving it to the current Space. | Adds `FocusCommandOptions` plus `--verify` to confirm focus. |
 | `move` | Move the window to new coordinates. | `-x <int>` / `-y <int>` specify the new origin. |
 | `resize` | Adjust width/height while keeping the origin. | `-w <int>` / `--height <int>`. |
 | `set-bounds` | Set both origin and size in one go. | `--x`, `--y`, `--width`, `--height`. |
@@ -23,6 +23,7 @@ read_when:
 - Every action validates that at least an app, PID, or window ID is supplied; optional `--window-title` and `--window-index` disambiguate when multiple windows exist.
 - All geometry-changing commands re-fetch window info after acting (when possible) and stuff the updated bounds into the JSON payload so automated tests can assert the final rectangle.
 - `focus` routes through `WindowServiceBridge.focusWindow` and honors the global focus flags (`--space-switch` to jump Spaces, `--bring-to-current-space` to move the window instead, etc.). It logs debug output when focus fails so agents know to fall back.
+- `focus --verify` checks the frontmost app (and window ID when available) before returning success.
 - When `window list` runs, it simply calls the same helper as `peekaboo list windows` but saves you from retyping the longer command.
 
 ## Examples
@@ -38,6 +39,9 @@ polter peekaboo -- window resize --app Safari -w 1200 --height 800
 
 # Focus Terminal even if it lives on another Space
 polter peekaboo -- window focus --app Terminal --space-switch
+
+# Focus and verify the frontmost window
+polter peekaboo -- window focus --app Terminal --verify
 ```
 
 ## Troubleshooting

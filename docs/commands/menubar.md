@@ -20,12 +20,14 @@ read_when:
 | --- | --- |
 | `[itemName]` | Optional positional argument passed to `click`. |
 | `--index <n>` | Target by numeric index (matches the ordering from `menubar list`). |
+| `--verify` | After clicking, confirm a popover owned by the same PID appears (fallback OCR). |
 | Global flags | `--json-output` returns structured payloads; `--verbose` adds descriptions when listing. |
 
 ## Implementation notes
 - The command name is `menubar` (no hyphen). Commander enforces `list`/`click` as the only valid actions.
 - Listing uses `MenuServiceBridge.listMenuBarItems`, and verbose mode prints extra diagnostics (owner name, hidden state). JSON mode always includes the raw title, bundle ID, owner name, identifier, visibility, and description.
 - Clicking resolves either `--index` or item text (case-insensitive). When an item isn’t found, text mode prints troubleshooting hints; JSON mode surfaces `MENU_ITEM_NOT_FOUND`.
+- `--verify` waits briefly for a popover window attached to the menu bar; if the PID is missing, it falls back to OCR of the popover window (screen recording permission required for OCR).
 - Coordinate data (if available) is recorded in the click result so you can correlate where on screen the interaction happened.
 
 ## Examples
@@ -35,6 +37,9 @@ polter peekaboo -- menubar list
 
 # Click the Wi-Fi icon by name
 polter peekaboo -- menubar click "Wi-Fi"
+
+# Click and verify the popover opened
+polter peekaboo -- menubar click "Wi-Fi" --verify
 
 # Click the third item regardless of name and capture JSON output
 polter peekaboo -- menubar click --index 3 --json-output
