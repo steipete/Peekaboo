@@ -165,6 +165,7 @@ struct ScreenCaptureServiceFlowTests {
             permissionEvaluator: CountingPermissionEvaluator(),
             fallbackRunner: ScreenCaptureFallbackRunner(apis: [.modern, .legacy]),
             applicationResolver: FixtureResolver(fixtures: fixtures),
+            makeFrameSource: { _ in NoOpCaptureFrameSource() },
             makeModernOperator: { _, _ in failingOperator },
             makeLegacyOperator: { _ in legacyOperator })
 
@@ -186,6 +187,7 @@ struct ScreenCaptureServiceFlowTests {
             permissionEvaluator: permission,
             fallbackRunner: ScreenCaptureFallbackRunner(apis: [.modern]),
             applicationResolver: FixtureResolver(fixtures: fixtures),
+            makeFrameSource: { _ in NoOpCaptureFrameSource() },
             makeModernOperator: { _, _ in FixtureCaptureOperator(fixtures: fixtures) },
             makeLegacyOperator: { _ in FixtureCaptureOperator(fixtures: fixtures) })
 
@@ -439,5 +441,12 @@ private final class TimeoutModernOperator: ModernScreenCaptureOperating, @unchec
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
         throw OperationError.captureFailed(reason: "Not implemented in TimeoutModernOperator")
+    }
+}
+
+private struct NoOpCaptureFrameSource: CaptureFrameSource {
+    @MainActor
+    func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
+        nil
     }
 }

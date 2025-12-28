@@ -269,6 +269,7 @@ extension SeeCommand {
 
         return annotatedPath
     }
+
     // swiftlint:enable function_body_length
 
     private func resolveCGWindowID(forPID pid: Int32, titleFragment: String) -> CGWindowID? {

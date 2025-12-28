@@ -158,6 +158,7 @@ public final class UIAutomationService: UIAutomationServiceProtocol {
             permissionEvaluator: baseCaptureDeps.permissionEvaluator,
             fallbackRunner: baseCaptureDeps.fallbackRunner,
             applicationResolver: baseCaptureDeps.applicationResolver,
+            makeFrameSource: baseCaptureDeps.makeFrameSource,
             makeModernOperator: baseCaptureDeps.makeModernOperator,
             makeLegacyOperator: baseCaptureDeps.makeLegacyOperator)
         self.screenCaptureService = ScreenCaptureService(loggingService: logger, dependencies: captureDeps)

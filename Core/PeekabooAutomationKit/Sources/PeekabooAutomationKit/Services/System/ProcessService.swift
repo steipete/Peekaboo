@@ -60,6 +60,7 @@ public final class ProcessService: ProcessServiceProtocol {
             permissionEvaluator: baseCaptureDeps.permissionEvaluator,
             fallbackRunner: baseCaptureDeps.fallbackRunner,
             applicationResolver: baseCaptureDeps.applicationResolver,
+            makeFrameSource: baseCaptureDeps.makeFrameSource,
             makeModernOperator: baseCaptureDeps.makeModernOperator,
             makeLegacyOperator: baseCaptureDeps.makeLegacyOperator)
         let screenCaptureService = ScreenCaptureService(

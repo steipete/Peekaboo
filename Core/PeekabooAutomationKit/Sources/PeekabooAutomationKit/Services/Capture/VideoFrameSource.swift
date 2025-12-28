@@ -65,6 +65,7 @@ public final class VideoFrameSource: CaptureFrameSource {
         }
     }
 
+    @MainActor
     public func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
         guard self.index < self.times.count else { return nil }
         let time = self.times[self.index]

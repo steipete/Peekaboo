@@ -82,6 +82,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let permissionEvaluator: any ScreenRecordingPermissionEvaluating
         let fallbackRunner: ScreenCaptureFallbackRunner
         let applicationResolver: any ApplicationResolving
+        let makeFrameSource: @MainActor @Sendable (CategoryLogger) -> any CaptureFrameSource
         let makeModernOperator: @MainActor @Sendable (CategoryLogger, any AutomationFeedbackClient)
             -> any ModernScreenCaptureOperating
         let makeLegacyOperator: @MainActor @Sendable (CategoryLogger)
@@ -91,6 +92,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             permissionEvaluator: any ScreenRecordingPermissionEvaluating,
             fallbackRunner: ScreenCaptureFallbackRunner,
             applicationResolver: any ApplicationResolving,
+            makeFrameSource: @escaping @MainActor @Sendable (CategoryLogger) -> any CaptureFrameSource,
             makeModernOperator: @escaping @MainActor @Sendable (CategoryLogger, any AutomationFeedbackClient)
                 -> any ModernScreenCaptureOperating,
             makeLegacyOperator: @escaping @MainActor @Sendable (CategoryLogger)
@@ -100,6 +102,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             self.permissionEvaluator = permissionEvaluator
             self.fallbackRunner = fallbackRunner
             self.applicationResolver = applicationResolver
+            self.makeFrameSource = makeFrameSource
             self.makeModernOperator = makeModernOperator
             self.makeLegacyOperator = makeLegacyOperator
         }
@@ -124,6 +127,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 } else {
                     nil
                 }
+            let frameSourceFactory: @MainActor @Sendable (CategoryLogger) -> any CaptureFrameSource = { logger in
+                ScreenCaptureKitFrameSource(logger: logger)
+            }
             return Dependencies(
                 feedbackClient: NoopAutomationFeedbackClient(),
                 permissionEvaluator: ScreenRecordingPermissionChecker(),
@@ -131,8 +137,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                     apis: ScreenCaptureAPIResolver.resolve(environment: environment),
                     observer: captureObserver),
                 applicationResolver: resolver,
+                makeFrameSource: frameSourceFactory,
                 makeModernOperator: { logger, visualizer in
-                    ScreenCaptureKitOperator(logger: logger, feedbackClient: visualizer)
+                    ScreenCaptureKitOperator(
+                        logger: logger,
+                        feedbackClient: visualizer,
+                        frameSource: frameSourceFactory(logger))
                 },
                 makeLegacyOperator: { logger in
                     LegacyScreenCaptureOperator(logger: logger)
@@ -172,6 +182,27 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             case .frontmost: "frontmost window capture"
             case .area: "area capture"
             }
+        }
+    }
+
+    @_spi(Testing) public enum FrameSourcePolicy: Sendable {
+        case fastStream
+        case singleShot
+    }
+
+    @_spi(Testing) public static func frameSourcePolicy(
+        for mode: CaptureMode,
+        windowID: CGWindowID?) -> FrameSourcePolicy
+    {
+        if windowID != nil {
+            return .singleShot
+        }
+
+        switch mode {
+        case .screen, .area, .multi:
+            return .fastStream
+        case .window, .frontmost:
+            return .singleShot
         }
     }
 
@@ -673,13 +704,19 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         private let logger: CategoryLogger
         private let feedbackClient: any AutomationFeedbackClient
         private let useFastStream: Bool
-        private let streamCache: ScreenCaptureStreamCache?
+        private let frameSource: any CaptureFrameSource
+        private let fallbackFrameSource: any CaptureFrameSource
 
-        init(logger: CategoryLogger, feedbackClient: any AutomationFeedbackClient) {
+        init(
+            logger: CategoryLogger,
+            feedbackClient: any AutomationFeedbackClient,
+            frameSource: any CaptureFrameSource)
+        {
             self.logger = logger
             self.feedbackClient = feedbackClient
             self.useFastStream = true
-            self.streamCache = ScreenCaptureStreamCache(logger: logger)
+            self.frameSource = frameSource
+            self.fallbackFrameSource = SingleShotFrameSource(logger: logger)
         }
 
         func captureScreen(
@@ -719,30 +756,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 metadata: ["displayID": targetDisplay.displayID],
                 correlationId: correlationId)
 
-            let image: CGImage
-            if self.useFastStream, let streamCache = self.streamCache {
-                let start = Date()
-                let frame = try await streamCache.capture(
-                    display: targetDisplay,
-                    sourceRect: CGRect(origin: .zero, size: targetDisplay.frame.size),
-                    scale: scale,
-                    correlationId: correlationId)
-                let waitDuration = Date().timeIntervalSince(start)
-                let frameAge = Date().timeIntervalSince(frame.timestamp)
-                self.logger.debug(
-                    "Fast stream capture complete",
-                    metadata: [
-                        "waitMs": Int(waitDuration * 1000),
-                        "frameAgeMs": Int(frameAge * 1000),
-                        "displayID": targetDisplay.displayID,
-                    ],
-                    correlationId: correlationId)
-                image = frame.image
-            } else {
-                image = try await RetryHandler.withRetry(policy: .standard) {
-                    try await self.createScreenshot(of: targetDisplay, scale: scale)
-                }
-            }
+            let request = CaptureFrameRequest(
+                mode: .screen,
+                display: targetDisplay,
+                displayIndex: displayIndex ?? 0,
+                displayName: targetDisplay.displayID.description,
+                displayBounds: targetDisplay.frame,
+                sourceRect: CGRect(origin: .zero, size: targetDisplay.frame.size),
+                scale: scale,
+                correlationId: correlationId)
+            let capture = try await self.captureDisplayFrame(request: request)
+            let image = capture.image
 
             let imageData = try image.pngData()
 
@@ -756,16 +780,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 
             await self.emitVisualizer(mode: visualizerMode, rect: targetDisplay.frame)
 
-            let metadata = CaptureMetadata(
-                size: CGSize(width: image.width, height: image.height),
-                mode: .screen,
-                displayInfo: DisplayInfo(
-                    index: displayIndex ?? 0,
-                    name: targetDisplay.displayID.description,
-                    bounds: targetDisplay.frame,
-                    scaleFactor: self.outputScale(for: targetDisplay, preference: scale)))
-
-            return CaptureResult(imageData: imageData, metadata: metadata)
+            return CaptureResult(imageData: imageData, metadata: capture.metadata)
         }
 
         func captureWindow(
@@ -1017,82 +1032,56 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 metadata: ["displayID": display.displayID],
                 correlationId: correlationId)
 
-            let scaleFactor = self.outputScale(for: display, preference: scale)
-            let image: CGImage
-            if self.useFastStream, let streamCache = self.streamCache {
-                let localRect = ScreenCaptureService.displayLocalSourceRect(
-                    globalRect: rect,
-                    displayFrame: display.frame)
-                let start = Date()
-                let frame = try await streamCache.capture(
-                    display: display,
-                    sourceRect: localRect,
-                    scale: scale,
-                    correlationId: correlationId)
-                let waitDuration = Date().timeIntervalSince(start)
-                let frameAge = Date().timeIntervalSince(frame.timestamp)
-                self.logger.debug(
-                    "Fast stream area capture complete",
-                    metadata: [
-                        "waitMs": Int(waitDuration * 1000),
-                        "frameAgeMs": Int(frameAge * 1000),
-                        "displayID": display.displayID,
-                    ],
-                    correlationId: correlationId)
-                image = frame.image
-            } else {
-                let filter = SCContentFilter(display: display, excludingWindows: [])
-
-                let config = SCStreamConfiguration()
-                // `rect` is in global desktop coordinates (often derived from `NSScreen.frame`).
-                // For display-bound capture, ScreenCaptureKit expects `sourceRect` in display-local coordinates.
-                config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
-                    globalRect: rect,
-                    displayFrame: display.frame)
-                config.width = Int(rect.width * scaleFactor)
-                config.height = Int(rect.height * scaleFactor)
-                config.showsCursor = false
-
-                image = try await RetryHandler.withRetry(policy: .standard) {
-                    try await withTimeout(seconds: 3.0) {
-                        try await SCScreenshotManager.captureImage(
-                            contentFilter: filter,
-                            configuration: config)
-                    }
-                }
-            }
+            let displayIndex = content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0
+            let localRect = ScreenCaptureService.displayLocalSourceRect(
+                globalRect: rect,
+                displayFrame: display.frame)
+            let request = CaptureFrameRequest(
+                mode: .area,
+                display: display,
+                displayIndex: displayIndex,
+                displayName: display.displayID.description,
+                displayBounds: rect,
+                sourceRect: localRect,
+                scale: scale,
+                correlationId: correlationId)
+            let capture = try await self.captureDisplayFrame(request: request)
+            let image = capture.image
 
             let imageData = try image.pngData()
 
-            let metadata = CaptureMetadata(
-                size: CGSize(width: image.width, height: image.height),
-                mode: .area,
-                displayInfo: DisplayInfo(
-                    index: 0,
-                    name: display.displayID.description,
-                    bounds: display.frame,
-                    scaleFactor: scaleFactor))
-
-            return CaptureResult(imageData: imageData, metadata: metadata)
+            return CaptureResult(imageData: imageData, metadata: capture.metadata)
         }
 
-        private func createScreenshot(of display: SCDisplay, scale: CaptureScalePreference) async throws -> CGImage {
-            let filter = SCContentFilter(display: display, excludingWindows: [])
-            let config = SCStreamConfiguration()
-            let nativeScale = self.nativeScale(for: display)
-            let targetScale = scale == .native ? nativeScale : 1.0
-            let logicalSize = display.frame.size
-            config.width = Int(logicalSize.width * targetScale)
-            config.height = Int(logicalSize.height * targetScale)
-            config.sourceRect = CGRect(origin: .zero, size: logicalSize)
-            config.captureResolution = .best
-            config.showsCursor = false
-
-            return try await withTimeout(seconds: 3.0) {
-                try await SCScreenshotManager.captureImage(
-                    contentFilter: filter,
-                    configuration: config)
+        private func captureDisplayFrame(
+            request: CaptureFrameRequest) async throws -> (image: CGImage, metadata: CaptureMetadata)
+        {
+            let policy = ScreenCaptureService.frameSourcePolicy(for: request.mode, windowID: nil)
+            if self.useFastStream, policy == .fastStream {
+                do {
+                    try await self.frameSource.start(request: request)
+                    if let output = try await self.frameSource.nextFrame(maxAge: nil),
+                       let image = output.cgImage
+                    {
+                        return (image: image, metadata: output.metadata)
+                    }
+                    throw OperationError.captureFailed(reason: "Fast stream produced no image")
+                } catch {
+                    self.logger.warning(
+                        "Fast frame source failed, falling back to single-shot",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: request.correlationId)
+                }
             }
+
+            try await self.fallbackFrameSource.start(request: request)
+            guard let output = try await self.fallbackFrameSource.nextFrame(maxAge: nil),
+                  let image = output.cgImage
+            else {
+                throw OperationError.captureFailed(reason: "Single-shot produced no image")
+            }
+
+            return (image: image, metadata: output.metadata)
         }
 
         /// Capture a window screenshot using display-based capture.
@@ -1169,16 +1158,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
             let lastIndex = max(totalWindows - 1, 0)
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
-        }
-
-        private func outputScale(for display: SCDisplay, preference: CaptureScalePreference) -> CGFloat {
-            let nativeScale = self.nativeScale(for: display)
-            switch preference {
-            case .native:
-                return nativeScale
-            case .logical1x:
-                return 1.0
-            }
         }
 
         private func nativeScale(for display: SCDisplay) -> CGFloat {

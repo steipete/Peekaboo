@@ -3,6 +3,7 @@
 //  PeekabooCore
 //
 
+import CoreGraphics
 import Foundation
 import PeekabooFoundation
 import Testing
@@ -108,5 +109,14 @@ struct ScreenCaptureServicePlanTests {
         } catch {
             Issue.record("Unexpected error: \(error)")
         }
+    }
+
+    @Test("Frame source policy uses stream for screen/area and single-shot for windows")
+    func frameSourcePolicyUsesExpectedSource() {
+        #expect(ScreenCaptureService.frameSourcePolicy(for: .screen, windowID: nil) == .fastStream)
+        #expect(ScreenCaptureService.frameSourcePolicy(for: .area, windowID: nil) == .fastStream)
+        #expect(ScreenCaptureService.frameSourcePolicy(for: .multi, windowID: nil) == .fastStream)
+        #expect(ScreenCaptureService.frameSourcePolicy(for: .window, windowID: CGWindowID(42)) == .singleShot)
+        #expect(ScreenCaptureService.frameSourcePolicy(for: .frontmost, windowID: nil) == .singleShot)
     }
 }

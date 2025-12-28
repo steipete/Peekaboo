@@ -138,6 +138,7 @@ extension ScreenCaptureService {
             permissionEvaluator: StubPermissionEvaluator(granted: permissionGranted),
             fallbackRunner: ScreenCaptureFallbackRunner(apis: apis),
             applicationResolver: FixtureApplicationResolver(fixtures: fixtures),
+            makeFrameSource: { _ in NoOpCaptureFrameSource() },
             makeModernOperator: { _, _ in
                 MockModernCaptureOperator(fixtures: fixtures)
             },
@@ -183,6 +184,13 @@ private struct FixtureApplicationResolver: ApplicationResolving {
             return app
         }
         throw NotFoundError.application(identifier)
+    }
+}
+
+private struct NoOpCaptureFrameSource: CaptureFrameSource {
+    @MainActor
+    func nextFrame() async throws -> (cgImage: CGImage?, metadata: CaptureMetadata)? {
+        nil
     }
 }
 
