@@ -90,7 +90,7 @@ extension SeeCommand {
             return state
         }
 
-        let windowInfoMap = self.windowInfoById(from: state.windowList)
+        let windowInfoMap = MenuBarPopoverResolver.windowInfoById(from: state.windowList)
         let normalized = preferredOwnerName.lowercased()
         let ownerMatches = state.candidates.filter { candidate in
             let ownerName = windowInfoMap[candidate.windowId]?.ownerName?.lowercased() ?? ""
@@ -217,19 +217,6 @@ extension SeeCommand {
         }
 
         return bestScreen
-    }
-
-    func windowInfoById(from windowList: [[String: Any]]) -> [Int: MenuBarPopoverWindowInfo] {
-        var info: [Int: MenuBarPopoverWindowInfo] = [:]
-        for windowInfo in windowList {
-            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
-            if windowId == 0 { continue }
-            info[windowId] = MenuBarPopoverWindowInfo(
-                ownerName: windowInfo[kCGWindowOwnerName as String] as? String,
-                title: windowInfo[kCGWindowName as String] as? String
-            )
-        }
-        return info
     }
 
     private func ownerPid(from windowInfo: [String: Any]) -> pid_t? {

@@ -55,8 +55,7 @@ extension SeeCommand {
                 if let preferredX = clickResult?.location?.x,
                    let quickAreaCapture = try await self.captureMenuBarPopoverByArea(
                        preferredX: preferredX,
-                       hint: appHint,
-                       ownerHint: appHint
+                       hints: MenuBarPopoverResolverContext.normalizedHints([appHint])
                    ) {
                     return CaptureContext(
                         captureResult: quickAreaCapture.captureResult,

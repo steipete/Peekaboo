@@ -6,87 +6,65 @@ import PeekabooFoundation
 
 @MainActor
 extension SeeCommand {
-    func captureMenuBarPopoverByOCR(
-        candidates: [MenuBarPopoverCandidate],
-        windowInfoById: [Int: MenuBarPopoverWindowInfo],
-        hint: String,
-        preferredOwnerName: String?,
-        preferredX: CGFloat?
-    ) async throws -> MenuBarPopoverCapture? {
-        let normalized = hint.lowercased()
-        let ranked = MenuBarPopoverSelector.rankCandidates(
-            candidates: candidates,
-            windowInfoById: windowInfoById,
-            preferredOwnerName: preferredOwnerName,
-            preferredX: preferredX
-        )
-        for candidate in ranked {
+    func menuBarCandidateOCRMatcher(hints: [String]) -> MenuBarPopoverResolver.CandidateOCR {
+        let normalized = hints.map { $0.lowercased() }
+        return { candidate, _ in
             let captureResult = try await ScreenCaptureBridge.captureWindowById(
                 services: self.services,
                 windowId: candidate.windowId
             )
-            guard let ocr = try? OCRService.recognizeText(in: captureResult.imageData) else { continue }
+            guard let ocr = try? OCRService.recognizeText(in: captureResult.imageData) else { return nil }
             let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
-            if text.contains(normalized) {
-                self.logger.verbose(
-                    "Selected menu bar popover via OCR",
-                    category: "Capture",
-                    metadata: [
-                        "windowId": candidate.windowId,
-                        "hint": hint
-                    ]
-                )
-                return MenuBarPopoverCapture(
+            if normalized.contains(where: { text.contains($0) }) {
+                return MenuBarPopoverResolver.OCRMatch(
                     captureResult: captureResult,
-                    windowBounds: candidate.bounds,
-                    windowId: candidate.windowId
+                    bounds: candidate.bounds
                 )
             }
+            return nil
         }
-        return nil
+    }
+
+    func menuBarAreaOCRMatcher() -> MenuBarPopoverResolver.AreaOCR {
+        { preferredX, hints in
+            guard let rect = self.menuBarPopoverAreaRect(preferredX: preferredX) else { return nil }
+            let captureResult = try await ScreenCaptureBridge.captureArea(
+                services: self.services,
+                rect: rect
+            )
+            guard let ocr = try? OCRService.recognizeText(in: captureResult.imageData) else { return nil }
+            if self.ocrMatchesHints(ocr, hints: hints) {
+                return MenuBarPopoverResolver.OCRMatch(
+                    captureResult: captureResult,
+                    bounds: rect
+                )
+            }
+            return nil
+        }
     }
 
     func captureMenuBarPopoverByArea(
         preferredX: CGFloat,
-        hint: String?,
-        ownerHint: String?
+        hints: [String]
     ) async throws -> MenuBarPopoverCapture? {
-        guard let screen = self.screenForMenuBarX(preferredX) else { return nil }
-        let menuBarHeight = self.menuBarHeight(for: screen)
-        let maxHeight = max(120, min(700, screen.frame.height - menuBarHeight))
-        let width: CGFloat = 420
-        let menuBarTop = screen.frame.maxY - menuBarHeight
-        var rect = CGRect(
-            x: preferredX - (width / 2.0),
-            y: menuBarTop - maxHeight,
-            width: width,
-            height: maxHeight
-        )
-        rect.origin.x = max(screen.frame.minX, min(rect.origin.x, screen.frame.maxX - rect.width))
-        rect.origin.y = max(screen.frame.minY, rect.origin.y)
-
-        let captureResult = try await ScreenCaptureBridge.captureArea(
-            services: self.services,
-            rect: rect
-        )
-
-        if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
-           self.ocrMatchesHints(ocr, hint: hint, ownerHint: ownerHint) {
-            self.logger.verbose(
-                "Selected menu bar popover via area capture",
-                category: "Capture",
-                metadata: [
-                    "rect": "\(rect)"
-                ]
-            )
-            return MenuBarPopoverCapture(
-                captureResult: captureResult,
-                windowBounds: rect,
-                windowId: nil
-            )
+        let matcher = self.menuBarAreaOCRMatcher()
+        guard let match = try await matcher(preferredX, hints) else { return nil }
+        guard let captureResult = match.captureResult,
+              let bounds = match.bounds else {
+            return nil
         }
-
-        return nil
+        self.logger.verbose(
+            "Selected menu bar popover via area capture",
+            category: "Capture",
+            metadata: [
+                "rect": "\(bounds)"
+            ]
+        )
+        return MenuBarPopoverCapture(
+            captureResult: captureResult,
+            windowBounds: bounds,
+            windowId: nil
+        )
     }
 
     func captureMenuBarPopoverFromOpenMenu(
@@ -141,7 +119,7 @@ extension SeeCommand {
         )
 
         if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
-           self.ocrMatchesHints(ocr, hint: hint, ownerHint: ownerHint) {
+           self.ocrMatchesHints(ocr, hints: MenuBarPopoverResolverContext.normalizedHints([hint, ownerHint])) {
             self.logger.verbose(
                 "Selected menu bar popover via AX menu frame",
                 category: "Capture",
@@ -159,20 +137,29 @@ extension SeeCommand {
         return nil
     }
 
-    private func ocrMatchesHints(
-        _ ocr: OCRTextResult,
-        hint: String?,
-        ownerHint: String?
-    ) -> Bool {
-        let hints = [hint, ownerHint]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
+    private func ocrMatchesHints(_ ocr: OCRTextResult, hints: [String]) -> Bool {
         guard !hints.isEmpty else { return !ocr.observations.isEmpty }
         let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
         return hints.contains { hint in
             text.contains(hint.lowercased())
         }
+    }
+
+    private func menuBarPopoverAreaRect(preferredX: CGFloat) -> CGRect? {
+        guard let screen = self.screenForMenuBarX(preferredX) else { return nil }
+        let menuBarHeight = self.menuBarHeight(for: screen)
+        let maxHeight = max(120, min(700, screen.frame.height - menuBarHeight))
+        let width: CGFloat = 420
+        let menuBarTop = screen.frame.maxY - menuBarHeight
+        var rect = CGRect(
+            x: preferredX - (width / 2.0),
+            y: menuBarTop - maxHeight,
+            width: width,
+            height: maxHeight
+        )
+        rect.origin.x = max(screen.frame.minX, min(rect.origin.x, screen.frame.maxX - rect.width))
+        rect.origin.y = max(screen.frame.minY, rect.origin.y)
+        return rect
     }
 
     private func buildOCRElements(from result: OCRTextResult, windowBounds: CGRect) -> [DetectedElement] {

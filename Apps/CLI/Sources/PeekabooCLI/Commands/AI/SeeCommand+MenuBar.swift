@@ -145,30 +145,7 @@ extension SeeCommand {
         allowAreaFallback: Bool,
         state: MenuBarCandidateState
     ) async throws -> MenuBarPopoverCapture? {
-        let windowInfoMap = self.windowInfoById(from: state.windowList)
-
-        if let hintName = context.hintName,
-           state.candidates.count > 1,
-           let ocrCapture = try await self.captureMenuBarPopoverByOCR(
-               candidates: state.candidates,
-               windowInfoById: windowInfoMap,
-               hint: hintName,
-               preferredOwnerName: context.preferredOwnerName,
-               preferredX: context.preferredX
-           ) {
-            return ocrCapture
-        }
-
-        if context.openExtra != nil || allowAreaFallback,
-           let preferredX = context.preferredX,
-           let areaCapture = try await self.captureMenuBarPopoverByArea(
-               preferredX: preferredX,
-               hint: context.hintName,
-               ownerHint: context.preferredOwnerName
-           ) {
-            return areaCapture
-        }
-
+        let windowInfoMap = MenuBarPopoverResolver.windowInfoById(from: state.windowList)
         let selectionCandidates = self.selectCandidates(
             from: state.candidates,
             preferredOwnerName: context.preferredOwnerName,
@@ -176,37 +153,113 @@ extension SeeCommand {
             openExtra: context.openExtra
         )
         guard let selectionCandidates else { return nil }
+        let hints = MenuBarPopoverResolverContext.normalizedHints([
+            context.hintName,
+            context.preferredOwnerName
+        ])
+        let resolverContext = MenuBarPopoverResolverContext(
+            appHint: context.hintName,
+            preferredOwnerName: context.preferredOwnerName,
+            ownerPID: context.preferredOwnerPid,
+            preferredX: context.preferredX,
+            ocrHints: hints
+        )
 
-        guard let selected = MenuBarPopoverSelector.selectCandidate(
+        let allowOCR = selectionCandidates.count > 1 && !hints.isEmpty
+        let allowArea = (context.openExtra != nil || allowAreaFallback)
+
+        let candidateOCR = allowOCR ? self.menuBarCandidateOCRMatcher(hints: hints) : nil
+        let areaOCR = allowArea ? self.menuBarAreaOCRMatcher() : nil
+
+        let options = MenuBarPopoverResolver.ResolutionOptions(
+            allowOCR: allowOCR,
+            allowAreaFallback: allowArea,
+            candidateOCR: candidateOCR,
+            areaOCR: areaOCR
+        )
+        guard let resolution = try await MenuBarPopoverResolver.resolve(
             candidates: selectionCandidates,
             windowInfoById: windowInfoMap,
-            preferredOwnerName: nil,
-            preferredX: context.preferredX
+            context: resolverContext,
+            options: options
         ) else {
             return nil
         }
 
-        if let info = windowInfoMap[selected.windowId] {
-            self.logger.verbose(
-                "Selected menu bar popover window",
-                category: "Capture",
-                metadata: [
-                    "windowId": selected.windowId,
-                    "owner": info.ownerName ?? "unknown",
-                    "title": info.title ?? ""
-                ]
+        return try await self.captureMenuBarPopover(from: resolution, windowInfoMap: windowInfoMap)
+    }
+
+    private func captureMenuBarPopover(
+        from resolution: MenuBarPopoverResolution,
+        windowInfoMap: [Int: MenuBarPopoverWindowInfo]
+    ) async throws -> MenuBarPopoverCapture? {
+        self.logPopoverResolution(resolution, windowInfoMap: windowInfoMap)
+
+        if let captureResult = resolution.captureResult,
+           let bounds = resolution.bounds {
+            return MenuBarPopoverCapture(
+                captureResult: captureResult,
+                windowBounds: bounds,
+                windowId: resolution.windowId
             )
+        }
+
+        guard let windowId = resolution.windowId,
+              let bounds = resolution.bounds else {
+            return nil
         }
 
         let captureResult = try await ScreenCaptureBridge.captureWindowById(
             services: self.services,
-            windowId: selected.windowId
+            windowId: windowId
         )
 
         return MenuBarPopoverCapture(
             captureResult: captureResult,
-            windowBounds: selected.bounds,
-            windowId: selected.windowId
+            windowBounds: bounds,
+            windowId: windowId
         )
+    }
+
+    private func logPopoverResolution(
+        _ resolution: MenuBarPopoverResolution,
+        windowInfoMap: [Int: MenuBarPopoverWindowInfo]
+    ) {
+        switch resolution.reason {
+        case .ocr:
+            if let windowId = resolution.windowId {
+                self.logger.verbose(
+                    "Selected menu bar popover via OCR",
+                    category: "Capture",
+                    metadata: [
+                        "windowId": windowId
+                    ]
+                )
+            }
+        case .ocrArea:
+            if let bounds = resolution.bounds {
+                self.logger.verbose(
+                    "Selected menu bar popover via area capture",
+                    category: "Capture",
+                    metadata: [
+                        "rect": "\(bounds)"
+                    ]
+                )
+            }
+        default:
+            if let windowId = resolution.windowId,
+               let info = windowInfoMap[windowId] {
+                self.logger.verbose(
+                    "Selected menu bar popover window",
+                    category: "Capture",
+                    metadata: [
+                        "windowId": windowId,
+                        "owner": info.ownerName ?? "unknown",
+                        "title": info.title ?? "",
+                        "reason": resolution.reason.rawValue
+                    ]
+                )
+            }
+        }
     }
 }

@@ -7,6 +7,28 @@ struct MenuBarPopoverWindowInfo {
 }
 
 enum MenuBarPopoverSelector {
+    static func filterByOwnerName(
+        candidates: [MenuBarPopoverCandidate],
+        windowInfoById: [Int: MenuBarPopoverWindowInfo],
+        preferredOwnerName: String?
+    ) -> [MenuBarPopoverCandidate] {
+        guard let preferredOwnerName, !preferredOwnerName.isEmpty else { return [] }
+        let normalized = preferredOwnerName.lowercased()
+        let exact = candidates.filter { candidate in
+            let ownerName = windowInfoById[candidate.windowId]?.ownerName?.lowercased()
+            return ownerName == normalized
+        }
+        if !exact.isEmpty {
+            return exact
+        }
+
+        let partial = candidates.filter { candidate in
+            let ownerName = windowInfoById[candidate.windowId]?.ownerName?.lowercased() ?? ""
+            return ownerName.contains(normalized)
+        }
+        return partial
+    }
+
     static func rankCandidates(
         candidates: [MenuBarPopoverCandidate],
         windowInfoById: [Int: MenuBarPopoverWindowInfo],
@@ -16,23 +38,13 @@ enum MenuBarPopoverSelector {
         guard !candidates.isEmpty else { return [] }
 
         var filtered = candidates
-        if let preferredOwnerName, !preferredOwnerName.isEmpty {
-            let normalized = preferredOwnerName.lowercased()
-            let exact = candidates.filter { candidate in
-                let ownerName = windowInfoById[candidate.windowId]?.ownerName?.lowercased()
-                return ownerName == normalized
-            }
-            if !exact.isEmpty {
-                filtered = exact
-            } else {
-                let partial = candidates.filter { candidate in
-                    let ownerName = windowInfoById[candidate.windowId]?.ownerName?.lowercased() ?? ""
-                    return ownerName.contains(normalized)
-                }
-                if !partial.isEmpty {
-                    filtered = partial
-                }
-            }
+        let ownerNameMatches = self.filterByOwnerName(
+            candidates: candidates,
+            windowInfoById: windowInfoById,
+            preferredOwnerName: preferredOwnerName
+        )
+        if !ownerNameMatches.isEmpty {
+            filtered = ownerNameMatches
         }
 
         if let preferredX {
