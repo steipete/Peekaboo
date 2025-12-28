@@ -1,10 +1,8 @@
 import AppKit
-import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-import ScreenCaptureKit
 
 @MainActor
 extension SeeCommand {
@@ -38,31 +36,25 @@ extension SeeCommand {
         }
 
         let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
-
-        let content = try await AXTimeoutHelper.withTimeout(seconds: 5.0) {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        }
-
-        let appWindows = content.windows.filter { window in
-            window.owningApplication?.processID == appInfo.processIdentifier
-        }
+        let snapshot = try await WindowListMapper.shared.snapshot()
+        let appWindows = WindowListMapper.scWindows(
+            for: appInfo.processIdentifier,
+            in: snapshot.scWindows
+        )
 
         guard !appWindows.isEmpty else {
             throw CaptureError.windowNotFound
         }
 
-        if let targetWindowID = self.resolveCGWindowID(
-            forPID: appInfo.processIdentifier,
-            titleFragment: fragment
+        if let index = WindowListMapper.scWindowIndex(
+            for: appInfo.processIdentifier,
+            titleFragment: fragment,
+            in: snapshot
         ) {
-            if let index = appWindows.firstIndex(where: { Int($0.windowID) == Int(targetWindowID) }) {
-                return index
-            }
+            return index
         }
 
-        if let index = appWindows.firstIndex(where: { window in
-            (window.title ?? "").localizedCaseInsensitiveContains(fragment)
-        }) {
+        if let index = WindowListMapper.scWindowIndex(for: fragment, in: appWindows) {
             return index
         }
 
@@ -271,22 +263,4 @@ extension SeeCommand {
     }
 
     // swiftlint:enable function_body_length
-
-    private func resolveCGWindowID(forPID pid: Int32, titleFragment: String) -> CGWindowID? {
-        let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] ?? []
-
-        for info in windowList {
-            guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32, ownerPID == pid else { continue }
-            let title = info[kCGWindowName as String] as? String ?? ""
-            guard title.localizedCaseInsensitiveContains(titleFragment) else { continue }
-            if let windowID = info[kCGWindowNumber as String] as? CGWindowID {
-                return windowID
-            }
-        }
-
-        return nil
-    }
 }
