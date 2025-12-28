@@ -917,6 +917,10 @@ final class StubMenuService: MenuServiceProtocol {
         self.menuExtras.contains(where: { $0.title == title })
     }
 
+    func menuExtraOpenMenuFrame(title: String, ownerPID _: pid_t?) async throws -> CGRect? {
+        self.menuExtras.contains(where: { $0.title == title }) ? CGRect(x: 0, y: 0, width: 100, height: 100) : nil
+    }
+
     func listMenuExtras() async throws -> [MenuExtraInfo] {
         self.menuExtras
     }

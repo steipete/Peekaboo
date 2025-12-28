@@ -81,6 +81,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     // Menu bar extras
     case listMenuExtras
     case clickMenuExtra
+    case menuExtraOpenMenuFrame
     case listMenuBarItems
     case clickMenuBarItemNamed
     case clickMenuBarItemIndex
@@ -120,8 +121,8 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
         case .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse, .waitForElement,
              .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow, .listMenus, .listFrontmostMenus,
-             .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .listMenuBarItems,
-             .clickMenuBarItemNamed, .clickMenuBarItemIndex, .listDockItems, .launchDockItem,
+             .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .menuExtraOpenMenuFrame,
+             .listMenuBarItems, .clickMenuBarItemNamed, .clickMenuBarItemIndex, .listDockItems, .launchDockItem,
              .rightClickDockItem, .hideDock, .showDock, .isDockHidden, .findDockItem, .dialogFindActive,
              .dialogClickButton, .dialogEnterText, .dialogHandleFile, .dialogDismiss, .dialogListElements:
             [.accessibility]
@@ -195,6 +196,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
         .clickMenuItemByName,
         .listMenuExtras,
         .clickMenuExtra,
+        .menuExtraOpenMenuFrame,
         .listMenuBarItems,
         .clickMenuBarItemNamed,
         .clickMenuBarItemIndex,
@@ -500,6 +502,11 @@ public struct PeekabooBridgeMenuBarClickByIndexRequest: Codable, Sendable {
     public let index: Int
 }
 
+public struct PeekabooBridgeMenuExtraOpenRequest: Codable, Sendable {
+    public let title: String
+    public let ownerPID: pid_t?
+}
+
 public struct PeekabooBridgeDockListRequest: Codable, Sendable {
     public let includeAll: Bool
 }
@@ -637,6 +644,7 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case clickMenuItemByName(PeekabooBridgeMenuClickByNameRequest)
     case listMenuExtras
     case clickMenuExtra(PeekabooBridgeMenuBarClickByNameRequest)
+    case menuExtraOpenMenuFrame(PeekabooBridgeMenuExtraOpenRequest)
     case listMenuBarItems(Bool)
     case clickMenuBarItemNamed(PeekabooBridgeMenuBarClickByNameRequest)
     case clickMenuBarItemIndex(PeekabooBridgeMenuBarClickByIndexRequest)
@@ -713,6 +721,7 @@ extension PeekabooBridgeRequest {
         case .clickMenuItemByName: .clickMenuItemByName
         case .listMenuExtras: .listMenuExtras
         case .clickMenuExtra: .clickMenuExtra
+        case .menuExtraOpenMenuFrame: .menuExtraOpenMenuFrame
         case .listMenuBarItems: .listMenuBarItems
         case .clickMenuBarItemNamed: .clickMenuBarItemNamed
         case .clickMenuBarItemIndex: .clickMenuBarItemIndex
@@ -764,6 +773,7 @@ public enum PeekabooBridgeResponse: Codable, Sendable {
     case menuBarItems([MenuBarItemInfo])
     case dockItems([DockItem])
     case dockItem(DockItem?)
+    case rect(CGRect?)
     case dialogInfo(DialogInfo)
     case dialogElements(DialogElements)
     case dialogResult(DialogActionResult)

@@ -91,6 +91,25 @@ extension MenuService {
         }
     }
 
+    public func menuExtraOpenMenuFrame(title: String, ownerPID: pid_t?) async throws -> CGRect? {
+        let timeoutSeconds = max(TimeInterval(self.menuBarAXTimeoutSec), 0.5)
+        do {
+            return try await AXTimeoutHelper.withTimeout(
+                seconds: timeoutSeconds
+            ) { [self] in
+                await MainActor.run {
+                    self.menuExtraOpenMenuFrameInternal(
+                        title: title,
+                        ownerPID: ownerPID,
+                        timeout: Float(timeoutSeconds))
+                }
+            }
+        } catch {
+            self.logger.debug("Menu extra open frame check timed out: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     private func isMenuExtraMenuOpenInternal(
         title: String,
         ownerPID: pid_t?,
@@ -177,6 +196,68 @@ extension MenuService {
 
         let children = menuExtra.children(strict: true) ?? []
         return children.contains(where: { $0.isMenu() || $0.isMenuItem() })
+    }
+
+    private func menuExtraOpenMenuFrameInternal(
+        title: String,
+        ownerPID: pid_t?,
+        timeout: Float
+    ) -> CGRect? {
+        let systemWide = Element.systemWide()
+        systemWide.setMessagingTimeout(timeout)
+        defer { systemWide.setMessagingTimeout(0) }
+
+        guard let menuBar = systemWide.menuBar() else {
+            return nil
+        }
+
+        let menuBarItems = menuBar.children(strict: true) ?? []
+        guard let menuExtrasGroup = menuBarItems.last(where: { $0.role() == "AXGroup" }) else {
+            return nil
+        }
+
+        let extras = menuExtrasGroup.children(strict: true) ?? []
+        let normalizedTarget = normalizedMenuTitle(title)
+        if let menuExtra = self.findMenuExtra(
+            in: extras,
+            title: title,
+            normalizedTarget: normalizedTarget,
+            ownerPID: ownerPID)
+        {
+            if self.menuExtraHasOpenMenu(menuExtra),
+               let frame = self.menuExtraMenuFrame(menuExtra)
+            { return frame }
+        }
+
+        let systemMenus = (systemWide.children(strict: true) ?? []).filter { $0.isMenu() }
+        guard !systemMenus.isEmpty else { return nil }
+
+        for menu in systemMenus {
+            if self.menuMatches(menu: menu, normalizedTarget: normalizedTarget, ownerPID: ownerPID) {
+                if let frame = menu.frame() {
+                    return frame
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func menuExtraMenuFrame(_ menuExtra: Element) -> CGRect? {
+        if let menuElement: AXUIElement = menuExtra.attribute(Attribute<AXUIElement>("AXMenu")) {
+            let menu = Element(menuElement)
+            if let frame = menu.frame() {
+                return frame
+            }
+        }
+
+        if let menu = (menuExtra.children(strict: true) ?? []).first(where: { $0.isMenu() }),
+           let frame = menu.frame()
+        {
+            return frame
+        }
+
+        return nil
     }
 
     private func menuMatches(menu: Element, normalizedTarget: String?, ownerPID: pid_t?) -> Bool {

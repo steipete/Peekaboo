@@ -362,6 +362,12 @@ public final class PeekabooBridgeServer {
                 try await self.services.menu.clickMenuExtra(title: payload.name)
                 return .ok
 
+            case let .menuExtraOpenMenuFrame(payload):
+                let frame = try await self.services.menu.menuExtraOpenMenuFrame(
+                    title: payload.title,
+                    ownerPID: payload.ownerPID)
+                return .rect(frame)
+
             case let .listMenuBarItems(includeRaw):
                 let items = try await self.services.menu.listMenuBarItems(includeRaw: includeRaw)
                 return .menuBarItems(items)

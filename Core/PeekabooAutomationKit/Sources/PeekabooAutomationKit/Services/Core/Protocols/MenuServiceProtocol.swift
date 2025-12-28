@@ -44,6 +44,10 @@ public protocol MenuServiceProtocol: Sendable {
     /// - Parameter title: Title of the menu extra
     func isMenuExtraMenuOpen(title: String, ownerPID: pid_t?) async throws -> Bool
 
+    /// Return the open menu frame for a menu extra, if available (AX-based).
+    /// - Parameter title: Title of the menu extra
+    func menuExtraOpenMenuFrame(title: String, ownerPID: pid_t?) async throws -> CGRect?
+
     /// List all system menu extras
     /// - Returns: Array of menu extra information
     func listMenuExtras() async throws -> [MenuExtraInfo]

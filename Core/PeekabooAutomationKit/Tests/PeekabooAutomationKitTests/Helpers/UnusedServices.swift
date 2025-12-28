@@ -197,6 +197,7 @@ final class UnusedMenuService: MenuServiceProtocol {
     func clickMenuItemByName(app: String, itemName: String) async throws { fatalError("unused") }
     func clickMenuExtra(title: String) async throws { fatalError("unused") }
     func isMenuExtraMenuOpen(title: String, ownerPID: pid_t?) async throws -> Bool { fatalError("unused") }
+    func menuExtraOpenMenuFrame(title: String, ownerPID: pid_t?) async throws -> CGRect? { fatalError("unused") }
     func listMenuExtras() async throws -> [MenuExtraInfo] { fatalError("unused") }
     func listMenuBarItems(includeRaw: Bool) async throws -> [MenuBarItemInfo] { fatalError("unused") }
     func clickMenuBarItem(named name: String) async throws -> ClickResult { fatalError("unused") }

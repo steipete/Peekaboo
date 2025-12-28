@@ -400,6 +400,23 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 )
             }
 
+            if let appHint = self.menuBarAppHint() {
+                self.logger.verbose("Attempting to open menu extra for capture", category: "Capture", metadata: [
+                    "app": appHint
+                ])
+                try? await self.services.menu.clickMenuExtra(title: appHint)
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                if let popover = try await self.captureMenuBarPopover() {
+                    return CaptureContext(
+                        captureResult: popover.captureResult,
+                        captureBounds: popover.windowBounds,
+                        prefersOCR: true,
+                        ocrMethod: "OCR",
+                        windowIdOverride: popover.windowId
+                    )
+                }
+            }
+
             self.logger.verbose("No menu bar popover detected; capturing menu bar area", category: "Capture")
             let rect = try self.menuBarRect()
             let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
@@ -615,7 +632,15 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             }
         }
 
-        guard !candidates.isEmpty else { return nil }
+        if candidates.isEmpty {
+            if let openMenuCapture = try await self.captureMenuBarPopoverFromOpenMenu(
+                openExtra: openExtra ?? hintExtra,
+                appHint: appHint
+            ) {
+                return openMenuCapture
+            }
+            return nil
+        }
 
         let hintName = appHint ?? preferredExtra?.title ?? preferredExtra?.ownerName
         if let hintName, candidates.count > 1 {
@@ -758,6 +783,72 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         }
 
         return nil
+    }
+
+    private func captureMenuBarPopoverFromOpenMenu(
+        openExtra: MenuExtraInfo?,
+        appHint: String?
+    ) async throws -> MenuBarPopoverCapture? {
+        let ownerPID: pid_t? = {
+            guard let openExtra else { return nil }
+            return self.resolveMenuExtraOwnerPID(openExtra)
+        }()
+        let titles = [
+            openExtra?.title,
+            openExtra?.ownerName,
+            openExtra?.rawTitle,
+            appHint,
+        ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        for candidate in titles where !candidate.isEmpty {
+            if let frame = try? await self.services.menu.menuExtraOpenMenuFrame(
+                title: candidate,
+                ownerPID: ownerPID),
+               let capture = try await self.captureMenuBarPopoverByFrame(frame)
+            {
+                return capture
+            }
+        }
+
+        return nil
+    }
+
+    private func captureMenuBarPopoverByFrame(_ frame: CGRect) async throws -> MenuBarPopoverCapture? {
+        let padded = frame.insetBy(dx: -8, dy: -8)
+        guard let clamped = self.clampRectToScreens(padded) else { return nil }
+
+        let captureResult = try await ScreenCaptureBridge.captureArea(
+            services: self.services,
+            rect: clamped
+        )
+
+        if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
+           !ocr.observations.isEmpty
+        {
+            self.logger.verbose(
+                "Selected menu bar popover via AX menu frame",
+                category: "Capture",
+                metadata: [
+                    "rect": "\(clamped)"
+                ]
+            )
+            return MenuBarPopoverCapture(
+                captureResult: captureResult,
+                windowBounds: clamped,
+                windowId: nil
+            )
+        }
+
+        return nil
+    }
+
+    private func clampRectToScreens(_ rect: CGRect) -> CGRect? {
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else { return nil }
+        for screen in screens where screen.frame.intersects(rect) {
+            return rect.intersection(screen.frame)
+        }
+        return rect
     }
 
     private func screenForMenuBarX(_ x: CGFloat) -> NSScreen? {

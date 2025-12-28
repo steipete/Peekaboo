@@ -468,6 +468,16 @@ public actor PeekabooBridgeClient {
         try await self.sendExpectOK(.clickMenuExtra(PeekabooBridgeMenuBarClickByNameRequest(name: title)))
     }
 
+    public func menuExtraOpenMenuFrame(title: String, ownerPID: pid_t?) async throws -> CGRect? {
+        let response = try await self.send(.menuExtraOpenMenuFrame(
+            PeekabooBridgeMenuExtraOpenRequest(title: title, ownerPID: ownerPID)))
+        switch response {
+        case let .rect(rect): return rect
+        case let .error(envelope): throw envelope
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected menu frame response")
+        }
+    }
+
     public func listMenuBarItems(includeRaw: Bool) async throws -> [MenuBarItemInfo] {
         let response = try await self.send(.listMenuBarItems(includeRaw))
         switch response {
