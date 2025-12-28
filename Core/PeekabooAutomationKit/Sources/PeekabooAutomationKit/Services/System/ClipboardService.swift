@@ -30,11 +30,11 @@ public struct ClipboardWriteRequest: Sendable {
     }
 }
 
-public extension ClipboardWriteRequest {
-    static func textRepresentations(from data: Data) -> [ClipboardRepresentation] {
+extension ClipboardWriteRequest {
+    public static func textRepresentations(from data: Data) -> [ClipboardRepresentation] {
         [
             ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data),
-            ClipboardRepresentation(utiIdentifier: UTType.utf8PlainText.identifier, data: data),
+            ClipboardRepresentation(utiIdentifier: NSPasteboard.PasteboardType.string.rawValue, data: data),
         ]
     }
 }
@@ -183,7 +183,7 @@ public final class ClipboardService: ClipboardServiceProtocol {
         } else if let representation = request.representations.first(where: {
             $0.utiIdentifier == UTType.plainText.identifier || $0.utiIdentifier == UTType.utf8PlainText.identifier
         }),
-        let fallbackText = String(data: representation.data, encoding: .utf8)
+            let fallbackText = String(data: representation.data, encoding: .utf8)
         {
             self.pasteboard.setString(fallbackText, forType: .string)
         }

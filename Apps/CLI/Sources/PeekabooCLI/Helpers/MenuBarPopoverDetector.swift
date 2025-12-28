@@ -8,7 +8,7 @@ struct MenuBarPopoverCandidate {
     let bounds: CGRect
 }
 
-struct MenuBarPopoverDetector {
+enum MenuBarPopoverDetector {
     struct ScreenBounds {
         let frame: CGRect
         let visibleFrame: CGRect
@@ -50,7 +50,7 @@ struct MenuBarPopoverDetector {
 
             let screen = screenContainingWindow(bounds: bounds, screens: screens)
             let menuBarHeight = menuBarHeight(for: screen)
-            if (layer == 24 || layer == 25), bounds.height <= menuBarHeight + 4 { continue }
+            if layer == 24 || layer == 25, bounds.height <= menuBarHeight + 4 { continue }
 
             if let screen {
                 let maxHeight = screen.frame.height * 0.8

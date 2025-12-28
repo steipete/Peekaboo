@@ -6,14 +6,14 @@ struct MenuBarPopoverWindowInfo {
     let title: String?
 }
 
-struct MenuBarPopoverSelector {
-    static func selectCandidate(
+enum MenuBarPopoverSelector {
+    static func rankCandidates(
         candidates: [MenuBarPopoverCandidate],
         windowInfoById: [Int: MenuBarPopoverWindowInfo],
         preferredOwnerName: String?,
         preferredX: CGFloat?
-    ) -> MenuBarPopoverCandidate? {
-        guard !candidates.isEmpty else { return nil }
+    ) -> [MenuBarPopoverCandidate] {
+        guard !candidates.isEmpty else { return [] }
 
         var filtered = candidates
         if let preferredOwnerName, !preferredOwnerName.isEmpty {
@@ -36,7 +36,7 @@ struct MenuBarPopoverSelector {
         }
 
         if let preferredX {
-            return filtered.min { lhs, rhs in
+            return filtered.sorted { lhs, rhs in
                 let lhsDistance = abs(lhs.bounds.midX - preferredX)
                 let rhsDistance = abs(rhs.bounds.midX - preferredX)
                 if lhsDistance != rhsDistance {
@@ -53,6 +53,20 @@ struct MenuBarPopoverSelector {
             let lhsArea = lhs.bounds.width * lhs.bounds.height
             let rhsArea = rhs.bounds.width * rhs.bounds.height
             return lhsArea > rhsArea
-        }.first
+        }
+    }
+
+    static func selectCandidate(
+        candidates: [MenuBarPopoverCandidate],
+        windowInfoById: [Int: MenuBarPopoverWindowInfo],
+        preferredOwnerName: String?,
+        preferredX: CGFloat?
+    ) -> MenuBarPopoverCandidate? {
+        rankCandidates(
+            candidates: candidates,
+            windowInfoById: windowInfoById,
+            preferredOwnerName: preferredOwnerName,
+            preferredX: preferredX
+        ).first
     }
 }

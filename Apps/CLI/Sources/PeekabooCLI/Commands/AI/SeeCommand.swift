@@ -404,8 +404,25 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 self.logger.verbose("Attempting to open menu extra for capture", category: "Capture", metadata: [
                     "app": appHint
                 ])
-                try? await self.services.menu.clickMenuExtra(title: appHint)
-                try? await Task.sleep(nanoseconds: 200_000_000)
+                let clickResult = try? await MenuServiceBridge.clickMenuBarItem(
+                    named: appHint,
+                    menu: self.services.menu
+                )
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                if let preferredX = clickResult?.location?.x,
+                   let quickAreaCapture = try await self.captureMenuBarPopoverByArea(
+                       preferredX: preferredX,
+                       hint: appHint,
+                       ownerHint: appHint
+                   ) {
+                    return CaptureContext(
+                        captureResult: quickAreaCapture.captureResult,
+                        captureBounds: quickAreaCapture.windowBounds,
+                        prefersOCR: true,
+                        ocrMethod: "OCR",
+                        windowIdOverride: quickAreaCapture.windowId
+                    )
+                }
                 if let popover = try await self.captureMenuBarPopover(allowAreaFallback: true) {
                     return CaptureContext(
                         captureResult: popover.captureResult,
@@ -572,13 +589,15 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     private func captureMenuBarPopover(allowAreaFallback: Bool = false) async throws -> MenuBarPopoverCapture? {
         let extras = try await self.services.menu.listMenuExtras()
         let ownerPidSet = Set(extras.compactMap(\.ownerPID))
-        guard !ownerPidSet.isEmpty else { return nil }
+        let canFilterByOwnerPid = !ownerPidSet.isEmpty
 
         let appHint = self.menuBarAppHint()
         let hintExtra = self.resolveMenuExtraHint(appHint: appHint, extras: extras)
         let openExtra = try await self.resolveOpenMenuExtra(from: extras)
 
         let preferredExtra = appHint != nil ? (hintExtra ?? openExtra) : (openExtra ?? hintExtra)
+        let preferredOwnerName = appHint ?? preferredExtra?.ownerName ?? preferredExtra?.title
+        let preferredX = preferredExtra?.position.x
         if let openExtra, let openPid = openExtra.ownerPID {
             self.logger.verbose(
                 "Detected open menu extra",
@@ -597,14 +616,20 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             return nil
         }
 
-        let filteredWindowList = windowList.filter { info in
-            guard let ownerPID = self.ownerPid(from: info) else { return false }
-            return ownerPidSet.contains(ownerPID)
+        let filteredWindowList: [[String: Any]] = if canFilterByOwnerPid {
+            windowList.filter { info in
+                guard let ownerPID = self.ownerPid(from: info) else { return false }
+                return ownerPidSet.contains(ownerPID)
+            }
+        } else {
+            windowList
         }
 
         let preferredOwnerPid = preferredExtra?.ownerPID
-        let usedFilteredWindowList = !filteredWindowList.isEmpty && filteredWindowList.count != windowList.count
-        let candidatesWindowList = usedFilteredWindowList ? filteredWindowList : windowList
+        let usedFilteredWindowList = canFilterByOwnerPid &&
+            !filteredWindowList.isEmpty &&
+            filteredWindowList.count != windowList.count
+        var candidatesWindowList = usedFilteredWindowList ? filteredWindowList : windowList
         var candidates = self.menuBarPopoverCandidates(
             windowList: candidatesWindowList,
             ownerPID: preferredOwnerPid
@@ -632,6 +657,28 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             }
         }
 
+        if let preferredOwnerName, !preferredOwnerName.isEmpty, usedFilteredWindowList {
+            let windowInfoMap = self.windowInfoById(from: candidatesWindowList)
+            let normalized = preferredOwnerName.lowercased()
+            let ownerMatches = candidates.filter { candidate in
+                let ownerName = windowInfoMap[candidate.windowId]?.ownerName?.lowercased() ?? ""
+                return ownerName == normalized || ownerName.contains(normalized)
+            }
+            if ownerMatches.isEmpty {
+                candidatesWindowList = windowList
+                candidates = self.menuBarPopoverCandidates(
+                    windowList: candidatesWindowList,
+                    ownerPID: preferredOwnerPid
+                )
+                if candidates.isEmpty, preferredOwnerPid != nil {
+                    candidates = self.menuBarPopoverCandidates(
+                        windowList: candidatesWindowList,
+                        ownerPID: nil
+                    )
+                }
+            }
+        }
+
         if candidates.isEmpty {
             if let openMenuCapture = try await self.captureMenuBarPopoverFromOpenMenu(
                 openExtra: openExtra ?? hintExtra,
@@ -639,30 +686,45 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             ) {
                 return openMenuCapture
             }
-            return nil
+            if let preferredX {
+                let bandCandidates = self.menuBarPopoverCandidatesByBand(
+                    windowList: windowList,
+                    preferredX: preferredX
+                )
+                if !bandCandidates.isEmpty {
+                    candidatesWindowList = windowList
+                    candidates = bandCandidates
+                }
+            }
+            if candidates.isEmpty {
+                return nil
+            }
         }
 
         let hintName = appHint ?? preferredExtra?.title ?? preferredExtra?.ownerName
+        let windowInfoMap = self.windowInfoById(from: candidatesWindowList)
         if let hintName, candidates.count > 1 {
             if let ocrCapture = try await self.captureMenuBarPopoverByOCR(
                 candidates: candidates,
-                hint: hintName
+                windowInfoById: windowInfoMap,
+                hint: hintName,
+                preferredOwnerName: preferredOwnerName,
+                preferredX: preferredX
             ) {
                 return ocrCapture
             }
         }
 
-        let preferredOwnerName = appHint ?? preferredExtra?.ownerName ?? preferredExtra?.title
-        let preferredX = preferredExtra?.position.x
-
-        if (openExtra != nil || allowAreaFallback),
+        if openExtra != nil || allowAreaFallback,
            let preferredX,
-           let areaCapture = try await self.captureMenuBarPopoverByArea(preferredX: preferredX)
-        {
+           let areaCapture = try await self.captureMenuBarPopoverByArea(
+               preferredX: preferredX,
+               hint: hintName,
+               ownerHint: preferredOwnerName
+           ) {
             return areaCapture
         }
 
-        let windowInfoMap = self.windowInfoById(from: candidatesWindowList)
         var selectionCandidates = candidates
         if let preferredOwnerName, !preferredOwnerName.isEmpty {
             let normalized = preferredOwnerName.lowercased()
@@ -712,10 +774,19 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func captureMenuBarPopoverByOCR(
         candidates: [MenuBarPopoverCandidate],
-        hint: String
+        windowInfoById: [Int: MenuBarPopoverWindowInfo],
+        hint: String,
+        preferredOwnerName: String?,
+        preferredX: CGFloat?
     ) async throws -> MenuBarPopoverCapture? {
         let normalized = hint.lowercased()
-        for candidate in candidates {
+        let ranked = MenuBarPopoverSelector.rankCandidates(
+            candidates: candidates,
+            windowInfoById: windowInfoById,
+            preferredOwnerName: preferredOwnerName,
+            preferredX: preferredX
+        )
+        for candidate in ranked {
             let captureResult = try await ScreenCaptureBridge.captureWindowById(
                 services: self.services,
                 windowId: candidate.windowId
@@ -742,7 +813,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func captureMenuBarPopoverByArea(
-        preferredX: CGFloat
+        preferredX: CGFloat,
+        hint: String?,
+        ownerHint: String?
     ) async throws -> MenuBarPopoverCapture? {
         guard let screen = self.screenForMenuBarX(preferredX) else { return nil }
         let menuBarHeight = self.menuBarHeight(for: screen)
@@ -764,9 +837,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         )
 
         if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
-           !ocr.observations.isEmpty
-        {
-
+           self.ocrMatchesHints(ocr, hint: hint, ownerHint: ownerHint) {
             self.logger.verbose(
                 "Selected menu bar popover via area capture",
                 category: "Capture",
@@ -802,9 +873,13 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         for candidate in titles where !candidate.isEmpty {
             if let frame = try? await self.services.menu.menuExtraOpenMenuFrame(
                 title: candidate,
-                ownerPID: ownerPID),
-               let capture = try await self.captureMenuBarPopoverByFrame(frame)
-            {
+                ownerPID: ownerPID
+            ),
+                let capture = try await self.captureMenuBarPopoverByFrame(
+                    frame,
+                    hint: appHint ?? openExtra?.title,
+                    ownerHint: openExtra?.ownerName
+                ) {
                 return capture
             }
         }
@@ -812,7 +887,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return nil
     }
 
-    private func captureMenuBarPopoverByFrame(_ frame: CGRect) async throws -> MenuBarPopoverCapture? {
+    private func captureMenuBarPopoverByFrame(
+        _ frame: CGRect,
+        hint: String?,
+        ownerHint: String?
+    ) async throws -> MenuBarPopoverCapture? {
         let padded = frame.insetBy(dx: -8, dy: -8)
         guard let clamped = self.clampRectToScreens(padded) else { return nil }
 
@@ -822,8 +901,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         )
 
         if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
-           !ocr.observations.isEmpty
-        {
+           self.ocrMatchesHints(ocr, hint: hint, ownerHint: ownerHint) {
             self.logger.verbose(
                 "Selected menu bar popover via AX menu frame",
                 category: "Capture",
@@ -839,6 +917,22 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         }
 
         return nil
+    }
+
+    private func ocrMatchesHints(
+        _ ocr: OCRTextResult,
+        hint: String?,
+        ownerHint: String?
+    ) -> Bool {
+        let hints = [hint, ownerHint]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !hints.isEmpty else { return !ocr.observations.isEmpty }
+        let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
+        return hints.contains { hint in
+            text.contains(hint.lowercased())
+        }
     }
 
     private func clampRectToScreens(_ rect: CGRect) -> CGRect? {
@@ -873,6 +967,73 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             screens: screens,
             ownerPID: ownerPID
         )
+    }
+
+    private func menuBarPopoverCandidatesByBand(
+        windowList: [[String: Any]],
+        preferredX: CGFloat
+    ) -> [MenuBarPopoverCandidate] {
+        let screens = NSScreen.screens.map { screen in
+            MenuBarPopoverDetector.ScreenBounds(
+                frame: screen.frame,
+                visibleFrame: screen.visibleFrame
+            )
+        }
+        let bandHalfWidth: CGFloat = 260
+        var candidates: [MenuBarPopoverCandidate] = []
+
+        for windowInfo in windowList {
+            guard let bounds = self.windowBounds(from: windowInfo) else { continue }
+            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
+            if windowId == 0 { continue }
+
+            if bounds.width < 40 || bounds.height < 40 { continue }
+            if bounds.maxX < preferredX - bandHalfWidth || bounds.minX > preferredX + bandHalfWidth { continue }
+
+            let screen = self.screenContainingWindow(bounds: bounds, screens: screens)
+            if let screen {
+                let menuBarHeight = self.menuBarHeight(for: screen)
+                let maxHeight = screen.frame.height * 0.85
+                if bounds.height > maxHeight { continue }
+
+                let topEdge = screen.visibleFrame.maxY
+                if bounds.maxY < topEdge - 48 && bounds.minY > menuBarHeight + 48 { continue }
+            }
+
+            let ownerPID = self.ownerPid(from: windowInfo) ?? -1
+            candidates.append(
+                MenuBarPopoverCandidate(
+                    windowId: windowId,
+                    ownerPID: ownerPID,
+                    bounds: bounds
+                )
+            )
+        }
+
+        return candidates
+    }
+
+    private func screenContainingWindow(
+        bounds: CGRect,
+        screens: [MenuBarPopoverDetector.ScreenBounds]
+    ) -> MenuBarPopoverDetector.ScreenBounds? {
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        if let screen = screens.first(where: { $0.frame.contains(center) }) {
+            return screen
+        }
+
+        var bestScreen: MenuBarPopoverDetector.ScreenBounds?
+        var maxOverlap: CGFloat = 0
+        for screen in screens {
+            let intersection = screen.frame.intersection(bounds)
+            let overlapArea = intersection.width * intersection.height
+            if overlapArea > maxOverlap {
+                maxOverlap = overlapArea
+                bestScreen = screen
+            }
+        }
+
+        return bestScreen
     }
 
     private func windowInfoById(from windowList: [[String: Any]]) -> [Int: MenuBarPopoverWindowInfo] {
@@ -944,9 +1105,10 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
             for candidate in candidates where !candidate.isEmpty {
                 let ownerPID = extra.ownerPID ?? self.resolveMenuExtraOwnerPID(extra)
-                let isOpen = (try? await self.services.menu.isMenuExtraMenuOpen(
+                let isOpen = await (try? self.services.menu.isMenuExtraMenuOpen(
                     title: candidate,
-                    ownerPID: ownerPID)) == true
+                    ownerPID: ownerPID
+                )) ?? false
                 if isOpen {
                     return extra
                 }
@@ -961,8 +1123,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         }
         let runningApps = NSWorkspace.shared.runningApplications
         if let bundleIdentifier = extra.bundleIdentifier,
-           let match = runningApps.first(where: { $0.bundleIdentifier == bundleIdentifier })
-        {
+           let match = runningApps.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
             return match.processIdentifier
         }
         if let ownerName = extra.ownerName {
@@ -970,7 +1131,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 return match.processIdentifier
             }
             let normalizedOwner = ownerName.lowercased()
-            if let match = runningApps.first(where: { ($0.bundleIdentifier ?? "").lowercased().contains(normalizedOwner) }) {
+            if let match = runningApps.first(where: {
+                ($0.bundleIdentifier ?? "").lowercased().contains(normalizedOwner)
+            }) {
                 return match.processIdentifier
             }
         }
@@ -993,6 +1156,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func menuBarHeight(for screen: NSScreen?) -> CGFloat {
         guard let screen else { return 24.0 }
+        let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        return height > 0 ? height : 24.0
+    }
+
+    private func menuBarHeight(for screen: MenuBarPopoverDetector.ScreenBounds) -> CGFloat {
         let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
         return height > 0 ? height : 24.0
     }

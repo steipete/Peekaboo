@@ -1,5 +1,4 @@
 import AppKit
-import AXorcist
 import Commander
 import CoreGraphics
 import Foundation
@@ -164,7 +163,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
         do {
             let verifyTarget = try await self.resolveVerificationTargetIfNeeded()
-            let focusSnapshot = try await self.captureFocusSnapshotIfNeeded()
+            let verifier = MenuBarClickVerifier(services: self.services)
+            let focusSnapshot = self.verify ? try await verifier.captureFocusSnapshot() : nil
             let result: PeekabooCore.ClickResult
             if let idx = self.index {
                 result = try await MenuServiceBridge.clickMenuBarItem(at: idx, menu: self.services.menu)
@@ -174,10 +174,19 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }
 
-            let verification = try await self.verifyClickIfNeeded(
-                target: verifyTarget,
-                preFocus: focusSnapshot
-            )
+            let verification: MenuBarClickVerification?
+            if self.verify {
+                guard let verifyTarget else {
+                    throw PeekabooError.operationError(message: "Menu bar verification requested but no target resolved")
+                }
+                verification = try await verifier.verifyClick(
+                    target: verifyTarget,
+                    preFocus: focusSnapshot,
+                    clickLocation: result.location
+                )
+            } else {
+                verification = nil
+            }
 
             if self.jsonOutput {
                 let output = ClickJSONOutput(
@@ -235,7 +244,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 title: item.title ?? item.rawTitle,
                 ownerPID: item.rawOwnerPID,
                 ownerName: item.ownerName,
-                bundleIdentifier: item.bundleIdentifier
+                bundleIdentifier: item.bundleIdentifier,
+                preferredX: item.frame?.midX
             )
         }
 
@@ -252,167 +262,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             title: item.title ?? item.rawTitle ?? name,
             ownerPID: item.rawOwnerPID,
             ownerName: item.ownerName,
-            bundleIdentifier: item.bundleIdentifier
+            bundleIdentifier: item.bundleIdentifier,
+            preferredX: item.frame?.midX
         )
-    }
-
-    private func verifyClickIfNeeded(
-        target: MenuBarVerifyTarget?,
-        preFocus: MenuBarFocusSnapshot?
-    ) async throws -> MenuBarClickVerification? {
-        guard self.verify else { return nil }
-        guard let target else {
-            throw PeekabooError.operationError(message: "Menu bar verification requested but no target resolved")
-        }
-
-        let timeout: TimeInterval = 1.5
-
-        if let ownerPID = target.ownerPID {
-            if let candidate = await self.waitForPopover(ownerPID: ownerPID, timeout: timeout) {
-                return MenuBarClickVerification(verified: true, method: "owner_pid", windowId: candidate.windowId)
-            }
-        }
-
-        if let focusVerification = await self.waitForFocusedWindowChange(
-            target: target,
-            preFocus: preFocus,
-            timeout: timeout
-        ) {
-            return focusVerification
-        }
-
-        if let windowId = await self.waitForOwnerWindow(
-            ownerPID: target.ownerPID,
-            expectedTitle: target.title,
-            timeout: timeout)
-        {
-            return MenuBarClickVerification(verified: true, method: "owner_pid_window", windowId: windowId)
-        }
-
-        if let expectedTitle = target.title, !expectedTitle.isEmpty {
-            if ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_AX_VERIFY"] == "1" {
-                if await self.waitForMenuExtraMenuOpen(
-                    expectedTitle: expectedTitle,
-                    ownerPID: target.ownerPID,
-                    timeout: timeout)
-                {
-                    return MenuBarClickVerification(verified: true, method: "ax_menu", windowId: nil)
-                }
-            }
-
-            if ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_OCR_VERIFY"] == "1" {
-                if let candidate = try await self.waitForPopoverByOCR(
-                    expectedTitle: expectedTitle,
-                    timeout: timeout
-                ) {
-                    return MenuBarClickVerification(verified: true, method: "ocr", windowId: candidate.windowId)
-                }
-            }
-        }
-
-        throw PeekabooError.operationError(message: "Menu bar verification failed: popover not detected")
-    }
-
-    private func captureFocusSnapshotIfNeeded() async throws -> MenuBarFocusSnapshot? {
-        guard self.verify else { return nil }
-
-        let frontmost = try await self.services.applications.getFrontmostApplication()
-        let focused = try await WindowServiceBridge.getFocusedWindow(windows: self.services.windows)
-
-        return MenuBarFocusSnapshot(
-            appPID: frontmost.processIdentifier,
-            appName: frontmost.name,
-            bundleIdentifier: frontmost.bundleIdentifier,
-            windowId: focused?.windowID,
-            windowTitle: focused?.title
-        )
-    }
-
-    private func waitForFocusedWindowChange(
-        target: MenuBarVerifyTarget,
-        preFocus: MenuBarFocusSnapshot?,
-        timeout: TimeInterval
-    ) async -> MenuBarClickVerification? {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            guard let frontmost = try? await self.services.applications.getFrontmostApplication() else {
-                try? await Task.sleep(nanoseconds: 120_000_000)
-                continue
-            }
-
-            if !Self.frontmostMatchesTarget(
-                frontmost: frontmost,
-                ownerPID: target.ownerPID,
-                ownerName: target.ownerName,
-                bundleIdentifier: target.bundleIdentifier
-            ) {
-                try? await Task.sleep(nanoseconds: 120_000_000)
-                continue
-            }
-
-            let focused = try? await WindowServiceBridge.getFocusedWindow(windows: self.services.windows)
-            if self.focusDidChange(preFocus: preFocus, frontmost: frontmost, focused: focused) {
-                return MenuBarClickVerification(
-                    verified: true,
-                    method: "focused_window",
-                    windowId: focused?.windowID
-                )
-            }
-
-            try? await Task.sleep(nanoseconds: 120_000_000)
-        }
-
-        return nil
-    }
-
-    private func focusDidChange(
-        preFocus: MenuBarFocusSnapshot?,
-        frontmost: ServiceApplicationInfo,
-        focused: ServiceWindowInfo?
-    ) -> Bool {
-        guard let preFocus else { return true }
-
-        if preFocus.appPID != frontmost.processIdentifier {
-            return true
-        }
-
-        let currentWindowId = focused?.windowID
-        if preFocus.windowId != currentWindowId {
-            return true
-        }
-
-        let currentTitle = focused?.title
-        if preFocus.windowTitle != currentTitle {
-            return true
-        }
-
-        return false
-    }
-
-    static func frontmostMatchesTarget(
-        frontmost: ServiceApplicationInfo,
-        ownerPID: pid_t?,
-        ownerName: String?,
-        bundleIdentifier: String?
-    ) -> Bool {
-        if let ownerPID, frontmost.processIdentifier == ownerPID {
-            return true
-        }
-
-        if let bundleIdentifier,
-           let frontBundle = frontmost.bundleIdentifier,
-           frontBundle == bundleIdentifier
-        {
-            return true
-        }
-
-        if let ownerName,
-           frontmost.name.compare(ownerName, options: .caseInsensitive) == .orderedSame
-        {
-            return true
-        }
-
-        return false
     }
 
     private func matchMenuBarItem(named name: String, items: [MenuBarItemInfo]) -> MenuBarItemInfo? {
@@ -437,168 +289,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         return candidates.first(where: { _, fields in
             fields.contains(where: { $0.lowercased().contains(normalized) })
         })?.0
-    }
-
-    private func waitForPopover(ownerPID: pid_t, timeout: TimeInterval) async -> MenuBarPopoverCandidate? {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if let candidate = self.findMenuBarPopoverCandidates(ownerPID: ownerPID).first {
-                return candidate
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        return nil
-    }
-
-    private func waitForMenuExtraMenuOpen(
-        expectedTitle: String,
-        ownerPID: pid_t?,
-        timeout: TimeInterval) async -> Bool
-    {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if let axVerified = try? await MenuServiceBridge.isMenuExtraMenuOpen(
-                menu: self.services.menu,
-                title: expectedTitle,
-                ownerPID: ownerPID),
-               axVerified
-            {
-                return true
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        return false
-    }
-
-    private func waitForOwnerWindow(
-        ownerPID: pid_t?,
-        expectedTitle: String?,
-        timeout: TimeInterval) async -> Int?
-    {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if let ownerPID {
-                let windowIds = self.windowIDsForPID(ownerPID: ownerPID)
-                if let windowId = windowIds.first {
-                    return windowId
-                }
-            }
-
-            if let expectedTitle, !expectedTitle.isEmpty {
-                let windowIds = self.windowIDsForOwnerName(expectedTitle)
-                if let windowId = windowIds.first {
-                    return windowId
-                }
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)
-        }
-        return nil
-    }
-
-    private func waitForPopoverByOCR(
-        expectedTitle: String,
-        timeout: TimeInterval
-    ) async throws -> MenuBarPopoverCandidate? {
-        let normalized = expectedTitle.lowercased()
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let candidates = self.findMenuBarPopoverCandidates(ownerPID: nil)
-            for candidate in candidates {
-                guard let result = try? await self.captureWindow(windowId: candidate.windowId) else { continue }
-                guard let ocr = try? OCRService.recognizeText(in: result.imageData) else { continue }
-                let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
-                if text.contains(normalized) {
-                    return candidate
-                }
-            }
-            try? await Task.sleep(nanoseconds: 150_000_000)
-        }
-        return nil
-    }
-
-    private func findMenuBarPopoverCandidates(ownerPID: pid_t?) -> [MenuBarPopoverCandidate] {
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return []
-        }
-
-        let screens = NSScreen.screens.map { screen in
-            MenuBarPopoverDetector.ScreenBounds(
-                frame: screen.frame,
-                visibleFrame: screen.visibleFrame
-            )
-        }
-
-        return MenuBarPopoverDetector.candidates(
-            windowList: windowList,
-            screens: screens,
-            ownerPID: ownerPID
-        )
-    }
-
-    private func windowIDsForPID(ownerPID: pid_t) -> [Int] {
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return []
-        }
-
-        var ids: [Int] = []
-        for windowInfo in windowList {
-            let pid: pid_t = {
-                if let number = windowInfo[kCGWindowOwnerPID as String] as? NSNumber {
-                    return pid_t(number.intValue)
-                }
-                if let intValue = windowInfo[kCGWindowOwnerPID as String] as? Int {
-                    return pid_t(intValue)
-                }
-                return -1
-            }()
-            guard pid == ownerPID else { continue }
-            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
-            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
-            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-            if !isOnScreen || alpha < 0.05 { continue }
-            if layer != 0 { continue }
-            if let windowId = windowInfo[kCGWindowNumber as String] as? Int {
-                ids.append(windowId)
-            }
-        }
-        return ids
-    }
-
-    private func windowIDsForOwnerName(_ name: String) -> [Int] {
-        guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]] else {
-            return []
-        }
-
-        let normalized = name.lowercased()
-        var ids: [Int] = []
-        for windowInfo in windowList {
-            guard let ownerName = windowInfo[kCGWindowOwnerName as String] as? String else { continue }
-            if !ownerName.lowercased().contains(normalized) { continue }
-            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
-            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
-            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-            if !isOnScreen || alpha < 0.05 { continue }
-            if layer != 0 { continue }
-            if let windowId = windowInfo[kCGWindowNumber as String] as? Int {
-                ids.append(windowId)
-            }
-        }
-        return ids
-    }
-
-    private func captureWindow(windowId: Int) async throws -> CaptureResult {
-        try await Task { @MainActor in
-            try await self.services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
-        }.value
     }
 
 }
@@ -635,31 +325,10 @@ private struct ClickJSONOutput: Codable {
     let verified: Bool?
 }
 
-private struct MenuBarVerifyTarget {
-    let title: String?
-    let ownerPID: pid_t?
-    let ownerName: String?
-    let bundleIdentifier: String?
-}
-
-private struct MenuBarClickVerification {
-    let verified: Bool
-    let method: String
-    let windowId: Int?
-}
-
 private struct JSONErrorOutput: Codable {
     let success: Bool
     let error: String
     let executionTime: TimeInterval
-}
-
-private struct MenuBarFocusSnapshot {
-    let appPID: pid_t
-    let appName: String
-    let bundleIdentifier: String?
-    let windowId: Int?
-    let windowTitle: String?
 }
 
 extension MenuBarCommand: AsyncRuntimeCommand {}

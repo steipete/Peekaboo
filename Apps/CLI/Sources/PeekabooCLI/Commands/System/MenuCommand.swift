@@ -267,6 +267,9 @@ extension MenuCommand {
 
         @Option(help: "Menu item to click after opening the extra")
         var item: String?
+
+        @Flag(help: "Verify the menu extra popover opens after clicking")
+        var verify: Bool = false
         @RuntimeStorage private var runtime: CommandRuntime?
 
         private var resolvedRuntime: CommandRuntime {
@@ -287,8 +290,25 @@ extension MenuCommand {
             self.logger.setJsonOutputMode(self.jsonOutput)
 
             do {
+                let verifier = MenuBarClickVerifier(services: self.services)
+                let verifyTarget = self.verify ? try await self.resolveVerificationTarget() : nil
+                let preFocus = self.verify ? try await verifier.captureFocusSnapshot() : nil
                 let clickResult = try await MenuServiceBridge
                     .clickMenuBarItem(named: self.title, menu: self.services.menu)
+
+                let verification: MenuBarClickVerification?
+                if self.verify {
+                    guard let verifyTarget else {
+                        throw PeekabooError.operationError(message: "Menu extra verification requested but no target resolved")
+                    }
+                    verification = try await verifier.verifyClick(
+                        target: verifyTarget,
+                        preFocus: preFocus,
+                        clickLocation: clickResult.location
+                    )
+                } else {
+                    verification = nil
+                }
 
                 if self.item != nil {
                     try await Task.sleep(nanoseconds: 200_000_000)
@@ -300,7 +320,8 @@ extension MenuCommand {
                         action: "menu_extra_click",
                         menu_extra: title,
                         clicked_item: item ?? self.title,
-                        location: clickResult.location.map { ["x": $0.x, "y": $0.y] }
+                        location: clickResult.location.map { ["x": $0.x, "y": $0.y] },
+                        verified: verification?.verified
                     )
                     outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else if let clickedItem = item {
@@ -310,6 +331,9 @@ extension MenuCommand {
                         print("✓ Clicked menu extra: \(self.title) at (\(Int(location.x)), \(Int(location.y)))")
                     } else {
                         print("✓ Clicked menu extra: \(self.title)")
+                    }
+                    if let verification {
+                        print("🔎 Verified menu extra click (\(verification.method))")
                     }
                 }
 
@@ -361,6 +385,49 @@ extension MenuCommand {
             } else {
                 fputs("❌ Error: \(error.localizedDescription)\n", stderr)
             }
+        }
+
+        private func resolveVerificationTarget() async throws -> MenuBarVerifyTarget {
+            let items = try await MenuServiceBridge.listMenuBarItems(
+                menu: self.services.menu,
+                includeRaw: true
+            )
+            let normalized = self.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let item = self.matchMenuBarItem(named: normalized, items: items) else {
+                throw PeekabooError.operationError(message: "Unable to resolve '\(self.title)' for verification")
+            }
+
+            return MenuBarVerifyTarget(
+                title: item.title ?? item.rawTitle ?? normalized,
+                ownerPID: item.rawOwnerPID,
+                ownerName: item.ownerName,
+                bundleIdentifier: item.bundleIdentifier,
+                preferredX: item.frame?.midX
+            )
+        }
+
+        private func matchMenuBarItem(named name: String, items: [MenuBarItemInfo]) -> MenuBarItemInfo? {
+            let normalized = name.lowercased()
+            let candidates: [(MenuBarItemInfo, [String])] = items.map { item in
+                let fields = [
+                    item.title,
+                    item.rawTitle,
+                    item.identifier,
+                    item.axDescription,
+                    item.ownerName,
+                ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                return (item, fields)
+            }
+
+            if let exact = candidates.first(where: { _, fields in
+                fields.contains(where: { $0.lowercased() == normalized })
+            })?.0 {
+                return exact
+            }
+
+            return candidates.first(where: { _, fields in
+                fields.contains(where: { $0.lowercased().contains(normalized) })
+            })?.0
         }
     }
 
@@ -995,6 +1062,7 @@ extension MenuCommand.ClickExtraSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.title = try values.requireOption("title", as: String.self)
         self.item = values.singleOption("item")
+        self.verify = values.flag("verify")
     }
 }
 
@@ -1057,6 +1125,7 @@ struct MenuExtraClickResult: Codable {
     let menu_extra: String
     let clicked_item: String
     let location: [String: Double]?
+    let verified: Bool?
 }
 
 // Typed menu structures for JSON output

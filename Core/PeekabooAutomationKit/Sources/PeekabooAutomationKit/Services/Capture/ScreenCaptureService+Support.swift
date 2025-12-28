@@ -3,6 +3,7 @@
 //  PeekabooCore
 //
 
+import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
@@ -65,15 +66,11 @@ extension SCWindow: @retroactive @unchecked Sendable {}
 
 struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
     func hasPermission(logger: CategoryLogger) async -> Bool {
-        do {
-            _ = try await withTimeout(seconds: 3.0) {
-                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            }
-            return true
-        } catch {
-            logger.warning("Permission check failed or timed out: \(error)")
-            return false
+        let hasPermission = CGPreflightScreenCaptureAccess()
+        if !hasPermission {
+            logger.warning("Screen recording permission not granted")
         }
+        return hasPermission
     }
 }
 

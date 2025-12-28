@@ -148,7 +148,7 @@ public struct PasteTool: MCPTool {
         if let text = arguments.getString("text"), !text.isEmpty {
             let data = Data(text.utf8)
             return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data)],
+                representations: ClipboardWriteRequest.textRepresentations(from: data),
                 alsoText: nil,
                 allowLarge: arguments.getBool("allowLarge") ?? false)
         }

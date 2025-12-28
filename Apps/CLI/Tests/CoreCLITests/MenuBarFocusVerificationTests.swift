@@ -17,7 +17,7 @@ struct MenuBarFocusVerificationTests {
             windowCount: 1
         )
 
-        let matches = MenuBarCommand.frontmostMatchesTarget(
+        let matches = MenuBarClickVerifier.frontmostMatchesTarget(
             frontmost: frontmost,
             ownerPID: 200,
             ownerName: nil,
@@ -39,7 +39,7 @@ struct MenuBarFocusVerificationTests {
             windowCount: 1
         )
 
-        let matches = MenuBarCommand.frontmostMatchesTarget(
+        let matches = MenuBarClickVerifier.frontmostMatchesTarget(
             frontmost: frontmost,
             ownerPID: nil,
             ownerName: nil,
@@ -61,7 +61,7 @@ struct MenuBarFocusVerificationTests {
             windowCount: 1
         )
 
-        let matches = MenuBarCommand.frontmostMatchesTarget(
+        let matches = MenuBarClickVerifier.frontmostMatchesTarget(
             frontmost: frontmost,
             ownerPID: nil,
             ownerName: "trimmy",
@@ -83,7 +83,7 @@ struct MenuBarFocusVerificationTests {
             windowCount: 2
         )
 
-        let matches = MenuBarCommand.frontmostMatchesTarget(
+        let matches = MenuBarClickVerifier.frontmostMatchesTarget(
             frontmost: frontmost,
             ownerPID: 999,
             ownerName: "Trimmy",

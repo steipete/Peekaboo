@@ -32,7 +32,7 @@ polter peekaboo -- see --app "Google Chrome" --window-title "Login"
 | `--annotate` | Overlay element bounds/IDs on the output image. |
 | `--path <file>` | Save the screenshot/annotation to disk. |
 | `--json-output` | Emit structured metadata (recommended for scripting). |
-| `--menubar` | Capture menu bar popovers via window list + OCR (useful for status-item settings panels). |
+| `--menubar` | Capture menu bar popovers via window list + OCR (useful for status-item settings panels). When `--app` is set, the app name is used as an OCR hint for popover selection. |
 | `--timeout-seconds <seconds>` | Increase overall timeout for large/complex windows (defaults to 20s, or 60s with `--analyze`). |
 | `--no-web-focus` | Skip the automatic web-content focus retry (useful if the page reacts badly to synthetic clicks). |
 

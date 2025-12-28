@@ -8,8 +8,16 @@ struct MenuBarPopoverSelectorTests {
     @Test("prefers owner name match")
     func prefersOwnerNameMatch() {
         let candidates = [
-            MenuBarPopoverCandidate(windowId: 1, ownerPID: 100, bounds: CGRect(x: 10, y: 900, width: 200, height: 180)),
-            MenuBarPopoverCandidate(windowId: 2, ownerPID: 200, bounds: CGRect(x: 400, y: 900, width: 200, height: 180)),
+            MenuBarPopoverCandidate(
+                windowId: 1,
+                ownerPID: 100,
+                bounds: CGRect(x: 10, y: 900, width: 200, height: 180)
+            ),
+            MenuBarPopoverCandidate(
+                windowId: 2,
+                ownerPID: 200,
+                bounds: CGRect(x: 400, y: 900, width: 200, height: 180)
+            ),
         ]
 
         let info: [Int: MenuBarPopoverWindowInfo] = [
@@ -30,8 +38,16 @@ struct MenuBarPopoverSelectorTests {
     @Test("prefers nearest X when hint provided")
     func prefersNearestXWhenHintProvided() {
         let candidates = [
-            MenuBarPopoverCandidate(windowId: 1, ownerPID: 100, bounds: CGRect(x: 10, y: 900, width: 200, height: 180)),
-            MenuBarPopoverCandidate(windowId: 2, ownerPID: 200, bounds: CGRect(x: 600, y: 900, width: 200, height: 180)),
+            MenuBarPopoverCandidate(
+                windowId: 1,
+                ownerPID: 100,
+                bounds: CGRect(x: 10, y: 900, width: 200, height: 180)
+            ),
+            MenuBarPopoverCandidate(
+                windowId: 2,
+                ownerPID: 200,
+                bounds: CGRect(x: 600, y: 900, width: 200, height: 180)
+            ),
         ]
 
         let info: [Int: MenuBarPopoverWindowInfo] = [:]
@@ -49,8 +65,16 @@ struct MenuBarPopoverSelectorTests {
     @Test("falls back to highest window when no hints")
     func fallsBackToHighestWindowWhenNoHints() {
         let candidates = [
-            MenuBarPopoverCandidate(windowId: 1, ownerPID: 100, bounds: CGRect(x: 10, y: 800, width: 200, height: 180)),
-            MenuBarPopoverCandidate(windowId: 2, ownerPID: 200, bounds: CGRect(x: 400, y: 900, width: 200, height: 180)),
+            MenuBarPopoverCandidate(
+                windowId: 1,
+                ownerPID: 100,
+                bounds: CGRect(x: 10, y: 800, width: 200, height: 180)
+            ),
+            MenuBarPopoverCandidate(
+                windowId: 2,
+                ownerPID: 200,
+                bounds: CGRect(x: 400, y: 900, width: 200, height: 180)
+            ),
         ]
 
         let info: [Int: MenuBarPopoverWindowInfo] = [:]
@@ -63,5 +87,35 @@ struct MenuBarPopoverSelectorTests {
         )
 
         #expect(selected?.windowId == 2)
+    }
+
+    @Test("ranks owner match ahead of X distance")
+    func ranksOwnerMatchAheadOfXDistance() {
+        let candidates = [
+            MenuBarPopoverCandidate(
+                windowId: 1,
+                ownerPID: 100,
+                bounds: CGRect(x: 10, y: 900, width: 200, height: 180)
+            ),
+            MenuBarPopoverCandidate(
+                windowId: 2,
+                ownerPID: 200,
+                bounds: CGRect(x: 600, y: 900, width: 200, height: 180)
+            ),
+        ]
+
+        let info: [Int: MenuBarPopoverWindowInfo] = [
+            1: MenuBarPopoverWindowInfo(ownerName: "Trimmy", title: nil),
+            2: MenuBarPopoverWindowInfo(ownerName: "Other", title: nil),
+        ]
+
+        let ranked = MenuBarPopoverSelector.rankCandidates(
+            candidates: candidates,
+            windowInfoById: info,
+            preferredOwnerName: "Trimmy",
+            preferredX: 580
+        )
+
+        #expect(ranked.first?.windowId == 1)
     }
 }

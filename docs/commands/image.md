@@ -34,6 +34,7 @@ If you need a longer-running, change-aware capture (idle/active FPS, contact she
 - Window captures run through `ApplicationResolvable` and `ensureFocused` before calling `screenCapture.captureWindow`, so transient focus issues (Spaces, multiple monitors) are handled consistently with `see`.
 - Multi-screen runs enumerate `services.screens.listScreens()` and save each display sequentially; filenames include the display index (`screen0`, `screen1`, …) so automated diffing scripts can glob reliably.
 - Saved metadata (label, bundle, window index) is embedded in the `SavedFile` records that print to stdout/JSON, which means follow-up tooling can decide which attachment represents which surface without parsing filenames.
+- Screen/area captures now default to a persistent ScreenCaptureKit stream; logs include wait + frame-age timings for profiling.
 
 ## Examples
 ```bash
