@@ -164,6 +164,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
         do {
             let verifyTarget = try await self.resolveVerificationTargetIfNeeded()
+            let focusSnapshot = try await self.captureFocusSnapshotIfNeeded()
             let result: PeekabooCore.ClickResult
             if let idx = self.index {
                 result = try await MenuServiceBridge.clickMenuBarItem(at: idx, menu: self.services.menu)
@@ -173,7 +174,10 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 throw PeekabooError.invalidInput("Please provide either a menu bar item name or use --index")
             }
 
-            let verification = try await self.verifyClickIfNeeded(target: verifyTarget)
+            let verification = try await self.verifyClickIfNeeded(
+                target: verifyTarget,
+                preFocus: focusSnapshot
+            )
 
             if self.jsonOutput {
                 let output = ClickJSONOutput(
@@ -229,7 +233,9 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             }
             return MenuBarVerifyTarget(
                 title: item.title ?? item.rawTitle,
-                ownerPID: item.rawOwnerPID
+                ownerPID: item.rawOwnerPID,
+                ownerName: item.ownerName,
+                bundleIdentifier: item.bundleIdentifier
             )
         }
 
@@ -244,11 +250,16 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
         return MenuBarVerifyTarget(
             title: item.title ?? item.rawTitle ?? name,
-            ownerPID: item.rawOwnerPID
+            ownerPID: item.rawOwnerPID,
+            ownerName: item.ownerName,
+            bundleIdentifier: item.bundleIdentifier
         )
     }
 
-    private func verifyClickIfNeeded(target: MenuBarVerifyTarget?) async throws -> MenuBarClickVerification? {
+    private func verifyClickIfNeeded(
+        target: MenuBarVerifyTarget?,
+        preFocus: MenuBarFocusSnapshot?
+    ) async throws -> MenuBarClickVerification? {
         guard self.verify else { return nil }
         guard let target else {
             throw PeekabooError.operationError(message: "Menu bar verification requested but no target resolved")
@@ -260,6 +271,14 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             if let candidate = await self.waitForPopover(ownerPID: ownerPID, timeout: timeout) {
                 return MenuBarClickVerification(verified: true, method: "owner_pid", windowId: candidate.windowId)
             }
+        }
+
+        if let focusVerification = await self.waitForFocusedWindowChange(
+            target: target,
+            preFocus: preFocus,
+            timeout: timeout
+        ) {
+            return focusVerification
         }
 
         if let windowId = await self.waitForOwnerWindow(
@@ -292,6 +311,108 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         }
 
         throw PeekabooError.operationError(message: "Menu bar verification failed: popover not detected")
+    }
+
+    private func captureFocusSnapshotIfNeeded() async throws -> MenuBarFocusSnapshot? {
+        guard self.verify else { return nil }
+
+        let frontmost = try await self.services.applications.getFrontmostApplication()
+        let focused = try await WindowServiceBridge.getFocusedWindow(windows: self.services.windows)
+
+        return MenuBarFocusSnapshot(
+            appPID: frontmost.processIdentifier,
+            appName: frontmost.name,
+            bundleIdentifier: frontmost.bundleIdentifier,
+            windowId: focused?.windowID,
+            windowTitle: focused?.title
+        )
+    }
+
+    private func waitForFocusedWindowChange(
+        target: MenuBarVerifyTarget,
+        preFocus: MenuBarFocusSnapshot?,
+        timeout: TimeInterval
+    ) async -> MenuBarClickVerification? {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            guard let frontmost = try? await self.services.applications.getFrontmostApplication() else {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                continue
+            }
+
+            if !Self.frontmostMatchesTarget(
+                frontmost: frontmost,
+                ownerPID: target.ownerPID,
+                ownerName: target.ownerName,
+                bundleIdentifier: target.bundleIdentifier
+            ) {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                continue
+            }
+
+            let focused = try? await WindowServiceBridge.getFocusedWindow(windows: self.services.windows)
+            if self.focusDidChange(preFocus: preFocus, frontmost: frontmost, focused: focused) {
+                return MenuBarClickVerification(
+                    verified: true,
+                    method: "focused_window",
+                    windowId: focused?.windowID
+                )
+            }
+
+            try? await Task.sleep(nanoseconds: 120_000_000)
+        }
+
+        return nil
+    }
+
+    private func focusDidChange(
+        preFocus: MenuBarFocusSnapshot?,
+        frontmost: ServiceApplicationInfo,
+        focused: ServiceWindowInfo?
+    ) -> Bool {
+        guard let preFocus else { return true }
+
+        if preFocus.appPID != frontmost.processIdentifier {
+            return true
+        }
+
+        let currentWindowId = focused?.windowID
+        if preFocus.windowId != currentWindowId {
+            return true
+        }
+
+        let currentTitle = focused?.title
+        if preFocus.windowTitle != currentTitle {
+            return true
+        }
+
+        return false
+    }
+
+    static func frontmostMatchesTarget(
+        frontmost: ServiceApplicationInfo,
+        ownerPID: pid_t?,
+        ownerName: String?,
+        bundleIdentifier: String?
+    ) -> Bool {
+        if let ownerPID, frontmost.processIdentifier == ownerPID {
+            return true
+        }
+
+        if let bundleIdentifier,
+           let frontBundle = frontmost.bundleIdentifier,
+           frontBundle == bundleIdentifier
+        {
+            return true
+        }
+
+        if let ownerName,
+           frontmost.name.compare(ownerName, options: .caseInsensitive) == .orderedSame
+        {
+            return true
+        }
+
+        return false
     }
 
     private func matchMenuBarItem(named name: String, items: [MenuBarItemInfo]) -> MenuBarItemInfo? {
@@ -517,6 +638,8 @@ private struct ClickJSONOutput: Codable {
 private struct MenuBarVerifyTarget {
     let title: String?
     let ownerPID: pid_t?
+    let ownerName: String?
+    let bundleIdentifier: String?
 }
 
 private struct MenuBarClickVerification {
@@ -529,6 +652,14 @@ private struct JSONErrorOutput: Codable {
     let success: Bool
     let error: String
     let executionTime: TimeInterval
+}
+
+private struct MenuBarFocusSnapshot {
+    let appPID: pid_t
+    let appName: String
+    let bundleIdentifier: String?
+    let windowId: Int?
+    let windowTitle: String?
 }
 
 extension MenuBarCommand: AsyncRuntimeCommand {}

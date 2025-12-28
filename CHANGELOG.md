@@ -6,6 +6,7 @@
 - `peekaboo clipboard` now supports `--verify` to read back clipboard writes after `set`/`load`.
 - `peekaboo see --menubar` captures active menu bar popovers via window list + OCR.
 - `peekaboo menubar click --verify` validates menu bar clicks by popover owner PID or any visible owner window (optional AX/OCR checks via env vars).
+- `peekaboo menubar click --verify` now also detects focused-window changes when a menu bar app opens a settings window.
 - `peekaboo dock launch --verify`, `peekaboo window focus --verify`, and `peekaboo app switch --verify` add lightweight post-action checks.
 
 ### Fixed

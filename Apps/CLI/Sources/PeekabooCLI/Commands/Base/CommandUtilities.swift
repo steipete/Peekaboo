@@ -547,6 +547,12 @@ enum WindowServiceBridge {
             try await windows.listWindows(target: target)
         }.value
     }
+
+    static func getFocusedWindow(windows: any WindowManagementServiceProtocol) async throws -> ServiceWindowInfo? {
+        try await Task { @MainActor in
+            try await windows.getFocusedWindow()
+        }.value
+    }
 }
 
 enum MenuServiceBridge {
