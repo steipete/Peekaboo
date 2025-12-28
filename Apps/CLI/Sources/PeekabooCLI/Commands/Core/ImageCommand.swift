@@ -324,9 +324,10 @@ extension ImageCommand {
             throw CaptureError.captureFailure("Unable to determine main screen for menu bar capture")
         }
 
-        let menuBarHeight: CGFloat = 24
-        let originY = screen.frame.origin.y + screen.frame.size.height - menuBarHeight
-        let rect = CGRect(x: screen.frame.origin.x, y: originY, width: screen.frame.width, height: menuBarHeight)
+        let calculatedHeight = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        let menuBarHeight: CGFloat = calculatedHeight > 0 ? calculatedHeight : 24
+        let originY = screen.frame.maxY - menuBarHeight
+        let rect = CGRect(x: screen.frame.minX, y: originY, width: screen.frame.width, height: menuBarHeight)
 
         let result = try await ImageCaptureBridge.captureArea(
             services: self.services,

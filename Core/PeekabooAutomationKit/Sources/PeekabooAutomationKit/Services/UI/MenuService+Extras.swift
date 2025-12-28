@@ -35,10 +35,26 @@ extension MenuService {
         }
 
         let extras = menuExtrasGroup.children(strict: true) ?? []
+        let normalizedTarget = normalizedMenuTitle(title)
         guard let menuExtra = extras.first(where: { element in
-            element.title() == title ||
-                element.help() == title ||
-                element.descriptionText()?.contains(title) == true
+            let candidates = [
+                element.title(),
+                element.help(),
+                element.descriptionText(),
+                element.identifier(),
+            ]
+            if candidates.contains(where: { titlesMatch(candidate: $0, target: title, normalizedTarget: normalizedTarget) }) {
+                return true
+            }
+            if self.partialMatchEnabled,
+               candidates.contains(where: { titlesMatchPartial(
+                   candidate: $0,
+                   target: title,
+                   normalizedTarget: normalizedTarget) })
+            {
+                return true
+            }
+            return false
         }) else {
             var context = ErrorContext()
             context.add("menuExtra", title)
@@ -64,8 +80,11 @@ extension MenuService {
         let windowExtras = self.getMenuBarItemsViaWindows()
 
         // Fast path: WindowServer enumeration is usually sufficient and avoids AX calls entirely.
-        // Only fall back to accessibility sweeps when explicitly enabled or when WindowServer gives nothing.
-        if !windowExtras.isEmpty, !self.deepMenuBarAXSweepEnabled {
+        // Only fall back to accessibility sweeps when explicitly enabled or when WindowServer looks incomplete.
+        if !windowExtras.isEmpty,
+           !self.deepMenuBarAXSweepEnabled,
+           !self.shouldAugmentWindowExtrasWithAX(windowExtras)
+        {
             return windowExtras
         }
 
@@ -73,9 +92,13 @@ extension MenuService {
         let controlCenterExtras = self.getMenuBarItemsFromControlCenterAX(timeout: self.menuBarAXTimeoutSec)
 
         let appAXExtras: [MenuExtraInfo] = if self.deepMenuBarAXSweepEnabled {
-            self.getMenuBarItemsFromAppsAX(timeout: self.menuBarAXTimeoutSec)
+            self.getMenuBarItemsFromAppsAX(
+                timeout: self.menuBarAXTimeoutSec,
+                apps: NSWorkspace.shared.runningApplications)
         } else {
-            []
+            self.getMenuBarItemsFromAppsAX(
+                timeout: self.menuBarAXTimeoutSec,
+                apps: self.accessoryAppsForMenuExtras())
         }
 
         // Avoid AX hit-testing by default (can hang); enable via PEEKABOO_MENUBAR_DEEP_AX_SWEEP=1.
@@ -157,16 +180,23 @@ extension MenuService {
         }
 
         let extra = extras[index]
+        guard let clickPoint = self.resolveMenuExtraClickPoint(for: extra) else {
+            throw PeekabooError.operationError(message: "Menu bar item has no clickable position")
+        }
 
-        let clickService = ClickService()
-        try await clickService.click(
-            target: .coordinates(extra.position),
-            clickType: .single,
-            snapshotId: nil)
+        try? InputDriver.move(to: clickPoint)
+
+        if !self.tryWindowTargetedClick(extra: extra, point: clickPoint) {
+            let clickService = ClickService()
+            try await clickService.click(
+                target: .coordinates(clickPoint),
+                clickType: .single,
+                snapshotId: nil)
+        }
 
         return ClickResult(
             elementDescription: "Menu bar item [\(index)]: \(extra.title)",
-            location: extra.position)
+            location: clickPoint)
     }
 
     @_spi(Testing) public func resolvedMenuBarTitle(for extra: MenuExtraInfo, index: Int) -> String {
@@ -181,8 +211,16 @@ extension MenuService {
         if let identifierName = humanReadableMenuIdentifier(extra.identifier ?? extra.rawTitle),
            !identifierName.isEmpty
         {
-            self.logger.debug("MenuService replacing placeholder '\(title)' with identifier '\(identifierName)'")
-            return identifierName
+            if let ownerName = extra.ownerName,
+               let normalizedIdentifier = normalizedMenuTitle(identifierName)?.replacingOccurrences(of: " ", with: ""),
+               let normalizedOwner = normalizedMenuTitle(ownerName)?.replacingOccurrences(of: " ", with: ""),
+               normalizedIdentifier == normalizedOwner
+            {
+                // Skip identifier-based label when it matches the owner (e.g., Control Center).
+            } else {
+                self.logger.debug("MenuService replacing placeholder '\(title)' with identifier '\(identifierName)'")
+                return identifierName
+            }
         }
 
         if let ownerName = extra.ownerName, !ownerName.isEmpty {
@@ -230,16 +268,17 @@ extension MenuService {
             CGS menuBarItems returned \(cgsIDs.count) ids;
             processMenuBar returned \(legacyIDs.count); combined \(combinedIDs.count)
             """)
+        var seenIDs = Set<CGWindowID>()
         if !combinedIDs.isEmpty {
             // Use CGWindow metadata per window ID to resolve owner/bundle.
             for id in combinedIDs {
                 if let item = self.makeMenuExtra(from: id) {
                     items.append(item)
+                    seenIDs.insert(id)
                 } else {
                     self.logger.debug("CGS menu item window \(id) had no metadata")
                 }
             }
-            return items
         } else {
             self.logger.debug("CGS menuBarItems returned 0 ids; falling back to CGWindowList")
         }
@@ -251,12 +290,106 @@ extension MenuService {
 
         for windowInfo in windowList {
             guard let windowID = windowInfo[kCGWindowNumber as String] as? CGWindowID else { continue }
+            guard !seenIDs.contains(windowID) else { continue }
             if let item = self.makeMenuExtra(from: windowID, info: windowInfo) {
                 items.append(item)
+                seenIDs.insert(windowID)
             }
         }
 
         return items
+    }
+
+    private func resolveMenuExtraClickPoint(for extra: MenuExtraInfo) -> CGPoint? {
+        if let windowID = extra.windowID,
+           let bounds = self.windowBounds(for: windowID)
+        {
+            return CGPoint(x: bounds.midX, y: bounds.midY)
+        }
+
+        if extra.position != .zero {
+            return extra.position
+        }
+
+        return nil
+    }
+
+    private func windowBounds(for windowID: CGWindowID) -> CGRect? {
+        guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]],
+              let first = info.first,
+              let boundsDict = first[kCGWindowBounds as String] as? [String: Any],
+              let x = boundsDict["X"] as? CGFloat,
+              let y = boundsDict["Y"] as? CGFloat,
+              let width = boundsDict["Width"] as? CGFloat,
+              let height = boundsDict["Height"] as? CGFloat
+        else {
+            return nil
+        }
+
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
+    private func tryWindowTargetedClick(extra: MenuExtraInfo, point: CGPoint) -> Bool {
+        guard let windowID = extra.windowID else {
+            return false
+        }
+        guard let source = CGEventSource(stateID: .hidSystemState) else {
+            return false
+        }
+
+        let userData = Int64(truncatingIfNeeded: Int(bitPattern: ObjectIdentifier(source)))
+        let windowIDValue = Int64(windowID)
+
+        guard
+            let down = CGEvent(
+                mouseEventSource: source,
+                mouseType: .leftMouseDown,
+                mouseCursorPosition: point,
+                mouseButton: .left),
+            let up = CGEvent(
+                mouseEventSource: source,
+                mouseType: .leftMouseUp,
+                mouseCursorPosition: point,
+                mouseButton: .left)
+        else {
+            return false
+        }
+
+        if let ownerPID = extra.ownerPID {
+            let pidValue = Int64(ownerPID)
+            down.setIntegerValueField(.eventTargetUnixProcessID, value: pidValue)
+            up.setIntegerValueField(.eventTargetUnixProcessID, value: pidValue)
+        }
+
+        for event in [down, up] {
+            event.setIntegerValueField(.eventSourceUserData, value: userData)
+            event.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: windowIDValue)
+            event.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: windowIDValue)
+            event.setIntegerValueField(.windowID, value: windowIDValue)
+            event.setIntegerValueField(.mouseEventClickState, value: 1)
+        }
+
+        down.post(tap: .cgSessionEventTap)
+        up.post(tap: .cgSessionEventTap)
+        return true
+    }
+
+    private func isLikelyMenuBarAXPosition(_ position: CGPoint) -> Bool {
+        guard position != .zero else { return true }
+        return position.y <= self.menuBarAXMaxY(for: position)
+    }
+
+    private func menuBarAXMaxY(for position: CGPoint) -> CGFloat {
+        let fallbackHeight: CGFloat = 24
+        guard let screen = NSScreen.screens.first(where: { screen in
+            position.x >= screen.frame.minX && position.x <= screen.frame.maxX
+        }) else {
+            return fallbackHeight + 12
+        }
+
+        let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        let menuBarHeight = height > 0 ? height : fallbackHeight
+        return menuBarHeight + 12
     }
 
     /// Invoke the LSUIElement helper (if built) to enumerate menu bar windows from a GUI context.
@@ -330,6 +463,10 @@ extension MenuService {
         guard let ownerPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else { return nil }
         let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
         let windowTitle = windowInfo[kCGWindowName as String] as? String ?? ""
+
+        if ownerName == "Window Server", windowTitle == "Menubar" {
+            return nil
+        }
 
         var bundleID: String?
         if let app = NSRunningApplication(processIdentifier: ownerPID) {
@@ -433,6 +570,9 @@ extension MenuService {
                 }
 
                 let position = extra.position() ?? .zero
+                if !self.isLikelyMenuBarAXPosition(position) {
+                    continue
+                }
 
                 let info = MenuExtraInfo(
                     title: self.makeMenuExtraDisplayName(
@@ -512,8 +652,45 @@ extension MenuService {
     }
 
     /// Sweep AX trees of all running apps to find menu bar/status items that expose AX titles or identifiers.
-    private func getMenuBarItemsFromAppsAX(timeout: Float) -> [MenuExtraInfo] {
-        let running = NSWorkspace.shared.runningApplications
+    private func accessoryAppsForMenuExtras() -> [NSRunningApplication] {
+        NSWorkspace.shared.runningApplications.filter { app in
+            app.activationPolicy != .regular
+        }
+    }
+
+    private func shouldAugmentWindowExtrasWithAX(_ extras: [MenuExtraInfo]) -> Bool {
+        guard !extras.isEmpty else { return true }
+
+        let hasThirdParty = extras.contains { extra in
+            guard let bundleID = extra.bundleIdentifier else { return false }
+            return !bundleID.hasPrefix("com.apple.")
+        }
+        if hasThirdParty {
+            return false
+        }
+
+        if extras.contains(where: { isPlaceholderMenuTitle($0.title) }) {
+            return true
+        }
+
+        let titles = extras.map { $0.title.lowercased() }.filter { !$0.isEmpty }
+        guard !titles.isEmpty else { return true }
+        let counts = titles.reduce(into: [String: Int]()) { counts, title in
+            counts[title, default: 0] += 1
+        }
+        let mostCommon = counts.values.max() ?? 0
+        if mostCommon >= max(3, extras.count / 2) {
+            return true
+        }
+
+        return false
+    }
+
+    private func getMenuBarItemsFromAppsAX(
+        timeout: Float,
+        apps: [NSRunningApplication]) -> [MenuExtraInfo]
+    {
+        let running = apps
         var results: [MenuExtraInfo] = []
         let commonMenuTitles: Set<String> = [
             "apple", "file", "edit", "view", "window", "help", "history", "bookmarks", "navigate", "tab", "tools",
@@ -565,7 +742,7 @@ extension MenuService {
 
                 let position = extra.position() ?? .zero
                 // Restrict to top-of-screen positions to avoid stray elements.
-                if position != .zero, position.y > 100 { continue }
+                if !self.isLikelyMenuBarAXPosition(position) { continue }
 
                 // Avoid duplicating children of a status item: require that this element itself is status-like.
                 let childrenRoles = (extra.children(strict: true) ?? []).compactMap { $0.role() }
@@ -674,7 +851,7 @@ extension MenuService {
         let namespace = MenuExtraNamespace(bundleIdentifier: bundleIdentifier)
         switch namespace {
         case .controlCenter:
-            if "Control Center".caseInsensitiveCompare(resolved) != .orderedSame {
+            if isPlaceholderMenuTitle(resolved) {
                 resolved = "Control Center"
             }
         case .systemUIServer:
@@ -713,11 +890,26 @@ extension MenuService {
             return ownerName
         }
 
+        if namespace == .controlCenter,
+           resolved.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+           resolved.count > 4,
+           resolved.range(of: #"[A-Z].*[a-z]|[a-z].*[A-Z]"#, options: .regularExpression) != nil
+        {
+            let humanized = camelCaseToWords(resolved)
+            if !humanized.isEmpty, !isPlaceholderMenuTitle(humanized) {
+                return humanized
+            }
+        }
+
         return resolved
     }
 }
 
 // MARK: - Helpers
+
+private extension CGEventField {
+    static let windowID = CGEventField(rawValue: 0x33)!
+}
 
 private enum MenuExtraNamespace {
     case controlCenter, systemUIServer, spotlight, siri, passwords, other
