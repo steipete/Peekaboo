@@ -677,7 +677,7 @@ extension ProcessService {
                     throw ClipboardServiceError.writeFailed("Unable to encode text as UTF-8.")
                 }
                 let request = ClipboardWriteRequest(
-                    representations: [ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data)],
+                    representations: ClipboardWriteRequest.textRepresentations(from: data),
                     alsoText: alsoText,
                     allowLarge: allowLarge)
                 let result = try self.clipboardService.set(request)

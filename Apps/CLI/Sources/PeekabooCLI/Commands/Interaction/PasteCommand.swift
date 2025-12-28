@@ -131,10 +131,9 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
     private func makeWriteRequest() throws -> ClipboardWriteRequest {
         if let text = self.resolvedText {
+            let data = Data(text.utf8)
             return ClipboardWriteRequest(
-                representations: [
-                    ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: Data(text.utf8)),
-                ],
+                representations: ClipboardWriteRequest.textRepresentations(from: data),
                 alsoText: nil,
                 allowLarge: self.allowLarge
             )

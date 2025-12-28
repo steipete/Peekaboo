@@ -74,6 +74,7 @@ polter peekaboo -- see --app "Google Chrome" --json-output \
 - If the CLI reports **blind typing**, re-run `see` with `--app <Name>` so we can autofocus the app before typing.
 - Missing text fields after the fallback usually means the page is shielding its inputs from AX entirely; in that case rely on the Browser MCP DOM or image-based hit tests.
 - For repeatable local tests, run `RUN_LOCAL_TESTS=true swift test --filter SeeCommandPlaygroundTests` to exercise the Playground fixtures mentioned in `docs/research/interaction-debugging.md`.
+- Rapid repeated `see` calls for the same window reuse a short-lived AX cache (~1.5s); wait a beat if you need a fully fresh traversal.
 
 ## Smart label placement (`--annotate`)
 - The `SmartLabelPlacer` generates external label candidates (above/below/sides/corners) for each element, filters out overlaps/out-of-bounds positions, then scores remaining spots via `AcceleratedTextDetector.scoreRegionForLabelPlacement` to prefer calm regions. Internal placements are a last-resort fallback.

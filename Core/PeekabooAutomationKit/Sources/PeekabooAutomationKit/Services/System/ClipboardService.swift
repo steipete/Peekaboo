@@ -30,6 +30,15 @@ public struct ClipboardWriteRequest: Sendable {
     }
 }
 
+public extension ClipboardWriteRequest {
+    static func textRepresentations(from data: Data) -> [ClipboardRepresentation] {
+        [
+            ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data),
+            ClipboardRepresentation(utiIdentifier: UTType.utf8PlainText.identifier, data: data),
+        ]
+    }
+}
+
 /// Result returned after reading the clipboard.
 public struct ClipboardReadResult: Sendable {
     public let utiIdentifier: String
@@ -151,7 +160,15 @@ public final class ClipboardService: ClipboardServiceProtocol {
             throw ClipboardServiceError.sizeExceeded(current: totalSize, limit: self.sizeLimit)
         }
 
-        let types = request.representations.map { NSPasteboard.PasteboardType($0.utiIdentifier) }
+        var types = request.representations.map { NSPasteboard.PasteboardType($0.utiIdentifier) }
+        let includesTextType = request.representations.contains(where: {
+            $0.utiIdentifier == UTType.plainText.identifier || $0.utiIdentifier == UTType.utf8PlainText.identifier
+        })
+        if request.alsoText != nil || includesTextType {
+            if !types.contains(.string) {
+                types.append(.string)
+            }
+        }
         self.pasteboard.declareTypes(types, owner: nil)
 
         for representation in request.representations {

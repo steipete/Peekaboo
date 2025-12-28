@@ -406,7 +406,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 ])
                 try? await self.services.menu.clickMenuExtra(title: appHint)
                 try? await Task.sleep(nanoseconds: 200_000_000)
-                if let popover = try await self.captureMenuBarPopover() {
+                if let popover = try await self.captureMenuBarPopover(allowAreaFallback: true) {
                     return CaptureContext(
                         captureResult: popover.captureResult,
                         captureBounds: popover.windowBounds,
@@ -569,7 +569,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
     }
 
-    private func captureMenuBarPopover() async throws -> MenuBarPopoverCapture? {
+    private func captureMenuBarPopover(allowAreaFallback: Bool = false) async throws -> MenuBarPopoverCapture? {
         let extras = try await self.services.menu.listMenuExtras()
         let ownerPidSet = Set(extras.compactMap(\.ownerPID))
         guard !ownerPidSet.isEmpty else { return nil }
@@ -655,10 +655,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         let preferredOwnerName = appHint ?? preferredExtra?.ownerName ?? preferredExtra?.title
         let preferredX = preferredExtra?.position.x
 
-        if openExtra != nil, let preferredX,
-           let areaCapture = try await self.captureMenuBarPopoverByArea(
-               preferredX: preferredX
-           )
+        if (openExtra != nil || allowAreaFallback),
+           let preferredX,
+           let areaCapture = try await self.captureMenuBarPopoverByArea(preferredX: preferredX)
         {
             return areaCapture
         }

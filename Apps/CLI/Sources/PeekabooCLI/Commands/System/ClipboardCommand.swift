@@ -241,10 +241,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         if let text {
             let data = Data(text.utf8)
             return ClipboardWriteRequest(
-                representations: [
-                    ClipboardRepresentation(utiIdentifier: UTType.plainText.identifier, data: data),
-                    ClipboardRepresentation(utiIdentifier: UTType.utf8PlainText.identifier, data: data),
-                ],
+                representations: ClipboardWriteRequest.textRepresentations(from: data),
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )

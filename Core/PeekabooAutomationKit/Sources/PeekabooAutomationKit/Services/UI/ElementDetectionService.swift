@@ -41,6 +41,19 @@ public final class ElementDetectionService {
     private let applicationService: ApplicationService
     private let windowIdentityService = WindowIdentityService()
     private let windowManagementService = WindowManagementService()
+    private let axTreeCacheTTL: TimeInterval = 1.5
+    private var axTreeCache: [AXTreeCacheKey: AXTreeCacheEntry] = [:]
+
+    private struct AXTreeCacheKey: Hashable {
+        let windowID: Int
+        let processID: pid_t
+        let allowWebFocus: Bool
+    }
+
+    private struct AXTreeCacheEntry {
+        let cachedAt: Date
+        let elements: [DetectedElement]
+    }
 
     public init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
@@ -68,19 +81,6 @@ public final class ElementDetectionService {
         let resolvedWindowID = self.windowIdentityService.getWindowID(from: windowResolution.window).map { Int($0) } ??
             windowContext?.windowID
 
-        var elementIdMap: [String: DetectedElement] = [:]
-        let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
-        let detectedElements = try await self.collectElementsWithTimeout(
-            window: windowResolution.window,
-            appElement: windowResolution.appElement,
-            appIsActive: targetApp.isActive,
-            allowWebFocus: allowWebFocus,
-            elementIdMap: &elementIdMap)
-
-        // Note: Parent-child relationships are not directly supported in the protocol's DetectedElement struct
-
-        self.logger.info("Detected \(detectedElements.count) elements")
-
         let resolvedWindowContext = WindowContext(
             applicationName: windowContext?.applicationName ?? targetApp.localizedName,
             applicationBundleId: windowContext?.applicationBundleId ?? targetApp.bundleIdentifier,
@@ -88,28 +88,46 @@ public final class ElementDetectionService {
             windowTitle: windowName,
             windowID: resolvedWindowID,
             windowBounds: windowContext?.windowBounds,
-            shouldFocusWebContent: windowContext?.shouldFocusWebContent)
+            shouldFocusWebContent: windowContext?.shouldFocusWebContent
+        )
 
-        // Create result
-        let detectedElementsCollection = DetectedElements(
-            buttons: detectedElements.filter { $0.type == .button },
-            textFields: detectedElements.filter { $0.type == .textField },
-            links: detectedElements.filter { $0.type == .link },
-            images: detectedElements.filter { $0.type == .image },
-            groups: detectedElements.filter { $0.type == .group },
-            sliders: detectedElements.filter { $0.type == .slider },
-            checkboxes: detectedElements.filter { $0.type == .checkbox },
-            menus: detectedElements.filter { $0.type == .menu },
-            other: detectedElements.filter { element in
-                ![ElementType.button, .textField, .link, .image, .group, .slider, .checkbox, .menu]
-                    .contains(element.type)
-            })
+        var elementIdMap: [String: DetectedElement] = [:]
+        let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
+        let detectedElements: [DetectedElement]
+        let usedCache: Bool
+        let cacheKey = self.axTreeCacheKey(
+            windowID: resolvedWindowID,
+            processID: targetApp.processIdentifier,
+            allowWebFocus: allowWebFocus
+        )
+        if let cacheKey, let cached = self.cachedElements(for: cacheKey) {
+            self.logger.debug("Using cached AX tree for window \(cacheKey.windowID)")
+            detectedElements = cached
+            usedCache = true
+        } else {
+            detectedElements = try await self.collectElementsWithTimeout(
+                window: windowResolution.window,
+                appElement: windowResolution.appElement,
+                appIsActive: targetApp.isActive,
+                allowWebFocus: allowWebFocus,
+                elementIdMap: &elementIdMap)
+            if let cacheKey {
+                self.storeCachedElements(detectedElements, for: cacheKey)
+            }
+            usedCache = false
+        }
+
+        // Note: Parent-child relationships are not directly supported in the protocol's DetectedElement struct
+
+        self.logger.info("Detected \(detectedElements.count) elements")
+
+        let detectedElementsCollection = self.groupDetectedElements(detectedElements)
 
         let metadata = DetectionMetadata(
             detectionTime: 0.0, // Would need to track actual time
             elementCount: detectedElements.count,
-            method: "AXorcist",
-            warnings: [],
+            method: usedCache ? "AXorcist (cached)" : "AXorcist",
+            warnings: usedCache ? ["ax_cache_hit"] : [],
             windowContext: resolvedWindowContext,
             isDialog: windowResolution.isDialog)
 
@@ -159,6 +177,42 @@ extension ElementDetectionService {
         timeoutTask.cancel()
         elementIdMap = map
         return elements
+    }
+}
+
+extension ElementDetectionService {
+    private func axTreeCacheKey(windowID: Int?, processID: pid_t, allowWebFocus: Bool) -> AXTreeCacheKey? {
+        guard let windowID else { return nil }
+        return AXTreeCacheKey(windowID: windowID, processID: processID, allowWebFocus: allowWebFocus)
+    }
+
+    private func cachedElements(for key: AXTreeCacheKey) -> [DetectedElement]? {
+        guard let entry = self.axTreeCache[key] else { return nil }
+        if Date().timeIntervalSince(entry.cachedAt) <= self.axTreeCacheTTL {
+            return entry.elements
+        }
+        self.axTreeCache.removeValue(forKey: key)
+        return nil
+    }
+
+    private func storeCachedElements(_ elements: [DetectedElement], for key: AXTreeCacheKey) {
+        self.axTreeCache[key] = AXTreeCacheEntry(cachedAt: Date(), elements: elements)
+    }
+
+    private func groupDetectedElements(_ elements: [DetectedElement]) -> DetectedElements {
+        DetectedElements(
+            buttons: elements.filter { $0.type == .button },
+            textFields: elements.filter { $0.type == .textField },
+            links: elements.filter { $0.type == .link },
+            images: elements.filter { $0.type == .image },
+            groups: elements.filter { $0.type == .group },
+            sliders: elements.filter { $0.type == .slider },
+            checkboxes: elements.filter { $0.type == .checkbox },
+            menus: elements.filter { $0.type == .menu },
+            other: elements.filter { element in
+                ![ElementType.button, .textField, .link, .image, .group, .slider, .checkbox, .menu]
+                    .contains(element.type)
+            })
     }
 }
 
