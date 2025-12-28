@@ -674,11 +674,8 @@ extension ProcessService {
             let alsoText = clipboardParams.alsoText
 
             if let text = clipboardParams.text {
-                guard let data = text.data(using: .utf8) else {
-                    throw ClipboardServiceError.writeFailed("Unable to encode text as UTF-8.")
-                }
-                let request = ClipboardWriteRequest(
-                    representations: ClipboardWriteRequest.textRepresentations(from: data),
+                let request = try ClipboardPayloadBuilder.textRequest(
+                    text: text,
                     alsoText: alsoText,
                     allowLarge: allowLarge)
                 let result = try self.clipboardService.set(request)
@@ -697,8 +694,9 @@ extension ProcessService {
                 let uti = clipboardParams.uti
                     ?? UTType(filenameExtension: url.pathExtension)?.identifier
                     ?? UTType.data.identifier
-                let request = ClipboardWriteRequest(
-                    representations: [ClipboardRepresentation(utiIdentifier: uti, data: data)],
+                let request = ClipboardPayloadBuilder.dataRequest(
+                    data: data,
+                    utiIdentifier: uti,
                     alsoText: alsoText,
                     allowLarge: allowLarge)
                 let result = try self.clipboardService.set(request)
@@ -713,11 +711,9 @@ extension ProcessService {
             }
 
             if let dataBase64 = clipboardParams.dataBase64, let uti = clipboardParams.uti {
-                guard let data = Data(base64Encoded: dataBase64) else {
-                    throw ClipboardServiceError.writeFailed("Invalid base64 payload.")
-                }
-                let request = ClipboardWriteRequest(
-                    representations: [ClipboardRepresentation(utiIdentifier: uti, data: data)],
+                let request = try ClipboardPayloadBuilder.base64Request(
+                    base64: dataBase64,
+                    utiIdentifier: uti,
                     alsoText: alsoText,
                     allowLarge: allowLarge)
                 let result = try self.clipboardService.set(request)

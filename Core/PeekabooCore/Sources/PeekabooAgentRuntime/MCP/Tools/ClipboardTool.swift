@@ -143,9 +143,8 @@ public struct ClipboardTool: MCPTool {
 
     private func makeWriteRequest(arguments: ToolArguments) throws -> ClipboardWriteRequest {
         if let text = arguments.getString("text") {
-            let data = Data(text.utf8)
-            return ClipboardWriteRequest(
-                representations: ClipboardWriteRequest.textRepresentations(from: data),
+            return try ClipboardPayloadBuilder.textRequest(
+                text: text,
                 alsoText: arguments.getString("alsoText"),
                 allowLarge: arguments.getBool("allowLarge") ?? false)
         }
@@ -154,18 +153,17 @@ public struct ClipboardTool: MCPTool {
             let url = URL(fileURLWithPath: filePath)
             let data = try Data(contentsOf: url)
             let uti = UTType(filenameExtension: url.pathExtension) ?? .data
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: uti.identifier, data: data)],
+            return ClipboardPayloadBuilder.dataRequest(
+                data: data,
+                uti: uti,
                 alsoText: arguments.getString("alsoText"),
                 allowLarge: arguments.getBool("allowLarge") ?? false)
         }
 
         if let b64 = arguments.getString("dataBase64"), let utiId = arguments.getString("uti") {
-            guard let data = Data(base64Encoded: b64) else {
-                throw ClipboardServiceError.writeFailed("Invalid base64 payload.")
-            }
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: utiId, data: data)],
+            return try ClipboardPayloadBuilder.base64Request(
+                base64: b64,
+                utiIdentifier: utiId,
                 alsoText: arguments.getString("alsoText"),
                 allowLarge: arguments.getBool("allowLarge") ?? false)
         }

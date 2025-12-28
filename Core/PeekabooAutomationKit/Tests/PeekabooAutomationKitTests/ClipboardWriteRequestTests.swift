@@ -8,9 +8,8 @@ import XCTest
 @MainActor
 final class ClipboardWriteRequestTests: XCTestCase {
     func testTextRepresentationsIncludePlainTextAndString() {
-        let data = Data("hello".utf8)
-        let reps = ClipboardWriteRequest.textRepresentations(from: data)
-        let types = reps.map(\.utiIdentifier)
+        let request = try? ClipboardPayloadBuilder.textRequest(text: "hello")
+        let types = request?.representations.map(\.utiIdentifier) ?? []
 
         XCTAssertTrue(types.contains(UTType.plainText.identifier))
         XCTAssertTrue(types.contains(NSPasteboard.PasteboardType.string.rawValue))

@@ -239,9 +239,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     private func makeWriteRequest(overridePath: String? = nil) throws -> ClipboardWriteRequest {
         if let text {
-            let data = Data(text.utf8)
-            return ClipboardWriteRequest(
-                representations: ClipboardWriteRequest.textRepresentations(from: data),
+            return try ClipboardPayloadBuilder.textRequest(
+                text: text,
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )
@@ -251,8 +250,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             let url = URL(fileURLWithPath: path)
             let data = try Data(contentsOf: url)
             let uti = UTType(filenameExtension: url.pathExtension) ?? .data
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: uti.identifier, data: data)],
+            return ClipboardPayloadBuilder.dataRequest(
+                data: data,
+                uti: uti,
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )
@@ -262,8 +262,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             guard let data = Data(base64Encoded: b64) else {
                 throw ValidationError("data-base64 is not valid base64")
             }
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: utiId, data: data)],
+            return ClipboardPayloadBuilder.dataRequest(
+                data: data,
+                utiIdentifier: utiId,
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )

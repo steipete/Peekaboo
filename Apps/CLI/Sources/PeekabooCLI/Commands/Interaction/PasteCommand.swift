@@ -131,9 +131,8 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
     private func makeWriteRequest() throws -> ClipboardWriteRequest {
         if let text = self.resolvedText {
-            let data = Data(text.utf8)
-            return ClipboardWriteRequest(
-                representations: ClipboardWriteRequest.textRepresentations(from: data),
+            return try ClipboardPayloadBuilder.textRequest(
+                text: text,
                 alsoText: nil,
                 allowLarge: self.allowLarge
             )
@@ -144,8 +143,9 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let data = try Data(contentsOf: url)
             let inferred = UTType(filenameExtension: url.pathExtension) ?? .data
             let forced = self.uti.flatMap(UTType.init(_:)) ?? inferred
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: forced.identifier, data: data)],
+            return ClipboardPayloadBuilder.dataRequest(
+                data: data,
+                uti: forced,
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )
@@ -155,8 +155,9 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             guard let data = Data(base64Encoded: b64) else {
                 throw ValidationError("data-base64 is not valid base64")
             }
-            return ClipboardWriteRequest(
-                representations: [ClipboardRepresentation(utiIdentifier: utiId, data: data)],
+            return ClipboardPayloadBuilder.dataRequest(
+                data: data,
+                utiIdentifier: utiId,
                 alsoText: self.alsoText,
                 allowLarge: self.allowLarge
             )
