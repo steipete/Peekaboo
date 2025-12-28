@@ -50,6 +50,7 @@ peekaboo clipboard --action restore --slot original
 - Slot saves are stored in a dedicated named pasteboard so they work across separate `peekaboo clipboard` invocations.
 - `restore` removes the saved slot after applying it to avoid leaving clipboard snapshots around indefinitely.
 - Size guard: writes larger than 10 MB require `--allow-large`.
+- Text writes include both `public.plain-text` and the `.string`/`public.utf8-plain-text` representation for compatibility.
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).

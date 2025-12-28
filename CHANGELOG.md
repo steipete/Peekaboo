@@ -5,6 +5,7 @@
 ### Fixed
 - Menu bar extras now combine CGWindow data with AX fallbacks to surface third-party items like Trimmy, and clicks target the owning window for reliability.
 - Menu bar screenshot captures now use the real menu bar height derived from the screen’s visible frame.
+- Clipboard text writes now also publish the `.string` (`public.utf8-plain-text`) representation for better app compatibility.
 
 ## [3.0.0-beta3] - Unreleased
 

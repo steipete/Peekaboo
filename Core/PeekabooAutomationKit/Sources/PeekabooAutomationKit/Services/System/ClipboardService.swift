@@ -163,6 +163,12 @@ public final class ClipboardService: ClipboardServiceProtocol {
 
         if let alsoText = request.alsoText {
             self.pasteboard.setString(alsoText, forType: .string)
+        } else if let representation = request.representations.first(where: {
+            $0.utiIdentifier == UTType.plainText.identifier || $0.utiIdentifier == UTType.utf8PlainText.identifier
+        }),
+        let fallbackText = String(data: representation.data, encoding: .utf8)
+        {
+            self.pasteboard.setString(fallbackText, forType: .string)
         }
 
         let primary = request.representations.first!
