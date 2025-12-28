@@ -302,9 +302,10 @@ extension MenuService {
             windowExtras
         }
 
-        return Self.mergeMenuExtras(
+        let merged = Self.mergeMenuExtras(
             accessibilityExtras: axExtras + controlCenterExtras + appAXExtras,
             fallbackExtras: fallbackExtras)
+        return self.hydrateMenuExtraOwners(merged)
     }
 
     public func listMenuBarItems(includeRaw: Bool = false) async throws -> [MenuBarItemInfo] {
@@ -809,6 +810,7 @@ extension MenuService {
         }
 
         let candidates = flattenExtras(menuBar)
+        let accessoryApps = NSWorkspace.shared.runningApplications
 
         return candidates.compactMap { extra in
             extra.setMessagingTimeout(timeout)
@@ -828,20 +830,100 @@ extension MenuService {
             }
             let position = extra.position() ?? .zero
             let identifier = extra.identifier()
+            let matchedApp = self.matchMenuExtraApp(
+                title: effectiveTitle,
+                identifier: identifier,
+                apps: accessoryApps)
+            let ownerName = matchedApp?.localizedName
+            let bundleIdentifier = matchedApp?.bundleIdentifier
+            let ownerPID = matchedApp.map { pid_t($0.processIdentifier) }
 
             return MenuExtraInfo(
                 title: self.makeMenuExtraDisplayName(
                     rawTitle: effectiveTitle,
-                    ownerName: nil,
-                    bundleIdentifier: nil,
+                    ownerName: ownerName,
+                    bundleIdentifier: bundleIdentifier,
                     identifier: identifier),
                 rawTitle: baseTitle,
-                bundleIdentifier: nil,
-                ownerName: nil,
+                bundleIdentifier: bundleIdentifier,
+                ownerName: ownerName,
                 position: position,
                 isVisible: true,
                 identifier: identifier,
+                ownerPID: ownerPID,
                 source: "ax-menubar")
+        }
+    }
+
+    private func matchMenuExtraApp(
+        title: String,
+        identifier: String?,
+        apps: [NSRunningApplication]
+    ) -> NSRunningApplication? {
+        let normalizedTitle = title.lowercased()
+        let normalizedIdentifier = identifier?.lowercased()
+
+        if let normalizedIdentifier,
+           let exact = apps.first(where: { $0.bundleIdentifier?.lowercased() == normalizedIdentifier })
+        {
+            return exact
+        }
+
+        if let exact = apps.first(where: { $0.localizedName?.lowercased() == normalizedTitle }) {
+            return exact
+        }
+
+        if let normalizedIdentifier,
+           let fuzzy = apps.first(where: { ($0.bundleIdentifier ?? "").lowercased().contains(normalizedIdentifier) })
+        {
+            return fuzzy
+        }
+
+        if normalizedTitle != "unknown",
+           let fuzzy = apps.first(where: { ($0.bundleIdentifier ?? "").lowercased().contains(normalizedTitle) })
+        {
+            return fuzzy
+        }
+
+        return nil
+    }
+
+    private func hydrateMenuExtraOwners(_ extras: [MenuExtraInfo]) -> [MenuExtraInfo] {
+        let runningApps = NSWorkspace.shared.runningApplications
+        var appsByBundle: [String: NSRunningApplication] = [:]
+        for app in runningApps {
+            if let bundle = app.bundleIdentifier {
+                appsByBundle[bundle] = app
+            }
+        }
+
+        return extras.map { extra in
+            guard extra.ownerPID == nil else { return extra }
+            var matched: NSRunningApplication?
+
+            if let bundle = extra.bundleIdentifier {
+                matched = appsByBundle[bundle]
+            }
+
+            if matched == nil, let ownerName = extra.ownerName {
+                matched = runningApps.first(where: { $0.localizedName == ownerName })
+            }
+
+            guard let matched else { return extra }
+
+            return MenuExtraInfo(
+                title: extra.title,
+                rawTitle: extra.rawTitle,
+                bundleIdentifier: extra.bundleIdentifier ?? matched.bundleIdentifier,
+                ownerName: extra.ownerName ?? matched.localizedName,
+                position: extra.position,
+                isVisible: extra.isVisible,
+                identifier: extra.identifier,
+                windowID: extra.windowID,
+                windowLayer: extra.windowLayer,
+                ownerPID: matched.processIdentifier,
+                source: extra.source
+            )
         }
     }
 
