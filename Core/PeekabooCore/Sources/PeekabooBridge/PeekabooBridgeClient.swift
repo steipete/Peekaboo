@@ -1,5 +1,5 @@
-import Darwin
 import CoreGraphics
+import Darwin
 import Foundation
 import os.log
 import PeekabooAutomationKit

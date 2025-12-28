@@ -335,7 +335,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         guard let string = String(data: data, encoding: .utf8) else { return nil }
         let normalized = string.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(
             of: "\r",
-            with: "\n")
+            with: "\n"
+        )
         return normalized.data(using: .utf8)
     }
 }

@@ -33,7 +33,7 @@ struct CaptureCommandTests {
 
     @Test("video options defaults")
     func videoOptionsDefaults() async throws {
-        var cmd = CaptureVideoCommand()
+        let cmd = CaptureVideoCommand()
         let opts = cmd.buildOptions()
         #expect(opts.maxFrames >= 1)
         #expect(opts.resolutionCap == 1440)

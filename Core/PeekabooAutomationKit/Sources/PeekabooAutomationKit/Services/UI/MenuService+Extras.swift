@@ -43,7 +43,9 @@ extension MenuService {
                 element.descriptionText(),
                 element.identifier(),
             ]
-            if candidates.contains(where: { titlesMatch(candidate: $0, target: title, normalizedTarget: normalizedTarget) }) {
+            if candidates
+                .contains(where: { titlesMatch(candidate: $0, target: title, normalizedTarget: normalizedTarget) })
+            {
                 return true
             }
             if self.partialMatchEnabled,
@@ -76,8 +78,8 @@ extension MenuService {
         let timeoutSeconds = max(TimeInterval(self.menuBarAXTimeoutSec), 0.5)
         do {
             return try await AXTimeoutHelper.withTimeout(
-                seconds: timeoutSeconds
-            ) { [self] in
+                seconds: timeoutSeconds)
+            { [self] in
                 await MainActor.run {
                     self.isMenuExtraMenuOpenInternal(
                         title: title,
@@ -95,8 +97,8 @@ extension MenuService {
         let timeoutSeconds = max(TimeInterval(self.menuBarAXTimeoutSec), 0.5)
         do {
             return try await AXTimeoutHelper.withTimeout(
-                seconds: timeoutSeconds
-            ) { [self] in
+                seconds: timeoutSeconds)
+            { [self] in
                 await MainActor.run {
                     self.menuExtraOpenMenuFrameInternal(
                         title: title,
@@ -144,10 +146,12 @@ extension MenuService {
         let systemMenus = (systemWide.children(strict: true) ?? []).filter { $0.isMenu() }
         guard !systemMenus.isEmpty else { return false }
 
-        for menu in systemMenus {
-            if self.menuMatches(menu: menu, normalizedTarget: normalizedTarget, ownerPID: ownerPID) {
-                return true
-            }
+        for menu in systemMenus where self.menuMatches(
+            menu: menu,
+            normalizedTarget: normalizedTarget,
+            ownerPID: ownerPID)
+        {
+            return true
         }
 
         return false
@@ -166,7 +170,9 @@ extension MenuService {
                 element.descriptionText(),
                 element.identifier(),
             ]
-            if candidates.contains(where: { titlesMatch(candidate: $0, target: title, normalizedTarget: normalizedTarget) }) {
+            if candidates
+                .contains(where: { titlesMatch(candidate: $0, target: title, normalizedTarget: normalizedTarget) })
+            {
                 return true
             }
             if self.partialMatchEnabled,
@@ -201,8 +207,8 @@ extension MenuService {
     private func menuExtraOpenMenuFrameInternal(
         title: String,
         ownerPID: pid_t?,
-        timeout: Float
-    ) -> CGRect? {
+        timeout: Float) -> CGRect?
+    {
         let systemWide = Element.systemWide()
         systemWide.setMessagingTimeout(timeout)
         defer { systemWide.setMessagingTimeout(0) }
@@ -232,11 +238,13 @@ extension MenuService {
         let systemMenus = (systemWide.children(strict: true) ?? []).filter { $0.isMenu() }
         guard !systemMenus.isEmpty else { return nil }
 
-        for menu in systemMenus {
-            if self.menuMatches(menu: menu, normalizedTarget: normalizedTarget, ownerPID: ownerPID) {
-                if let frame = menu.frame() {
-                    return frame
-                }
+        for menu in systemMenus where self.menuMatches(
+            menu: menu,
+            normalizedTarget: normalizedTarget,
+            ownerPID: ownerPID)
+        {
+            if let frame = menu.frame() {
+                return frame
             }
         }
 
@@ -939,8 +947,8 @@ extension MenuService {
     private func matchMenuExtraApp(
         title: String,
         identifier: String?,
-        apps: [NSRunningApplication]
-    ) -> NSRunningApplication? {
+        apps: [NSRunningApplication]) -> NSRunningApplication?
+    {
         let normalizedTitle = title.lowercased()
         let normalizedIdentifier = identifier?.lowercased()
 
@@ -1003,8 +1011,7 @@ extension MenuService {
                 windowID: extra.windowID,
                 windowLayer: extra.windowLayer,
                 ownerPID: matched.processIdentifier,
-                source: extra.source
-            )
+                source: extra.source)
         }
     }
 
@@ -1264,8 +1271,8 @@ extension MenuService {
 
 // MARK: - Helpers
 
-private extension CGEventField {
-    static let windowID = CGEventField(rawValue: 0x33)!
+extension CGEventField {
+    fileprivate static let windowID = CGEventField(rawValue: 0x33)!
 }
 
 private enum MenuExtraNamespace {

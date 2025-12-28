@@ -88,8 +88,7 @@ public final class ElementDetectionService {
             windowTitle: windowName,
             windowID: resolvedWindowID,
             windowBounds: windowContext?.windowBounds,
-            shouldFocusWebContent: windowContext?.shouldFocusWebContent
-        )
+            shouldFocusWebContent: windowContext?.shouldFocusWebContent)
 
         var elementIdMap: [String: DetectedElement] = [:]
         let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
@@ -98,8 +97,7 @@ public final class ElementDetectionService {
         let cacheKey = self.axTreeCacheKey(
             windowID: resolvedWindowID,
             processID: targetApp.processIdentifier,
-            allowWebFocus: allowWebFocus
-        )
+            allowWebFocus: allowWebFocus)
         if let cacheKey, let cached = self.cachedElements(for: cacheKey) {
             self.logger.debug("Using cached AX tree for window \(cacheKey.windowID)")
             detectedElements = cached

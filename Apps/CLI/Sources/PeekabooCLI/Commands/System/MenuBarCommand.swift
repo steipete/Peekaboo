@@ -177,7 +177,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             let verification: MenuBarClickVerification?
             if self.verify {
                 guard let verifyTarget else {
-                    throw PeekabooError.operationError(message: "Menu bar verification requested but no target resolved")
+                    throw PeekabooError
+                        .operationError(message: "Menu bar verification requested but no target resolved")
                 }
                 verification = try await verifier.verifyClick(
                     target: verifyTarget,
@@ -290,7 +291,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             fields.contains(where: { $0.lowercased().contains(normalized) })
         })?.0
     }
-
 }
 
 // MARK: - JSON Output Types

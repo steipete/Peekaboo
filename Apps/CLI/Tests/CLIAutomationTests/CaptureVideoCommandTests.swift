@@ -9,7 +9,7 @@ import Testing
 struct CaptureVideoCommandTests {
     @Test("buildOptions clamps video defaults")
     func buildOptions() async throws {
-        var cmd = CaptureVideoCommand()
+        let cmd = CaptureVideoCommand()
         let opts = cmd.buildOptions()
         #expect(opts.maxFrames >= 1)
         #expect(opts.resolutionCap == 1440)

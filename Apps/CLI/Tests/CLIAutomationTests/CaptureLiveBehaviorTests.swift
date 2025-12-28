@@ -19,7 +19,7 @@ struct CaptureLiveBehaviorTests {
 
     @Test("resolveMode defaults to frontmost when no targeting")
     func resolveModeDefault() async throws {
-        var cmd = CaptureLiveCommand()
+        let cmd = CaptureLiveCommand()
         #expect(cmd.resolveMode() == .frontmost)
     }
 }

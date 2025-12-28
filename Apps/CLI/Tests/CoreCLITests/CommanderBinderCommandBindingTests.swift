@@ -166,7 +166,10 @@ struct CommanderBinderCommandBindingTests {
             ],
             flags: ["verify"]
         )
-        let command = try CommanderCLIBinder.instantiateCommand(ofType: AppCommand.SwitchSubcommand.self, parsedValues: parsed)
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: AppCommand.SwitchSubcommand.self,
+            parsedValues: parsed
+        )
         #expect(command.to == "Safari")
         #expect(command.verify == true)
         #expect(command.cycle == false)
@@ -181,7 +184,10 @@ struct CommanderBinderCommandBindingTests {
             ],
             flags: ["verify"]
         )
-        let command = try CommanderCLIBinder.instantiateCommand(ofType: WindowCommand.FocusSubcommand.self, parsedValues: parsed)
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: WindowCommand.FocusSubcommand.self,
+            parsedValues: parsed
+        )
         #expect(command.verify == true)
     }
 
@@ -192,7 +198,10 @@ struct CommanderBinderCommandBindingTests {
             options: [:],
             flags: ["verify"]
         )
-        let command = try CommanderCLIBinder.instantiateCommand(ofType: DockCommand.LaunchSubcommand.self, parsedValues: parsed)
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: DockCommand.LaunchSubcommand.self,
+            parsedValues: parsed
+        )
         #expect(command.app == "Safari")
         #expect(command.verify == true)
     }

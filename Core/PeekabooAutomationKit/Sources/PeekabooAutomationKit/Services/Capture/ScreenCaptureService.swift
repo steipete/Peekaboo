@@ -3,10 +3,8 @@ import AppKit
 import CoreGraphics
 import CoreMedia
 import Foundation
-import ImageIO
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
-import UniformTypeIdentifiers
 
 protocol ScreenCaptureMetricsObserving: Sendable {
     func record(
@@ -25,353 +23,6 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         success _: Bool,
         error _: (any Error)?)
     {}
-}
-
-@MainActor
-private final class ScreenCaptureStreamCache {
-    struct StreamKey: Hashable {
-        let displayID: CGDirectDisplayID
-        let scale: CaptureScalePreference
-    }
-
-    struct Frame {
-        let image: CGImage
-        let timestamp: Date
-        let displayFrame: CGRect
-        let scaleFactor: CGFloat
-        let sourceRect: CGRect
-    }
-
-    private final class StreamFrameHandler: NSObject, SCStreamOutput, SCStreamDelegate {
-        private let context: CIContext
-        private let onFrame: @MainActor (CGImage, Date, CGRect) -> Void
-        private let onError: @MainActor (any Error) -> Void
-
-        init(
-            context: CIContext = CIContext(),
-            onFrame: @escaping @MainActor (CGImage, Date, CGRect) -> Void,
-            onError: @escaping @MainActor (any Error) -> Void)
-        {
-            self.context = context
-            self.onFrame = onFrame
-            self.onError = onError
-        }
-
-        nonisolated func stream(
-            _ stream: SCStream,
-            didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
-            of type: SCStreamOutputType)
-        {
-            guard type == .screen else { return }
-            guard let imageBuffer = sampleBuffer.imageBuffer else { return }
-
-            let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-            guard let cgImage = self.context.createCGImage(ciImage, from: ciImage.extent) else { return }
-            let timestamp = Date()
-            let rect = ciImage.extent
-
-            let onFrame = self.onFrame
-            Task { @MainActor in
-                onFrame(cgImage, timestamp, rect)
-            }
-        }
-
-        nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
-            let onError = self.onError
-            Task { @MainActor in
-                onError(error)
-            }
-        }
-    }
-
-    @MainActor
-    private final class StreamSession {
-        let key: StreamKey
-        let display: SCDisplay
-        let scaleFactor: CGFloat
-        let logger: CategoryLogger
-        let stream: SCStream
-        let handler: StreamFrameHandler
-        let queue: DispatchQueue
-
-        var isRunning = false
-        var currentSourceRect: CGRect
-        var currentSize: CGSize
-        var pendingError: (any Error)?
-
-        init(
-            key: StreamKey,
-            display: SCDisplay,
-            scaleFactor: CGFloat,
-            logger: CategoryLogger,
-            handler: StreamFrameHandler,
-            queue: DispatchQueue) throws
-        {
-            self.key = key
-            self.display = display
-            self.scaleFactor = scaleFactor
-            self.logger = logger
-            self.handler = handler
-            self.queue = queue
-
-            let filter = SCContentFilter(display: display, excludingWindows: [])
-            let config = SCStreamConfiguration()
-            let logicalSize = display.frame.size
-            let width = Int(logicalSize.width * scaleFactor)
-            let height = Int(logicalSize.height * scaleFactor)
-            config.width = width
-            config.height = height
-            config.sourceRect = CGRect(origin: .zero, size: logicalSize)
-            config.captureResolution = .best
-            config.showsCursor = false
-            config.capturesAudio = false
-            config.shouldBeOpaque = true
-            config.queueDepth = 1
-
-            if let fps = ScreenCaptureStreamCache.defaultFPS {
-                config.minimumFrameInterval = CMTime(value: 1, timescale: fps)
-            }
-
-            self.currentSourceRect = config.sourceRect
-            self.currentSize = CGSize(width: width, height: height)
-
-            let stream = SCStream(filter: filter, configuration: config, delegate: handler)
-            self.stream = stream
-            try stream.addStreamOutput(handler, type: .screen, sampleHandlerQueue: queue)
-        }
-
-        func start(correlationId: String) async throws {
-            guard !self.isRunning else { return }
-            do {
-                let stream = self.stream
-                try await withTimeout(seconds: 3.0) {
-                    try await stream.startCapture()
-                }
-                self.isRunning = true
-                self.logger.debug(
-                    "Fast stream started",
-                    metadata: [
-                        "displayID": self.display.displayID,
-                        "scaleFactor": self.scaleFactor,
-                    ],
-                    correlationId: correlationId)
-            } catch {
-                self.pendingError = error
-                throw error
-            }
-        }
-
-        func ensureConfiguration(
-            sourceRect: CGRect,
-            size: CGSize,
-            correlationId: String) async throws
-        {
-            guard self.currentSourceRect != sourceRect || self.currentSize != size else { return }
-            let config = SCStreamConfiguration()
-            config.sourceRect = sourceRect
-            config.width = Int(size.width)
-            config.height = Int(size.height)
-            config.captureResolution = .best
-            config.showsCursor = false
-            config.capturesAudio = false
-            config.shouldBeOpaque = true
-            config.queueDepth = 1
-            if let fps = ScreenCaptureStreamCache.defaultFPS {
-                config.minimumFrameInterval = CMTime(value: 1, timescale: fps)
-            }
-
-            let stream = self.stream
-            let start = Date()
-            try await withTimeout(seconds: 3.0) {
-                try await stream.updateConfiguration(config)
-            }
-            let duration = Date().timeIntervalSince(start)
-            self.currentSourceRect = sourceRect
-            self.currentSize = size
-
-            self.logger.debug(
-                "Fast stream config updated",
-                metadata: [
-                    "durationMs": Int(duration * 1000),
-                    "displayID": self.display.displayID,
-                ],
-                correlationId: correlationId)
-        }
-    }
-
-    private let logger: CategoryLogger
-    private let maxFrameAge: TimeInterval
-    private let frameWaitTimeout: TimeInterval
-    private let framePollInterval: TimeInterval
-    private var sessions: [StreamKey: StreamSession] = [:]
-    private var latestFrames: [StreamKey: Frame] = [:]
-
-    init(logger: CategoryLogger) {
-        self.logger = logger
-        self.maxFrameAge = ScreenCaptureStreamCache.defaultMaxFrameAge
-        self.frameWaitTimeout = ScreenCaptureStreamCache.defaultFrameWaitTimeout
-        self.framePollInterval = ScreenCaptureStreamCache.defaultFramePollInterval
-    }
-
-    func capture(
-        display: SCDisplay,
-        sourceRect: CGRect,
-        scale: CaptureScalePreference,
-        correlationId: String) async throws -> Frame
-    {
-        let key = StreamKey(displayID: display.displayID, scale: scale)
-        let session = try self.session(for: display, scale: scale, key: key, correlationId: correlationId)
-        try await session.start(correlationId: correlationId)
-
-        let size = CGSize(
-            width: sourceRect.width * session.scaleFactor,
-            height: sourceRect.height * session.scaleFactor)
-        let requestTime = Date()
-        try await session.ensureConfiguration(
-            sourceRect: sourceRect,
-            size: size,
-            correlationId: correlationId)
-
-        let frame = try await self.waitForFrame(
-            key: key,
-            displayFrame: display.frame,
-            scaleFactor: session.scaleFactor,
-            sourceRect: sourceRect,
-            after: requestTime,
-            correlationId: correlationId)
-
-        return frame
-    }
-
-    private func session(
-        for display: SCDisplay,
-        scale: CaptureScalePreference,
-        key: StreamKey,
-        correlationId: String) throws -> StreamSession
-    {
-        if let existing = self.sessions[key] {
-            if let error = existing.pendingError {
-                throw error
-            }
-            return existing
-        }
-
-        let scaleFactor = ScreenCaptureStreamCache.scaleFactor(for: display, preference: scale)
-        let queue = DispatchQueue(label: "boo.peekaboo.capture.stream.\(display.displayID)")
-        let handler = StreamFrameHandler(
-            onFrame: { [weak self] image, timestamp, _ in
-                self?.update(
-                    image: image,
-                    timestamp: timestamp,
-                    displayFrame: display.frame,
-                    scaleFactor: scaleFactor,
-                    sourceRect: CGRect(origin: .zero, size: display.frame.size),
-                    key: key)
-            },
-            onError: { [weak self] error in
-                self?.handleStreamError(error, key: key)
-            })
-
-        let session = try StreamSession(
-            key: key,
-            display: display,
-            scaleFactor: scaleFactor,
-            logger: self.logger,
-            handler: handler,
-            queue: queue)
-        self.sessions[key] = session
-
-        self.logger.debug(
-            "Fast stream session created",
-            metadata: [
-                "displayID": display.displayID,
-                "scaleFactor": scaleFactor,
-            ],
-            correlationId: correlationId)
-
-        return session
-    }
-
-    private func update(
-        image: CGImage,
-        timestamp: Date,
-        displayFrame: CGRect,
-        scaleFactor: CGFloat,
-        sourceRect: CGRect,
-        key: StreamKey)
-    {
-        self.latestFrames[key] = Frame(
-            image: image,
-            timestamp: timestamp,
-            displayFrame: displayFrame,
-            scaleFactor: scaleFactor,
-            sourceRect: sourceRect)
-    }
-
-    private func handleStreamError(_ error: any Error, key: StreamKey) {
-        if let session = self.sessions[key] {
-            session.pendingError = error
-        }
-        self.logger.error(
-            "Fast stream error",
-            metadata: ["error": String(describing: error)])
-    }
-
-    private func waitForFrame(
-        key: StreamKey,
-        displayFrame: CGRect,
-        scaleFactor: CGFloat,
-        sourceRect: CGRect,
-        after requestTime: Date,
-        correlationId: String) async throws -> Frame
-    {
-        let deadline = Date().addingTimeInterval(self.frameWaitTimeout)
-        while Date() < deadline {
-            if let frame = self.latestFrames[key] {
-                let age = Date().timeIntervalSince(frame.timestamp)
-                if frame.timestamp >= requestTime || age <= self.maxFrameAge {
-                    return Frame(
-                        image: frame.image,
-                        timestamp: frame.timestamp,
-                        displayFrame: displayFrame,
-                        scaleFactor: scaleFactor,
-                        sourceRect: sourceRect)
-                }
-            }
-            try await Task.sleep(nanoseconds: UInt64(self.framePollInterval * 1_000_000_000))
-        }
-
-        self.logger.warning(
-            "Fast stream wait timed out; returning last frame if available",
-            correlationId: correlationId)
-        if let frame = self.latestFrames[key] {
-            return frame
-        }
-
-        throw OperationError.captureFailed(reason: "Fast stream produced no frames")
-    }
-
-    nonisolated private static func scaleFactor(for display: SCDisplay, preference: CaptureScalePreference) -> CGFloat {
-        let nativeScale: CGFloat = {
-            let width = CGFloat(display.width)
-            let frameWidth = display.frame.width
-            guard frameWidth > 0 else { return 1.0 }
-            let scale = width / frameWidth
-            return scale > 0 ? scale : 1.0
-        }()
-
-        switch preference {
-        case .native:
-            return nativeScale
-        case .logical1x:
-            return 1.0
-        }
-    }
-
-    nonisolated private static let defaultMaxFrameAge: TimeInterval = 0.25
-    nonisolated private static let defaultFrameWaitTimeout: TimeInterval = 0.6
-    nonisolated private static let defaultFramePollInterval: TimeInterval = 0.02
-    nonisolated private static let defaultFPS: CMTimeScale? = nil
 }
 
 /**
@@ -938,37 +589,53 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         correlationId: String,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        let imageOptions: CGWindowImageOption = [
-            .bestResolution,
-        ]
-        guard let image = CGWindowListCreateImage(
-            rect,
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID,
-            imageOptions)
-        else {
-            throw OperationError.captureFailed(reason: "CGWindowListCreateImage returned nil")
+        self.logger.debug(
+            "Legacy area capture using ScreenCaptureKit screenshot manager",
+            correlationId: correlationId)
+
+        let content = try await withTimeout(seconds: 5.0) {
+            try await SCShareableContent.current
+        }
+        guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
+            throw PeekabooError.invalidInput(
+                "captureArea: The specified area is not within any display bounds")
         }
 
-        let screen = NSScreen.screens.first(where: { $0.frame.intersects(rect) }) ?? NSScreen.main
-        let scaleFactor = screen?.backingScaleFactor ?? 1.0
-        let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scaleFactor)
-        let imageData = try scaledImage.pngData()
+        let nativeScale: CGFloat = {
+            let width = CGFloat(display.width)
+            let frameWidth = display.frame.width
+            guard frameWidth > 0 else { return 1.0 }
+            let scale = width / frameWidth
+            return scale > 0 ? scale : 1.0
+        }()
+        let outputScale: CGFloat = scale == .native ? nativeScale : 1.0
 
-        let displayInfo = screen.map { screen in
-            DisplayInfo(
-                index: NSScreen.screens.firstIndex(of: screen) ?? 0,
-                name: screen.localizedName,
-                bounds: screen.frame,
-                scaleFactor: scale == .native ? scaleFactor : 1.0)
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let config = SCStreamConfiguration()
+        config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+            globalRect: rect,
+            displayFrame: display.frame)
+        config.width = Int(rect.width * outputScale)
+        config.height = Int(rect.height * outputScale)
+        config.captureResolution = .best
+        config.showsCursor = false
+
+        let image = try await withTimeout(seconds: 3.0) {
+            try await SCScreenshotManager.captureImage(
+                contentFilter: filter,
+                configuration: config)
         }
 
+        let imageData = try image.pngData()
         let metadata = CaptureMetadata(
-            size: CGSize(width: scaledImage.width, height: scaledImage.height),
+            size: CGSize(width: image.width, height: image.height),
             mode: .area,
-            displayInfo: displayInfo)
+            displayInfo: DisplayInfo(
+                index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
+                name: display.displayID.description,
+                bounds: display.frame,
+                scaleFactor: outputScale))
 
-        self.logger.debug("Legacy area capture created", correlationId: correlationId)
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
@@ -2098,159 +1765,3 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 // swiftlint:enable type_body_length
-
-// MARK: - Capture Output Handler
-
-@MainActor
-final class CaptureOutput: NSObject, @unchecked Sendable {
-    private var continuation: CheckedContinuation<CGImage, any Error>?
-    private var timeoutTask: Task<Void, Never>?
-    private var pendingCancellation = false
-
-    @MainActor
-    fileprivate func finish(_ result: Result<CGImage, any Error>) {
-        // Single exit hatch for all completion paths: ensures timeout is canceled and continuation
-        // is resumed exactly once, eliminating the racey scatter of resumes that existed before.
-        // Cancel any pending timeout
-        self.pendingCancellation = false
-        self.timeoutTask?.cancel()
-        self.timeoutTask = nil
-
-        guard let cont = self.continuation else { return }
-        self.continuation = nil
-        switch result {
-        case let .success(image):
-            cont.resume(returning: image)
-        case let .failure(error):
-            cont.resume(throwing: error)
-        }
-    }
-
-    @MainActor
-    fileprivate func setContinuation(_ cont: CheckedContinuation<CGImage, any Error>) {
-        // Tests inject their own continuation; production uses waitForImage().
-        self.continuation = cont
-        if self.pendingCancellation {
-            self.pendingCancellation = false
-            self.finish(.failure(CancellationError()))
-        }
-    }
-
-    deinit {
-        // Cancel timeout task first to prevent race condition
-        timeoutTask?.cancel()
-
-        // Ensure continuation is resumed if object is deallocated
-        if let continuation = self.continuation {
-            continuation.resume(throwing: OperationError.captureFailed(
-                reason: "CaptureOutput deallocated before frame captured"))
-            self.continuation = nil
-        }
-    }
-
-    /// Suspend until the next captured frame arrives, throwing if the stream stalls.
-    func waitForImage() async throws -> CGImage {
-        try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                self.setContinuation(continuation)
-
-                // Add a timeout to ensure the continuation is always resumed.
-                self.timeoutTask = Task { [weak self] in
-                    try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-                    await MainActor.run {
-                        guard let self else { return }
-                        self.finish(.failure(OperationError.timeout(
-                            operation: "CaptureOutput.waitForImage",
-                            duration: 3.0)))
-                    }
-                }
-            }
-        } onCancel: { [weak self] in
-            Task.detached { @MainActor [weak self] in
-                guard let self else { return }
-                self.pendingCancellation = true
-                self.finish(.failure(CancellationError()))
-            }
-        }
-    }
-
-    /// Feed new screen samples into the pending continuation, delivering captured frames.
-    nonisolated func stream(
-        _ stream: SCStream,
-        didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
-        of type: SCStreamOutputType)
-    {
-        guard type == .screen else { return }
-
-        guard let imageBuffer = sampleBuffer.imageBuffer else {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.finish(.failure(OperationError.captureFailed(reason: "No image buffer in sample")))
-            }
-            return
-        }
-
-        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.finish(.failure(OperationError.captureFailed(
-                    reason: "Failed to create CGImage from buffer")))
-            }
-            return
-        }
-
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.finish(.success(cgImage))
-        }
-    }
-}
-
-extension CaptureOutput: SCStreamOutput {}
-
-extension CaptureOutput: SCStreamDelegate {
-    nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.finish(.failure(error))
-        }
-    }
-}
-
-#if DEBUG
-extension CaptureOutput {
-    /// Test-only hook to inject the continuation used by `waitForImage()`.
-    @MainActor
-    func injectContinuation(_ cont: CheckedContinuation<CGImage, any Error>) {
-        self.setContinuation(cont)
-    }
-
-    /// Test-only hook to drive completion of the continuation.
-    @MainActor
-    func injectFinish(_ result: Result<CGImage, any Error>) {
-        self.finish(result)
-    }
-}
-#endif
-
-// MARK: - Extensions
-
-extension CGImage {
-    func pngData() throws -> Data {
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data,
-            UTType.png.identifier as CFString,
-            1,
-            nil) else {
-            throw OperationError.captureFailed(reason: "Failed to create PNG destination")
-        }
-        CGImageDestinationAddImage(destination, self, nil)
-        guard CGImageDestinationFinalize(destination) else {
-            throw OperationError.captureFailed(reason: "Failed to finalize PNG data")
-        }
-        return data as Data
-    }
-}

@@ -599,8 +599,8 @@ enum MenuServiceBridge {
     static func isMenuExtraMenuOpen(
         menu: any MenuServiceProtocol,
         title: String,
-        ownerPID: pid_t?) async throws -> Bool
-    {
+        ownerPID: pid_t?
+    ) async throws -> Bool {
         try await Task { @MainActor in
             try await menu.isMenuExtraMenuOpen(title: title, ownerPID: ownerPID)
         }.value

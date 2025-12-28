@@ -299,7 +299,8 @@ extension MenuCommand {
                 let verification: MenuBarClickVerification?
                 if self.verify {
                     guard let verifyTarget else {
-                        throw PeekabooError.operationError(message: "Menu extra verification requested but no target resolved")
+                        throw PeekabooError
+                            .operationError(message: "Menu extra verification requested but no target resolved")
                     }
                     verification = try await verifier.verifyClick(
                         target: verifyTarget,

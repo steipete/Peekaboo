@@ -23,7 +23,7 @@ struct CaptureEndToEndTests {
 
     @Test("live uses temp output when no path provided")
     func liveTempPath() async throws {
-        var cmd = CaptureLiveCommand()
+        let cmd = CaptureLiveCommand()
         let url = try cmd.resolveOutputDirectory()
         #expect(url.path.contains("capture-sessions"))
     }

@@ -36,7 +36,7 @@ struct EnhancedErrorIntegrationTests {
         )
 
         // Check that error was displayed with details
-        let events = await delegate.getEvents()
+        let events = delegate.getEvents()
         let errorEvent = events.first { event in
             if case let .toolCallCompleted(name, result) = event,
                name == "shell" {
@@ -68,7 +68,7 @@ struct EnhancedErrorIntegrationTests {
             eventDelegate: delegate
         )
 
-        let events = await delegate.getEvents()
+        let events = delegate.getEvents()
         let errorEvent = events.first { event in
             if case let .toolCallCompleted(name, result) = event,
                name == "launch_app" {
@@ -100,7 +100,7 @@ struct EnhancedErrorIntegrationTests {
             eventDelegate: delegate
         )
 
-        let events = await delegate.getEvents()
+        let events = delegate.getEvents()
         let hasSeeSuggestion = events.contains { event in
             if case let .toolCallCompleted(_, result) = event {
                 return result.contains("Use 'see' tool first") ||
@@ -132,7 +132,7 @@ struct EnhancedErrorIntegrationTests {
             eventDelegate: delegate
         )
 
-        let events = await delegate.getEvents()
+        let events = delegate.getEvents()
         let hasFocusError = events.contains { event in
             if case let .toolCallCompleted(name, result) = event,
                name == "type" {
@@ -166,7 +166,7 @@ struct EnhancedErrorIntegrationTests {
             eventDelegate: delegate
         )
 
-        let events = await delegate.getEvents()
+        let events = delegate.getEvents()
         let hasFormatError = events.contains { event in
             if case let .toolCallCompleted(name, result) = event,
                name == "hotkey" {

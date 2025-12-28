@@ -62,7 +62,7 @@ enum MenuBarPopoverSelector {
         preferredOwnerName: String?,
         preferredX: CGFloat?
     ) -> MenuBarPopoverCandidate? {
-        rankCandidates(
+        self.rankCandidates(
             candidates: candidates,
             windowInfoById: windowInfoById,
             preferredOwnerName: preferredOwnerName,

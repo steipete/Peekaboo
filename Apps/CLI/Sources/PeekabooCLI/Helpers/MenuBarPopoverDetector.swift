@@ -48,7 +48,7 @@ enum MenuBarPopoverDetector {
 
             if bounds.width < 40 || bounds.height < 40 { continue }
 
-            let screen = screenContainingWindow(bounds: bounds, screens: screens)
+            let screen = self.screenContainingWindow(bounds: bounds, screens: screens)
             let menuBarHeight = menuBarHeight(for: screen)
             if layer == 24 || layer == 25, bounds.height <= menuBarHeight + 4 { continue }
 
@@ -56,7 +56,7 @@ enum MenuBarPopoverDetector {
                 let maxHeight = screen.frame.height * 0.8
                 if bounds.height > maxHeight { continue }
 
-                if !isNearMenuBar(bounds: bounds, screen: screen, menuBarHeight: menuBarHeight) { continue }
+                if !self.isNearMenuBar(bounds: bounds, screen: screen, menuBarHeight: menuBarHeight) { continue }
             }
 
             candidates.append(

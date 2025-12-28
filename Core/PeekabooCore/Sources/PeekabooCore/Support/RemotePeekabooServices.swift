@@ -256,7 +256,7 @@ public final class RemoteMenuService: MenuServiceProtocol {
     }
 
     public func isMenuExtraMenuOpen(title: String, ownerPID: pid_t?) async throws -> Bool {
-        (try await self.menuExtraOpenMenuFrame(title: title, ownerPID: ownerPID)) != nil
+        try await (self.menuExtraOpenMenuFrame(title: title, ownerPID: ownerPID)) != nil
     }
 
     public func menuExtraOpenMenuFrame(title: String, ownerPID: pid_t?) async throws -> CGRect? {
