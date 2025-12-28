@@ -246,6 +246,10 @@ public final class RemoteMenuService: MenuServiceProtocol {
         try await self.client.clickMenuExtra(title: title)
     }
 
+    public func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool {
+        false
+    }
+
     public func listMenuExtras() async throws -> [MenuExtraInfo] {
         try await self.client.listMenuExtras()
     }

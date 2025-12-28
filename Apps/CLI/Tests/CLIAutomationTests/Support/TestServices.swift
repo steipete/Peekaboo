@@ -913,6 +913,10 @@ final class StubMenuService: MenuServiceProtocol {
         self.clickExtraCalls.append(title)
     }
 
+    func isMenuExtraMenuOpen(title: String, ownerPID _: pid_t?) async throws -> Bool {
+        self.menuExtras.contains(where: { $0.title == title })
+    }
+
     func listMenuExtras() async throws -> [MenuExtraInfo] {
         self.menuExtras
     }

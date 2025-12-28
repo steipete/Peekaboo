@@ -78,3 +78,19 @@ func sanitizedMenuText(_ value: String?) -> String? {
     guard let targetNormalized else { return false }
     return candidateNormalized.contains(targetNormalized)
 }
+
+@_spi(Testing) public func menuTitleCandidatesContainNormalized(
+    _ candidates: [String?],
+    normalizedTarget: String) -> Bool
+{
+    let target = normalizedTarget.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !target.isEmpty else { return false }
+
+    for candidate in candidates {
+        guard let candidateNormalized = normalizedMenuTitle(candidate) else { continue }
+        if candidateNormalized.contains(target) {
+            return true
+        }
+    }
+    return false
+}

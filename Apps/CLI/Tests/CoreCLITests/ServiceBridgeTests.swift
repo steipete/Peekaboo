@@ -206,6 +206,7 @@ final class MockMenuService: MenuServiceProtocol {
     func clickMenuItem(app _: String, itemPath _: String) async throws {}
     func clickMenuItemByName(app _: String, itemName _: String) async throws {}
     func clickMenuExtra(title _: String) async throws {}
+    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool { false }
     func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
     func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { self.barItems }
     func clickMenuBarItem(named _: String) async throws -> PeekabooCore.ClickResult { .init(

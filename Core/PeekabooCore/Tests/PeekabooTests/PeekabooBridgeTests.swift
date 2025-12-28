@@ -538,6 +538,7 @@ private final class UnimplementedMenuService: MenuServiceProtocol {
     }
 
     func clickMenuExtra(title _: String) async throws { throw PeekabooError.notImplemented("stub") }
+    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool { false }
     func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
     func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { [] }
     func clickMenuBarItem(named _: String) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }

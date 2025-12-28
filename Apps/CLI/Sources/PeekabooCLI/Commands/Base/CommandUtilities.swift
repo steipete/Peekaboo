@@ -590,6 +590,16 @@ enum MenuServiceBridge {
         }.value
     }
 
+    static func isMenuExtraMenuOpen(
+        menu: any MenuServiceProtocol,
+        title: String,
+        ownerPID: pid_t?) async throws -> Bool
+    {
+        try await Task { @MainActor in
+            try await menu.isMenuExtraMenuOpen(title: title, ownerPID: ownerPID)
+        }.value
+    }
+
     static func listMenuBarItems(menu: any MenuServiceProtocol, includeRaw: Bool = false) async throws
     -> [MenuBarItemInfo] {
         try await Task { @MainActor in

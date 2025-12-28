@@ -262,12 +262,32 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             }
         }
 
+        if let windowId = await self.waitForOwnerWindow(
+            ownerPID: target.ownerPID,
+            expectedTitle: target.title,
+            timeout: timeout)
+        {
+            return MenuBarClickVerification(verified: true, method: "owner_pid_window", windowId: windowId)
+        }
+
         if let expectedTitle = target.title, !expectedTitle.isEmpty {
-            if let candidate = try await self.waitForPopoverByOCR(
-                expectedTitle: expectedTitle,
-                timeout: timeout
-            ) {
-                return MenuBarClickVerification(verified: true, method: "ocr", windowId: candidate.windowId)
+            if ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_AX_VERIFY"] == "1" {
+                if await self.waitForMenuExtraMenuOpen(
+                    expectedTitle: expectedTitle,
+                    ownerPID: target.ownerPID,
+                    timeout: timeout)
+                {
+                    return MenuBarClickVerification(verified: true, method: "ax_menu", windowId: nil)
+                }
+            }
+
+            if ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_OCR_VERIFY"] == "1" {
+                if let candidate = try await self.waitForPopoverByOCR(
+                    expectedTitle: expectedTitle,
+                    timeout: timeout
+                ) {
+                    return MenuBarClickVerification(verified: true, method: "ocr", windowId: candidate.windowId)
+                }
             }
         }
 
@@ -309,6 +329,51 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         return nil
     }
 
+    private func waitForMenuExtraMenuOpen(
+        expectedTitle: String,
+        ownerPID: pid_t?,
+        timeout: TimeInterval) async -> Bool
+    {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let axVerified = try? await MenuServiceBridge.isMenuExtraMenuOpen(
+                menu: self.services.menu,
+                title: expectedTitle,
+                ownerPID: ownerPID),
+               axVerified
+            {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return false
+    }
+
+    private func waitForOwnerWindow(
+        ownerPID: pid_t?,
+        expectedTitle: String?,
+        timeout: TimeInterval) async -> Int?
+    {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let ownerPID {
+                let windowIds = self.windowIDsForPID(ownerPID: ownerPID)
+                if let windowId = windowIds.first {
+                    return windowId
+                }
+            }
+
+            if let expectedTitle, !expectedTitle.isEmpty {
+                let windowIds = self.windowIDsForOwnerName(expectedTitle)
+                if let windowId = windowIds.first {
+                    return windowId
+                }
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return nil
+    }
+
     private func waitForPopoverByOCR(
         expectedTitle: String,
         timeout: TimeInterval
@@ -332,57 +397,81 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     private func findMenuBarPopoverCandidates(ownerPID: pid_t?) -> [MenuBarPopoverCandidate] {
         guard let windowList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
+            [.optionAll, .excludeDesktopElements],
             kCGNullWindowID
         ) as? [[String: Any]] else {
             return []
         }
 
-        var candidates: [MenuBarPopoverCandidate] = []
-
-        for windowInfo in windowList {
-            guard let bounds = self.windowBounds(from: windowInfo) else { continue }
-            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
-            if windowId == 0 { continue }
-
-            let ownerPIDValue = windowInfo[kCGWindowOwnerPID as String] as? pid_t ?? -1
-            if let ownerPID, ownerPIDValue != ownerPID { continue }
-
-            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
-            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
-            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
-            if !isOnScreen || alpha < 0.05 { continue }
-
-            let ownerName = windowInfo[kCGWindowOwnerName as String] as? String ?? "Unknown"
-            let title = windowInfo[kCGWindowName as String] as? String ?? ""
-            if ownerName == "Window Server", title == "Menubar" { continue }
-
-            if bounds.width < 40 || bounds.height < 40 { continue }
-
-            let screen = self.screenContainingWindow(bounds: bounds) ??
-                NSScreen.main ??
-                NSScreen.screens.first
-            let menuBarHeight = self.menuBarHeight(for: screen)
-            if (layer == 24 || layer == 25), bounds.height <= menuBarHeight + 4 { continue }
-
-            if let screen {
-                let maxHeight = screen.frame.height * 0.8
-                if bounds.height > maxHeight { continue }
-
-                let menuBarY = screen.visibleFrame.maxY
-                if bounds.maxY < menuBarY - 8 { continue }
-            }
-
-            candidates.append(
-                MenuBarPopoverCandidate(
-                    windowId: windowId,
-                    ownerPID: ownerPIDValue,
-                    bounds: bounds
-                )
+        let screens = NSScreen.screens.map { screen in
+            MenuBarPopoverDetector.ScreenBounds(
+                frame: screen.frame,
+                visibleFrame: screen.visibleFrame
             )
         }
 
-        return candidates
+        return MenuBarPopoverDetector.candidates(
+            windowList: windowList,
+            screens: screens,
+            ownerPID: ownerPID
+        )
+    }
+
+    private func windowIDsForPID(ownerPID: pid_t) -> [Int] {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return []
+        }
+
+        var ids: [Int] = []
+        for windowInfo in windowList {
+            let pid: pid_t = {
+                if let number = windowInfo[kCGWindowOwnerPID as String] as? NSNumber {
+                    return pid_t(number.intValue)
+                }
+                if let intValue = windowInfo[kCGWindowOwnerPID as String] as? Int {
+                    return pid_t(intValue)
+                }
+                return -1
+            }()
+            guard pid == ownerPID else { continue }
+            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+            if !isOnScreen || alpha < 0.05 { continue }
+            if layer != 0 { continue }
+            if let windowId = windowInfo[kCGWindowNumber as String] as? Int {
+                ids.append(windowId)
+            }
+        }
+        return ids
+    }
+
+    private func windowIDsForOwnerName(_ name: String) -> [Int] {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionAll, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return []
+        }
+
+        let normalized = name.lowercased()
+        var ids: [Int] = []
+        for windowInfo in windowList {
+            guard let ownerName = windowInfo[kCGWindowOwnerName as String] as? String else { continue }
+            if !ownerName.lowercased().contains(normalized) { continue }
+            let isOnScreen = windowInfo[kCGWindowIsOnscreen as String] as? Bool ?? true
+            let alpha = windowInfo[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+            let layer = windowInfo[kCGWindowLayer as String] as? Int ?? 0
+            if !isOnScreen || alpha < 0.05 { continue }
+            if layer != 0 { continue }
+            if let windowId = windowInfo[kCGWindowNumber as String] as? Int {
+                ids.append(windowId)
+            }
+        }
+        return ids
     }
 
     private func captureWindow(windowId: Int) async throws -> CaptureResult {
@@ -391,44 +480,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         }.value
     }
 
-    private func windowBounds(from windowInfo: [String: Any]) -> CGRect? {
-        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-              let x = boundsDict["X"] as? CGFloat,
-              let y = boundsDict["Y"] as? CGFloat,
-              let width = boundsDict["Width"] as? CGFloat,
-              let height = boundsDict["Height"] as? CGFloat
-        else {
-            return nil
-        }
-        return CGRect(x: x, y: y, width: width, height: height)
-    }
-
-    private func menuBarHeight(for screen: NSScreen?) -> CGFloat {
-        guard let screen else { return 24.0 }
-        let height = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
-        return height > 0 ? height : 24.0
-    }
-
-    private func screenContainingWindow(bounds: CGRect) -> NSScreen? {
-        let screens = NSScreen.screens
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        if let screen = screens.first(where: { $0.frame.contains(center) }) {
-            return screen
-        }
-
-        var bestScreen: NSScreen?
-        var maxOverlap: CGFloat = 0
-        for screen in screens {
-            let intersection = screen.frame.intersection(bounds)
-            let overlapArea = intersection.width * intersection.height
-            if overlapArea > maxOverlap {
-                maxOverlap = overlapArea
-                bestScreen = screen
-            }
-        }
-
-        return bestScreen
-    }
 }
 
 // MARK: - JSON Output Types
@@ -472,12 +523,6 @@ private struct MenuBarClickVerification {
     let verified: Bool
     let method: String
     let windowId: Int?
-}
-
-private struct MenuBarPopoverCandidate {
-    let windowId: Int
-    let ownerPID: pid_t
-    let bounds: CGRect
 }
 
 private struct JSONErrorOutput: Codable {

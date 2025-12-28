@@ -27,7 +27,7 @@ read_when:
 - The command name is `menubar` (no hyphen). Commander enforces `list`/`click` as the only valid actions.
 - Listing uses `MenuServiceBridge.listMenuBarItems`, and verbose mode prints extra diagnostics (owner name, hidden state). JSON mode always includes the raw title, bundle ID, owner name, identifier, visibility, and description.
 - Clicking resolves either `--index` or item text (case-insensitive). When an item isn’t found, text mode prints troubleshooting hints; JSON mode surfaces `MENU_ITEM_NOT_FOUND`.
-- `--verify` waits briefly for a popover window attached to the menu bar; if the PID is missing, it falls back to OCR of the popover window (screen recording permission required for OCR).
+- `--verify` waits briefly for a popover owned by the same PID, then falls back to any visible window from the same PID (layer 0). Optional AX and OCR checks are available via `PEEKABOO_MENUBAR_AX_VERIFY=1` and `PEEKABOO_MENUBAR_OCR_VERIFY=1` (OCR requires Screen Recording permission).
 - Coordinate data (if available) is recorded in the click result so you can correlate where on screen the interaction happened.
 
 ## Examples
