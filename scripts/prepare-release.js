@@ -793,7 +793,7 @@ function buildAndVerifyPackage() {
   const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'));
   const version = packageJson.version;
   
-  if (!version.match(/^\d+\.\d+\.\d+(-\w+\.\d+)?$/)) {
+  if (!version.match(/^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$/)) {
     logError(`Invalid version format: ${version}`);
     return false;
   }
