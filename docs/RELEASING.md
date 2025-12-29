@@ -54,6 +54,18 @@ Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates a
 - [ ] Update `appcast.xml` (repo root) with a new `<item>` pointing at the GitHub Release asset URL, using the **exact** `length` and `sparkle:edSignature` from `sign_update`.
 - [ ] Verify with an installed previous build: Settings → About → “Check for Updates…” installs the new build.
 
+## 3c) App bundles for GitHub release (Peekaboo + Playground only)
+- [ ] Build **warning-free** Release apps:
+  - `./runner xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Peekaboo -configuration Release -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/peekaboo-release-dd build`
+  - `./runner xcodebuild -workspace Apps/Peekaboo.xcworkspace -scheme Playground -configuration Release -destination "platform=macOS,arch=arm64" -derivedDataPath /tmp/peekaboo-release-dd build`
+- [ ] Launch smoke (optional but preferred): `open -n /tmp/peekaboo-release-dd/Build/Products/Release/Peekaboo.app` and `open -n /tmp/peekaboo-release-dd/Build/Products/Release/Playground.app`, then quit both.
+- [ ] Zip **each app separately** (resource forks preserved):
+  - `ditto -c -k --sequesterRsrc --keepParent /tmp/peekaboo-release-dd/Build/Products/Release/Peekaboo.app release/Peekaboo.app.zip`
+  - `ditto -c -k --sequesterRsrc --keepParent /tmp/peekaboo-release-dd/Build/Products/Release/Playground.app release/Playground.app.zip`
+- [ ] Update checksums to include app zips:
+  - `cd release && shasum -a 256 peekaboo-macos-universal.tar.gz steipete-peekaboo-<version>.tgz Peekaboo.app.zip Playground.app.zip > checksums.txt`
+- [ ] Upload assets (clobber existing checksums): `gh release upload v<version> release/Peekaboo.app.zip release/Playground.app.zip release/checksums.txt --clobber`
+
 ## 4) Git hygiene
 - [ ] Commit and push submodules first (conventional commits in each subrepo).
 - [ ] Update submodule pointers in the main repo and commit via `./scripts/committer`.
