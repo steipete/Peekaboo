@@ -256,14 +256,26 @@ fi
 # Step 10: Publish to npm (if requested)
 if [ "$PUBLISH_NPM" = true ]; then
     echo -e "\n${BLUE}Publishing to npm...${NC}"
+    NPM_TAG=""
+    if [[ "$VERSION" == *"-"* ]]; then
+        NPM_TAG="beta"
+    fi
     
     # Confirm before publishing
-    echo -e "${YELLOW}About to publish @steipete/peekaboo@${VERSION} to npm${NC}"
+    if [ -n "$NPM_TAG" ]; then
+        echo -e "${YELLOW}About to publish @steipete/peekaboo@${VERSION} to npm (tag: ${NPM_TAG})${NC}"
+    else
+        echo -e "${YELLOW}About to publish @steipete/peekaboo@${VERSION} to npm${NC}"
+    fi
     read -p "Continue? (y/N) " -n 1 -r
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        npm publish "$NPM_PACKAGE_PATH"
+        if [ -n "$NPM_TAG" ]; then
+            npm publish "$NPM_PACKAGE_PATH" --tag "$NPM_TAG"
+        else
+            npm publish "$NPM_PACKAGE_PATH"
+        fi
         echo -e "${GREEN}✅ Published to npm!${NC}"
     else
         echo -e "${YELLOW}Skipped npm publish${NC}"
