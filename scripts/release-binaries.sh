@@ -171,6 +171,7 @@ echo -e "${BLUE}Creating npm package...${NC}"
 cd "$PROJECT_ROOT"
 NPM_PACK_OUTPUT=$(npm pack --pack-destination "$RELEASE_DIR" 2>&1)
 NPM_PACKAGE=$(echo "$NPM_PACK_OUTPUT" | grep -o '[^ ]*\.tgz' | tail -1)
+NPM_PACKAGE_PATH="$RELEASE_DIR/$(basename "$NPM_PACKAGE")"
 
 if [ -z "$NPM_PACKAGE" ]; then
     echo -e "${RED}❌ Failed to create npm package${NC}"
@@ -245,7 +246,7 @@ if [ "$CREATE_GITHUB_RELEASE" = true ]; then
         --title "v${VERSION}" \
         --notes-file "$RELEASE_DIR/release-notes.md" \
         "$RELEASE_DIR/$CLI_TARBALL_NAME" \
-        "$RELEASE_DIR/$(basename "$NPM_PACKAGE")" \
+        "$NPM_PACKAGE_PATH" \
         "$RELEASE_DIR/checksums.txt"
     
     echo -e "${GREEN}✅ GitHub release draft created!${NC}"
@@ -262,7 +263,7 @@ if [ "$PUBLISH_NPM" = true ]; then
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        npm publish
+        npm publish "$NPM_PACKAGE_PATH"
         echo -e "${GREEN}✅ Published to npm!${NC}"
     else
         echo -e "${YELLOW}Skipped npm publish${NC}"
