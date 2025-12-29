@@ -10,6 +10,8 @@ read_when:
 > **Runner note:** From the repo root run everything through `./runner …` unless a step says otherwise. For long Swift builds/tests, use tmux as documented in AGENTS.
 >
 > **No-warning policy:** Lint/format/build/test steps must finish cleanly (no SwiftLint/SwiftFormat warnings, no pnpm warnings). Fix issues before moving on.
+>
+> **Release policy (betas):** Beta versions are **normal GitHub releases** (not prereleases) and **npm `latest`** must always point at the newest beta. Only use prerelease flags for truly experimental builds that should not be the default.
 
 **Scope:** Main Peekaboo repo plus submodules `/AXorcist`, `/Commander`, `/Tachikoma`, `/TauTUI`. Each has its own `CHANGELOG.md` and must be released in lock-step.
 
@@ -61,11 +63,12 @@ Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates a
 ## 5) Tag & publish
 - [ ] Tag the release: `git tag v<version>` then `git push --tags`.
 - [ ] Publish npm if the release script didn’t: `pnpm publish --tag latest`.
-- [ ] Create GitHub release: upload macOS binaries/tarballs + checksum, and include release notes with Highlights + SHA256.
+- [ ] Ensure npm points `latest` at the new beta: `npm dist-tag add @steipete/peekaboo@<version> latest`.
+- [ ] Create GitHub release **without** prerelease flag; upload macOS binaries/tarballs + checksum, and include release notes with Highlights + SHA256.
 
 ## 6) Post-publish verification
 - [ ] `polter peekaboo --version` to confirm the stamped build date matches the new tag.
-- [ ] `npm view peekaboo version` to ensure the registry shows the new version.
+- [ ] `npm view @steipete/peekaboo dist-tags` to ensure `latest` matches the new beta.
 - [ ] Homebrew tap: update `steipete/homebrew-tap` formula for Peekaboo with new URL + SHA256, commit, push, then `brew install steipete/tap/peekaboo && peekaboo --version`.
 - [ ] Fresh-temp smoke: `rm -rf /tmp/peekaboo-empty && mkdir /tmp/peekaboo-empty && cd /tmp/peekaboo-empty && npx peekaboo@<version> --help` (no runner; outside repo). Ensure CLI/help prints and exits 0.
 
