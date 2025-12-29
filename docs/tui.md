@@ -32,7 +32,7 @@ Provides rich formatting with improved typography:
 - Contextual progress information
 
 ```
-👻 Peekaboo Agent v3.0.0-beta2 using Claude Opus 4.5 (main/abc123, 2025-01-30)
+👻 Peekaboo Agent v3.0.0-beta3 using Claude Opus 4.5 (main/abc123, 2025-01-30)
 
 👁 see screen ✅ Captured screen (dialog detected, 5 elements) (1.2s)
 🖱 click 'OK' ✅ Clicked 'OK' in dialog (0.8s)
