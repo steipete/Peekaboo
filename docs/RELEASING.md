@@ -11,7 +11,7 @@ read_when:
 >
 > **No-warning policy:** Lint/format/build/test steps must finish cleanly (no SwiftLint/SwiftFormat warnings, no pnpm warnings). Fix issues before moving on.
 >
-> **Release policy (betas):** Beta versions are **normal GitHub releases** (not prereleases) and **npm `latest`** must always point at the newest beta. Only use prerelease flags for truly experimental builds that should not be the default.
+> **Release policy (betas):** Beta versions are **normal GitHub releases** (not prereleases) and **npm `latest`** must always point at the newest beta. Only use prerelease flags for truly experimental builds that should not be the default. Release notes must be **only the changelog entries** for that version (no install steps, no extra prose).
 
 **Scope:** Main Peekaboo repo plus submodules `/AXorcist`, `/Commander`, `/Tachikoma`, `/TauTUI`. Each has its own `CHANGELOG.md` and must be released in lock-step.
 
@@ -64,7 +64,7 @@ Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates a
 - [ ] Tag the release: `git tag v<version>` then `git push --tags`.
 - [ ] Publish npm if the release script didn’t: `pnpm publish --tag latest`.
 - [ ] Ensure npm points `latest` at the new beta: `npm dist-tag add @steipete/peekaboo@<version> latest`.
-- [ ] Create GitHub release **without** prerelease flag; upload macOS binaries/tarballs + checksum, and include release notes with Highlights + SHA256.
+- [ ] Create GitHub release **without** prerelease flag; upload macOS binaries/tarballs + checksum, and paste **only** the CHANGELOG section for that version as the release notes.
 
 ## 6) Post-publish verification
 - [ ] `polter peekaboo --version` to confirm the stamped build date matches the new tag.
