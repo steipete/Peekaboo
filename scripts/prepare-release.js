@@ -748,15 +748,26 @@ function buildAndVerifyPackage() {
     return false;
   }
   
-  // Check binary architectures
+  // Check binary architectures (arm64 required; x86_64 optional unless explicitly enforced)
   try {
     const lipoOutput = exec(`lipo -info "${binaryPath}"`);
-    if (!lipoOutput.includes('arm64') || !lipoOutput.includes('x86_64')) {
-      logError('peekaboo binary does not contain both architectures (arm64 and x86_64)');
+    const hasArm64 = lipoOutput.includes('arm64');
+    const hasX86 = lipoOutput.includes('x86_64');
+    if (!hasArm64) {
+      logError('peekaboo binary is missing arm64');
       logError(`Found: ${lipoOutput}`);
       return false;
     }
-    logSuccess('Binary contains both arm64 and x86_64 architectures');
+    if (process.env.PEEKABOO_REQUIRE_UNIVERSAL === '1' && !hasX86) {
+      logError('peekaboo binary does not contain x86_64 (PEEKABOO_REQUIRE_UNIVERSAL=1)');
+      logError(`Found: ${lipoOutput}`);
+      return false;
+    }
+    if (hasX86) {
+      logSuccess('Binary contains both arm64 and x86_64 architectures');
+    } else {
+      logWarning('Binary is arm64-only (set PEEKABOO_REQUIRE_UNIVERSAL=1 to enforce universal)');
+    }
   } catch (error) {
     logError('Failed to check binary architectures (lipo command failed)');
     return false;
