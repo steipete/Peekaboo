@@ -2,30 +2,32 @@
 
 ## [Unreleased]
 
+## [3.0.0-beta3] - 2025-12-29
+
+### Highlights
+- Headless daemon + window tracking: `peekaboo daemon start|stop|status`, MCP auto-daemon mode, in-memory snapshots, and move-aware click/type adjustments.
+- Menu bar automation overhaul: CGWindow + AX fallback for menu extras (including Trimmy), `menubar click --verify` + `menu click-extra --verify` with popover/focus/OCR checks, and `see --menubar` popover capture via window list + OCR.
+- Screen/area capture pipeline now uses a persistent ScreenCaptureKit fast stream (frame-age + wait timing logs) with single-shot fallback for windows.
+
 ### Added
-- `peekaboo clipboard` now supports `--verify` to read back clipboard writes after `set`/`load`.
-- `peekaboo see --menubar` captures active menu bar popovers via window list + OCR, tries opening the specified menu extra when `--app` is set, and falls back to OCR-only menu bar captures when no popover window is detected.
-- `peekaboo menubar click --verify` validates menu bar clicks by popover owner PID or any visible owner window (OCR fallback enabled by default; AX checks opt-in).
-- `peekaboo menubar click --verify` now also detects focused-window changes when a menu bar app opens a settings window.
+- `peekaboo clipboard --verify` reads back clipboard writes; text writes now publish both `public.plain-text` and `.string` across CLI, MCP tools, paste, and scripts.
 - `peekaboo dock launch --verify`, `peekaboo window focus --verify`, and `peekaboo app switch --verify` add lightweight post-action checks.
-- `peekaboo menu click-extra --verify` adds the same popover/window verification as `menubar click --verify`.
-- AX element detection now caches per-window AX traversals for ~1.5s to reduce repeated `see` thrash.
-- Screen/area captures now default to a persistent ScreenCaptureKit stream and log wait + frame-age timings for profiling.
+- `peekaboo app list` now supports `--include-hidden` and `--include-background`.
+
+### Changed
+- AX element detection now caches per-window traversals for ~1.5s to reduce repeated `see` thrash; window list mapping is now centralized and cached to cut CG/SC re-queries.
+- Menu bar popover selection now prefers owner-name matches and X-position hints; owner-PID filtering relaxes when app hints do not match any candidate.
+- Menu bar screenshot captures now use the real menu bar height derived from each screen’s visible frame.
+- `peekaboo see --menubar` now attempts an OCR area fallback after auto-clicking a menu extra even when open-menu AX state is missing.
 
 ### Fixed
 - Menu bar extras now combine CGWindow data with AX fallbacks to surface third-party items like Trimmy, and clicks target the owning window for reliability.
 - Menu bar extras now hydrate missing owner PIDs from running app metadata to improve open-menu detection.
-- Menu bar popover selection now prefers owner-name matches and X-position hints to avoid mismatched popovers.
 - Menu bar open-menu probing now returns AX menu frames over the bridge to support popover captures.
-- Menu bar screenshot captures now use the real menu bar height derived from the screen’s visible frame.
-- Clipboard text writes now publish both `public.plain-text` and `.string` (`public.utf8-plain-text`) across CLI, MCP tools, paste, and script runs.
-- `peekaboo see --menubar` now attempts an OCR area fallback after auto-clicking a menu extra even when the open-menu AX state is missing.
+- Menu bar verification now detects focused-window changes when a menu bar app opens a settings window.
 - Menu bar click verification now detects popovers in both top-left and bottom-left coordinate systems.
 - Menu bar click verification now requires OCR text to include the target title/owner name when falling back to OCR (set `PEEKABOO_MENUBAR_OCR_VERIFY=0` to disable).
-- Menu bar popover selection now relaxes owner-PID filtering when the app hint doesn't match any candidate, reducing wrong-window OCR captures.
 - Menu bar popover OCR area/frame fallbacks now validate against app hints before accepting a capture.
-
-## [3.0.0-beta3] - Unreleased
 
 ## [3.0.0-beta2] - 2025-12-19
 
