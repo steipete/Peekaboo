@@ -94,6 +94,14 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     let cornerRadius: CGFloat
     let content: Content
 
+    final class Coordinator {
+        var hostingView: NSHostingView<Content>?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSGlassEffectView {
         let glassView = NSGlassEffectView()
         glassView.cornerRadius = self.cornerRadius
@@ -101,14 +109,23 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
 
         let hostingView = NSHostingView(rootView: content)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
-        glassView.contentView = hostingView
+        context.coordinator.hostingView = hostingView
 
         if let contentView = glassView.contentView {
+            contentView.addSubview(hostingView)
             NSLayoutConstraint.activate([
                 hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                 hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
                 hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            ])
+        } else {
+            glassView.addSubview(hostingView)
+            NSLayoutConstraint.activate([
+                hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
+                hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
+                hostingView.topAnchor.constraint(equalTo: glassView.topAnchor),
+                hostingView.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
             ])
         }
 
@@ -118,10 +135,7 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     func updateNSView(_ nsView: NSGlassEffectView, context: Context) {
         nsView.cornerRadius = self.cornerRadius
         nsView.style = self.style.glassStyle
-
-        if let hostingView = nsView.contentView as? NSHostingView<Content> {
-            hostingView.rootView = self.content
-        }
+        context.coordinator.hostingView?.rootView = self.content
     }
 }
 

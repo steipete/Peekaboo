@@ -29,6 +29,14 @@ struct GlassEffectView<Content: View>: NSViewRepresentable {
         self.content = content()
     }
 
+    final class Coordinator {
+        var hostingView: NSHostingView<Content>?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSGlassEffectView {
         let glassView = NSGlassEffectView()
         glassView.cornerRadius = self.cornerRadius
@@ -43,14 +51,23 @@ struct GlassEffectView<Content: View>: NSViewRepresentable {
 
         let hostingView = NSHostingView(rootView: content)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
-        glassView.contentView = hostingView
+        context.coordinator.hostingView = hostingView
 
         if let contentView = glassView.contentView {
+            contentView.addSubview(hostingView)
             NSLayoutConstraint.activate([
                 hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                 hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
                 hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            ])
+        } else {
+            glassView.addSubview(hostingView)
+            NSLayoutConstraint.activate([
+                hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
+                hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
+                hostingView.topAnchor.constraint(equalTo: glassView.topAnchor),
+                hostingView.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
             ])
         }
 
@@ -65,9 +82,7 @@ struct GlassEffectView<Content: View>: NSViewRepresentable {
             nsView.style = style
         }
 
-        if let hostingView = nsView.contentView as? NSHostingView<Content> {
-            hostingView.rootView = self.content
-        }
+        context.coordinator.hostingView?.rootView = self.content
     }
 }
 
@@ -86,20 +101,37 @@ struct GlassEffectContainer<Content: View>: NSViewRepresentable {
         self.content = content()
     }
 
+    final class Coordinator {
+        var hostingView: NSHostingView<Content>?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSGlassEffectContainerView {
         let container = NSGlassEffectContainerView()
         container.spacing = self.spacing
 
         let hostingView = NSHostingView(rootView: content)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
-        container.contentView = hostingView
+        context.coordinator.hostingView = hostingView
 
         if let contentView = container.contentView {
+            contentView.addSubview(hostingView)
             NSLayoutConstraint.activate([
                 hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                 hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
                 hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            ])
+        } else {
+            container.addSubview(hostingView)
+            NSLayoutConstraint.activate([
+                hostingView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                hostingView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                hostingView.topAnchor.constraint(equalTo: container.topAnchor),
+                hostingView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             ])
         }
 
@@ -109,9 +141,7 @@ struct GlassEffectContainer<Content: View>: NSViewRepresentable {
     func updateNSView(_ nsView: NSGlassEffectContainerView, context: Context) {
         nsView.spacing = self.spacing
 
-        if let hostingView = nsView.contentView as? NSHostingView<Content> {
-            hostingView.rootView = self.content
-        }
+        context.coordinator.hostingView?.rootView = self.content
     }
 }
 
