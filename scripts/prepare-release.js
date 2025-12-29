@@ -682,8 +682,12 @@ function checkRequiredFields() {
 function buildAndVerifyPackage() {
   logStep('Build and Package Verification');
 
-  // Build arm64 Swift binary (stamps Info.plist and writes ./peekaboo)
-  if (!execWithOutput('./scripts/build-swift-arm.sh', 'Swift arm64 build')) {
+  const requireUniversal = process.env.PEEKABOO_REQUIRE_UNIVERSAL === '1';
+  const buildScript = requireUniversal ? './scripts/build-swift-universal.sh' : './scripts/build-swift-arm.sh';
+  const buildLabel = requireUniversal ? 'Swift universal build' : 'Swift arm64 build';
+
+  // Build Swift binary (stamps Info.plist and writes ./peekaboo)
+  if (!execWithOutput(buildScript, buildLabel)) {
     logError('Swift build failed');
     return false;
   }
