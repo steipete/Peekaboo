@@ -2,7 +2,7 @@
 set -e
 
 # Release script for Peekaboo binaries
-# Default: arm64-only. Use --universal for a fat binary.
+# Default: universal (arm64+x86_64). Use --arm64-only to skip Intel.
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -23,7 +23,7 @@ echo -e "${BLUE}🚀 Peekaboo Release Build Script${NC}"
 SKIP_CHECKS=false
 CREATE_GITHUB_RELEASE=false
 PUBLISH_NPM=false
-UNIVERSAL=false
+UNIVERSAL=true
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -39,6 +39,10 @@ while [[ $# -gt 0 ]]; do
             PUBLISH_NPM=true
             shift
             ;;
+        --arm64-only)
+            UNIVERSAL=false
+            shift
+            ;;
         --universal)
             UNIVERSAL=true
             shift
@@ -49,7 +53,8 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-checks          Skip pre-release checks"
             echo "  --create-github-release Create draft GitHub release"
             echo "  --publish-npm          Publish to npm after building"
-            echo "  --universal            Build universal (arm64+x86_64) binary"
+            echo "  --arm64-only           Build arm64-only binary"
+            echo "  --universal            Build universal (arm64+x86_64) binary (default)"
             echo "  --help                 Show this help message"
             exit 0
             ;;
@@ -64,7 +69,12 @@ done
 if [ "$SKIP_CHECKS" = false ]; then
     echo -e "\n${BLUE}Running pre-release checks...${NC}"
     # `prepare-release` is intentionally not runner-wrapped here: it can exceed runner timeouts.
-    if ! node scripts/prepare-release.js; then
+    if [ "$UNIVERSAL" = true ]; then
+        PREP_ENV="PEEKABOO_REQUIRE_UNIVERSAL=1"
+    else
+        PREP_ENV=""
+    fi
+    if ! env $PREP_ENV node scripts/prepare-release.js; then
         echo -e "${RED}❌ Pre-release checks failed!${NC}"
         exit 1
     fi

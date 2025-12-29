@@ -35,7 +35,7 @@ read_when:
 
 ## 3) Release artifacts
 - [ ] `pnpm run prepare-release` (validates versions, changelog, and Swift/TS entry points).
-- [ ] `./scripts/release-binaries.sh --create-github-release --publish-npm` (Default: arm64-only binary + npm package; use `--universal` only if you really need Intel support).
+- [ ] `./scripts/release-binaries.sh --create-github-release --publish-npm` (Default: universal arm64+x86_64 binary + npm package; use `--arm64-only` to skip Intel support).
 - [ ] Verify `dist/` outputs and the generated checksum files.
 - [ ] `npm pack --dry-run` to inspect the npm tarball if release scripts changed.
 

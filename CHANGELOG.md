@@ -13,6 +13,7 @@
 - `peekaboo clipboard --verify` reads back clipboard writes; text writes now publish both `public.plain-text` and `.string` across CLI, MCP tools, paste, and scripts.
 - `peekaboo dock launch --verify`, `peekaboo window focus --verify`, and `peekaboo app switch --verify` add lightweight post-action checks.
 - `peekaboo app list` now supports `--include-hidden` and `--include-background`.
+- Release artifacts now ship a universal macOS CLI binary (arm64 + x86_64).
 
 ### Changed
 - AX element detection now caches per-window traversals for ~1.5s to reduce repeated `see` thrash; window list mapping is now centralized and cached to cut CG/SC re-queries.
