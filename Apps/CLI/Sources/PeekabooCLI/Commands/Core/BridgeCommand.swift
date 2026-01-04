@@ -17,7 +17,7 @@ struct BridgeCommand: ParsableCommand {
         By default, Peekaboo prefers a remote host when available:
           1) Peekaboo.app
           2) Claude.app
-          3) Clawdbot.app
+          3) ClawdBot.app
           4) Local in-process fallback (caller needs permissions)
 
         Examples:

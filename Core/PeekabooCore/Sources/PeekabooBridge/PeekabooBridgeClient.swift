@@ -774,7 +774,7 @@ public actor PeekabooBridgeClient {
 
             This usually means the host closed the socket before replying \
             (often due to an authorization/TeamID check). \
-            Update Peekaboo.app / Clawdbot.app to a host build that returns a structured `unauthorizedClient` response, \
+            Update Peekaboo.app / ClawdBot.app to a host build that returns a structured `unauthorizedClient` response, \
             or launch the host with PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 for local development.
             """
 
