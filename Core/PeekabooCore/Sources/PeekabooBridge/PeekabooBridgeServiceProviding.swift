@@ -2,7 +2,7 @@ import PeekabooAutomationKit
 
 /// Narrow service surface required by `PeekabooBridgeServer`.
 ///
-/// Bridge hosts (Peekaboo.app, Clawdis.app, or in-process callers) provide concrete
+/// Bridge hosts (Peekaboo.app, Clawdbot.app, or in-process callers) provide concrete
 /// implementations for these services.
 @MainActor
 public protocol PeekabooBridgeServiceProviding: AnyObject, Sendable {

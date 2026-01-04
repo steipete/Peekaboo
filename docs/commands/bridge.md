@@ -1,7 +1,7 @@
 ---
 summary: 'Diagnose Peekaboo Bridge host connectivity via peekaboo bridge'
 read_when:
-  - 'verifying whether the CLI is using Peekaboo.app / Clawdis.app as a Bridge host'
+  - 'verifying whether the CLI is using Peekaboo.app / Clawdbot.app as a Bridge host'
   - 'debugging codesign / TeamID failures for bridge.sock connections'
   - 'checking which socket path Peekaboo is probing'
 ---
@@ -32,12 +32,12 @@ polter peekaboo -- bridge status --verbose --json-output | jq '.data'
 
 # Probe a specific host socket path
 polter peekaboo -- bridge status --bridge-socket \
-  ~/Library/Application\ Support/clawdis/bridge.sock
+  ~/Library/Application\ Support/clawdbot/bridge.sock
 
 # Probe Claude Desktop host socket path (if Claude.app hosts PeekabooBridge)
 polter peekaboo -- bridge status --bridge-socket \
   ~/Library/Application\ Support/Claude/bridge.sock
 
-# Force local (skip Peekaboo.app / Clawdis.app hosts)
+# Force local (skip Peekaboo.app / Clawdbot.app hosts)
 polter peekaboo -- bridge status --no-remote
 ```

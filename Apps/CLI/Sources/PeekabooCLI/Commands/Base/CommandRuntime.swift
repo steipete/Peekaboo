@@ -158,7 +158,7 @@ extension CommandRuntime {
             [
                 PeekabooBridgeConstants.peekabooSocketPath,
                 PeekabooBridgeConstants.claudeSocketPath,
-                PeekabooBridgeConstants.clawdisSocketPath,
+                PeekabooBridgeConstants.clawdbotSocketPath,
             ]
         }
 

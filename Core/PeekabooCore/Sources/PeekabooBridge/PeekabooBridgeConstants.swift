@@ -13,9 +13,9 @@ public enum PeekabooBridgeConstants {
         self.applicationSupportSocketPath(appDirectoryName: "Claude")
     }
 
-    /// Socket hosted by Clawdis.app (fallback host).
-    public static var clawdisSocketPath: String {
-        self.applicationSupportSocketPath(appDirectoryName: "clawdis")
+    /// Socket hosted by Clawdbot.app (fallback host).
+    public static var clawdbotSocketPath: String {
+        self.applicationSupportSocketPath(appDirectoryName: "clawdbot")
     }
 
     /// Current protocol version supported by this build.

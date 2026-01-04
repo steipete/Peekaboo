@@ -33,7 +33,7 @@
 ## [3.0.0-beta2] - 2025-12-19
 
 ### Highlights
-- **Socket-based Peekaboo Bridge**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdis.app) and the CLI connects over a UNIX socket (replacing the v3.0.0-beta1 XPC helper model).
+- **Socket-based Peekaboo Bridge**: privileged automation runs in a long-lived **bridge host** (Peekaboo.app, or another signed host like Clawdbot.app) and the CLI connects over a UNIX socket (replacing the v3.0.0-beta1 XPC helper model).
 - **Snapshots replace sessions**: snapshots live in memory by default, are scoped **per target bundle ID**, and are reused automatically for follow-up actions (agent-friendly; fewer IDs to plumb around).
 - **MCP server-only**: Peekaboo still runs as an MCP server for Claude Desktop/Cursor/etc, but no longer hosts/manages external MCP servers.
 - **Reliability upgrades for “single action” automation**: hard wall-clock timeouts and bounded AX traversal to prevent hangs.
@@ -57,7 +57,7 @@
 - Peekaboo’s macOS app now surfaces About/Updates inside Settings (Sparkle update checks when signed/bundled).
 
 ### Changed
-- Bridge host discovery order is now: **Peekaboo.app → Clawdis.app → local in-process** (no auto-launch).
+- Bridge host discovery order is now: **Peekaboo.app → Clawdbot.app → local in-process** (no auto-launch).
 - Capture defaults favor the classic engine for speed/reliability, with explicit capture-engine flags when you need SCKit behavior.
 - Agent defaults now prefer Claude Opus 4.5 when available, with improved streaming output for supported providers.
 - OpenAI model aliases now map to the latest GPT-5.1 variants for `peekaboo agent`.
