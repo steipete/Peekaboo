@@ -80,5 +80,5 @@ polter peekaboo -- see --app "Google Chrome" --json-output \
 - The `SmartLabelPlacer` generates external label candidates (above/below/sides/corners) for each element, filters out overlaps/out-of-bounds positions, then scores remaining spots via `AcceleratedTextDetector.scoreRegionForLabelPlacement` to prefer calm regions. Internal placements are a last-resort fallback.
 - Edge-aware scoring samples a padded rectangle (6 px halo, clamped to the image) so the chosen region stays clean once text is drawn; above/below placements get slight bonuses to reduce sideways clutter.
 - Preferred orientations nudge horizontally tight elements toward vertical labels when scores tie.
-- Tests: `Apps/CLI/Tests/CoreCLITests/SmartLabelPlacerTests.swift` (run with `./runner swift test --package-path Apps/CLI --filter SmartLabelPlacerTests`).
+- Tests: `Apps/CLI/Tests/CoreCLITests/SmartLabelPlacerTests.swift` (run with `swift test --package-path Apps/CLI --filter SmartLabelPlacerTests`).
 - Manual validation: `polter peekaboo -- see --app Playground --annotate --path /tmp/see.png --json-output` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.

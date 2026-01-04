@@ -21,7 +21,7 @@ read_when:
 | Menu list/click stability | `menu list`/`menu click` still drop into `UNKNOWN_ERROR` / `NotFound` after long sessions or in Calculator. | `MenuDialogLocalHarnessTests` now cover TextEdit/Calculator happy paths *and* the `menuStressLoop` 45 s soak, but the stress loop still runs inline (no tmux) and can’t capture multi-minute drifts. | Move the stress runner into tmux so we can loop for minutes, collect logs/screenshots automatically, and keep probing Calculator/TextEdit until the stale window bug repros deterministically. |
 | `dialog list` via polter | Fresh CLI works, but `polter peekaboo …` still ships the old binary and drops `--window-title`, so TextEdit’s Save sheet can’t be enumerated. | Harness now calls `polter peekaboo -- dialog list --app TextEdit --window-title Save` and asserts the binary timestamp is <10 min old, yet we still aren’t bouncing Poltergeist prior to runs. | Add a harness hook that restarts/rebuilds Poltergeist (or at least checks the build log) before running dialog tests, then port the workflow into tmux so unattended runs can flag stale binaries instantly. |
 | Chrome/login flows | Certain login forms remain invisible to AX/OCR; Chrome location bubble exposes unlabeled buttons. | No tests mention these flows or Chrome permission dialogs. | Create deterministic WebKit test fixture that mimics the web DOM and Chrome permission bubble to drive OCR/AX fallbacks; prioritize image-based hit testing for “Allow/Don’t Allow”. |
-| Mac app StatusBar build | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, `UnifiedActivityFeed.swift` still fail under Swift 6 logger rules. | `StatusBarControllerTests` only instantiate the controller; no logging/formatter assertions. | Add focused unit tests (or SwiftUI previews under test) that compile these files and verify logging helpers; then fix the offending interpolations so `./runner ./scripts/build-mac-debug.sh` goes green. |
+| Mac app StatusBar build | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, `UnifiedActivityFeed.swift` still fail under Swift 6 logger rules. | `StatusBarControllerTests` only instantiate the controller; no logging/formatter assertions. | Add focused unit tests (or SwiftUI previews under test) that compile these files and verify logging helpers; then fix the offending interpolations so `./scripts/build-mac-debug.sh` goes green. |
 | AXObserverManager drift | Xcode workspace pulls a stale AXorcist artifact missing `attachNotification`. | No tests reference `AXObserverManager`, so regressions surface only during mac builds. | Write a minimal test in AXorcist (or PeekabooCore) that instantiates `AXObserverManager`, calls `attachNotification`/`addObserver`, and assert callbacks fire, forcing the workspace to pick up current sources. |
 | SpaceTool/SystemToolFormatter schema | Mac build still blocked after tool/schema rename; formatter still has literal newline separator. | Only metadata tests exist (`MCPSpecificToolTests`); they never instantiate SpaceTool or the formatter. | Add unit tests that feed `ServiceWindowInfo` through SpaceTool and ensure the JSON keys + formatter output align with the new schema; patch formatter to escape separators. |
 | `--force` flag via polter | Wrapper swallows `--force`, `--timeout`, etc., unless user inserts an extra `--`. | No automated coverage for the polter shim. | Introduce integration test (or script) that launches `polter peekaboo -- dialog dismiss --force` and verifies the flag is honored; update docs and wrapper to emit a hard error when CLI flags are passed before the separator. |
@@ -33,7 +33,7 @@ read_when:
 | Menu list/click stability (TextEdit + Calculator) | Still reproducible after long sessions; Calculator click path throws `PeekabooCore.NotFoundError`. | `MenuServiceTests` (stub-only) + `MenuDialogLocalHarnessTests` (`textEditMenuFlow`, `calculatorMenuFlow`, `menuStressLoop`) | Move the new 45 s stress loop into tmux so it can run multi-minute soaks unattended, capture `peekaboo` logs on failure, and keep dumping JSON payloads for Calculator/TextEdit while we chase the stale-window bug. |
 | Dialog list via polter | Runner now enforces the `--` separator, but we lack proof that `polter peekaboo -- dialog list --window-title …` hits the fresh binary and forwards arguments. | `DialogCommandTests`, `dialogDismissForce`, `MenuDialogLocalHarnessTests.textEditDialogListViaPolter` (with timestamp freshness checks) | Add a Poltergeist restart/build verification step (or log scrape) before the harness runs, then stash dialog screenshots/logs so stale binaries or thrown dialogs are obvious without manual repro. |
 | Chrome/login hidden fields & permission bubble | Real Chrome sessions still expose no AX text fields; heuristics only verified via Playground fixtures. | `SeeCommandPlaygroundTests.hiddenFieldsAreDetected`, `ElementLabelResolverTests` | Build a deterministic WebKit/Playground scene that mirrors the secure-login flow plus the Chrome “Allow/Don’t Allow” bubble, then add a `RUN_LOCAL_TESTS` automation that drives Chrome directly and asserts `see` returns the promoted text fields. |
-| Mac StatusBar SwiftUI build blockers | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift` continue to fail `./runner ./scripts/build-mac-debug.sh`. | `StatusBarControllerTests` only instantiate the controller—no coverage for the SwiftUI button style or logging helper. | Finish the Logger/API cleanup in those files and add snapshot/compilation tests (e.g., `StatusBarActionsTests`) so SwiftUI button styles conform to `ButtonStyle` and logging interpolations stay valid. |
+| Mac StatusBar SwiftUI build blockers | `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift` continue to fail `./scripts/build-mac-debug.sh`. | `StatusBarControllerTests` only instantiate the controller—no coverage for the SwiftUI button style or logging helper. | Finish the Logger/API cleanup in those files and add snapshot/compilation tests (e.g., `StatusBarActionsTests`) so SwiftUI button styles conform to `ButtonStyle` and logging interpolations stay valid. |
 | AXObserverManager drift | Workspace build still links against a stale AXorcist artifact missing `attachNotification`. | None | Add an AXorcist unit test (`AXObserverManagerTests`) that instantiates the manager, attaches notifications, and validates callbacks so both SwiftPM and the workspace must ingest the updated sources. |
 | Finder window focus error classification | Fix now maps `FocusError` to `WINDOW_NOT_FOUND`, but there’s no regression test for Finder’s menubar-only state. | `FocusErrorMappingTests` (unit-only) | Add CLI-level coverage (stub service or automation harness) that simulates Finder with no renderable windows and asserts `window focus --app Finder` emits `WINDOW_NOT_FOUND` instead of `INTERNAL_SWIFT_ERROR`. |
 | `SnapshotManager.storeScreenshot` guardrails | Copy/annotation guardrails remain untested. | None | Add tests that exercise relative paths, missing destination directories, and annotated captures so screenshot copying stays safe. |
@@ -44,15 +44,15 @@ read_when:
 ### Execution plan (Nov 13, 2025)
 1. **Menu + dialog automation harness** — The `MenuDialogLocalHarnessTests` suite now launches TextEdit/Calculator via Poltergeist, runs `menuStressLoop` for 45 s, and exercises the TextEdit Save sheet end-to-end. Next step: move those loops into tmux so they can soak for minutes, capture logs/screenshots, and restart automatically on failure.
 2. **Chrome/login fixture** — Once the harness lands, extend the Playground/WebKit scene to mirror the Chrome secure-login flow and permission bubble, then add integration coverage that drives Chrome directly.
-3. **Mac build unblockers** — After the automation harness is in motion, fix the StatusBar SwiftUI files and add the missing AXObserverManager test so `./runner ./scripts/build-mac-debug.sh` goes green again. With the build stable, backfill the screenshot/help/clean/list-windows tests listed above.
+3. **Mac build unblockers** — After the automation harness is in motion, fix the StatusBar SwiftUI files and add the missing AXObserverManager test so `./scripts/build-mac-debug.sh` goes green again. With the build stable, backfill the screenshot/help/clean/list-windows tests listed above.
 
-Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdit + Calculator menu flows and the TextEdit Save dialog via `polter peekaboo -- …` under `RUN_LOCAL_TESTS=true`, so we can build the tmux-backed stress suite on top of that foundation. Use `./runner tmux new-session -- ./scripts/menu-dialog-soak.sh` (optionally override `MENU_DIALOG_SOAK_ITERATIONS`/`MENU_DIALOG_SOAK_FILTER`) to spin up the stress loop in tmux, keep logs under `/tmp/menu-dialog-soak/`, and avoid blocking the guardrail watchdog.
+Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdit + Calculator menu flows and the TextEdit Save dialog via `polter peekaboo -- …` under `RUN_LOCAL_TESTS=true`, so we can build the tmux-backed stress suite on top of that foundation. Use `tmux new-session -- ./scripts/menu-dialog-soak.sh` (optionally override `MENU_DIALOG_SOAK_ITERATIONS`/`MENU_DIALOG_SOAK_FILTER`) to spin up the stress loop in tmux, keep logs under `/tmp/menu-dialog-soak/`, and avoid blocking the guardrail watchdog.
 
 ### Implementation roadmap
 1. **Reproduce & test guardrails** – Land the regression tests outlined above (window geometry, real menu automation, polter argument forwarding, StatusBar logger compile tests, AXObserverManager, SpaceTool schema). These should fail today and document the gaps.
 2. **Fix highest-impact blockers** – Prioritize menu/window/dialog reliability so secure login/Chrome scenarios unblock. Tackle polter flag forwarding and SnapshotManager caching while tests are red.
 3. **Expand secure login/Chrome coverage** – Build a deterministic fixture (WebKit host or recorded session) so we can iterate on OCR/AX fallbacks without live credentials; add XCT/unittest coverage to prevent regressions once solved.
-4. **Stabilize mac build** – Address StatusBar logger rewrites, AXObserverManager linkage, and SpaceTool formatter so `./runner ./scripts/build-mac-debug.sh` passes; keep the new tests in place to enforce it.
+4. **Stabilize mac build** – Address StatusBar logger rewrites, AXObserverManager linkage, and SpaceTool formatter so `./scripts/build-mac-debug.sh` passes; keep the new tests in place to enforce it.
 5. **Document progress** – Update this section as each issue lands (note fix date + test name) so future agents know which paths are safe.
 
 ## `see` command can’t finalize captures
@@ -99,22 +99,22 @@ Step 1 is officially in progress: `MenuDialogLocalHarnessTests` now runs TextEdi
 
 ## AXorcist logging broke every CLI build
 - **Command**: `polter peekaboo -- type "Hello"` (or any other subcommand)
-- **Observed**: Poltergeist failed the build instantly with `cannot convert value of type 'String' to expected argument type 'Logger.Message'` coming from `ElementSearch`/`AXObserverCenter`. Even a bare `./runner swift build --package-path Apps/CLI` tripped on the same diagnostics, so no CLI binary could launch.
+- **Observed**: Poltergeist failed the build instantly with `cannot convert value of type 'String' to expected argument type 'Logger.Message'` coming from `ElementSearch`/`AXObserverCenter`. Even a bare `swift build --package-path Apps/CLI` tripped on the same diagnostics, so no CLI binary could launch.
 - **Expected**: Logger helper strings should compile cleanly; CLI builds should succeed without `--force`.
 - **Impact**: All automation flows regressed—`polter peekaboo …` crashed before executing, preventing us from driving TextEdit or debugging dialog flows.
 ### Resolution — Nov 12, 2025
 - Added a `Logging.Logger` convenience shim in `AXorcist/Sources/AXorcist/Logging/GlobalAXLogger.swift` so dynamic `String` messages are emitted as proper `Logger.Message` values.
 - Updated `ElementSearch` logging helpers (`logSegments([String])`) and the `SearchVisitor` initializer to avoid illegal variadic splats and `let` reassignments.
 - Fixed `AXObserverCenter`’s observer callback to call `center.logSegments/describePid` explicitly, preventing implicit `self` captures.
-- Verified the end-to-end fix by running `./runner swift build --package-path Apps/CLI` and `./runner polter peekaboo -- type "Hello from CLI" --app TextEdit --json-output`, both of which now succeed without `--force`.
+- Verified the end-to-end fix by running `swift build --package-path Apps/CLI` and `./scripts/poltergeist-wrapper.sh peekaboo -- type "Hello from CLI" --app TextEdit --json-output`, both of which now succeed without `--force`.
 
 ## Agent `--model` flag lost its parser
-- **Command**: `./runner swift test --package-path Apps/CLI --filter DialogCommandTests`
+- **Command**: `swift test --package-path Apps/CLI --filter DialogCommandTests`
 - **Observed**: Build failed with `value of type 'AgentCommand' has no member 'parseModelString'` because the helper that normalizes model aliases was deleted. That broke the CLI tests and meant `peekaboo agent --model ...` no longer validated user input.
 - **Expected**: Human-facing aliases like `gpt`, `gpt-4o`, or `claude-sonnet-4.5` should downcase to the supported defaults (`gpt-5` or `claude-sonnet-4.5`) so both tests and the runtime can enforce safe model choices.
 ### Resolution — Nov 12, 2025
 - Reintroduced `AgentCommand.parseModelString(_:)`, delegating to `LanguageModel.parse` and whitelisting the GPT-5+/Claude 4.5 families. GPT variants (gpt/gpt-5.1/gpt-4o) now map to `.openai(.gpt51)`, Claude variants (opus/sonnet 4.x) map to `.anthropic(.sonnet45)`, and unsupported providers still return `nil`.
-- `./runner swift test --package-path Apps/CLI --filter DialogCommandTests` now builds again (the filter currently matches zero tests, but the previous compiler failure is gone), and the helper is ready for the rest of the CLI to consume when we re-enable the `--model` flag.
+- `swift test --package-path Apps/CLI --filter DialogCommandTests` now builds again (the filter currently matches zero tests, but the previous compiler failure is gone), and the helper is ready for the rest of the CLI to consume when we re-enable the `--model` flag.
 
 ## Element formatter missing focus/list helpers broke every build
 - **Command**: `polter peekaboo -- type "ping"` (any CLI entry point)
@@ -266,7 +266,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - Menu extras are now merged with window-derived metadata first, so when CGWindow provides a real title (e.g., Wi‑Fi/Bluetooth) we keep it even if AX later reports `Item-#`.
 - `MenuService` exposes the owning bundle, owner name, and identifier fields through `menubar list --json-output`, giving agents enough context to scope searches (`bundle_id: "com.apple.controlcenter"` makes it obvious which entries come from Control Center).
 - Added `MenuServiceTests` covering the fallback-preference behavior plus a GUID regression (`humanReadableMenuIdentifier` + `makeDebugDisplayName`) so placeholder regressions are caught in CI (swift-testing target `MenuServiceTests`).
-- AXorcist’s CF-type downcasts are now `unsafeDowncast`, so `./runner swift test --package-path Core/PeekabooCore --filter MenuServiceTests` completes cleanly instead of dying in ValueUnwrapper/ValueParser.
+- AXorcist’s CF-type downcasts are now `unsafeDowncast`, so `swift test --package-path Core/PeekabooCore --filter MenuServiceTests` completes cleanly instead of dying in ValueUnwrapper/ValueParser.
 - Control Center GUIDs now flow through a preference-backed lookup (`ControlCenterIdentifierLookup`) and the fallback merge prefers owner names whenever the raw title looks like a GUID/`Item-#`. The new debug-only helper `makeDebugDisplayName` lets tests poke the private formatter directly.
 - When we can’t extract a friendly title (no identifier, placeholder raw title), the CLI now emits `Control Center #N` so list output remains deterministic and agents have a stable handle even before a better label is available. Those synthetic names are accepted by `menubar click` (e.g., `polter peekaboo menubar click "Control Center #3"` focuses the third status icon); the command’s result still surfaces the original description (`Menu bar item [3]: Control Center`).
 - After restarting Poltergeist (`tmux` + `pnpm run poltergeist:haunt`) and letting it rebuild both targets, `polter peekaboo menubar list --json-output` reflects the new formatter in the running CLI (the `#N` suffixes show up immediately instead of the old GUIDs). This confirms the CLI picks up the formatter changes once the daemon rebuilds the targets.
@@ -354,7 +354,7 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - `DialogService` now inspects `AXFocusedWindow`, recurses through `AXSheets`, checks `AXIdentifier` for `NSOpenPanel`/`NSSavePanel`, and matches titles like “Open”, “Save”, “Export”, or “Import”. Both `dialog list` and `dialog click` successfully locate the TextEdit open panel.
 
 ## Mac build blocked by outdated logging APIs
-- **Context**: Swift 6.2 tightened `Logger` usage so interpolations must be literal `OSLogMessage` strings. PeekabooServices, ScrollService, and the visualizer receiver still used legacy `Logger.Message` concatenations, producing errors like `'Logger' is ambiguous` and “argument must be a string interpolation” during `./runner ./scripts/build-mac-debug.sh`.
+- **Context**: Swift 6.2 tightened `Logger` usage so interpolations must be literal `OSLogMessage` strings. PeekabooServices, ScrollService, and the visualizer receiver still used legacy `Logger.Message` concatenations, producing errors like `'Logger' is ambiguous` and “argument must be a string interpolation” during `./scripts/build-mac-debug.sh`.
 - **Resolution — Nov 12, 2025**: Reworked those sites to log with inline interpolations (or `OSLogMessage` where needed) and removed privacy specifiers from plain `String` helpers. With the rewrites the mac target links successfully again.
 
 ## SpaceTool used legacy window schema
@@ -465,29 +465,29 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
 - **Status — Nov 12, 2025**: Retested via `polter peekaboo dialog list --app TextEdit --json-output --force` and the no-target variant `dialog list --json-output --force`; both return the Open sheet metadata cleanly (buttons, text field, role) so the `NO_ACTIVE_DIALOG` condition is no longer reproducible for this flow.
 
 ## Visualizer logging regression broke mac builds (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: Swift 6.2 flagged dozens of `implicit use of 'self'` errors plus `cannot convert value of type 'String' to expected argument type 'OSLogMessage'` across `Apps/Mac/Peekaboo/Services/Visualizer/VisualizerCoordinator.swift` and `VisualizerEventReceiver.swift`. The new Visualizer files leaned on temporary string variables and unlabeled closures, so Xcode refused to compile the mac target.
 - **Expected**: Visualizer should build cleanly so the mac app stays shippable.
 - **Resolution — Nov 12, 2025**: Prefixed every property/method reference with `self`, moved the animation queue closures to explicitly capture `self`, and replaced raw string variables with logger interpolations (`self.logger.info("\(message, privacy: .public)")`). `VisualizerEventReceiver` now logs errors via direct interpolation instead of concatenating `OSLogMessage`s, so both ScreenCaptureKit and legacy capture paths compile again.
 
 ## AXorcist action handlers drifted from real APIs (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: `AXorcist/Sources/AXorcist/Core (AXorcist+ActionHandlers.swift)` failed with “value of type 'AXorcist' has no member 'locateElement'” plus type mismatches because the helper extension used a `private extension` (hiding methods from the rest of the file) and assumed `PerformActionCommand.action` was an `AXActionNames` enum instead of a `String`.
 - **Expected**: AXorcist’s perform-action and set-focused-value handlers should compile under Swift 6 and drive element lookups directly.
 - **Resolution — Nov 12, 2025**: Rewrote the handlers to call `findTargetElement` just like the query commands, switched validation/execute helpers to take raw `String` action names, and removed the `Result<Element, AXResponse>` helper that tried to use `AXResponse` as `Error`. Action logging now consistently uses `ValueFormatOption.smart`, so AXorcist builds again.
 
 ## Session title generator mis-parsed provider list (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: `Apps/Mac/Peekaboo/Services/SessionTitleGenerator.swift` expected `ConfigurationManager.getAIProviders()` to return `[String]`, so Swift complained about “cannot convert value of type 'String' to expected argument type '[String]'`.
 - **Resolution — Nov 12, 2025**: Split the comma-separated provider string into lowercase tokens before passing them into the model-selection helper. The generator now compiles inside the mac target.
 
 ## Mac app build still blocked on StatusBar SwiftUI files (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: After fixing Visualizer, AXorcist, Permissions logging, and SessionTitleGenerator, Xcode now dies later with `MenuDetailedMessageRow.swift`, `StatusBarController.swift`, and `UnifiedActivityFeed.swift`. The errors mirror the earlier logger issues (concatenating `OSLogMessage`s and mismatched tool-type parameters), so the mac build still exits 65 even though the rest of the tree compiles.
-- **Next steps**: Audit the StatusBar files for lingering `Logger` misuse and type mismatches (e.g., feed `PeekabooChatView` real `[AgentTool]?` arrays). Once those files match Swift 6’s stricter logging APIs, rerun `./runner ./scripts/build-mac-debug.sh` to confirm `Peekaboo.app` builds.
+- **Next steps**: Audit the StatusBar files for lingering `Logger` misuse and type mismatches (e.g., feed `PeekabooChatView` real `[AgentTool]?` arrays). Once those files match Swift 6’s stricter logging APIs, rerun `./scripts/build-mac-debug.sh` to confirm `Peekaboo.app` builds.
 
 ## AXObserverManager helpers missing during mac build (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: `SwiftCompile ... AXObserverManager.swift` still crashes with `value of type 'AXObserverManager' has no member 'attachNotification'` even though the helpers exist. Local `swift build --package-path AXorcist` succeeds, so the failure is specific to the Xcode workspace build.
 - **Hypothesis**: The mac app’s build graph seems to use a stale SwiftPM artifact or a parallel copy of AXorcist that wasn’t updated when we rewrote the helpers. Nuking `.build/DerivedData` and rebuilding didn’t help; Xcode still reports the missing methods while the standalone package compiles fine.
 - **Next steps**:
@@ -496,13 +496,13 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
   3. As a fallback, move the helper logic entirely inline inside `addObserver` so even the stale copy compiles.
 
 ## SpaceTool + formatter fallout blocking mac build (Nov 12, 2025)
-- **Command**: `./runner ./scripts/build-mac-debug.sh`
+- **Command**: `./scripts/build-mac-debug.sh`
 - **Observed**: After fixing the AX observer + UI formatters, the build now fails deeper in PeekabooCore: `SpaceTool.swift` was still written against the pre-renamed `WindowInfo` fields (`title`, `windowID`) and helper methods defined outside the struct, so Swift 6 complained about missing members and actor isolation. Cleaning that up surfaced the next blocker: `SystemToolFormatter.swift` still had a literal newline in `parts.joined(separator: "\n")` that Swift sees as an unterminated string. Once that’s fixed, the build should advance to whatever is next in the queue.
 - **Impact**: macOS target can’t link yet, so we still can’t run `peekaboo-mac` nor smoke test the CLI end-to-end inside the app bundle.
 - **Next steps**:
   1. Finish porting `SpaceTool` to the new `WindowInfo` schema (done: helper methods now live inside a `private extension`, using `window_title` / `window_id`).
   2. Replace the newline separator in `SystemToolFormatter` with an escaped literal (`"\n"`) so Swift’s parser doesn’t choke.
-  3. Re-run `./runner ./scripts/build-mac-debug.sh` to discover the next blocker in the chain.
+  3. Re-run `./scripts/build-mac-debug.sh` to discover the next blocker in the chain.
 ### Resolution — Nov 13, 2025
 - `SpaceTool` now depends on a `SpaceManaging` abstraction, letting tests inject a fake CGS service while production keeps using `SpaceManagementService`. Its move-window paths re-query `ServiceWindowInfo` so metadata returns `window_title`, `window_id`, `target_space_number`, etc., matching the new schema.
 - Added `SpaceToolMoveWindowTests` (CLI test target) that run the tool under stubbed `PeekabooServices` and assert both metadata and CGS calls for `--to_current` and `--follow` flows, so regressions surface in CI before mac builds break again.
@@ -529,5 +529,5 @@ Investigate `MenuService.clickMenuPath` once `menu list` is fixed; ensure both s
   - `polter peekaboo -- menu click --item "View > Show View Options"`
   This pushes everything after `--` directly to the CLI binary, preserving flags exactly.
 ### Resolution — Nov 13, 2025
-- `./runner` now enforces the separator: `./runner polter peekaboo dialog dismiss --force` exits immediately with an instructional error so engineers can’t accidentally run polter without the required `--` barrier.
+- Always include the separator: `./scripts/poltergeist-wrapper.sh peekaboo -- dialog dismiss --force` so Poltergeist doesn’t swallow dialog options.
 - Added `DialogCommandTests.dialogDismissForce` to verify the CLI path handles `--force` (and reports the `escape` method) whenever the flag reaches us. Together, the guard + test prevent future regressions in both tooling and CLI behavior.

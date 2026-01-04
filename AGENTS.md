@@ -13,7 +13,7 @@
 
 ## Build, Test, and Development Commands
 - Current local baseline is macOS 26.1 on arm64. If you’re on an older SDK/OS, expect menubar/accessibility flakiness; re-run with the 26 SDK before chasing Peekaboo regressions.
-- Always route tools through `./runner` (already baked into package scripts). Use pnpm (Corepack-enabled).
+- Run tools directly (runner removed). Use pnpm (Corepack-enabled).
 - Build the CLI: `pnpm run build:cli` (debug) or `pnpm run build:swift:all` (universal release). For arm64-only: `pnpm run build:swift`.
 - Rapid rebuilds while editing Swift: `pnpm run poltergeist:haunt` → check with `pnpm run poltergeist:status`, stop via `pnpm run poltergeist:rest`.
 - Validate before handoff: `pnpm run lint` (SwiftLint), `pnpm run format` (SwiftFormat check/fix), then `pnpm run test:safe`. Full automation/UI tests: `pnpm run test:automation` or `pnpm run test:all`.

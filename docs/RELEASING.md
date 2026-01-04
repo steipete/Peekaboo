@@ -7,8 +7,7 @@ read_when:
 
 # Peekaboo Release Checklist
 
-> **Runner note:** From the repo root run everything through `./runner …` unless a step says otherwise. For long Swift builds/tests, use tmux as documented in AGENTS.
->
+> **Note:** Run commands from the repo root unless a step says otherwise. For long Swift builds/tests, use tmux as documented in AGENTS.
 > **No-warning policy:** Lint/format/build/test steps must finish cleanly (no SwiftLint/SwiftFormat warnings, no pnpm warnings). Fix issues before moving on.
 >
 > **Release policy (betas):** Beta versions are **normal GitHub releases** (not prereleases) and **npm `latest`** must always point at the newest beta. Only use prerelease flags for truly experimental builds that should not be the default. Release notes must be **only the changelog entries** for that version (no install steps, no extra prose).
@@ -70,7 +69,7 @@ Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates a
 - [ ] Commit and push submodules first (conventional commits in each subrepo).
 - [ ] Update submodule pointers in the main repo and commit via `./scripts/committer`.
 - [ ] Commit main repo release changes (changelog, version bumps, generated assets if tracked) via `./scripts/committer`.
-- [ ] `./runner git status -sb` should be clean.
+- [ ] `git status -sb` should be clean.
 
 ## 5) Tag & publish
 - [ ] Tag the release: `git tag v<version>` then `git push --tags`.
@@ -88,8 +87,8 @@ Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates a
 
 ## Quick status helpers
 ```bash
-./runner git status -sb
-./runner git submodule status
+git status -sb
+git submodule status
 ```
 
 ## Notes

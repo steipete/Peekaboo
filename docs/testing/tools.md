@@ -68,7 +68,7 @@ read_when:
 | `list` | Validate `apps`, `windows`, `screens`, `menubar`, `permissions` while Playground is running | `playground-log` optional (`Window` for focus changes) | `polter peekaboo -- list windows --app Playground` etc. | Verified – apps/windows/screens/menubar/permissions captured 2025-11-16 | `.artifacts/playground-tools/20251116-142111-list-apps.json`, `.artifacts/playground-tools/20251116-142111-list-windows-playground.json`, `.artifacts/playground-tools/20251116-142122-list-screens.json`, `.artifacts/playground-tools/20251116-142122-list-menubar.json`, `.artifacts/playground-tools/20251116-142122-list-permissions.json` |
 | `tools` | Compare CLI output against ToolRegistry | No Playground log required; attach output to notes | `polter peekaboo -- tools > $LOG_ROOT/tools.txt` | Verified – native tool listing captured 2025-12-19 | `.artifacts/playground-tools/20251219-001215-tools.txt` |
 | `run` | Execute scripted multi-step flows against Playground fixtures | Logs depend on embedded commands | `polter peekaboo -- run docs/testing/fixtures/playground-smoke.peekaboo.json` | Verified – smoke script drives Text Fixture and `type` resolves `basic-text-field` deterministically | `.artifacts/playground-tools/20251217-221643-run-playground-smoke.json`, `.artifacts/playground-tools/20251217-221643-run-playground-smoke-text.log` |
-| `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring ./runner polter peekaboo -- sleep 2000` |
+| `sleep` | Inserted between Playground actions | Observe timestamps in log file | `polter peekaboo -- sleep 1500` | Verified – manual timing around CLI pause | `python wrapper measuring pnpm run peekaboo -- sleep 2000` |
 | `clean` | Snapshot cache after `see` runs | Inspect `~/.peekaboo/snapshots` & ensure Playground unaffected | `polter peekaboo -- clean --snapshot <id>` | Verified – removed snapshot 5408D893… and confirmed re-run reports none | `.peekaboo/snapshots/5408D893-E9CF-4A79-9B9B-D025BF9C80BE (deleted)` |
 | `clipboard` | Clipboard smoke (text/file/image + save/restore) | Verify readback + binary export + restore user clipboard | `polter peekaboo -- clipboard --action set --image-path assets/peekaboo.png --json-output` | Verified – CLI set/get (file+image) and cross-invocation save/restore (2025-12-17) | `.artifacts/playground-tools/20251217-192349-clipboard-get-image.json` |
 | `config` | Validate config commands while Playground idle | N/A | `polter peekaboo -- config show` | Verified – show/validate outputs captured 2025-11-16 | `.artifacts/playground-tools/20251116-051200-config-show-effective.json` |
@@ -181,7 +181,7 @@ The following subsections spell out the concrete steps, required Playground surf
   1. Run `date +%s` then `polter peekaboo -- sleep 2000` within tmux.
   2. Immediately issue a `click` command and ensure the log timestamps show ≥2s gap.
 - **Verification**: Playground log lines prove no action fired during sleep window.
-- **2025-11-16 run**: Measured via `python - <<'PY' ... subprocess.run(["./runner","polter","peekaboo","--","sleep","2000"]) ...` → actual pause ≈2.24 s (CLI printed `✅ Paused for 2.0s`). No Playground interaction necessary.
+- **2025-11-16 run**: Measured via `python - <<'PY' ... subprocess.run(["pnpm","run","peekaboo","--","sleep","2000"]) ...` → actual pause ≈2.24 s (CLI printed `✅ Paused for 2.0s`). No Playground interaction necessary.
 
 #### `clean`
 - **Steps**:
@@ -488,11 +488,11 @@ The following subsections spell out the concrete steps, required Playground surf
   1. `polter peekaboo -- agent --model gpt-5.1 --list-sessions --json-output > .artifacts/playground-tools/20251117-010912-agent-list.json`.
   2. `polter peekaboo -- agent "Say hi to the Playground app." --model gpt-5.1 --max-steps 2 --json-output > .artifacts/playground-tools/20251117-010919-agent-hi.json`.
   3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.1 --max-steps 4 --json-output > .artifacts/playground-tools/20251117-010935-agent-single-click.json`.
-  4. For long interactive runs, use tmux: `./runner tmux new-session -- bash -lc 'polter peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'`.
+  4. For long interactive runs, use tmux: `tmux new-session -- bash -lc 'pnpm run peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'`.
   5. Spot-check metadata: `polter --force peekaboo -- agent "Say hi to Playground again." --model gpt-5.1 --max-steps 2 --json-output > .artifacts/playground-tools/20251117-012655-agent-hi.json`.
 - **2025-11-17 run**:
   - GPT-5.1 executes happily; Playground `[Agent]` log is captured in `.artifacts/playground-tools/20251117-011345-agent.log`.
-  - Non-tmux invocations hit the runner’s 120 s timeout; move anything beyond quick dry-runs into `./runner tmux ...` so the guardrails don’t kill the agent mid-task.
+  - Non-tmux invocations can time out; move anything beyond quick dry-runs into `tmux ...` so long runs complete.
   - Manual verification: observed the agent perform `see` + `click` against the Playground “Single Click” button (tmux transcript stored in `.artifacts/playground-tools/20251117-011500-agent-single-click.log`).
   - JSON mode now reports the correct `toolCallCount` (see `.artifacts/playground-tools/20251117-012655-agent-hi.json` which shows `toolCallCount: 1` for the `done` tool).
 

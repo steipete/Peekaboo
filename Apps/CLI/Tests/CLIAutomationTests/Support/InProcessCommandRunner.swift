@@ -212,15 +212,15 @@ enum ExternalCommandRunner {
         allowedExitCodes: Set<Int32> = [0],
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> CommandRunResult {
-        let runnerPath = "./runner"
-        guard FileManager.default.isExecutableFile(atPath: runnerPath) else {
-            throw Error.executableNotFound(runnerPath)
+        let wrapperPath = "./scripts/poltergeist-wrapper.sh"
+        guard FileManager.default.isExecutableFile(atPath: wrapperPath) else {
+            throw Error.executableNotFound(wrapperPath)
         }
 
         let process = Process()
         process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        process.executableURL = URL(fileURLWithPath: runnerPath)
-        process.arguments = ["polter", "peekaboo", "--"] + arguments
+        process.executableURL = URL(fileURLWithPath: wrapperPath)
+        process.arguments = ["peekaboo", "--"] + arguments
         process.environment = environment
 
         let stdoutPipe = Pipe()

@@ -94,7 +94,7 @@
 - **Notes**: Script parameters must use the enum coding format (`{"generic":{"_0":{...}}}`) so ProcessService can normalize them.
 
 ### ✅ `sleep` command – timing verification
-- **Command**: `python - <<'PY' … subprocess.run(["./runner","polter","peekaboo","--","sleep","2000"]) …` (see shell history)
+- **Command**: `python - <<'PY' … subprocess.run(["pnpm","run","peekaboo","--","sleep","2000"]) …` (see shell history)
 - **Result**: CLI reported `✅ Paused for 2.0s`; wrapper measured ≈2.24 s wall-clock, matching expectation.
 - **Notes**: No Playground interaction required; documented timing in `docs/testing/tools.md` under the `sleep` recipe.
 
@@ -439,12 +439,12 @@
   3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.1 --max-steps 4 --json-output`
   4. Long run via tmux for full tool coverage:
      ```
-     ./runner tmux new-session -- bash -lc 'polter peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'
+     tmux new-session -- bash -lc 'pnpm run peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'
      ```
 - **Findings**:
   - GPT-5.1 works end-to-end; the tmux transcript shows `see`, `app`, and two `click` calls completing with `Task completed ... ⚒ 6 tools`.
   - JSON output now reports the correct tool count (see `.artifacts/playground-tools/20251117-012655-agent-hi.json`, which shows `toolCallCount: 1` for the `done` tool). Use that artifact to confirm the regression is fixed.
-  - Non-trivial agent runs exceed the runner’s 120 s timeout; always invoke those through `./runner tmux …` so they can finish, then collect the artifacts/logs afterward.
+  - Non-trivial agent runs can time out; always invoke those through `tmux …` so they can finish, then collect the artifacts/logs afterward.
 
 ### ✅ `mcp` command – stdio server smoke
 - **Logs**: `.artifacts/playground-tools/20251219-001255-mcp.log`

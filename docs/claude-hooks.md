@@ -16,10 +16,9 @@ Claude Code supports `PreToolUse` hooks that intercept tool calls before executi
 
 ## Architecture
 
-**Two-layer protection:**
+**Single-layer protection:**
 
 1. **Universal block**: `git reset --hard` is ALWAYS blocked for AI agents, regardless of project
-2. **Project-specific**: If `./runner` exists, ALL git commands must go through it
 
 ## Installation
 
@@ -47,14 +46,6 @@ try:
         print(f"Attempted: {cmd}", file=sys.stderr)
         print("Only the user can run this command directly.", file=sys.stderr)
         sys.exit(2)
-
-    # If ./runner exists, enforce stricter rules
-    if os.path.exists('./runner'):
-        if re.search(r'\bgit\s+', cmd) and './runner' not in cmd and 'runner git' not in cmd:
-            print("BLOCKED: All git commands must use ./runner in this project", file=sys.stderr)
-            print(f"Attempted: {cmd}", file=sys.stderr)
-            print("Use: ./runner git <subcommand>", file=sys.stderr)
-            sys.exit(2)
 
     sys.exit(0)
 except:
@@ -86,15 +77,6 @@ EOF
 ### Always Blocked (Universal)
 - `git reset --hard` - Destroys uncommitted work
 
-### Blocked in Projects with ./runner
-- `git status` → must use `./runner git status`
-- `git diff` → must use `./runner git diff`
-- `git add` → must use `./scripts/committer`
-- `git commit` → must use `./scripts/committer`
-- `git reset` → must use `./runner git reset` (with consent)
-- `git checkout` → must use `./runner git checkout` (with consent)
-- Any other git command → must use `./runner git <subcommand>`
-
 ## How It Works
 
 1. **Hook triggers**: When an AI agent tries to use the Bash tool
@@ -104,16 +86,6 @@ EOF
 5. **Hook allows**: Exit code 0 lets command through
 
 The hook runs BEFORE the command executes, so blocked commands never reach the shell.
-
-## Runner Integration
-
-When `./runner` exists, the hook delegates all git policy enforcement to it. The runner (via `scripts/git-policy.ts`) enforces:
-
-- **Destructive commands**: `reset`, `checkout`, `clean`, `restore`, `switch`, `stash`, `branch`, `filter-branch`, `fast-import` - require `RUNNER_THE_USER_GAVE_ME_CONSENT=1`
-- **Guarded commands**: `push`, `pull`, `merge`, `rebase`, `cherry-pick` - require explicit consent
-- **Commit workflow**: `add`, `commit` - must use `./scripts/committer` for selective staging
-
-See `scripts/git-policy.ts` lines 28-38 for the complete policy definitions.
 
 ## Testing
 
@@ -126,15 +98,8 @@ git reset --hard HEAD
 # Attempted: git reset --hard HEAD
 # Only the user can run this command directly.
 
-# This should work (in projects with runner):
-./runner git status
-
-# This should be blocked (in projects with runner):
+# This should work:
 git status
-
-# Expected output:
-# BLOCKED: All git commands must use ./runner in this project
-# Use: ./runner git <subcommand>
 ```
 
 ## Troubleshooting
@@ -156,9 +121,6 @@ git status
 
 - `.claude/hooks/pre_bash.py` - The actual hook script
 - `.claude/settings.local.json` - Claude Code configuration
-- `scripts/git-policy.ts` - Runner's git policy enforcement
-- `scripts/runner.ts` - Command execution wrapper
-
 ## References
 
 - [Claude Code Hooks Documentation](https://docs.claude.com/claude-code/hooks)

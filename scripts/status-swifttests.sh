@@ -9,7 +9,7 @@ START_SECONDS=$(date +%s)
 cd "$ROOT_DIR"
 
 set +e
-./runner swift test --package-path Apps/CLI --filter DialogCommandTests 2>&1 | tee "$LOG_FILE"
+swift test --package-path Apps/CLI --filter DialogCommandTests 2>&1 | tee "$LOG_FILE"
 COMMAND_STATUS=${PIPESTATUS[0]}
 set -e
 
