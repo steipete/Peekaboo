@@ -26,7 +26,7 @@ read_when:
 
 3. **Automation Check**
    ```bash
-   peekaboo permissions check
+   peekaboo permissions status
    peekaboo permissions request screen-recording
    peekaboo permissions request accessibility
    ```
