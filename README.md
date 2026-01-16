@@ -43,7 +43,7 @@ peekaboo see --app Safari --json-output | jq -r '.data.snapshot_id' | read SNAPS
 peekaboo click --on "Reload this page" --snapshot "$SNAPSHOT"
 
 # Run a natural-language automation
-peekaboo "Open Notes and create a TODO list with three items"
+peekaboo agent "Open Notes and create a TODO list with three items"
 
 # Run as an MCP server (Claude/Cursor)
 npx -y @steipete/peekaboo
