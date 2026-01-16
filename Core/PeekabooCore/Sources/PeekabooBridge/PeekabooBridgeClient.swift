@@ -757,9 +757,8 @@ public actor PeekabooBridgeClient {
         let start = Date()
         self.logger.debug("Sending bridge request \(op.rawValue, privacy: .public)")
 
-        let socketPath = self.socketPath
-        let maxResponseBytes = self.maxResponseBytes
-        let requestTimeoutSec = self.requestTimeoutSec
+        let (socketPath, maxResponseBytes, requestTimeoutSec) =
+            (self.socketPath, self.maxResponseBytes, self.requestTimeoutSec)
         let responseData = try await Task.detached(priority: .userInitiated) {
             try Self.sendBlocking(
                 socketPath: socketPath,
@@ -774,8 +773,9 @@ public actor PeekabooBridgeClient {
 
             This usually means the host closed the socket before replying \
             (often due to an authorization/TeamID check). \
-            Update Peekaboo.app / ClawdBot.app to a host build that returns a structured `unauthorizedClient` response, \
-            or launch the host with PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 for local development.
+            Update Peekaboo.app / ClawdBot.app to a host build that returns a structured \
+            `unauthorizedClient` response, or launch the host with \
+            PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1 for local development.
             """
 
             throw PeekabooBridgeErrorEnvelope(
