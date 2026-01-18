@@ -809,7 +809,7 @@ public struct PeekabooBridgeErrorEnvelope: Codable, Sendable, Error {
     }
 }
 
-extension PermissionsStatus: @retroactive Codable {
+extension PermissionsStatus: Codable {
     private enum CodingKeys: String, CodingKey {
         case screenRecording
         case accessibility
