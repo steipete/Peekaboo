@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [3.0.0-beta4] - 2026-01-18
+
+### Added
+- Root SwiftPM package to expose PeekabooBridge and automation modules for host apps.
+
+### Changed
+- Bumped submodule dependencies to tagged releases (AXorcist v0.1.0, Commander v0.2.1, Swiftdansi 0.2.0, Tachikoma v0.1.0, TauTUI v0.1.5).
+- Version metadata updated to 3.0.0-beta4 for CLI/macOS app artifacts.
+
 ## [3.0.0-beta3] - 2025-12-29
 
 ### Highlights

@@ -12,7 +12,7 @@
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-0088cc?style=flat-square)](https://deepwiki.com/steipete/peekaboo)
 
 Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI automation to macOS. Version 3 adds native agent flows and multi-screen automation across the CLI and MCP server.
-> Note: v3 is currently in beta (3.0.0-beta3) and has a few known issues; see the changelog for details.
+> Note: v3 is currently in beta (3.0.0-beta4) and has a few known issues; see the changelog for details.
 
 ## What you get
 - Pixel-accurate captures (windows, screens, menu bar) with optional Retina 2x scaling.

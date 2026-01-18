@@ -17,7 +17,7 @@ public struct DockTool: MCPTool {
         Interact with the macOS Dock - launch apps, show context menus, hide/show dock.
         Actions: launch, right-click (with menu selection), hide, show, list
         Can list all dock items including persistent and running applications.
-        Peekaboo MCP 3.0.0-beta3 using openai/gpt-5.1
+        Peekaboo MCP 3.0.0-beta4 using openai/gpt-5.1
         and anthropic/claude-sonnet-4.5
         """
     }

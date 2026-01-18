@@ -111,7 +111,7 @@ if [[ "$CLEAN_BUILD" == "true" ]]; then
 fi
 
 echo "📦 Reading version from version.json..."
-VERSION=$(node -p "require('$PROJECT_ROOT/version.json').version" 2>/dev/null || echo "3.0.0-beta3-dev")
+VERSION=$(node -p "require('$PROJECT_ROOT/version.json').version" 2>/dev/null || echo "3.0.0-beta4-dev")
 
 # Get git information
 GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")

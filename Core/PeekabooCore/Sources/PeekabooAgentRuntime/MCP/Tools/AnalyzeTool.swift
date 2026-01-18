@@ -32,7 +32,7 @@ public struct AnalyzeTool: MCPTool {
         { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
         The AI will analyze the image and attempt to answer your question based on its visual content.
 
-        Peekaboo MCP 3.0.0-beta3 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta4 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
         """
     }
 

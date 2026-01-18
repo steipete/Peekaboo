@@ -16,7 +16,7 @@ public struct HotkeyTool: MCPTool {
         Presses keyboard shortcuts and key combinations.
         Simulates pressing multiple keys simultaneously like Cmd+C or Ctrl+Shift+T.
         Keys are pressed in order and released in reverse order.
-        Peekaboo MCP 3.0.0-beta3 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        Peekaboo MCP 3.0.0-beta4 using openai/gpt-5.1, anthropic/claude-sonnet-4.5
         """
     }
 
