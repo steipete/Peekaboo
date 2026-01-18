@@ -30,7 +30,7 @@ jobs:
           bun-version: "latest"
 
       - name: Docs lint
-        run: ./runner node scripts/docs-lint.mjs
+        run: node scripts/docs-lint.mjs
 
       - name: Select Xcode 26.2 (if present) or fallback to default
         run: |
