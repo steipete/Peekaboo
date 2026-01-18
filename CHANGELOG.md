@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## [3.0.0-beta4] - 2026-01-18
+## [3.0.0-beta4] - 2026-01-18 (unreleased)
 
 ### Added
 - Root SwiftPM package to expose PeekabooBridge and automation modules for host apps.
