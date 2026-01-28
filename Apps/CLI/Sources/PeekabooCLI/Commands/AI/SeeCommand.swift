@@ -628,7 +628,14 @@ extension SeeCommand {
         print("⏱️  Execution time: \(formattedDuration)s")
 
         if let analysis = context.analysis {
-            print("\n🤖 AI Analysis\n\(analysis.text)")
+            let screenSize = NSScreen.main?.frame.size ?? CGSize(width: 1920, height: 1080)
+            let processedText = Self.processAITextWithCoordinates(
+                text: analysis.text,
+                model: analysis.model,
+                screenWidth: Int(screenSize.width),
+                screenHeight: Int(screenSize.height)
+            )
+            print("\n🤖 AI Analysis\n\(processedText)")
         }
 
         if context.metadata.elementCount > 0 {
@@ -777,6 +784,90 @@ extension SeeCommand {
             ])
             return results[0]
         }
+    }
+}
+
+// MARK: - AI Coordinate Processing
+
+extension SeeCommand {
+    /// Process AI text to convert normalized coordinates (0-1000) to pixel coordinates.
+    /// GLM-4V series models return coordinates in 0-1000 normalized format.
+    static func processAITextWithCoordinates(
+        text: String,
+        model: String,
+        screenWidth: Int,
+        screenHeight: Int
+    ) -> String {
+        // Check if model uses normalized coordinates
+        guard usesNormalizedCoordinates(modelName: model) else {
+            return text
+        }
+
+        // Pattern to match bounding box arrays like [283, 263, 463, 295]
+        let bboxPattern = #"\[([0-9]+)[,\s]+([0-9]+)[,\s]+([0-9]+)[,\s]+([0-9]+)\]"#
+
+        var result = text
+        let regex = try? NSRegularExpression(pattern: bboxPattern, options: [])
+
+        // Find all matches and replace from end to beginning to preserve positions
+        let range = NSRange(result.startIndex..., in: result)
+        let matches = regex?.matches(in: result, options: [], range: range) ?? []
+
+        // Process matches in reverse order to preserve positions
+        for match in matches.reversed() {
+            guard match.numberOfRanges == 5,
+                  let x1Range = Range(match.range(at: 1), in: result),
+                  let y1Range = Range(match.range(at: 2), in: result),
+                  let x2Range = Range(match.range(at: 3), in: result),
+                  let y2Range = Range(match.range(at: 4), in: result) else {
+                continue
+            }
+
+            let x1 = Int(result[x1Range]) ?? 0
+            let y1 = Int(result[y1Range]) ?? 0
+            let x2 = Int(result[x2Range]) ?? 0
+            let y2 = Int(result[y2Range]) ?? 0
+
+            // Check if this looks like normalized coordinates (values <= 1000)
+            let maxValue = max(x1, max(y1, max(x2, y2)))
+            guard maxValue <= 1000 else {
+                continue
+            }
+
+            // Convert to pixels
+            let px1 = x1 * screenWidth / 1000
+            let py1 = y1 * screenHeight / 1000
+            let px2 = x2 * screenWidth / 1000
+            let py2 = y2 * screenHeight / 1000
+
+            // Create replacement with both normalized and pixel coordinates
+            let centerX = (px1 + px2) / 2
+            let centerY = (py1 + py2) / 2
+
+            let replacement = "[\(x1), \(y1), \(x2), \(y2)] → Pixels: [\(px1), \(py1), \(px2), \(py2)] (Center: \(centerX), \(centerY))"
+
+            if let replaceRange = Range(match.range(at: 0), in: result) {
+                result.replaceSubrange(replaceRange, with: replacement)
+            }
+        }
+
+        // Add note if we made any conversions
+        if !matches.isEmpty {
+            result += "\n\n📍 Coordinate conversion: GLM models return 0-1000 normalized values. Pixel coordinates calculated for \(screenWidth)×\(screenHeight) screen."
+        }
+
+        return result
+    }
+
+    /// Check if a model uses normalized coordinates (0-1000 range)
+    static func usesNormalizedCoordinates(modelName: String) -> Bool {
+        let lowercased = modelName.lowercased()
+        // GLM-4V series models use normalized 0-1000 coordinates
+        return lowercased.contains("glm") && (
+            lowercased.contains("4v") ||
+            lowercased.contains("4.5v") ||
+            lowercased.contains("4.6v") ||
+            lowercased.contains("4.1v"))
     }
 }
 
