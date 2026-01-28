@@ -92,9 +92,10 @@ public final class CoordinateTransformer {
         case .normalized:
             return bounds // Already normalized
 
-        case let .normalized1000(imageSize):
+        case .normalized1000:
             // Convert from 0-1000 range to 0.0-1.0 range
             // GLM-4V models return coordinates in 0-1000 range
+            // Note: imageSize not needed for this conversion (divide by 1000 is sufficient)
             return CGRect(
                 x: bounds.origin.x / 1000.0,
                 y: bounds.origin.y / 1000.0,
@@ -142,8 +143,9 @@ public final class CoordinateTransformer {
         case .normalized:
             return bounds // Already normalized
 
-        case let .normalized1000(imageSize):
+        case .normalized1000:
             // Convert from 0.0-1.0 to 0-1000 range (reverse of normalize)
+            // Note: imageSize not needed for this conversion (multiply by 1000 is sufficient)
             return CGRect(
                 x: bounds.origin.x * 1000.0,
                 y: bounds.origin.y * 1000.0,
