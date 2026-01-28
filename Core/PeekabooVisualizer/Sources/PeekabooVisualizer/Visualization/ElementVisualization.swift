@@ -285,4 +285,9 @@ public enum CoordinateSpace: Sendable {
 
     /// Normalized coordinates (0.0 - 1.0)
     case normalized
+
+    /// Normalized coordinates (0 - 1000 range)
+    /// Used by AI models like GLM-4V series that return bounding boxes
+    /// in this format. To convert to pixels: pixel = value / 1000 * dimension
+    case normalized1000(CGSize)
 }

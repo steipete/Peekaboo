@@ -91,6 +91,15 @@ public final class CoordinateTransformer {
 
         case .normalized:
             return bounds // Already normalized
+
+        case let .normalized1000(imageSize):
+            // Convert from 0-1000 range to 0.0-1.0 range
+            // GLM-4V models return coordinates in 0-1000 range
+            return CGRect(
+                x: bounds.origin.x / 1000.0,
+                y: bounds.origin.y / 1000.0,
+                width: bounds.width / 1000.0,
+                height: bounds.height / 1000.0)
         }
     }
 
@@ -132,6 +141,14 @@ public final class CoordinateTransformer {
 
         case .normalized:
             return bounds // Already normalized
+
+        case let .normalized1000(imageSize):
+            // Convert from 0.0-1.0 to 0-1000 range (reverse of normalize)
+            return CGRect(
+                x: bounds.origin.x * 1000.0,
+                y: bounds.origin.y * 1000.0,
+                width: bounds.width * 1000.0,
+                height: bounds.height * 1000.0)
         }
     }
 
@@ -199,6 +216,69 @@ public final class CoordinateTransformer {
             y: bounds.origin.y - windowFrame.origin.y,
             width: bounds.width,
             height: bounds.height)
+    }
+
+    // MARK: - AI Model Coordinate Conversions
+
+    /// Convert normalized coordinates (0-1000 range) to pixel coordinates.
+    /// Used for AI models like GLM-4V series that return bounding boxes
+    /// in normalized format instead of pixel coordinates.
+    ///
+    /// According to GLM-4V documentation:
+    /// "The output bounding box is a quadruple [x1, y1, x2, y2] composed of
+    /// the coordinates of the top-left and bottom-right corners, where each
+    /// value is normalized by the image width (for x) or height (for y)
+    /// and scaled by 1000."
+    ///
+    /// - Parameters:
+    ///   - bounds: Bounding box in normalized 0-1000 coordinates
+    ///   - imageSize: The size of the image/screen in pixels
+    /// - Returns: Bounding box in pixel coordinates
+    public func fromNormalized1000ToPixels(_ bounds: CGRect, imageSize: CGSize) -> CGRect {
+        CGRect(
+            x: bounds.origin.x / 1000.0 * imageSize.width,
+            y: bounds.origin.y / 1000.0 * imageSize.height,
+            width: bounds.width / 1000.0 * imageSize.width,
+            height: bounds.height / 1000.0 * imageSize.height)
+    }
+
+    /// Convert a bounding box array [x1, y1, x2, y2] from normalized (0-1000) to pixel coordinates.
+    /// - Parameters:
+    ///   - box: Array of 4 values [x1, y1, x2, y2] in normalized 0-1000 format
+    ///   - imageSize: The size of the image/screen in pixels
+    /// - Returns: Array of 4 values [x1, y1, x2, y2] in pixel coordinates
+    public func convertBoundingBox(from box: [Int], imageSize: CGSize) -> [Int] {
+        guard box.count == 4 else { return box }
+        return [
+            Int(Double(box[0]) / 1000.0 * imageSize.width),
+            Int(Double(box[1]) / 1000.0 * imageSize.height),
+            Int(Double(box[2]) / 1000.0 * imageSize.width),
+            Int(Double(box[3]) / 1000.0 * imageSize.height)
+        ]
+    }
+
+    /// Calculate center point from a bounding box [x1, y1, x2, y2]
+    /// - Parameter box: Array of 4 values [x1, y1, x2, y2]
+    /// - Returns: Center point (x, y)
+    public func centerPoint(from box: [Int]) -> CGPoint? {
+        guard box.count == 4 else { return nil }
+        return CGPoint(
+            x: CGFloat(box[0] + box[2]) / 2.0,
+            y: CGFloat(box[1] + box[3]) / 2.0)
+    }
+
+    /// Check if a model name indicates it uses normalized coordinates (0-1000).
+    /// Currently detects GLM-4V series models.
+    /// - Parameter modelName: The model name to check
+    /// - Returns: true if the model uses normalized coordinates
+    public static func usesNormalizedCoordinates(modelName: String) -> Bool {
+        let lowercased = modelName.lowercased()
+        // GLM-4V series models use normalized 0-1000 coordinates
+        return lowercased.contains("glm") && (
+            lowercased.contains("4v") ||
+            lowercased.contains("4.5v") ||
+            lowercased.contains("4.6v") ||
+            lowercased.contains("4.1v"))
     }
 
     // MARK: - Utility Methods

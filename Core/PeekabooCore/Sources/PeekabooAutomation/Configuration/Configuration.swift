@@ -282,19 +282,41 @@ public struct Configuration: Codable {
         public let supportsTools: Bool?
         public let supportsVision: Bool?
         public let parameters: [String: String]?
+        /// Coordinate format used by this model for bounding box outputs.
+        /// Some models (like GLM-4V series) return normalized coordinates (0-1000)
+        /// instead of pixel coordinates. Set to "normalized-1000" for such models.
+        public let coordinateFormat: CoordinateFormat?
 
         public init(
             name: String,
             maxTokens: Int? = nil,
             supportsTools: Bool? = nil,
             supportsVision: Bool? = nil,
-            parameters: [String: String]? = nil)
+            parameters: [String: String]? = nil,
+            coordinateFormat: CoordinateFormat? = nil)
         {
             self.name = name
             self.maxTokens = maxTokens
             self.supportsTools = supportsTools
             self.supportsVision = supportsVision
             self.parameters = parameters
+            self.coordinateFormat = coordinateFormat
+        }
+    }
+
+    /// Coordinate format for AI model bounding box outputs.
+    public enum CoordinateFormat: String, Codable, CaseIterable {
+        /// Standard pixel coordinates (default for most models like GPT-4o, Claude)
+        case pixel
+        /// Normalized coordinates scaled to 0-1000 range (used by GLM-4V series)
+        /// Formula to convert: pixel = normalized / 1000 * dimension
+        case normalized1000 = "normalized-1000"
+
+        public var displayName: String {
+            switch self {
+            case .pixel: "Pixel Coordinates"
+            case .normalized1000: "Normalized (0-1000)"
+            }
         }
     }
 }
