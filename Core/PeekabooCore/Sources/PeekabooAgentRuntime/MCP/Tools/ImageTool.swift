@@ -7,9 +7,38 @@ import PeekabooFoundation
 import TachikomaMCP
 import UniformTypeIdentifiers
 
+/// Rate limiter for controlling access to resource-intensive operations
+actor RateLimiter {
+    private var requestTimestamps: [Date] = []
+    private let maxRequests: Int
+    private let timeWindow: TimeInterval
+    
+    init(maxRequests: Int = 10, timeWindow: TimeInterval = 60) {
+        self.maxRequests = maxRequests
+        self.timeWindow = timeWindow
+    }
+    
+    func checkLimit() throws {
+        let now = Date()
+        let cutoff = now.addingTimeInterval(-timeWindow)
+        
+        // Remove old timestamps
+        requestTimestamps.removeAll { $0 < cutoff }
+        
+        // Check if limit exceeded
+        if requestTimestamps.count >= maxRequests {
+            throw OperationError.captureFailed(reason: "Rate limit exceeded: maximum \(maxRequests) requests per \(Int(timeWindow)) seconds")
+        }
+        
+        // Record this request
+        requestTimestamps.append(now)
+    }
+}
+
 /// MCP tool for capturing screenshots
 public struct ImageTool: MCPTool {
     private let context: MCPToolContext
+    private static let rateLimiter = RateLimiter(maxRequests: 10, timeWindow: 60)
 
     public let name = "image"
 
@@ -50,6 +79,9 @@ public struct ImageTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
+        // Apply rate limiting before processing
+        try await Self.rateLimiter.checkLimit()
+        
         let request = try ImageRequest(arguments: arguments)
         let captureResults = try await self.captureImages(for: request)
         let savedFiles = try self.saveCaptures(captureResults, request: request)
@@ -246,6 +278,24 @@ enum ImageCaptureTarget {
 
 // MARK: - Helper Functions
 
+private func sanitizeFilePath(_ path: String) -> String {
+    // Remove any path traversal sequences
+    var sanitized = path
+        .replacingOccurrences(of: "../", with: "")
+        .replacingOccurrences(of: "/..", with: "")
+        .replacingOccurrences(of: "..", with: "")
+    
+    // Remove any null bytes
+    sanitized = sanitized.replacingOccurrences(of: "\0", with: "")
+    
+    // Normalize multiple slashes
+    while sanitized.contains("//") {
+        sanitized = sanitized.replacingOccurrences(of: "//", with: "/")
+    }
+    
+    return sanitized
+}
+
 private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarget {
     guard let target = appTarget else {
         return .screen(index: nil)
@@ -302,7 +352,15 @@ extension ImageTool {
 }
 
 private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {
-    let url = URL(fileURLWithPath: path.expandingTildeInPath)
+    // Sanitize the path to prevent path traversal attacks
+    let sanitizedPath = sanitizeFilePath(path)
+    let url = URL(fileURLWithPath: sanitizedPath.expandingTildeInPath)
+    
+    // Validate the resolved path to ensure it doesn't escape intended boundaries
+    let resolvedPath = url.standardized.path
+    if resolvedPath.contains("../") || resolvedPath.contains("/..") {
+        throw OperationError.captureFailed(reason: "Invalid path: path traversal detected")
+    }
 
     // Create parent directory if needed
     let parentDir = url.deletingLastPathComponent()
@@ -338,14 +396,16 @@ private func saveTemporaryImage(_ data: Data) throws -> String {
 }
 
 private func ensureExtension(_ path: String, format: ImageFormatOption) -> String {
+    // Sanitize the path first to prevent path traversal
+    let sanitizedPath = sanitizeFilePath(path)
     let expectedExt = format.fileExtension
-    let url = URL(fileURLWithPath: path.expandingTildeInPath)
+    let url = URL(fileURLWithPath: sanitizedPath.expandingTildeInPath)
 
     if url.pathExtension.lowercased() != expectedExt {
         return url.deletingPathExtension().appendingPathExtension(expectedExt).path
     }
 
-    return path
+    return sanitizedPath
 }
 
 private func generateFileName(
@@ -354,7 +414,9 @@ private func generateFileName(
     metadata: CaptureMetadata,
     format: ImageFormatOption) -> String
 {
-    let url = URL(fileURLWithPath: basePath.expandingTildeInPath)
+    // Sanitize the base path to prevent path traversal
+    let sanitizedBasePath = sanitizeFilePath(basePath)
+    let url = URL(fileURLWithPath: sanitizedBasePath.expandingTildeInPath)
     let basename = url.deletingPathExtension().lastPathComponent
     let directory = url.deletingLastPathComponent()
 
