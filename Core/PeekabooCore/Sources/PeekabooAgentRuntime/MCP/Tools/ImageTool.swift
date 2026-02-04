@@ -124,7 +124,7 @@ extension ImageTool {
         var savedFiles: [MCPSavedFile] = []
 
         for (index, result) in results.indexed() {
-            let fileName = results.count > 1 ?
+            let fileName = try results.count > 1 ?
                 generateFileName(
                     basePath: basePath,
                     index: index,
@@ -229,11 +229,50 @@ private struct ImageRequest {
 
     init(arguments: ToolArguments) throws {
         let input = try arguments.decode(ImageInput.self)
-        self.path = input.path
+        
+        // Validate and sanitize path to prevent path traversal attacks
+        if let inputPath = input.path {
+            // Ensure path doesn't contain path traversal sequences
+            let sanitizedPath = try Self.validateAndSanitizePath(inputPath)
+            self.path = sanitizedPath
+        } else {
+            self.path = nil
+        }
+        
         self.question = input.question
         self.captureFocus = input.captureFocus ?? .auto
         self.format = input.format ?? .png
         self.target = try parseCaptureTarget(input.appTarget)
+    }
+    
+    // Validates path to prevent directory traversal attacks
+    private static func validateAndSanitizePath(_ path: String) throws -> String {
+        let expandedPath = path.expandingTildeInPath
+        
+        // Check for path traversal sequences
+        if expandedPath.contains("../") || expandedPath.contains("..\\") {
+            throw PeekabooError.invalidInput("Path contains invalid directory traversal sequences")
+        }
+        
+        // Resolve to canonical path to prevent traversal via symlinks
+        let url = URL(fileURLWithPath: expandedPath)
+        
+        // Check for absolute path outside allowed directories
+        // Allow only paths in user directories or temp directory
+        let allowedPrefixes = [
+            FileManager.default.homeDirectoryForCurrentUser.path,
+            FileManager.default.temporaryDirectory.path,
+            "/tmp"
+        ]
+        
+        let canonicalPath = url.standardized.path
+        let isAllowed = allowedPrefixes.contains { canonicalPath.hasPrefix($0) }
+        
+        if !isAllowed && url.path.hasPrefix("/") {
+            throw PeekabooError.invalidInput("Path must be within user home directory or temporary directory")
+        }
+        
+        return path
     }
 }
 
@@ -245,6 +284,40 @@ enum ImageCaptureTarget {
 }
 
 // MARK: - Helper Functions
+
+// Global path validation function to prevent directory traversal attacks
+private func validatePathSecurity(_ path: String) throws {
+    let expandedPath = path.expandingTildeInPath
+    
+    // Check for path traversal sequences
+    if expandedPath.contains("../") || expandedPath.contains("..\\") {
+        throw PeekabooError.invalidInput("Path contains invalid directory traversal sequences")
+    }
+    
+    // Additional check for ".." as path component
+    let url = URL(fileURLWithPath: expandedPath)
+    let components = url.pathComponents
+    if components.contains("..") {
+        throw PeekabooError.invalidInput("Path contains invalid directory traversal sequences")
+    }
+    
+    // Resolve to canonical path to prevent traversal via symlinks
+    let canonicalPath = url.standardized.path
+    
+    // Check for absolute path outside allowed directories
+    // Allow only paths in user directories or temp directory
+    let allowedPrefixes = [
+        FileManager.default.homeDirectoryForCurrentUser.path,
+        FileManager.default.temporaryDirectory.path,
+        "/tmp"
+    ]
+    
+    let isAllowed = allowedPrefixes.contains { canonicalPath.hasPrefix($0) }
+    
+    if !isAllowed && url.path.hasPrefix("/") {
+        throw PeekabooError.invalidInput("Path must be within user home directory or temporary directory")
+    }
+}
 
 private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarget {
     guard let target = appTarget else {
@@ -302,6 +375,9 @@ extension ImageTool {
 }
 
 private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {
+    // Validate path for security before any file operations
+    try validatePathSecurity(path)
+    
     let url = URL(fileURLWithPath: path.expandingTildeInPath)
 
     // Create parent directory if needed
@@ -337,12 +413,18 @@ private func saveTemporaryImage(_ data: Data) throws -> String {
     return url.path
 }
 
-private func ensureExtension(_ path: String, format: ImageFormatOption) -> String {
+private func ensureExtension(_ path: String, format: ImageFormatOption) throws -> String {
+    // Validate input path for security
+    try validatePathSecurity(path)
+    
     let expectedExt = format.fileExtension
     let url = URL(fileURLWithPath: path.expandingTildeInPath)
 
     if url.pathExtension.lowercased() != expectedExt {
-        return url.deletingPathExtension().appendingPathExtension(expectedExt).path
+        let resultPath = url.deletingPathExtension().appendingPathExtension(expectedExt).path
+        // Validate the resulting path as well
+        try validatePathSecurity(resultPath)
+        return resultPath
     }
 
     return path
@@ -352,29 +434,45 @@ private func generateFileName(
     basePath: String,
     index: Int,
     metadata: CaptureMetadata,
-    format: ImageFormatOption) -> String
+    format: ImageFormatOption) throws -> String
 {
+    // Validate input basePath for security
+    try validatePathSecurity(basePath)
+    
     let url = URL(fileURLWithPath: basePath.expandingTildeInPath)
     let basename = url.deletingPathExtension().lastPathComponent
     let directory = url.deletingLastPathComponent()
 
     var filename = basename
     if let appInfo = metadata.applicationInfo {
-        filename += "-\(appInfo.name.replacingOccurrences(of: " ", with: "_"))"
+        // Sanitize app name to prevent path traversal
+        let sanitizedAppName = appInfo.name
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "\\", with: "_")
+            .replacingOccurrences(of: "..", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+        filename += "-\(sanitizedAppName)"
     }
     if let windowInfo = metadata.windowInfo {
         let sanitizedTitle = windowInfo.title
             .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "\\", with: "_")
+            .replacingOccurrences(of: "..", with: "_")
             .replacingOccurrences(of: ":", with: "_")
             .prefix(50)
         filename += "-\(sanitizedTitle)"
     }
     filename += "-\(index)"
 
-    return directory
+    let resultPath = directory
         .appendingPathComponent(filename)
         .appendingPathExtension(format.fileExtension)
         .path
+    
+    // Validate the generated path
+    try validatePathSecurity(resultPath)
+    
+    return resultPath
 }
 
 private func describeCapture(_ metadata: CaptureMetadata) -> String {
