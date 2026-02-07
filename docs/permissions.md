@@ -24,11 +24,10 @@ read_when:
    - System Settings → Privacy & Security → Accessibility.
    - Enable the same terminals/IDEs so Peekaboo can send clicks/keystrokes reliably.
 
-3. **Automation Check**
+3. **Check Permissions**
    ```bash
-   peekaboo permissions check
-   peekaboo permissions request screen-recording
-   peekaboo permissions request accessibility
+   peekaboo permissions status    # Check current permission status
+   peekaboo permissions grant     # Show grant instructions
    ```
 
 ## Performance Tips
