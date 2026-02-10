@@ -211,10 +211,10 @@ extension CommanderRuntimeRouter {
     private static func renderRootUsageCard(theme: HelpTheme) -> String {
         var lines: [String] = []
         lines.append(theme.heading("Usage"))
-        lines.append("  \(theme.accent("polter peekaboo <command> [options]"))")
+        lines.append("  \(theme.accent("peekaboo <command> [options]"))")
         lines.append("")
         lines.append(theme.heading("Tip"))
-        lines.append("  Run via \(theme.accent("polter peekaboo")) to ensure fresh builds.")
+        lines.append("  When developing locally, run via \(theme.accent("polter peekaboo")) to ensure fresh builds.")
         return lines.joined(separator: "\n")
     }
 
@@ -237,13 +237,13 @@ extension CommanderRuntimeRouter {
 
         lines.append("")
         lines.append(theme.heading("Tip"))
-        lines.append("  Run via \(theme.accent("polter peekaboo")) to ensure fresh builds.")
+        lines.append("  When developing locally, run via \(theme.accent("polter peekaboo")) to ensure fresh builds.")
         return lines.joined(separator: "\n")
     }
 
     private static func globalFlagSummaries(theme: HelpTheme) -> [String] {
         [
-            theme.bullet(label: "--json/-j", description: "Emit machine-readable JSON output"),
+            theme.bullet(label: "--json/-j (alias: --json-output)", description: "Emit machine-readable JSON output"),
             theme.bullet(label: "--verbose/-v", description: "Enable verbose logging"),
             theme.bullet(
                 label: "--log-level <level>",
@@ -292,7 +292,7 @@ extension CommanderRuntimeRouter {
     }
 
     private static func buildUsageLine(path: [String], signature: CommandSignature) -> String {
-        var tokens = ["polter", "peekaboo"]
+        var tokens = ["peekaboo"]
         let commandPath = path.isEmpty ? ["<command>"] : path
         tokens.append(contentsOf: commandPath)
 

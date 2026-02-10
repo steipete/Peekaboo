@@ -13,20 +13,20 @@ read_when:
 | Flag | Description |
 | --- | --- |
 | `--no-sort` | Preserve registration order instead of alphabetizing every tool. |
-| `--json-output` | Emit `{tools:[…], count:n}` for machine parsing. |
+| `--json` | Emit `{tools:[…], count:n}` for machine parsing. |
 
 ## Implementation notes
 - The command instantiates every native `MCPTool` manually (ImageTool, ClickTool, DialogTool, etc.) so you see the same tool set the agent runtime will use.
 - Filtering happens before formatting (`ToolFiltering.apply`), so allow/deny rules match the agent + MCP server behavior.
-- Because the command implements `RuntimeOptionsConfigurable`, it respects global `--json-output`/`--verbose` flags even when invoked from other commands (e.g., `peekaboo learn` can embed the summaries verbatim).
+- Because the command implements `RuntimeOptionsConfigurable`, it respects global `--json`/`--verbose` flags even when invoked from other commands (e.g., `peekaboo learn` can embed the summaries verbatim).
 
 ## Examples
 ```bash
 # Produce a JSON blob for an agent integration test
-polter peekaboo -- tools --json-output > /tmp/tools.json
+polter peekaboo -- tools --json > /tmp/tools.json
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

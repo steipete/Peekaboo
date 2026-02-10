@@ -16,7 +16,7 @@ read_when:
 - **Commander section**: a programmatic dump of every CLI command’s positional arguments, options, and flags (built by `CommanderRegistryBuilder.buildCommandSummaries()`).
 
 ## Implementation notes
-- The command is intentionally text-only—`--json-output` is ignored—so downstream systems should capture stdout if they want to cache the content.
+- The command is intentionally text-only—`--json` is ignored—so downstream systems should capture stdout if they want to cache the content.
 - Everything runs on the main actor because it pulls live data from `ToolRegistry` and Commander; no stale handwritten docs are involved.
 - Because it reuses the same builders the CLI uses at runtime, new commands/tools automatically show up here as soon as they land.
 - When stdout is a rich TTY, output is rendered with Swiftdansi for ANSI color and table/box formatting; piped output stays plain Markdown for downstream tools.
@@ -33,4 +33,4 @@ polter peekaboo -- learn | awk '/^## Commander/,0'
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

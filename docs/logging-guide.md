@@ -128,7 +128,7 @@ $ peekaboo see --mode screen --annotate --verbose
 
 ## JSON Output Mode
 
-When using `--json-output`, verbose logs are collected in the `debug_logs` array:
+When using `--json`, verbose logs are collected in the `debug_logs` array:
 
 ```json
 {
@@ -188,7 +188,7 @@ peekaboo see --verbose 2>&1 | grep "duration_ms" | sed 's/.*duration_ms=\([0-9]*
 If you don't see verbose output:
 1. Ensure you're using `--verbose` flag or set `PEEKABOO_LOG_LEVEL=verbose`
 2. Check that output isn't being redirected (logs go to stderr, not stdout)
-3. Verify you're not using `--json-output` (logs go to debug_logs array in JSON mode)
+3. Verify you're not using `--json` (logs go to debug_logs array in JSON mode)
 
 ### Performance Issues
 

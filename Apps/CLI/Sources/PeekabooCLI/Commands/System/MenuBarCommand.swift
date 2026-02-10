@@ -27,7 +27,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                 EXAMPLES:
                   # List all menu bar items with indices
                   peekaboo menubar list
-                  peekaboo menubar list --json-output      # JSON format
+                  peekaboo menubar list --json             # JSON format
 
                   # Click by exact or partial name (case-insensitive)
                   peekaboo menubar click "Wi-Fi"           # Exact match

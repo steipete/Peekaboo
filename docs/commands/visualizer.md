@@ -16,7 +16,7 @@ Runs a lightweight smoke sequence that fires a representative set of visualizer 
 ## Usage
 ```bash
 polter peekaboo -- visualizer
-polter peekaboo -- visualizer --json-output > .artifacts/playground-tools/visualizer.json
+polter peekaboo -- visualizer --json > .artifacts/playground-tools/visualizer.json
 ```
 
 ## Notes

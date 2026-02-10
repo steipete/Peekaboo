@@ -64,7 +64,7 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
             return runtime.configuration
         }
         // During bare parsing in unit tests no runtime is injected; fall back
-        // to the parsed runtime options so flags like --json-output are visible.
+        // to the parsed runtime options so flags like --json are visible.
         return self.runtimeOptions.makeConfiguration()
     }
 

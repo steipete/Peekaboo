@@ -39,7 +39,7 @@ public enum ToolRegistry {
             """,
             examples: [
                 "peekaboo see --app Safari --path ~/Shots/safari.png --annotate",
-                "peekaboo see --mode screen --json-output",
+                "peekaboo see --mode screen --json",
             ],
             agentGuidance: "Run `see` whenever you need fresh element IDs; the response " +
                 "contains snapshot ids and absolute coordinates."),

@@ -12,7 +12,7 @@ read_when:
 ## Actions
 | Positional action | Description |
 | --- | --- |
-| `list` | Prints every visible status item with its index. `--json-output` emits the same data plus bundle IDs and AX identifiers. |
+| `list` | Prints every visible status item with its index. `--json` emits the same data plus bundle IDs and AX identifiers. |
 | `click` | Clicks an item by name (case-insensitive fuzzy match) or via `--index <n>`. |
 
 ## Key options
@@ -21,7 +21,7 @@ read_when:
 | `[itemName]` | Optional positional argument passed to `click`. |
 | `--index <n>` | Target by numeric index (matches the ordering from `menubar list`). |
 | `--verify` | After clicking, confirm a popover owned by the same PID appears, or that focus moved to the owning app/window (fallback OCR). OCR requires the popover text to include the target title/owner name and anchors verification to the clicked item’s X position when available. |
-| Global flags | `--json-output` returns structured payloads; `--verbose` adds descriptions when listing. |
+| Global flags | `--json` returns structured payloads; `--verbose` adds descriptions when listing. |
 
 ## Implementation notes
 - The command name is `menubar` (no hyphen). Commander enforces `list`/`click` as the only valid actions.
@@ -42,10 +42,10 @@ polter peekaboo -- menubar click "Wi-Fi"
 polter peekaboo -- menubar click "Wi-Fi" --verify
 
 # Click the third item regardless of name and capture JSON output
-polter peekaboo -- menubar click --index 3 --json-output
+polter peekaboo -- menubar click --index 3 --json
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

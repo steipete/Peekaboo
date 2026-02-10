@@ -12,11 +12,11 @@ read_when:
 ## Subcommands
 | Name | Purpose |
 | --- | --- |
-| `status` (default) | Fetches the current permission set via `PermissionHelpers.getCurrentPermissions` and prints each entry (`granted`, `denied`, etc.). Honors `--json-output` so agents can block proactively. |
+| `status` (default) | Fetches the current permission set via `PermissionHelpers.getCurrentPermissions` and prints each entry (`granted`, `denied`, etc.). Honors `--json` so agents can block proactively. |
 | `grant` | Reuses the same snapshot but focuses on remediation: when in text mode it prints the exact System Settings pane/location for each missing entitlement. |
 
 ## Implementation notes
-- Both subcommands conform to `RuntimeOptionsConfigurable`, so they inherit global `--json-output`/`--verbose` flags even when invoked from compound commands like `peekaboo learn`.
+- Both subcommands conform to `RuntimeOptionsConfigurable`, so they inherit global `--json`/`--verbose` flags even when invoked from compound commands like `peekaboo learn`.
 - The command executes entirely on the main actor, avoiding extra prompts or sandbox warnings—the same code path runs at CLI startup to warn if entitlements are missing.
 - JSON mode uses `outputSuccessCodable`, which means you get a `{name, status, grantInstructions}` object for each permission and can diff the snapshots over time.
 
@@ -26,7 +26,7 @@ read_when:
 polter peekaboo -- permissions
 
 # Feed the status into an agent to ensure entitlements are set
-polter peekaboo -- permissions --json-output | jq '.data[] | select(.status != "granted")'
+polter peekaboo -- permissions --json | jq '.data[] | select(.status != "granted")'
 
 # Hand someone clear remediation steps
 polter peekaboo -- permissions grant
@@ -35,4 +35,4 @@ polter peekaboo -- permissions grant
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

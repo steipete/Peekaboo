@@ -12,7 +12,7 @@ struct HelpCommandTests {
 
         // Verify help content is shown
         #expect(output.contains("Usage"))
-        #expect(output.contains("polter peekaboo <command>"))
+        #expect(output.contains("peekaboo <command>"))
         #expect(output.contains("Core Commands"))
         #expect(output.contains("image"))
         #expect(output.contains("list"))
@@ -27,7 +27,7 @@ struct HelpCommandTests {
 
         // Should show same help as no arguments
         #expect(output.contains("Usage"))
-        #expect(output.contains("polter peekaboo <command>"))
+        #expect(output.contains("peekaboo <command>"))
     }
 
     @Test
@@ -62,7 +62,7 @@ struct HelpCommandTests {
             // Each subcommand help should contain a usage card + global flags.
             #expect(output.contains("Usage"), "Help for \(subcommand) should contain Usage")
             #expect(
-                output.contains("polter peekaboo \(subcommand)"),
+                output.contains("peekaboo \(subcommand)"),
                 "Help for \(subcommand) should contain usage line"
             )
             #expect(

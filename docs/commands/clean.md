@@ -30,11 +30,11 @@ Only one of the three selection flags may be supplied at a time; the command val
 polter peekaboo -- clean --older-than 12 --dry-run
 
 # Remove the snapshot returned from the last `see` run
-SNAPSHOT=$(polter peekaboo -- see --json-output | jq -r '.data.snapshot_id')
+SNAPSHOT=$(polter peekaboo -- see --json | jq -r '.data.snapshot_id')
 polter peekaboo -- clean --snapshot "$SNAPSHOT"
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

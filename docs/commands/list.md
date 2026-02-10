@@ -7,14 +7,14 @@ read_when:
 
 # `peekaboo list`
 
-`peekaboo list` is a container command that fans out into focused inventory subcommands. Each subcommand returns human-readable tables by default and emits the same structure in JSON when `--json-output` is set, so agents can choose whichever format fits their control loop.
+`peekaboo list` is a container command that fans out into focused inventory subcommands. Each subcommand returns human-readable tables by default and emits the same structure in JSON when `--json` is set, so agents can choose whichever format fits their control loop.
 
 ## Subcommands
 | Subcommand | What it does | Notable options |
 | --- | --- | --- |
 | `apps` (default) | Enumerates every running GUI app with bundle ID, PID, and focus status. | None – but it enforces screen-recording permission before scanning. |
 | `windows` | Lists the windows owned by a specific process with optional bounds/ID metadata. | `--app <name|bundle|PID:1234>` (required), `--pid`, `--include-details bounds,ids,off_screen`. |
-| `menubar` | Dumps every status-item title/index so you can target them via `menubar click`. | Supports `--json-output` for scripts piping into `jq`. |
+| `menubar` | Dumps every status-item title/index so you can target them via `menubar click`. | Supports `--json` for scripts piping into `jq`. |
 | `screens` | Shows connected displays, resolution, scaling, and whether they are main/secondary. | None. |
 | `permissions` | Mirrors `peekaboo permissions status` for quick entitlement checks. | None.
 
@@ -34,10 +34,10 @@ polter peekaboo -- list
 polter peekaboo -- list windows --app "Google Chrome" --include-details bounds,ids
 
 # Pipe the current display layout into jq for scripting
-polter peekaboo -- list screens --json-output | jq '.data.screens[] | {name, size: .frame}'
+polter peekaboo -- list screens --json | jq '.data.screens[] | {name, size: .frame}'
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

@@ -190,7 +190,7 @@ peekaboo space list
 peekaboo space list --all
 
 # JSON output
-peekaboo space list --json-output
+peekaboo space list --json
 ```
 
 ### Current Space Info

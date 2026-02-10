@@ -17,7 +17,7 @@ read_when:
 | `--bundle-id <id>` | Resolve the handler via bundle ID directly. Overrides `--app` if both are set. |
 | `--wait-until-ready` | Block until the handler reports `isFinishedLaunching` (10 s timeout). |
 | `--no-focus` | Leave the handler in the background even after opening. |
-| Global flags | `--json-output` prints an `OpenResult` (target, resolved target, handler name, PID, focus state). |
+| Global flags | `--json` prints an `OpenResult` (target, resolved target, handler name, PID, focus state). |
 
 ## Implementation notes
 - Targets without a URL scheme are treated as filesystem paths; relative values are combined with `FileManager.default.currentDirectoryPath`, and `~` prefixes expand to the user’s home.
@@ -35,7 +35,7 @@ polter peekaboo -- open ~/Docs/spec.pdf --no-focus
 polter peekaboo -- open /tmp/notes.txt --bundle-id com.apple.TextEdit --wait-until-ready
 
 # Launch Safari with a URL and report the resulting PID as JSON
-polter peekaboo -- open https://example.com --json-output
+polter peekaboo -- open https://example.com --json
 ```
 
 ## Design notes
@@ -48,4 +48,4 @@ polter peekaboo -- open https://example.com --json-output
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

@@ -28,7 +28,7 @@ read_when:
 polter peekaboo -- bridge status
 
 # Full probe results + structured output for agents
-polter peekaboo -- bridge status --verbose --json-output | jq '.data'
+polter peekaboo -- bridge status --verbose --json | jq '.data'
 
 # Probe a specific host socket path
 polter peekaboo -- bridge status --bridge-socket \

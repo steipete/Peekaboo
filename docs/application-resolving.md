@@ -180,7 +180,7 @@ Clear error messages help users understand issues:
 
 ```bash
 # Get PID for scripting
-PID=$(peekaboo list apps --json-output | jq '.applications[] | select(.app_name=="Safari") | .pid')
+PID=$(peekaboo list apps --json | jq '.applications[] | select(.app_name=="Safari") | .pid')
 peekaboo window close --pid $PID
 
 # Or use bundle ID

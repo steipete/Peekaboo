@@ -39,7 +39,7 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 peekaboo image --mode screen --retina --path ~/Desktop/screen.png
 
 # Click a button by label (captures, resolves, and clicks in one go)
-peekaboo see --app Safari --json-output | jq -r '.data.snapshot_id' | read SNAPSHOT
+peekaboo see --app Safari --json | jq -r '.data.snapshot_id' | read SNAPSHOT
 peekaboo click --on "Reload this page" --snapshot "$SNAPSHOT"
 
 # Run a natural-language automation
@@ -64,7 +64,7 @@ npx -y @steipete/peekaboo
 
 | Command | Key flags / subcommands | What it does |
 | --- | --- | --- |
-| [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json-output` | Capture and annotate UI, return snapshot + element IDs |
+| [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json` | Capture and annotate UI, return snapshot + element IDs |
 | [click](docs/commands/click.md) | `--on <id/query>`, `--snapshot`, `--wait`, coords | Click by element ID, label, or coordinates |
 | [type](docs/commands/type.md) | `--text`, `--clear`, `--delay-ms` | Enter text with pacing options |
 | [press](docs/commands/press.md) | key names, `--repeat` | Special keys and sequences |
@@ -82,7 +82,7 @@ npx -y @steipete/peekaboo
 | [dialog](docs/commands/dialog.md) | `list`, `click`, `input`, `file`, `dismiss` | Drive system dialogs (open/save/etc.) |
 | [image](docs/commands/image.md) | `--mode screen/window/menu`, `--retina`, `--analyze` | Screenshot screen/window/menu bar (+analyze) |
 | [list](docs/commands/list.md) | `apps`, `windows`, `screens`, `menubar`, `permissions` | Enumerate apps, windows, screens, permissions |
-| [tools](docs/commands/tools.md) | `--verbose`, `--json-output`, `--no-sort` | Inspect native Peekaboo tools |
+| [tools](docs/commands/tools.md) | `--verbose`, `--json`, `--no-sort` | Inspect native Peekaboo tools |
 | [config](docs/commands/config.md) | `init`, `show`, `add`, `login`, `models` | Manage credentials/providers/settings |
 | [permissions](docs/commands/permissions.md) | `status`, `grant` | Check/grant required macOS permissions |
 | [run](docs/commands/run.md) | `.peekaboo.json`, `--output`, `--no-fail-fast` | Execute `.peekaboo.json` automation scripts |
