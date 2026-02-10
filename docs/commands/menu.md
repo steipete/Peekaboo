@@ -22,7 +22,7 @@ read_when:
 - Menu focus uses `ensureFocusIgnoringMissingWindows`, which tolerates apps that keep a menu bar without a visible window (e.g., Finder when all windows are closed).
 - Any `--item` string that already contains `'>'` is automatically interpreted as a `--path` so agents don’t have to rewrite their inputs. The command even prints a note when this normalization occurs.
 - Errors bubble up as typed `MenuError`s; JSON mode maps them to specific error codes (`MENU_ITEM_NOT_FOUND`, `MENU_BAR_NOT_FOUND`, etc.) so CI can distinguish between missing apps vs. absent menu items.
-- `list-all` pairs `MenuServiceBridge.listFrontmostMenus` with `listMenuExtras`, filters disabled entries unless asked otherwise, and emits a structured `apps:[{menus,statusItems}]` payload when `--json-output` is used.
+- `list-all` pairs `MenuServiceBridge.listFrontmostMenus` with `listMenuExtras`, filters disabled entries unless asked otherwise, and emits a structured `apps:[{menus,statusItems}]` payload when `--json` is used.
 - `click-extra --verify` uses the same popover/window verification logic as `peekaboo menubar click --verify` (including OCR title/owner matching when needed).
 
 ## Examples
@@ -34,10 +34,10 @@ polter peekaboo -- menu click --app Safari --path "File > New Window"
 polter peekaboo -- menu list --app Finder --include-disabled
 
 # Capture the current menu + menu extras as JSON (with coordinates)
-polter peekaboo -- menu list-all --include-frames --json-output > /tmp/menu.json
+polter peekaboo -- menu list-all --include-frames --json > /tmp/menu.json
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

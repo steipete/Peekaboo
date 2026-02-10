@@ -33,7 +33,7 @@ struct RunCommandJSONFailureOutputTests {
         let result = try await InProcessCommandRunner.run([
             "run",
             scriptPath,
-            "--json-output",
+            "--json",
         ], services: services)
 
         #expect(result.exitStatus != 0)

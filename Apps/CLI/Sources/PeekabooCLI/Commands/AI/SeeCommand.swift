@@ -806,11 +806,11 @@ extension SeeCommand: ParsableCommand {
                 discussion: definition.discussion,
                 usageExamples: [
                     CommandUsageExample(
-                        command: "peekaboo see --json-output --annotate --path /tmp/see.png",
+                        command: "peekaboo see --json --annotate --path /tmp/see.png",
                         description: "Capture the frontmost window, print structured output, and save annotations."
                     ),
                     CommandUsageExample(
-                        command: "peekaboo see --app Safari --window-title \"Login\" --json-output",
+                        command: "peekaboo see --app Safari --window-title \"Login\" --json",
                         description: "Target a specific Safari window to collect stable element IDs."
                     ),
                     CommandUsageExample(

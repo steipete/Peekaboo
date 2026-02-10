@@ -11,7 +11,7 @@ read_when:
 
 ```bash
 # Capture frontmost window, print JSON, and save an annotated PNG
-polter peekaboo -- see --json-output --annotate --path /tmp/see.png
+polter peekaboo -- see --json --annotate --path /tmp/see.png
 
 # Target a specific app or window title
 polter peekaboo -- see --app "Google Chrome" --window-title "Login"
@@ -20,7 +20,7 @@ polter peekaboo -- see --app "Google Chrome" --window-title "Login"
 ## When to use
 
 - Before issuing `click`/`type` commands so you have stable element IDs.
-- When debugging automation failures—`--json-output` includes raw bounds, labels, and snapshot IDs.
+- When debugging automation failures—`--json` includes raw bounds, labels, and snapshot IDs.
 - To snapshot UI regressions (pass `--annotate` + `--path`).
 
 ## Key options
@@ -31,7 +31,7 @@ polter peekaboo -- see --app "Google Chrome" --window-title "Login"
 | `--mode screen` | Capture the entire display instead of a single window. |
 | `--annotate` | Overlay element bounds/IDs on the output image. |
 | `--path <file>` | Save the screenshot/annotation to disk. |
-| `--json-output` | Emit structured metadata (recommended for scripting). |
+| `--json` | Emit structured metadata (recommended for scripting). |
 | `--menubar` | Capture menu bar popovers via window list + OCR (useful for status-item settings panels). When `--app` is set, the app name is used as an OCR hint for popover selection. |
 | `--timeout-seconds <seconds>` | Increase overall timeout for large/complex windows (defaults to 20s, or 60s with `--analyze`). |
 | `--no-web-focus` | Skip the automatic web-content focus retry (useful if the page reacts badly to synthetic clicks). |
@@ -50,7 +50,7 @@ This fallback only runs inside the resolved window (it won’t hop between windo
 
 ## JSON output primer
 
-When `--json-output` is supplied, the CLI prints:
+When `--json` is supplied, the CLI prints:
 
 - `snapshot_id` – reference for subsequent `click --snapshot …` and `type --snapshot …`.
 - `ui_map` – path to the persisted snapshot file (`~/.peekaboo/snapshots/<id>/snapshot.json`).
@@ -61,11 +61,11 @@ When `--json-output` is supplied, the CLI prints:
 Use `jq` or any JSON parser to find elements:
 
 ```bash
-polter peekaboo -- see --app "Safari" --json-output \
+polter peekaboo -- see --app "Safari" --json \
   | jq '.data.ui_elements[] | select(.label | test("Sign in"; "i"))'
 
 # Toolbar buttons that only expose AXDescription:
-polter peekaboo -- see --app "Google Chrome" --json-output \
+polter peekaboo -- see --app "Google Chrome" --json \
   | jq '.data.ui_elements[] | select((.description // "") | test("Wingman"; "i"))'
 ```
 
@@ -81,4 +81,4 @@ polter peekaboo -- see --app "Google Chrome" --json-output \
 - Edge-aware scoring samples a padded rectangle (6 px halo, clamped to the image) so the chosen region stays clean once text is drawn; above/below placements get slight bonuses to reduce sideways clutter.
 - Preferred orientations nudge horizontally tight elements toward vertical labels when scores tie.
 - Tests: `Apps/CLI/Tests/CoreCLITests/SmartLabelPlacerTests.swift` (run with `swift test --package-path Apps/CLI --filter SmartLabelPlacerTests`).
-- Manual validation: `polter peekaboo -- see --app Playground --annotate --path /tmp/see.png --json-output` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.
+- Manual validation: `polter peekaboo -- see --app Playground --annotate --path /tmp/see.png --json` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.

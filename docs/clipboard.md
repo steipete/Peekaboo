@@ -20,13 +20,13 @@ Goal: add a single `clipboard` tool (CLI + MCP) that handles text, images, files
 - Safety: never set Trimmy’s marker type; only requested UTIs.
 
 ## CLI syntax (`peekaboo clipboard …`)
-- `get [--prefer <uti>] [--output <path|->] [--json-output] [--allow-base64]`
+- `get [--prefer <uti>] [--output <path|->] [--json] [--allow-base64]`
   - `--output -` streams binary to stdout; otherwise writes to file and returns a preview in JSON/text.
 - `set (--text <string> | --file <path> | --image <path> | --data-base64 <b64> --uti <uti>) [--also-text <string>] [--allow-large]`
 - `clear`
 - `save [--slot <name|int>]`
 - `restore [--slot <name|int>]`
-- `load --file <path> [--json-output]` (infers UTI from extension: png/jpg/jpeg/tif/tiff/txt/rtf/html/pdf; falls back to raw with inferred UTI)
+- `load --file <path> [--json]` (infers UTI from extension: png/jpg/jpeg/tif/tiff/txt/rtf/html/pdf; falls back to raw with inferred UTI)
 - Common flags: `--verbose`, `--timeout` (for symmetry with other commands).
 
 ## MCP schema (single tool)

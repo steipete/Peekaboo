@@ -16,7 +16,7 @@ struct ToolsCommandTests {
         #expect(discussion.contains("Examples:"))
         #expect(discussion.contains("peekaboo tools"))
         #expect(discussion.contains("--verbose"))
-        #expect(discussion.contains("--json-output"))
+        #expect(discussion.contains("--json"))
     }
 
     @Test
@@ -81,7 +81,7 @@ struct ToolsCommandStructureTests {
         #expect(discussion.contains("peekaboo tools"))
         #expect(discussion.contains("Examples:"))
         #expect(discussion.contains("--verbose"))
-        #expect(discussion.contains("--json-output"))
+        #expect(discussion.contains("--json"))
     }
 
     @Test

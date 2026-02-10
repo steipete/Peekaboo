@@ -31,7 +31,7 @@ read_when:
 # Move Finder’s 2nd window to (100,100)
 polter peekaboo -- window move --app Finder --window-index 1 -x 100 -y 100
 
-# Close a specific window deterministically (window_id from `peekaboo window list --json-output`)
+# Close a specific window deterministically (window_id from `peekaboo window list --json`)
 polter peekaboo -- window close --window-id 12345
 
 # Resize Safari’s frontmost window to 1200x800
@@ -47,4 +47,4 @@ polter peekaboo -- window focus --app Terminal --verify
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

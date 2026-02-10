@@ -21,7 +21,7 @@ Peekaboo’s mission is to make macOS GUI automation as deterministic—and debu
 2. **Semantic interaction:** Commands operate on accessibility metadata (roles, labels, element IDs) instead of raw coordinates wherever possible.
 3. **Visual transparency:** All interactions should be explainable via JSON output, logs, and annotated screenshots so humans/agents can reason about state.
 4. **Reliability by default:** Commands autofocus windows (`FocusCommandOptions`), wait for actionable elements, and reuse sessions instead of forcing manual sleeps.
-5. **Agent awareness:** Outputs are machine-friendly (`--json-output`), and behaviors are documented in `docs/commands/*.md` so autonomous clients receive the same guidance as humans.
+5. **Agent awareness:** Outputs are machine-friendly (`--json`), and behaviors are documented in `docs/commands/*.md` so autonomous clients receive the same guidance as humans.
 
 **Scope:**
 - CLI automation (`Apps/CLI`) built on `PeekabooCore` services.

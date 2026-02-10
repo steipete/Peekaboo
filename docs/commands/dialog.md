@@ -41,13 +41,13 @@ polter peekaboo -- dialog input --text hunter2 --field "Password" --clear --app 
 polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --select Open
 
 # Save a file and verify the resulting path exists
-polter peekaboo -- dialog file --path /tmp --name poem.rtf --select Save --app TextEdit --json-output
+polter peekaboo -- dialog file --path /tmp --name poem.rtf --select Save --app TextEdit --json
 
 # Click the default action (OKButton) and include dialog provenance in JSON output
-polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --ensure-expanded --app TextEdit --json-output
+polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --ensure-expanded --app TextEdit --json
 ```
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

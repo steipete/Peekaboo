@@ -493,7 +493,7 @@ function checkSwiftCLIIntegration() {
   // Test 2: Missing required arguments for window mode
   let missingArgsOutput;
   try {
-    missingArgsOutput = execSync('./peekaboo image --mode window --json-output 2>&1', { 
+    missingArgsOutput = execSync('./peekaboo image --mode window --json 2>&1', { 
       cwd: projectRoot,
       encoding: 'utf8',
       stdio: 'pipe'
@@ -522,7 +522,7 @@ function checkSwiftCLIIntegration() {
   // Test 3: Invalid window index
   let invalidWindowOutput;
   try {
-    execSync('./peekaboo image --mode window --app Finder --window-index abc --json-output 2>&1', { 
+    execSync('./peekaboo image --mode window --app Finder --window-index abc --json 2>&1', { 
       cwd: projectRoot,
       encoding: 'utf8',
       stdio: 'pipe'
@@ -550,7 +550,7 @@ function checkSwiftCLIIntegration() {
   
   // Test 5: JSON output format validation
   const formats = [
-    { cmd: './peekaboo list apps --json-output', required: ['success', 'data'] }
+    { cmd: './peekaboo list apps --json', required: ['success', 'data'] }
   ];
   
   for (const { cmd, required } of formats) {
@@ -581,7 +581,7 @@ function checkSwiftCLIIntegration() {
   
   // Test 6: Permission info in error messages
   // Try to capture without permissions (this is just a smoke test, actual permission errors depend on system state)
-  const captureTest = exec('./peekaboo image --mode screen --json-output', { allowFailure: true });
+  const captureTest = exec('./peekaboo image --mode screen --json', { allowFailure: true });
   if (captureTest) {
     try {
       const result = JSON.parse(captureTest);

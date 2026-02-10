@@ -17,7 +17,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
         Examples:
           peekaboo tools                    # Show all tools
           peekaboo tools --verbose          # Show detailed information
-          peekaboo tools --json-output      # Output in JSON format
+          peekaboo tools --json             # Output in JSON format
         """
     )
 

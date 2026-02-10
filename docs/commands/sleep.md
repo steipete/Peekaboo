@@ -12,7 +12,7 @@ read_when:
 ## Usage
 | Argument | Description |
 | --- | --- |
-| `<duration>` | Positive integer in milliseconds. Global `--json-output` works as usual. |
+| `<duration>` | Positive integer in milliseconds. Global `--json` works as usual. |
 
 ## Implementation notes
 - Durations ≤0 trigger a validation error before any waiting occurs.
@@ -33,4 +33,4 @@ polter peekaboo -- run flow.peekaboo.json --no-fail-fast \
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.

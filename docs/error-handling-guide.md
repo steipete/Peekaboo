@@ -203,7 +203,7 @@ Context:
   permission: screen_recording
 
 # JSON mode - structured output
-$ peekaboo capture --json-output
+$ peekaboo capture --json
 {
   "success": false,
   "error": {

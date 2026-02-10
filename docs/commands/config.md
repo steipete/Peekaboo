@@ -20,7 +20,7 @@ read_when:
 | `login` | Run an OAuth flow (no API key stored) for supported providers. | `login openai` (ChatGPT/Codex), `login anthropic` (Claude Pro/Max). |
 | `set-credential` | Legacy alias for `add <key> <value>`. | Positional `<key> <value>` pair. |
 | `add-provider` | Append or replace a custom AI provider entry. | `--type openai|anthropic`, `--name`, `--base-url`, `--api-key`, `--headers key:value,…`, `--description`, `--force`. |
-| `list-providers` | Dump built-in + custom providers plus whether they’re enabled. | `--json-output` follows the same schema that the runtime loads. |
+| `list-providers` | Dump built-in + custom providers plus whether they’re enabled. | `--json` follows the same schema that the runtime loads. |
 | `test-provider` | Fires a quick `/models` request (or Anthropic equivalent) against the provider definition to make sure credentials/base URL are valid. | `--provider-id <id>` (required), `--timeout-ms`, `--model`. |
 | `remove-provider` | Delete a custom provider entry. | `--provider-id <id>` and optional `--force` to skip confirmation. |
 | `models` | Enumerate every model Peekaboo knows about (native, providers, or the specific server you pass). | `--provider-id`, `--include-disabled`. |
@@ -32,7 +32,7 @@ read_when:
 - Provider readiness in `init`/`show` is live-validated with per-provider pings (OpenAI/Codex, Anthropic, Grok/xai, Gemini). Timeouts default to 30s and are caller overridable.
 - Provider management commands share the same validation helpers: IDs must match `^[A-Za-z0-9-_]+$`, and provider types are limited to `.openai` or `.anthropic`. Headers passed via `--headers KEY:VALUE,…` are parsed into a `[String:String]` dictionary before being serialized back to disk.
 - `test-provider` and `models` invoke the actual HTTP client stack (respecting proxy, TLS, and custom headers) rather than mocking responses, which is why they run on the main actor and surface real latencies.
-- All subcommands are `RuntimeOptionsConfigurable`, so global `--json-output` or `--verbose` flags work uniformly (handy when you script config changes).
+- All subcommands are `RuntimeOptionsConfigurable`, so global `--json` or `--verbose` flags work uniformly (handy when you script config changes).
 
 ## Examples
 ```bash
@@ -62,4 +62,4 @@ polter peekaboo -- config login anthropic
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
-- Re-run with `--json-output` or `--verbose` to surface detailed errors.
+- Re-run with `--json` or `--verbose` to surface detailed errors.
