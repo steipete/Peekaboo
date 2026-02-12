@@ -66,8 +66,15 @@ public final class AudioInputService {
     public private(set) var recordingDuration: TimeInterval = 0
 
     // Maximum file size: 25MB (OpenAI Whisper limit)
+    // Override via PEEKABOO_MAX_FILE_SIZE environment variable (in bytes)
     @ObservationIgnored
-    private let maxFileSize = 25 * 1024 * 1024
+    private let maxFileSize: Int = {
+        if let envValue = ProcessInfo.processInfo.environment["PEEKABOO_MAX_FILE_SIZE"],
+           let parsed = Int(envValue), parsed > 0 {
+            return parsed
+        }
+        return 25 * 1024 * 1024
+    }()
 
     // Supported audio formats for transcription
     @ObservationIgnored

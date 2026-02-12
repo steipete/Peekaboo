@@ -100,6 +100,13 @@ npx -y @steipete/peekaboo
 
 Set providers via `PEEKABOO_AI_PROVIDERS` or `peekaboo config add`.
 
+### Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `PEEKABOO_AI_PROVIDERS` | Comma-separated list of AI providers | — |
+| `PEEKABOO_MAX_FILE_SIZE` | Maximum audio file size in bytes for transcription | `26214400` (25 MB) |
+
 ## Learn more
 - Command reference: [docs/commands/](docs/commands/)
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
