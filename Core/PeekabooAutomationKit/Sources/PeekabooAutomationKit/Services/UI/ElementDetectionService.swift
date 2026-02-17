@@ -64,10 +64,12 @@ public final class ElementDetectionService {
     }
 
     /// Detect UI elements in a screenshot
+    /// - Parameter timeoutSeconds: Maximum seconds for AX tree traversal (default 20).
     public func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?) async throws -> ElementDetectionResult
+        windowContext: WindowContext?,
+        timeoutSeconds: Double = 20.0) async throws -> ElementDetectionResult
     {
         self.logger.info("Starting element detection")
 
@@ -108,7 +110,8 @@ public final class ElementDetectionService {
                 appElement: windowResolution.appElement,
                 appIsActive: targetApp.isActive,
                 allowWebFocus: allowWebFocus,
-                elementIdMap: &elementIdMap)
+                elementIdMap: &elementIdMap,
+                timeoutSeconds: timeoutSeconds)
             if let cacheKey {
                 self.storeCachedElements(detectedElements, for: cacheKey)
             }
@@ -228,6 +231,22 @@ extension ElementDetectionService {
         "axtextarea",
         "axsearchfield",
         "axsecuretextfield",
+    ]
+
+    /// Container roles that should be traversed for children but NOT described.
+    /// Skipping `describeElement()` for these avoids 11+ AX IPC calls per container node,
+    /// which dramatically reduces detection time for apps with large UI trees.
+    private static let containerOnlyRoles: Set<String> = [
+        "axscrollarea", "axtable", "axrow", "axtablerow",
+        "axcell", "axsplitgroup", "axsplitter",
+        "axlayoutarea", "axlayoutitem",
+    ]
+
+    /// Roles where `supportedActions()` and `extractKeyboardShortcut()` are never useful.
+    /// Static text elements are leaf nodes that carry their own text; recursing into
+    /// `textualDescendants()` is also redundant for them.
+    private static let skipActionQueryRoles: Set<String> = [
+        "axstatictext", "axtext", "aximage",
     ]
     private static let maxTraversalDepth = 12
     private static let maxElementCount = 400
@@ -651,6 +670,23 @@ extension ElementDetectionService {
         guard Date() < deadline else { return }
         guard detectedElements.count < Self.maxElementCount else { return }
         guard visitedElements.insert(element).inserted else { return }
+
+        // Fast-path: for container-only roles we skip the expensive describeElement()
+        // (11+ AX IPC calls) and just recurse into children.  This is the primary
+        // optimisation for apps with large UI trees (e.g. 331-element KakaoTalk).
+        if let quickRole = element.role()?.lowercased(),
+           Self.containerOnlyRoles.contains(quickRole)
+        {
+            self.processChildren(
+                of: element,
+                depth: depth + 1,
+                deadline: deadline,
+                detectedElements: &detectedElements,
+                elementIdMap: &elementIdMap,
+                visitedElements: &visitedElements)
+            return
+        }
+
         guard let descriptor = self.describeElement(element) else { return }
 
         self.logButtonDebugInfoIfNeeded(descriptor)
@@ -658,9 +694,20 @@ extension ElementDetectionService {
         let elementId = "elem_\(detectedElements.count)"
         let baseType = self.mapRoleToElementType(descriptor.role)
         let elementType = self.adjustedElementType(element: element, descriptor: descriptor, baseType: baseType)
-        let isActionable = self.isElementActionable(element, role: descriptor.role)
-        let keyboardShortcut = self.extractKeyboardShortcut(element)
-        let label = self.effectiveLabel(for: element, descriptor: descriptor)
+        let loweredRole = descriptor.role.lowercased()
+
+        // Skip expensive action/shortcut queries for roles that are never interactive.
+        let isActionable: Bool
+        let keyboardShortcut: String?
+        if Self.skipActionQueryRoles.contains(loweredRole) {
+            isActionable = false
+            keyboardShortcut = nil
+        } else {
+            isActionable = self.isElementActionable(element, role: descriptor.role)
+            keyboardShortcut = self.extractKeyboardShortcut(element)
+        }
+
+        let label = self.effectiveLabel(for: element, descriptor: descriptor, role: loweredRole)
 
         let attributes = self.createElementAttributes(
             ElementAttributeInput(
@@ -752,7 +799,7 @@ extension ElementDetectionService {
         self.logger.debug("🔍 Button debug - \(parts.joined(separator: ", "))")
     }
 
-    private func effectiveLabel(for element: Element, descriptor: ElementDescriptor) -> String? {
+    private func effectiveLabel(for element: Element, descriptor: ElementDescriptor, role: String? = nil) -> String? {
         let info = ElementLabelInfo(
             role: descriptor.role,
             label: descriptor.label,
@@ -763,7 +810,14 @@ extension ElementDetectionService {
             identifier: descriptor.identifier,
             placeholder: descriptor.placeholder)
 
-        let childTexts = self.textualDescendants(of: element)
+        // Static text IS the leaf text; recursing into children is redundant and wastes IPC calls.
+        let loweredRole = role ?? descriptor.role.lowercased()
+        let childTexts: [String]
+        if loweredRole == "axstatictext" || loweredRole == "axtext" {
+            childTexts = []
+        } else {
+            childTexts = self.textualDescendants(of: element)
+        }
         return ElementLabelResolver.resolve(
             info: info,
             childTexts: childTexts,

@@ -198,8 +198,11 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         self.accessibilityGranted = accessibilityGranted
     }
 
-    func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
-        -> ElementDetectionResult
+    func detectElements(
+        in _: Data,
+        snapshotId _: String?,
+        windowContext _: WindowContext?,
+        timeoutSeconds _: Double) async throws -> ElementDetectionResult
     {
         throw PeekabooError.notImplemented("mock detectElements")
     }

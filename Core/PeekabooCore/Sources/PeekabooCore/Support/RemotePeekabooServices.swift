@@ -78,7 +78,8 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
     public func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?) async throws -> ElementDetectionResult
+        windowContext: WindowContext?,
+        timeoutSeconds: Double = 20.0) async throws -> ElementDetectionResult
     {
         try await self.client.detectElements(in: imageData, snapshotId: snapshotId, windowContext: windowContext)
     }

@@ -17,17 +17,23 @@ extension SeeCommand {
         self.logger.operationStart("element_detection")
         defer { self.logger.operationComplete("element_detection") }
 
+        // Propagate the user-supplied --timeout-seconds (or its default) to both
+        // the wall-clock guard and the internal AX tree traversal deadline so that
+        // large/complex windows are not artificially capped at 20 s.
+        let effectiveTimeout = TimeInterval(self.timeoutSeconds ?? (self.analyze == nil ? 20 : 60))
+
         do {
-            return try await Self.withWallClockTimeout(seconds: 20.0) {
+            return try await Self.withWallClockTimeout(seconds: effectiveTimeout) {
                 try await AutomationServiceBridge.detectElements(
                     automation: self.services.automation,
                     imageData: imageData,
                     snapshotId: nil,
-                    windowContext: windowContext
+                    windowContext: windowContext,
+                    timeoutSeconds: effectiveTimeout
                 )
             }
         } catch is TimeoutError {
-            throw CaptureError.detectionTimedOut(20.0)
+            throw CaptureError.detectionTimedOut(effectiveTimeout)
         }
     }
 
