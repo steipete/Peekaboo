@@ -10,13 +10,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - imageData: The screenshot image data
     ///   - snapshotId: Optional snapshot ID to use for caching
     ///   - windowContext: Optional window context for coordinate mapping
-    ///   - timeoutSeconds: Maximum seconds for AX tree traversal (default 20)
     /// - Returns: Detection result with identified elements
-    func detectElements(
-        in imageData: Data,
-        snapshotId: String?,
-        windowContext: WindowContext?,
-        timeoutSeconds: Double) async throws -> ElementDetectionResult
+    func detectElements(in imageData: Data, snapshotId: String?, windowContext: WindowContext?) async throws
+        -> ElementDetectionResult
 
     /// Click at a specific point or element
     /// - Parameters:
@@ -110,21 +106,6 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Returns: The first element matching the criteria
     /// - Throws: PeekabooError.elementNotFound if no matching element is found
     func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
-}
-
-/// Default-timeout convenience so callers that don't care about the timeout keep compiling.
-extension UIAutomationServiceProtocol {
-    public func detectElements(
-        in imageData: Data,
-        snapshotId: String?,
-        windowContext: WindowContext?) async throws -> ElementDetectionResult
-    {
-        try await self.detectElements(
-            in: imageData,
-            snapshotId: snapshotId,
-            windowContext: windowContext,
-            timeoutSeconds: 20.0)
-    }
 }
 
 /// Profiles controlling how mouse paths are generated.

@@ -453,11 +453,8 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
     struct Click { let target: ClickTarget; let type: ClickType }
     private(set) var lastClick: Click?
 
-    func detectElements(
-        in _: Data,
-        snapshotId _: String?,
-        windowContext _: WindowContext?,
-        timeoutSeconds _: Double) async throws -> ElementDetectionResult
+    func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
+        -> ElementDetectionResult
     {
         ElementDetectionResult(
             snapshotId: "s",

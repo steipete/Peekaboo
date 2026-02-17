@@ -183,8 +183,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?,
-        timeoutSeconds: Double = 20.0
+        windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
         self.detectElementsCalls.append((imageData, snapshotId, windowContext))
 

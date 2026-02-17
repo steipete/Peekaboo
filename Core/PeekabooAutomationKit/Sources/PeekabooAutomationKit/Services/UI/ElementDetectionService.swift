@@ -64,12 +64,10 @@ public final class ElementDetectionService {
     }
 
     /// Detect UI elements in a screenshot
-    /// - Parameter timeoutSeconds: Maximum seconds for AX tree traversal (default 20).
     public func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?,
-        timeoutSeconds: Double = 20.0) async throws -> ElementDetectionResult
+        windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.info("Starting element detection")
 
@@ -110,8 +108,7 @@ public final class ElementDetectionService {
                 appElement: windowResolution.appElement,
                 appIsActive: targetApp.isActive,
                 allowWebFocus: allowWebFocus,
-                elementIdMap: &elementIdMap,
-                timeoutSeconds: timeoutSeconds)
+                elementIdMap: &elementIdMap)
             if let cacheKey {
                 self.storeCachedElements(detectedElements, for: cacheKey)
             }

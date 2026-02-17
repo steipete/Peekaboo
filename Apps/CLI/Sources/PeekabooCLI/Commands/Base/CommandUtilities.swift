@@ -390,15 +390,13 @@ enum AutomationServiceBridge {
         automation: any UIAutomationServiceProtocol,
         imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?,
-        timeoutSeconds: Double = 20.0
+        windowContext: WindowContext?
     ) async throws -> ElementDetectionResult {
         try await Task { @MainActor in
             try await automation.detectElements(
                 in: imageData,
                 snapshotId: snapshotId,
-                windowContext: windowContext,
-                timeoutSeconds: timeoutSeconds
+                windowContext: windowContext
             )
         }.value
     }

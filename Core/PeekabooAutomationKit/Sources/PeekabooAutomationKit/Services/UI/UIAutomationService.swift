@@ -238,15 +238,13 @@ extension UIAutomationService {
     public func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?,
-        timeoutSeconds: Double = 20.0) async throws -> ElementDetectionResult
+        windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.debug("Delegating element detection to ElementDetectionService")
         return try await self.elementDetectionService.detectElements(
             in: imageData,
             snapshotId: snapshotId,
-            windowContext: windowContext,
-            timeoutSeconds: timeoutSeconds)
+            windowContext: windowContext)
     }
 
     // MARK: - Click Operations

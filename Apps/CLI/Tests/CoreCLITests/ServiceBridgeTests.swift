@@ -107,8 +107,7 @@ final class MockAutomationService: UIAutomationServiceProtocol {
     func detectElements(
         in _: Data,
         snapshotId _: String?,
-        windowContext _: WindowContext?,
-        timeoutSeconds _: Double
+        windowContext _: WindowContext?
     ) async throws -> ElementDetectionResult {
         throw PeekabooError.notImplemented("mock detectElements")
     }
