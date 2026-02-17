@@ -237,8 +237,7 @@ extension ElementDetectionService {
     /// Skipping `describeElement()` for these avoids 11+ AX IPC calls per container node,
     /// which dramatically reduces detection time for apps with large UI trees.
     private static let containerOnlyRoles: Set<String> = [
-        "axscrollarea", "axtable", "axrow", "axtablerow",
-        "axcell", "axsplitgroup", "axsplitter",
+        "axtable", "axrow", "axtablerow", "axcell",
         "axlayoutarea", "axlayoutitem",
     ]
 
@@ -246,7 +245,7 @@ extension ElementDetectionService {
     /// Static text elements are leaf nodes that carry their own text; recursing into
     /// `textualDescendants()` is also redundant for them.
     private static let skipActionQueryRoles: Set<String> = [
-        "axstatictext", "axtext", "aximage",
+        "axstatictext", "axtext",
     ]
     private static let maxTraversalDepth = 12
     private static let maxElementCount = 400
@@ -609,13 +608,15 @@ extension ElementDetectionService {
             detectedElements.removeAll(keepingCapacity: true)
 
             var visitedElements = Set<Element>()
+            var totalNodesVisited = 0
             self.processElement(
                 window,
                 depth: 0,
                 deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
+                visitedElements: &visitedElements,
+                totalNodesVisited: &totalNodesVisited)
 
             self.processElement(
                 appElement,
@@ -623,7 +624,8 @@ extension ElementDetectionService {
                 deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
+                visitedElements: &visitedElements,
+                totalNodesVisited: &totalNodesVisited)
 
             if let focusedElement = appElement.focusedUIElement() {
                 self.processElement(
@@ -632,7 +634,8 @@ extension ElementDetectionService {
                     deadline: deadline,
                     detectedElements: &detectedElements,
                     elementIdMap: &elementIdMap,
-                    visitedElements: &visitedElements)
+                    visitedElements: &visitedElements,
+                    totalNodesVisited: &totalNodesVisited)
             }
 
             if appIsActive, let menuBar = appElement.menuBar() {
@@ -663,17 +666,20 @@ extension ElementDetectionService {
         deadline: Date,
         detectedElements: inout [DetectedElement],
         elementIdMap: inout [String: DetectedElement],
-        visitedElements: inout Set<Element>)
+        visitedElements: inout Set<Element>,
+        totalNodesVisited: inout Int)
     {
         guard depth < Self.maxTraversalDepth else { return }
         guard !Task.isCancelled else { return }
         guard Date() < deadline else { return }
-        guard detectedElements.count < Self.maxElementCount else { return }
+        guard totalNodesVisited < Self.maxElementCount else { return }
         guard visitedElements.insert(element).inserted else { return }
 
-        // Fast-path: for container-only roles we skip the expensive describeElement()
-        // (11+ AX IPC calls) and just recurse into children.  This is the primary
-        // optimisation for apps with large UI trees (e.g. 331-element KakaoTalk).
+        totalNodesVisited += 1
+
+        // Fast-path: for container-only roles (AXTable, AXRow, AXCell, etc.) we skip
+        // the expensive describeElement() (11+ AX IPC calls) and just recurse into
+        // children. Measured ~45% speedup on System Settings, ~46% on Finder.
         if let quickRole = element.role()?.lowercased(),
            Self.containerOnlyRoles.contains(quickRole)
         {
@@ -683,7 +689,8 @@ extension ElementDetectionService {
                 deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
+                visitedElements: &visitedElements,
+                totalNodesVisited: &totalNodesVisited)
             return
         }
 
@@ -740,7 +747,8 @@ extension ElementDetectionService {
             deadline: deadline,
             detectedElements: &detectedElements,
             elementIdMap: &elementIdMap,
-            visitedElements: &visitedElements)
+            visitedElements: &visitedElements,
+            totalNodesVisited: &totalNodesVisited)
     }
 
     private func describeElement(_ element: Element) -> ElementDescriptor? {
@@ -767,20 +775,22 @@ extension ElementDetectionService {
         deadline: Date,
         detectedElements: inout [DetectedElement],
         elementIdMap: inout [String: DetectedElement],
-        visitedElements: inout Set<Element>)
+        visitedElements: inout Set<Element>,
+        totalNodesVisited: inout Int)
     {
         guard !Task.isCancelled else { return }
         guard let children = element.children() else { return }
         let limitedChildren = children.prefix(Self.maxChildrenPerNode)
         for child in limitedChildren {
-            guard detectedElements.count < Self.maxElementCount else { break }
+            guard totalNodesVisited < Self.maxElementCount else { break }
             self.processElement(
                 child,
                 depth: depth,
                 deadline: deadline,
                 detectedElements: &detectedElements,
                 elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
+                visitedElements: &visitedElements,
+                totalNodesVisited: &totalNodesVisited)
         }
     }
 
