@@ -109,6 +109,32 @@ struct MCPToolExecutionTests {
         #expect(!response.content.isEmpty)
     }
 
+    @Test("List tool description includes centralized MCP version banner")
+    func listToolDescriptionIncludesCentralizedVersionBanner() async {
+        let mockApplications = await MainActor.run { MockApplicationService() }
+        let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
+        let tool = ListTool(context: context)
+        #expect(tool.description.contains(PeekabooMCPVersion.banner))
+    }
+
+    @Test("Server status output uses centralized MCP version")
+    func listToolServerStatusUsesCentralizedVersion() async throws {
+        let mockApplications = await MainActor.run { MockApplicationService() }
+        let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
+        let tool = ListTool(context: context)
+        let args = ToolArguments(raw: ["item_type": "server_status"])
+
+        let response = try await tool.execute(arguments: args)
+        #expect(response.isError == false)
+
+        guard case let .text(output) = response.content.first else {
+            Issue.record("Expected text response for server_status")
+            return
+        }
+
+        #expect(output.contains("Version: \(PeekabooMCPVersion.current)"))
+    }
+
     // MARK: - App Tool Tests
 
     @Test
