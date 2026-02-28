@@ -24,8 +24,8 @@ public actor PeekabooMCPServer {
     private let toolRegistry: MCPToolRegistry
     private let logger: os.Logger
     private let toolContext: MCPToolContext
-    private let serverName = "peekaboo-mcp"
-    private let serverVersion = "3.0.0-beta4"
+    private let serverName = PeekabooMCPVersion.serverName
+    private let serverVersion = PeekabooMCPVersion.current
 
     public init() async throws {
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
