@@ -580,16 +580,49 @@ func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentT
         case let .image(data, mimeType, _):
             // For images, return a descriptive string
             return AnyAgentToolValue(string: "[Image: \(mimeType), size: \(data.count) bytes]")
-        case let .resource(uri, _, text):
-            // For resources, return the text content if available
-            return AnyAgentToolValue(string: text ?? "[Resource: \(uri)]")
+        case let .resource(resourceValue, _, thirdValue):
+            return convertResourceContentSummary(
+                resourceValue: resourceValue,
+                thirdValue: thirdValue)
         case let .audio(data, mimeType):
             return AnyAgentToolValue(string: "[Audio: \(mimeType), size: \(data.count) bytes]")
+        @unknown default:
+            return AnyAgentToolValue(string: String(describing: firstContent))
         }
     }
 
     // No content
     return AnyAgentToolValue(string: "Success")
+}
+
+func convertResourceContentSummary<ResourceValue, ThirdValue>(
+    resourceValue: ResourceValue,
+    thirdValue: ThirdValue
+) -> AnyAgentToolValue {
+    // MCP 0.10.x exposes `.resource(uri:mimeType:text:)` while 0.11.x exposes
+    // `.resource(resource: Resource.Content, annotations:..., _meta:...)`.
+    if let uri = resourceValue as? String {
+        let text = thirdValue as? String
+        return AnyAgentToolValue(string: text ?? "[Resource: \(uri)]")
+    }
+
+    let uri = extractStringProperty(named: "uri", from: resourceValue) ?? "[resource]"
+    let text = extractStringProperty(named: "text", from: resourceValue)
+    return AnyAgentToolValue(string: text ?? "[Resource: \(uri)]")
+}
+
+private func extractStringProperty<Value>(named name: String, from value: Value) -> String? {
+    for child in Mirror(reflecting: value).children {
+        guard child.label == name else { continue }
+        return unwrapOptionalValue(child.value) as? String
+    }
+    return nil
+}
+
+private func unwrapOptionalValue(_ value: Any) -> Any? {
+    let mirror = Mirror(reflecting: value)
+    guard mirror.displayStyle == .optional else { return value }
+    return mirror.children.first?.value
 }
 
 @preconcurrency
