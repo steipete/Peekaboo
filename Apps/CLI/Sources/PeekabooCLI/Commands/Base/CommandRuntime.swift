@@ -8,6 +8,7 @@ import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
 import PeekabooProtocols
+import Tachikoma
 
 /// Shared options that control logging and output behavior.
 struct CommandRuntimeOptions {
@@ -51,6 +52,9 @@ struct CommandRuntime {
         services: any PeekabooServiceProviding,
         hostDescription: String = "local (in-process)"
     ) {
+        // Keep Tachikoma credential/profile resolution aligned with Peekaboo CLI storage.
+        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
+
         self.configuration = configuration
         self.services = services
         self.hostDescription = hostDescription

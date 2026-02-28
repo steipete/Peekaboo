@@ -115,6 +115,23 @@ struct ConfigCommandTests {
     }
 
     @Test
+    func `Set credential writes to overridden credentials path`() async throws {
+        try await self.withTempConfigDir { dir in
+            var command = ConfigCommand.SetCredentialCommand()
+            command.key = "OPENAI_API_KEY"
+            command.value = "test-openai-key"
+
+            try await command.run(using: self.makeRuntime())
+
+            let credentialsPath = dir.appendingPathComponent("credentials")
+            #expect(FileManager.default.fileExists(atPath: credentialsPath.path))
+
+            let contents = try String(contentsOf: credentialsPath, encoding: .utf8)
+            #expect(contents.contains("OPENAI_API_KEY=test-openai-key"))
+        }
+    }
+
+    @Test
     func `AddProviderCommand validates provider IDs`() {
         #expect(ConfigCommand.AddProviderCommand.isValidProviderId("openrouter"))
         #expect(ConfigCommand.AddProviderCommand.isValidProviderId("acme-123"))

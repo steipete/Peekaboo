@@ -1,4 +1,5 @@
 import PeekabooCore
+import Tachikoma
 import Testing
 @testable import PeekabooCLI
 
@@ -30,6 +31,22 @@ struct CommandRuntimeInjectionTests {
 
         let tools = ToolRegistry.allTools()
         #expect(!tools.isEmpty)
+    }
+
+    @Test("aligns Tachikoma profile directory with Peekaboo")
+    @MainActor
+    func alignsTachikomaProfileDirectory() {
+        let previousProfile = TachikomaConfiguration.profileDirectoryName
+        defer { TachikomaConfiguration.profileDirectoryName = previousProfile }
+
+        TachikomaConfiguration.profileDirectoryName = ".tachikoma"
+        let services = RecordingPeekabooServices()
+        _ = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: false, logLevel: nil),
+            services: services
+        )
+
+        #expect(TachikomaConfiguration.profileDirectoryName == ".peekaboo")
     }
 }
 
