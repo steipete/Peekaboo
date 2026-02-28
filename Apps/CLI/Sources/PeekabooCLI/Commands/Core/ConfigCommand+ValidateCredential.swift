@@ -2,7 +2,6 @@ import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-import Tachikoma
 
 @available(macOS 14.0, *)
 @MainActor
@@ -99,7 +98,7 @@ extension ConfigCommand {
             self.prepare(using: runtime)
 
             do {
-                try TKAuthManager.shared.setCredential(key: self.key, value: self.value)
+                try self.configManager.setCredential(key: self.key, value: self.value)
 
                 if self.jsonOutput {
                     let data: [String: Any] = [
