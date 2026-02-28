@@ -23,8 +23,26 @@ struct CLIRuntimeSmokeTests {
     func `peekaboo list apps emits JSON via Commander`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["list", "apps", "--json", "--no-remote"])
-        #expect(result.status == .exited(0))
-        #expect(result.standardOutput.contains("\"applications\""))
+
+        if result.status == .exited(0) {
+            #expect(result.standardOutput.contains("\"applications\""))
+            return
+        }
+
+        // Local smoke runs may surface expected permission failures.
+        let payload = !result.standardOutput.isEmpty ? result.standardOutput : result.standardError
+        let data = Data(payload.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              let success = json["success"] as? Bool,
+              success == false,
+              let error = json["error"] as? [String: Any],
+              let code = error["code"] as? String else
+        {
+            Issue.record("Expected successful app list JSON or structured permission error JSON.")
+            return
+        }
+        #expect(code == "PERMISSION_ERROR_SCREEN_RECORDING")
     }
 
     @Test

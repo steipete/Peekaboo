@@ -150,7 +150,13 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     }
 
     @RuntimeStorage private var runtime: CommandRuntime?
-    var runtimeOptions = CommandRuntimeOptions()
+    var runtimeOptions: CommandRuntimeOptions = {
+        var options = CommandRuntimeOptions()
+        // Remote GUI bridge mode is optional and can fail to expose auth state.
+        // Keep agent execution local by default unless an explicit runtime option overrides it.
+        options.preferRemote = false
+        return options
+    }()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -261,7 +267,7 @@ final class EscapeKeyMonitor {
 extension AgentCommand {
     @MainActor
     mutating func run() async throws {
-        let runtime = await CommandRuntime.makeDefaultAsync()
+        let runtime = await CommandRuntime.makeDefaultAsync(options: self.runtimeOptions)
         try await self.run(using: runtime)
     }
 
