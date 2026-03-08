@@ -17,17 +17,29 @@ extension SeeCommand {
         self.logger.operationStart("element_detection")
         defer { self.logger.operationComplete("element_detection") }
 
+        let timeoutSeconds = TimeInterval(self.timeoutSeconds ?? ((self.analyze == nil) ? 20 : 60))
+
+        let automation = self.services.automation
+
         do {
-            return try await Self.withWallClockTimeout(seconds: 20.0) {
-                try await AutomationServiceBridge.detectElements(
-                    automation: self.services.automation,
+            return try await Self.withWallClockTimeout(seconds: timeoutSeconds) {
+                if let remoteAutomation = automation as? RemoteUIAutomationService {
+                    return try await remoteAutomation.detectElements(
+                        in: imageData,
+                        snapshotId: nil,
+                        windowContext: windowContext,
+                        requestTimeoutSec: timeoutSeconds + 5
+                    )
+                }
+                return try await AutomationServiceBridge.detectElements(
+                    automation: automation,
                     imageData: imageData,
                     snapshotId: nil,
                     windowContext: windowContext
                 )
             }
         } catch is TimeoutError {
-            throw CaptureError.detectionTimedOut(20.0)
+            throw CaptureError.detectionTimedOut(timeoutSeconds)
         }
     }
 
