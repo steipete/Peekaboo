@@ -474,6 +474,8 @@ extension PeekabooSettings {
     }
 
     private func save() {
+        guard !self.isLoading else { return }
+
         self.userDefaults.set(self.selectedProvider, forKey: "\(self.keyPrefix)selectedProvider")
         self.userDefaults.set(self.openAIAPIKey, forKey: "\(self.keyPrefix)openAIAPIKey")
         self.userDefaults.set(self.anthropicAPIKey, forKey: "\(self.keyPrefix)anthropicAPIKey")
@@ -533,6 +535,10 @@ extension PeekabooSettings {
     }
 
     private func loadFromPeekabooConfig() {
+        let wasLoading = self.isLoading
+        self.isLoading = true
+        defer { self.isLoading = wasLoading }
+
         // Use ConfigurationManager to load from config.json
         _ = self.configManager.loadConfiguration()
 
@@ -572,6 +578,11 @@ extension PeekabooSettings {
         // Check if we've already migrated
         let migrationKey = "\(keyPrefix)migratedToConfigJson"
         guard !self.userDefaults.bool(forKey: migrationKey) else { return }
+
+        if FileManager.default.fileExists(atPath: ConfigurationManager.configPath) {
+            self.userDefaults.set(true, forKey: migrationKey)
+            return
+        }
 
         // Migrate settings from UserDefaults to config.json
         do {
@@ -622,6 +633,8 @@ extension PeekabooSettings {
     }
 
     private func updateConfigFile() {
+        guard !self.isLoading else { return }
+
         do {
             try self.configManager.updateConfiguration { config in
                 // Ensure structures exist
@@ -693,6 +706,8 @@ extension PeekabooSettings {
 
     @MainActor
     private func saveAPIKeyToCredentials(_ key: String, _ value: String) {
+        guard !self.isLoading else { return }
+
         do {
             if value.isEmpty {
                 // Don't save empty keys
