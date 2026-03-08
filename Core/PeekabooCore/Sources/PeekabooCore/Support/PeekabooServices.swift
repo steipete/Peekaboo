@@ -404,8 +404,9 @@ public final class PeekabooServices {
         let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil && !self.configuration.getAnthropicAPIKey()!
             .isEmpty
         let hasOllama = false
+        let hasCustomProvider = self.configuration.listCustomProviders().values.contains { $0.enabled }
 
-        if hasOpenAI || hasAnthropic || hasOllama {
+        if hasOpenAI || hasAnthropic || hasOllama || hasCustomProvider {
             let agentConfig = self.configuration.getConfiguration()
             let providers = self.configuration.getAIProviders()
             let environmentProviders = EnvironmentVariables.value(for: "PEEKABOO_AI_PROVIDERS")

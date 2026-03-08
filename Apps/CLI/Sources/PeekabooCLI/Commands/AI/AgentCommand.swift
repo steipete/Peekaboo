@@ -920,7 +920,8 @@ extension AgentCommand {
         let hasOpenAI = configuration.getOpenAIAPIKey()?.isEmpty == false
         let hasAnthropic = configuration.getAnthropicAPIKey()?.isEmpty == false
         let hasGemini = configuration.getGeminiAPIKey()?.isEmpty == false
-        return hasOpenAI || hasAnthropic || hasGemini
+        let hasCustom = configuration.listCustomProviders().values.contains { $0.enabled }
+        return hasOpenAI || hasAnthropic || hasGemini || hasCustom
     }
 
     private func emitAgentUnavailableMessage() {
@@ -977,12 +978,43 @@ extension AgentCommand {
 
     func validatedModelSelection() throws -> LanguageModel? {
         guard let modelString = self.model else { return nil }
+
+        // Check for custom provider format: "providerId/modelName"
+        if let customModel = self.resolveCustomProviderModel(modelString) {
+            return customModel
+        }
+
         guard let parsed = self.parseModelString(modelString) else {
             throw PeekabooError.invalidInput(
                 "Unsupported model '\(modelString)'. Allowed values: \(Self.allowedModelList)"
             )
         }
         return parsed
+    }
+
+    /// Resolve a "providerId/modelName" string against configured custom providers.
+    @MainActor
+    private func resolveCustomProviderModel(_ modelString: String) -> LanguageModel? {
+        let parts = modelString.split(separator: "/", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+
+        let providerId = String(parts[0])
+        let modelName = String(parts[1])
+
+        let configuration = self.services.configuration
+        guard let provider = configuration.getCustomProvider(id: providerId),
+              provider.enabled
+        else {
+            return nil
+        }
+
+        let baseURL = provider.options.baseURL
+        switch provider.type {
+        case .openai:
+            return .openaiCompatible(modelId: modelName, baseURL: baseURL)
+        case .anthropic:
+            return .anthropicCompatible(modelId: modelName, baseURL: baseURL)
+        }
     }
 
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
@@ -1031,6 +1063,8 @@ extension AgentCommand {
             return configuration.getAnthropicAPIKey()?.isEmpty == false
         case .google:
             return configuration.getGeminiAPIKey()?.isEmpty == false
+        case .openaiCompatible, .anthropicCompatible, .custom:
+            return true // Custom providers carry their own credentials in config
         default:
             return false
         }

@@ -37,6 +37,7 @@ Peekaboo supports custom AI providers through configuration-based setup. This al
 - **Groq**: Ultra-fast inference with LPU technology
 - **Together AI**: High-performance open-source models
 - **Perplexity**: AI-powered search with citations
+- **AWS Bedrock**: Claude, Llama, Mistral, Titan via LiteLLM proxy (see `providers/bedrock.md`)
 - **Self-hosted**: Your own AI endpoints
 
 ## Configuration
@@ -202,6 +203,26 @@ peekaboo config add-provider \
   --api-key TOGETHER_API_KEY
 
 peekaboo config set-credential TOGETHER_API_KEY your-key-here
+```
+
+### AWS Bedrock (via LiteLLM)
+
+Uses [LiteLLM](https://github.com/BerriAI/litellm) as a local proxy to expose Bedrock models through an OpenAI-compatible API. See `providers/bedrock.md` for full setup instructions.
+
+```bash
+# Start LiteLLM proxy (must be running)
+litellm --config ~/.peekaboo/litellm_config.yaml --port 4000
+
+# Add provider
+peekaboo config add-provider \
+  --id bedrock \
+  --name "AWS Bedrock (via LiteLLM)" \
+  --type openai \
+  --url "http://localhost:4000/v1" \
+  --api-key "sk-1234"
+
+# Use it
+peekaboo agent "take a screenshot" --model bedrock/claude-3-5-sonnet
 ```
 
 ### Self-hosted

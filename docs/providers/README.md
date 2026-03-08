@@ -11,6 +11,7 @@ read_when:
 - **Anthropic** — `anthropic.md`: plan/status, streaming/tool notes, and Claude CLI examples.
 - **Grok** — `grok.md`: Grok 4 implementation guide and checkpoints.
 - **Ollama** — `ollama.md`: local model configuration; `ollama-models.md` for model catalog notes.
+- **Bedrock** — `bedrock.md`: AWS Bedrock models via LiteLLM proxy (custom provider, no code changes needed).
 
 Use these with `docs/provider.md` for global provider configuration syntax and env var reference.
 
@@ -22,5 +23,6 @@ Use these with `docs/provider.md` for global provider configuration syntax and e
 | Anthropic | Yes | Yes (Sonnet/Opus vision) | Yes (SSE) | No | API key or OAuth (Claude Pro/Max) |
 | Grok | Yes | Limited | Yes | No | API key |
 | Ollama | Yes (via local server) | Model-dependent | Yes | **Yes** (local) | None (local daemon) |
+| Bedrock (LiteLLM) | Yes | Model-dependent | Yes | No | AWS credentials |
 
 See individual pages for model lists, quirks, and test coverage expectations.
