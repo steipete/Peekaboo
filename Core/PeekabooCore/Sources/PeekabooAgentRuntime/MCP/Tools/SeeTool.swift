@@ -576,7 +576,10 @@ private struct SeeSummaryBuilder {
         if let label = self.primaryLabel(for: element) {
             parts.append("\"\(label)\"")
         }
-        parts.append("at (\(Int(element.frame.origin.x)), \(Int(element.frame.origin.y)))")
+        parts.append("at (\(Int(element.frame.origin.x)), \(Int(element.frame.origin.y))) size \(Int(element.frame.width))×\(Int(element.frame.height))")
+        if let value = element.value, element.title != nil || element.label != nil {
+            parts.append("value: \"\(value)\"")
+        }
         if !element.isActionable {
             parts.append("[not actionable]")
         }

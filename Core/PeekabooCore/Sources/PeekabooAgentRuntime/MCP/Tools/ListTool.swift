@@ -98,6 +98,9 @@ public struct ListTool: MCPTool {
                 if app.isActive {
                     entry += " [ACTIVE]"
                 }
+                if app.isHidden {
+                    entry += " [HIDDEN]"
+                }
                 entry += " - Windows: \(app.windowCount)"
                 lines.append(entry)
             }
