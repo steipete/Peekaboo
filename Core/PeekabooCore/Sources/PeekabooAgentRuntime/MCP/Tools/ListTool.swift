@@ -94,6 +94,9 @@ public struct ListTool: MCPTool {
                 if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
                     entry += " (\(bundleID))"
                 }
+                if let bundlePath = app.bundlePath, !bundlePath.isEmpty {
+                    entry += " [\(bundlePath)]"
+                }
                 entry += " - PID: \(app.processIdentifier)"
                 if app.isActive {
                     entry += " [ACTIVE]"

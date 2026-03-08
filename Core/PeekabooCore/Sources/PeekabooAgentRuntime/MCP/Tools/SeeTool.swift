@@ -580,6 +580,18 @@ private struct SeeSummaryBuilder {
         if let value = element.value, element.title != nil || element.label != nil {
             parts.append("value: \"\(value)\"")
         }
+        if let desc = element.description, !desc.isEmpty {
+            parts.append("desc: \"\(desc)\"")
+        }
+        if let help = element.help, !help.isEmpty {
+            parts.append("help: \"\(help)\"")
+        }
+        if let shortcut = element.keyboardShortcut, !shortcut.isEmpty {
+            parts.append("shortcut: \(shortcut)")
+        }
+        if let identifier = element.identifier, !identifier.isEmpty {
+            parts.append("identifier: \(identifier)")
+        }
         if !element.isActionable {
             parts.append("[not actionable]")
         }
