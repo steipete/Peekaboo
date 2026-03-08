@@ -152,13 +152,14 @@ public actor PeekabooBridgeClient {
     public func detectElements(
         in imageData: Data,
         snapshotId: String?,
-        windowContext: WindowContext?) async throws -> ElementDetectionResult
+        windowContext: WindowContext?,
+        requestTimeoutSec: TimeInterval? = nil) async throws -> ElementDetectionResult
     {
         let payload = PeekabooBridgeDetectElementsRequest(
             imageData: imageData,
             snapshotId: snapshotId,
             windowContext: windowContext)
-        let response = try await self.send(.detectElements(payload))
+        let response = try await self.send(.detectElements(payload), timeoutSec: requestTimeoutSec)
         switch response {
         case let .elementDetection(result):
             return result
@@ -726,14 +727,18 @@ extension PeekabooBridgeClient {
 extension PeekabooBridgeClient {
     // MARK: - Private
 
-    private func send(_ request: PeekabooBridgeRequest) async throws -> PeekabooBridgeResponse {
+    private func send(
+        _ request: PeekabooBridgeRequest,
+        timeoutSec: TimeInterval? = nil) async throws -> PeekabooBridgeResponse
+    {
         let payload = try self.encoder.encode(request)
         let op = request.operation
         let start = Date()
         self.logger.debug("Sending bridge request \(op.rawValue, privacy: .public)")
 
+        let effectiveTimeoutSec = timeoutSec ?? self.requestTimeoutSec
         let (socketPath, maxResponseBytes, requestTimeoutSec) =
-            (self.socketPath, self.maxResponseBytes, self.requestTimeoutSec)
+            (self.socketPath, self.maxResponseBytes, effectiveTimeoutSec)
         let responseData = try await Task.detached(priority: .userInitiated) {
             try Self.sendBlocking(
                 socketPath: socketPath,
