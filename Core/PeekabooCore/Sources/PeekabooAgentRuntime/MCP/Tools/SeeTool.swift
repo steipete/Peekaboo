@@ -176,6 +176,14 @@ public struct SeeTool: MCPTool {
                     Optional. Generate an annotated screenshot with interaction markers and IDs.
                     """,
                     default: false),
+                "structured_output": SchemaBuilder.boolean(
+                    description: """
+                    Optional. When true, returns the full structured JSON output instead of
+                    human-readable text. Includes element details (IDs, roles, labels, frames,
+                    actionable state), snapshot metadata, and capture timing. Useful for
+                    programmatic consumers that need machine-parseable element data.
+                    """,
+                    default: false),
             ],
             required: [])
     }
@@ -210,7 +218,8 @@ public struct SeeTool: MCPTool {
                     screenshotPath: screenshotPath,
                     annotatedPath: annotatedPath,
                     annotate: request.annotate),
-                target: target)
+                target: target,
+                structured: request.structuredOutput)
         } catch {
             self.logger.error("See tool execution failed: \(error.localizedDescription)")
             return ToolResponse.error("Failed to capture UI state: \(error.localizedDescription)")
@@ -397,8 +406,20 @@ public struct SeeTool: MCPTool {
         snapshot: UISnapshot,
         elements: [UIElement],
         output: ScreenshotOutput,
-        target: CaptureTarget) async throws -> ToolResponse
+        target: CaptureTarget,
+        structured: Bool = false) async throws -> ToolResponse
     {
+        if structured {
+            let structuredData = await self.buildStructuredOutput(
+                snapshot: snapshot, elements: elements, output: output)
+            var content: [MCP.Tool.Content] = [.text(structuredData)]
+            if output.annotate, let annotatedPath = output.annotatedPath {
+                let imageData = try Data(contentsOf: URL(fileURLWithPath: annotatedPath))
+                content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
+            }
+            return ToolResponse(content: content)
+        }
+
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
         let summaryText = await buildSummary(
             snapshot: snapshot,
@@ -423,6 +444,73 @@ public struct SeeTool: MCPTool {
 
         let mergedMeta = ToolEventSummary.merge(summary: summary, into: baseMeta)
         return ToolResponse(content: content, meta: mergedMeta)
+    }
+
+    @MainActor
+    private func buildStructuredOutput(
+        snapshot: UISnapshot,
+        elements: [UIElement],
+        output: ScreenshotOutput) async -> String
+    {
+        struct StructuredElement: Codable {
+            let id: String
+            let role: String
+            let title: String?
+            let label: String?
+            let value: String?
+            let frame: FrameData
+            let isActionable: Bool
+
+            struct FrameData: Codable {
+                let x: Double
+                let y: Double
+                let width: Double
+                let height: Double
+            }
+        }
+
+        struct StructuredSeeOutput: Codable {
+            let snapshotId: String
+            let applicationName: String?
+            let windowTitle: String?
+            let screenshotPath: String
+            let elementCount: Int
+            let actionableCount: Int
+            let elements: [StructuredElement]
+        }
+
+        let structuredElements = elements.map { el in
+            StructuredElement(
+                id: el.id,
+                role: el.role,
+                title: el.title,
+                label: el.label,
+                value: el.value,
+                frame: StructuredElement.FrameData(
+                    x: el.frame.origin.x,
+                    y: el.frame.origin.y,
+                    width: el.frame.width,
+                    height: el.frame.height),
+                isActionable: el.isActionable)
+        }
+
+        let result = StructuredSeeOutput(
+            snapshotId: snapshot.id,
+            applicationName: snapshot.applicationName,
+            windowTitle: snapshot.windowTitle,
+            screenshotPath: output.screenshotPath,
+            elementCount: elements.count,
+            actionableCount: elements.count(where: { $0.isActionable }),
+            elements: structuredElements)
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(result),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return "{\"error\": \"Failed to encode structured output\"}"
+        }
+        return json
     }
 
     private func makeMetadata(snapshot: UISnapshot, elements: [UIElement]) -> Value {
@@ -503,12 +591,14 @@ private struct SeeRequest {
     let path: String?
     let snapshotId: String?
     let annotate: Bool
+    let structuredOutput: Bool
 
     init(arguments: ToolArguments) {
         self.appTarget = arguments.getString("app_target")
         self.path = arguments.getString("path")
         self.snapshotId = arguments.getString("snapshot")
         self.annotate = arguments.getBool("annotate") ?? false
+        self.structuredOutput = arguments.getBool("structured_output") ?? false
     }
 }
 

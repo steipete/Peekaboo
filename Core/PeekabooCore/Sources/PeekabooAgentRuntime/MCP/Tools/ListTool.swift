@@ -51,6 +51,14 @@ public struct ListTool: MCPTool {
                     Extra data for each window (application_windows only).
                     Choose any combination of `ids`, `bounds`, or `off_screen`.
                     """),
+                "structured_output": SchemaBuilder.boolean(
+                    description: """
+                    Optional. When true, returns the full structured JSON output instead of
+                    human-readable text. Includes all fields (bundle IDs, paths, bounds,
+                    active/hidden state, metadata, timing) that are otherwise summarized.
+                    Useful for programmatic consumers that need machine-parseable data.
+                    """,
+                    default: false),
             ],
             required: [])
     }
@@ -70,7 +78,7 @@ public struct ListTool: MCPTool {
 
         switch request.itemType {
         case .runningApplications:
-            return try await self.listRunningApplications()
+            return try await self.listRunningApplications(structured: request.structuredOutput)
         case .applicationWindows:
             return try await self.listApplicationWindows(request: request)
         case .serverStatus:
@@ -78,9 +86,15 @@ public struct ListTool: MCPTool {
         }
     }
 
-    private func listRunningApplications() async throws -> ToolResponse {
+    private func listRunningApplications(structured: Bool = false) async throws -> ToolResponse {
         do {
             let output = try await self.context.applications.listApplications()
+
+            if structured {
+                let json = try output.toJSON()
+                return ToolResponse.text(json)
+            }
+
             let apps = output.data.applications
             var lines: [String] = []
             let countSuffix = apps.count == 1 ? "" : "s"
@@ -125,6 +139,12 @@ public struct ListTool: MCPTool {
         do {
             let identifier = request.app ?? ""
             let output = try await self.context.applications.listWindows(for: identifier, timeout: nil)
+
+            if request.structuredOutput {
+                let json = try output.toJSON()
+                return ToolResponse.text(json)
+            }
+
             let formatter = WindowListFormatter(
                 appInfo: output.data.targetApplication,
                 identifier: identifier,
@@ -239,10 +259,12 @@ private struct ListRequest {
     let itemType: ListItemType
     let app: String?
     let windowDetails: Set<WindowDetail>
+    let structuredOutput: Bool
 
     init(arguments: ToolArguments) throws {
         let app = arguments.getString("app")
         self.app = app
+        self.structuredOutput = arguments.getBool("structured_output") ?? false
 
         if let typeString = arguments.getString("item_type"),
            let type = ListItemType(rawValue: typeString)
