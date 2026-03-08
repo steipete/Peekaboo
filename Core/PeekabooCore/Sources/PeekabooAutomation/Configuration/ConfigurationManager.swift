@@ -449,13 +449,17 @@ public final class ConfigurationManager: @unchecked Sendable {
     /// Get Gemini API key with proper precedence
     public func getGeminiAPIKey() -> String? {
         // 1. Environment variable (highest priority)
-        if let envValue = self.environmentValue(for: "GEMINI_API_KEY") {
-            return envValue
+        for key in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"] {
+            if let envValue = self.environmentValue(for: key) {
+                return envValue
+            }
         }
 
         // 2. Credentials file
-        if let credValue = credentials["GEMINI_API_KEY"] {
-            return credValue
+        for key in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"] {
+            if let credValue = credentials[key] {
+                return credValue
+            }
         }
 
         return nil
@@ -538,6 +542,20 @@ public final class ConfigurationManager: @unchecked Sendable {
         try self.saveCredentials([key: value])
     }
 
+    public func removeCredential(key: String) throws {
+        self.loadCredentials()
+        self.credentials.removeValue(forKey: key)
+
+        if self.credentials.isEmpty {
+            if FileManager.default.fileExists(atPath: Self.credentialsPath) {
+                try FileManager.default.removeItem(atPath: Self.credentialsPath)
+            }
+            return
+        }
+
+        try self.saveCredentials([:])
+    }
+
     private func validOAuthAccessToken(prefix: String) -> String? {
         self.loadCredentials()
         guard let token = self.credentials["\(prefix)_ACCESS_TOKEN"] else { return nil }
@@ -558,9 +576,17 @@ public final class ConfigurationManager: @unchecked Sendable {
 
     /// Get selected AI provider
     public func getSelectedProvider() -> String {
-        // Extract provider from providers string (e.g., "anthropic/model" -> "anthropic")
-        let providers = self.getAIProviders()
-        return self.parseFirstProvider(providers) ?? "anthropic"
+        guard let providers = self.configuration?.aiProviders?.providers,
+              let provider = self.parseFirstProvider(providers) else {
+            return ""
+        }
+
+        switch provider.lowercased() {
+        case "gemini", "google":
+            return "google"
+        default:
+            return Provider.from(identifier: provider).identifier
+        }
     }
 
     private func parseFirstProvider(_ providers: String) -> String? {

@@ -9,25 +9,41 @@ import SwiftUI
 struct ProviderInfo {
     let name: String
     let displayName: String
-    let environmentVariable: String
+    let environmentVariables: [String]
     let requiresAPIKey: Bool
+
+    var primaryEnvironmentVariable: String {
+        self.environmentVariables.first ?? ""
+    }
 
     static let openai = ProviderInfo(
         name: "openai",
         displayName: "OpenAI",
-        environmentVariable: "OPENAI_API_KEY",
+        environmentVariables: ["OPENAI_API_KEY"],
         requiresAPIKey: true)
 
     static let anthropic = ProviderInfo(
         name: "anthropic",
         displayName: "Anthropic",
-        environmentVariable: "ANTHROPIC_API_KEY",
+        environmentVariables: ["ANTHROPIC_API_KEY"],
+        requiresAPIKey: true)
+
+    static let grok = ProviderInfo(
+        name: "grok",
+        displayName: "Grok",
+        environmentVariables: ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"],
+        requiresAPIKey: true)
+
+    static let gemini = ProviderInfo(
+        name: "google",
+        displayName: "Gemini",
+        environmentVariables: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"],
         requiresAPIKey: true)
 
     static let ollama = ProviderInfo(
         name: "ollama",
         displayName: "Ollama",
-        environmentVariable: "OLLAMA_API_KEY",
+        environmentVariables: ["OLLAMA_API_KEY"],
         requiresAPIKey: false)
 }
 
@@ -35,7 +51,7 @@ struct ProviderInfo {
 struct APIKeyField: View {
     let provider: ProviderInfo
     @Binding var apiKey: String
-    @State private var hasEnvironmentKey: Bool = false
+    @State private var detectedEnvironmentVariable: String?
     @State private var showEnvironmentStatus: Bool = false
 
     var body: some View {
@@ -52,13 +68,12 @@ struct APIKeyField: View {
             }
 
             if self.hasEnvironmentKey, self.apiKey.isEmpty {
-                // Show environment variable status when no override is set
                 HStack {
                     Image(systemName: "checkmark.shield.fill")
                         .foregroundColor(.green)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Using key from \(self.provider.environmentVariable)")
+                        Text("Using key from \(self.detectedEnvironmentVariable ?? self.provider.primaryEnvironmentVariable)")
                             .font(.callout)
                             .foregroundColor(.secondary)
 
@@ -71,7 +86,6 @@ struct APIKeyField: View {
                     Spacer()
 
                     Button("Override") {
-                        // Focus on the text field by setting a placeholder
                         self.showEnvironmentStatus = true
                     }
                     .buttonStyle(.link)
@@ -86,7 +100,6 @@ struct APIKeyField: View {
                         .textFieldStyle(.roundedBorder)
                 }
             } else {
-                // Normal text field for manual API key entry
                 SecureField(self.environmentPlaceholder, text: self.$apiKey)
                     .textFieldStyle(.roundedBorder)
 
@@ -95,7 +108,7 @@ struct APIKeyField: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
 
-                        Text("Overriding environment variable \(self.provider.environmentVariable)")
+                        Text("Overriding environment variable \(self.detectedEnvironmentVariable ?? self.provider.primaryEnvironmentVariable)")
                             .font(.caption)
                             .foregroundColor(.orange)
 
@@ -118,9 +131,13 @@ struct APIKeyField: View {
         }
     }
 
+    private var hasEnvironmentKey: Bool {
+        self.detectedEnvironmentVariable != nil
+    }
+
     private var environmentPlaceholder: String {
         if self.hasEnvironmentKey {
-            "Override \(self.provider.environmentVariable) or leave empty"
+            "Override \(self.detectedEnvironmentVariable ?? self.provider.primaryEnvironmentVariable) or leave empty"
         } else if self.provider.requiresAPIKey {
             "Enter your \(self.provider.displayName) API key"
         } else {
@@ -130,6 +147,8 @@ struct APIKeyField: View {
 
     private func checkEnvironmentVariable() {
         let environment = ProcessInfo.processInfo.environment
-        self.hasEnvironmentKey = environment[self.provider.environmentVariable]?.isEmpty == false
+        self.detectedEnvironmentVariable = self.provider.environmentVariables.first { key in
+            environment[key]?.isEmpty == false
+        }
     }
 }
