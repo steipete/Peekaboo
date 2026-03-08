@@ -1,4 +1,6 @@
+import Darwin
 import Foundation
+import PeekabooCore
 import Testing
 @testable import Peekaboo
 
@@ -139,5 +141,96 @@ struct PeekabooSettingsPersistenceTests {
 
         // Clean up
         UserDefaults().removePersistentDomain(forName: suiteName)
+    }
+}
+
+
+@Suite("PeekabooSettings Config Hydration Tests", .tags(.services, .integration))
+@MainActor
+struct PeekabooSettingsConfigHydrationTests {
+    @Test("Configuration-backed state survives init")
+    func configurationBackedStateSurvivesInit() throws {
+        try withIsolatedSettingsEnvironment { configDir in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let configJSON = """
+            {
+              "aiProviders": {
+                "providers": "anthropic/claude-sonnet-4-5-20250929,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "claude-sonnet-4-5-20250929",
+                "temperature": 0.3,
+                "maxTokens": 4096
+              }
+            }
+            """
+            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
+
+            let defaults = UserDefaults.standard
+            defaults.set(true, forKey: "peekaboo.agentModeEnabled")
+            defaults.set(false, forKey: "peekaboo.showInDock")
+
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings()
+
+            #expect(settings.selectedProvider == "anthropic")
+            #expect(settings.selectedModel == "claude-sonnet-4-5-20250929")
+            #expect(settings.temperature == 0.3)
+            #expect(settings.maxTokens == 4096)
+            #expect(settings.agentModeEnabled == true)
+            #expect(settings.showInDock == false)
+
+            let persistedConfig = try String(contentsOf: configPath, encoding: .utf8)
+            #expect(persistedConfig == configJSON)
+            #expect(defaults.bool(forKey: "peekaboo.agentModeEnabled") == true)
+            #expect(defaults.bool(forKey: "peekaboo.showInDock") == false)
+        }
+    }
+}
+
+@MainActor
+private func withIsolatedSettingsEnvironment(_ body: (URL) throws -> Void) throws {
+    let fileManager = FileManager.default
+    let configDir = fileManager.temporaryDirectory
+        .appendingPathComponent("peekaboo-settings-tests-\(UUID().uuidString)", isDirectory: true)
+    try fileManager.createDirectory(at: configDir, withIntermediateDirectories: true)
+
+    let defaults = UserDefaults.standard
+    let previousConfigDir = getenv("PEEKABOO_CONFIG_DIR").map { String(cString: $0) }
+    let previousDisableMigration = getenv("PEEKABOO_CONFIG_DISABLE_MIGRATION").map { String(cString: $0) }
+    let previousKeys = defaults.dictionaryRepresentation().filter { $0.key.hasPrefix("peekaboo.") }
+
+    clearPeekabooDefaults(defaults)
+    setenv("PEEKABOO_CONFIG_DIR", configDir.path, 1)
+    setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+    ConfigurationManager.shared.resetForTesting()
+
+    defer {
+        clearPeekabooDefaults(defaults)
+        for (key, value) in previousKeys {
+            defaults.set(value, forKey: key)
+        }
+        if let previousConfigDir {
+            setenv("PEEKABOO_CONFIG_DIR", previousConfigDir, 1)
+        } else {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+        }
+        if let previousDisableMigration {
+            setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", previousDisableMigration, 1)
+        } else {
+            unsetenv("PEEKABOO_CONFIG_DISABLE_MIGRATION")
+        }
+        ConfigurationManager.shared.resetForTesting()
+        try? fileManager.removeItem(at: configDir)
+    }
+
+    try body(configDir)
+}
+
+private func clearPeekabooDefaults(_ defaults: UserDefaults) {
+    for key in defaults.dictionaryRepresentation().keys where key.hasPrefix("peekaboo.") {
+        defaults.removeObject(forKey: key)
     }
 }
