@@ -110,6 +110,12 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 activeSnapshotId = "" // Not needed for coordinate clicks
                 try await self.focusApplicationIfNeeded(snapshotId: nil)
 
+                // Verify target app is actually frontmost after focus attempt.
+                // InputDriver.click() sends a CGEvent at screen-absolute coordinates,
+                // so if the target window is not frontmost, the click will land on
+                // whatever window is at that position (see #90).
+                try self.verifyFocusForCoordinateClick()
+
             } else {
                 // For element-based clicks, try to get a snapshot but allow fallback
                 let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -300,6 +306,45 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
         // Brief delay to ensure focus is complete before interacting
         try await Task.sleep(nanoseconds: 100_000_000)
+    }
+
+    /// Verify that the target app is actually frontmost before dispatching a coordinate click.
+    ///
+    /// When `--app` is specified with `--coords`, the click uses `InputDriver.click()` which
+    /// sends a CGEvent at screen-absolute coordinates. If the focus step didn't actually bring
+    /// the target window to the front (common with Electron apps like Claude Desktop, VS Code),
+    /// the click will land on whatever window happens to be at that screen position.
+    ///
+    /// This method checks that the frontmost app matches the `--app` target and logs a warning
+    /// if it doesn't, giving the agent actionable feedback instead of silently clicking the wrong app.
+    private func verifyFocusForCoordinateClick() throws {
+        // Only verify when --app is explicitly specified
+        guard let targetApp = self.target.app else { return }
+
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        let frontmostName = frontmost?.localizedName ?? ""
+        let frontmostBundle = frontmost?.bundleIdentifier ?? ""
+
+        let nameMatches = frontmostName.localizedCaseInsensitiveContains(targetApp)
+        let bundleMatches = frontmostBundle.localizedCaseInsensitiveContains(targetApp)
+
+        if !nameMatches && !bundleMatches {
+            self.logger.warning(
+                "Focus mismatch: target app '\(targetApp)' is not frontmost. " +
+                "Frontmost is '\(frontmostName)' (\(frontmostBundle)). " +
+                "Coordinate click may land on the wrong window."
+            )
+            // Throw so the agent gets clear feedback instead of silently clicking wrong app
+            throw PeekabooError.elementNotFound(
+                "Target app '\(targetApp)' is not frontmost after focus attempt. " +
+                "Currently frontmost: '\(frontmostName)'. " +
+                "The coordinate click would land on '\(frontmostName)' instead.\n\n" +
+                "💡 Hints:\n" +
+                "  • Ensure no other window is overlapping the target\n" +
+                "  • Try clicking by element ID (--on) instead of coordinates\n" +
+                "  • Close or minimize interfering windows first"
+            )
+        }
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
