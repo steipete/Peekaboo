@@ -66,11 +66,24 @@ extension SCWindow: @retroactive @unchecked Sendable {}
 
 struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
     func hasPermission(logger: CategoryLogger) async -> Bool {
-        let hasPermission = CGPreflightScreenCaptureAccess()
-        if !hasPermission {
-            logger.warning("Screen recording permission not granted")
+        let preflightResult = CGPreflightScreenCaptureAccess()
+        if preflightResult {
+            return true
         }
-        return hasPermission
+
+        // CGPreflightScreenCaptureAccess is unreliable for CLI tools — it often
+        // returns false even when permission is granted (TCC tracks by code signature
+        // and the check can fail after rebuilds or for non-.app bundles).
+        // Fall back to probing ScreenCaptureKit which gives the ground-truth answer.
+        logger.debug("CGPreflightScreenCaptureAccess returned false, probing SCShareableContent")
+        do {
+            _ = try await SCShareableContent.current
+            logger.info("Screen recording permission granted (SCShareableContent probe)")
+            return true
+        } catch {
+            logger.warning("Screen recording permission not granted (SCShareableContent probe failed: \(error))")
+            return false
+        }
     }
 }
 
