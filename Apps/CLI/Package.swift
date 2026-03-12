@@ -113,7 +113,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Commander"),
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.2"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", "0.10.2" ..< "0.11.0"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.2.1"),
         .package(path: "../../TauTUI"),

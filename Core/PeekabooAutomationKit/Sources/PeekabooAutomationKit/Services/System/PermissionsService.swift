@@ -26,12 +26,48 @@ public final class PermissionsService {
 
         if #available(macOS 10.15, *) {
             let hasPermission = CGPreflightScreenCaptureAccess()
-            self.logger.info("Screen recording permission: \(hasPermission)")
-            return hasPermission
+            self.logger.info("Screen recording permission (CGPreflight): \(hasPermission)")
+            if hasPermission {
+                return true
+            }
+
+            // CGPreflightScreenCaptureAccess is unreliable for CLI tools — it often
+            // returns false even when permission is granted (TCC tracks by code signature
+            // and the check can fail after rebuilds or for non-.app bundles).
+            // Fall back to probing ScreenCaptureKit which gives the ground-truth answer.
+            if self.probeScreenCaptureKitPermission() {
+                self.logger.info("Screen recording permission granted (SCShareableContent probe)")
+                return true
+            }
+
+            return false
         }
 
         self.logger.info("Screen recording permission: true (pre-10.15 fallback)")
         return true
+    }
+
+    /// Probe ScreenCaptureKit to determine if screen recording is actually permitted.
+    /// `SCShareableContent.current` throws if the app lacks permission.
+    @available(macOS 12.3, *)
+    private nonisolated func probeScreenCaptureKitPermission() -> Bool {
+        let semaphore = DispatchSemaphore(value: 0)
+        nonisolated(unsafe) var permitted = false
+
+        // SCShareableContent is async-only; bridge to sync via a detached task + semaphore
+        // so the existing synchronous call-sites keep working.
+        Task.detached { @Sendable in
+            do {
+                _ = try await SCShareableContent.current
+                permitted = true
+            } catch {
+                permitted = false
+            }
+            semaphore.signal()
+        }
+
+        _ = semaphore.wait(timeout: .now() + 5.0)
+        return permitted
     }
 
     @discardableResult
