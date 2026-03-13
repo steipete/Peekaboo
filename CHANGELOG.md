@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- CLI agent runtime now prefers local execution by default; thanks @0xble for [#83](https://github.com/steipete/Peekaboo/pull/83).
+- Screen recording permission checks are more reliable, and MCP Swift SDK compatibility is restored; thanks @romanr for [#94](https://github.com/steipete/Peekaboo/pull/94).
+
 ## [3.0.0-beta4] (unreleased)
 
 ### Added
