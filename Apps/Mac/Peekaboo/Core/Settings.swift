@@ -870,7 +870,6 @@ extension PeekabooSettings {
         let keys = self.credentialKeys(for: provider)
         return self.detectedEnvironmentVariable(for: keys).flatMap { ProcessInfo.processInfo.environment[$0] }
     }
-
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
@@ -924,7 +923,6 @@ extension PeekabooSettings {
             provider
         }
     }
-
     private static let animationKeys: [String] = [
         "screenshotFlashEnabled", "clickAnimationEnabled", "typeAnimationEnabled",
         "scrollAnimationEnabled", "mouseTrailEnabled", "swipePathEnabled",
