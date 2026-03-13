@@ -2,18 +2,18 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Window Command Basic Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct WindowCommandBasicTests {
-    @Test("Window command exists")
-    func windowCommandExists() {
+    @Test
+    func `Window command exists`() {
         // Verify WindowCommand type exists and has proper configuration
         let config = WindowCommand.commandDescription
         #expect(config.commandName == "window")
         #expect(config.abstract.contains("Manipulate application windows"))
     }
 
-    @Test("Window command has expected subcommands")
-    func windowSubcommands() {
+    @Test
+    func `Window command has expected subcommands`() {
         let subcommands = WindowCommand.commandDescription.subcommands
 
         // We expect 8 subcommands

@@ -343,10 +343,21 @@ public struct CaptureSessionResult: Codable, Sendable, Equatable {
     public let warnings: [CaptureWarning]
 
     // Convenience: denormalized contact sheet info for agent/CLI surfaces
-    public var contactColumns: Int { self.contactSheet.columns }
-    public var contactRows: Int { self.contactSheet.rows }
-    public var contactSampledIndexes: [Int] { self.contactSheet.sampledFrameIndexes }
-    public var contactThumbSize: CGSize { self.contactSheet.thumbSize }
+    public var contactColumns: Int {
+        self.contactSheet.columns
+    }
+
+    public var contactRows: Int {
+        self.contactSheet.rows
+    }
+
+    public var contactSampledIndexes: [Int] {
+        self.contactSheet.sampledFrameIndexes
+    }
+
+    public var contactThumbSize: CGSize {
+        self.contactSheet.thumbSize
+    }
 
     public init(
         source: Source,

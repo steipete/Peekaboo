@@ -6,14 +6,13 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "PressCommand Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct PressCommandTests {
-    @Test("press --help documents command")
-    func pressHelp() async throws {
+    @Test
+    func `press --help documents command`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["--help"], context: context)
 
@@ -21,8 +20,8 @@ struct PressCommandTests {
         #expect(self.output(from: result).contains("Press individual keys or key sequences"))
     }
 
-    @Test("Press command forwards keys to automation service")
-    func forwardsKeys() async throws {
+    @Test
+    func `Press command forwards keys to automation service`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["return", "--json"], context: context)
 
@@ -39,8 +38,8 @@ struct PressCommandTests {
         #expect(payload.data.totalPresses == 1)
     }
 
-    @Test("Repeat count multiplies key actions")
-    func repeatCount() async throws {
+    @Test
+    func `Repeat count multiplies key actions`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["tab", "--count", "3"], context: context)
 
@@ -51,8 +50,8 @@ struct PressCommandTests {
         #expect(call.cadence == .fixed(milliseconds: 100))
     }
 
-    @Test("Press command supports multiple keys in sequence")
-    func multipleKeysSequence() async throws {
+    @Test
+    func `Press command supports multiple keys in sequence`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["up", "down", "left", "right"], context: context)
 
@@ -65,8 +64,8 @@ struct PressCommandTests {
         })
     }
 
-    @Test("Snapshot argument is forwarded")
-    func forwardsSnapshot() async throws {
+    @Test
+    func `Snapshot argument is forwarded`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["escape", "--snapshot", "snapshot-42"], context: context)
 
@@ -76,8 +75,8 @@ struct PressCommandTests {
         #expect(call.snapshotId == "snapshot-42")
     }
 
-    @Test("Invalid key results in failure")
-    func invalidKey() async throws {
+    @Test
+    func `Invalid key results in failure`() async throws {
         let context = await self.makeContext()
         let result = try await self.runPress(arguments: ["notakey"], context: context)
 

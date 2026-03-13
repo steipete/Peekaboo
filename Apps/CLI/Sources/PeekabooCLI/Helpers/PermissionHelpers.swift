@@ -116,7 +116,8 @@ enum PermissionHelpers {
 
     /// Format permissions for help display with dynamic status
     static func formatPermissionsForHelp(
-        services: any PeekabooServiceProviding) async -> String {
+        services: any PeekabooServiceProviding
+    ) async -> String {
         // Format permissions for help display with dynamic status
         let permissions = await self.getCurrentPermissions(services: services)
         var output = ["PERMISSIONS:"]

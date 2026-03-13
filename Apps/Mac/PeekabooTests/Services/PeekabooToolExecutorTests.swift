@@ -3,18 +3,18 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("ToolRegistry Tests", .tags(.tools, .unit))
+@Suite(.tags(.tools, .unit))
 @MainActor
 struct ToolRegistryTests {
-    @Test("All expected tools are registered")
-    func allToolsAreRegistered() {
+    @Test
+    func `All expected tools are registered`() {
         self.installDefaults()
         let allTools = ToolRegistry.allTools()
         #expect(!allTools.isEmpty)
 
         let toolNames = Set(allTools.map(\.name))
 
-        let expectedTools: Set<String> = [
+        let expectedTools: Set = [
             "see",
             "click",
             "type",
@@ -37,8 +37,8 @@ struct ToolRegistryTests {
         #expect(toolNames.isSuperset(of: expectedTools))
     }
 
-    @Test("Tool definitions are valid")
-    func toolDefinitionsAreValid() {
+    @Test
+    func `Tool definitions are valid`() {
         self.installDefaults()
         let allTools = ToolRegistry.allTools()
 
@@ -53,16 +53,16 @@ struct ToolRegistryTests {
         }
     }
 
-    @Test("Can retrieve a tool by name")
-    func getToolByName() {
+    @Test
+    func `Can retrieve a tool by name`() {
         self.installDefaults()
         let tool = ToolRegistry.tool(named: "see")
         #expect(tool != nil)
         #expect(tool?.name == "see")
     }
 
-    @Test("Tools are grouped by category")
-    func toolsAreGroupedByCategory() {
+    @Test
+    func `Tools are grouped by category`() {
         self.installDefaults()
         let categorizedTools = ToolRegistry.toolsByCategory()
         #expect(!categorizedTools.isEmpty)

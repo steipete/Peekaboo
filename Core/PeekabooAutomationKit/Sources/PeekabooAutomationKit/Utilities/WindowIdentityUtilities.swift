@@ -21,11 +21,17 @@ public struct WindowIdentityInfo: Sendable {
         self.layer == 0 && self.bounds.width >= 50 && self.bounds.height >= 50 && self.alpha > 0
     }
 
-    public var windowLayer: Int { self.layer } // Backward compatibility
+    public var windowLayer: Int {
+        self.layer
+    } // Backward compatibility
 
-    public var isMainWindow: Bool { self.layer == 0 && self.alpha > 0 }
+    public var isMainWindow: Bool {
+        self.layer == 0 && self.alpha > 0
+    }
 
-    public var isDialog: Bool { self.layer >= 10 && self.layer < 1000 }
+    public var isDialog: Bool {
+        self.layer >= 10 && self.layer < 1000
+    }
 
     public init(
         windowID: CGWindowID,
@@ -49,7 +55,7 @@ public struct WindowIdentityInfo: Sendable {
         self.axIdentifier = axIdentifier
     }
 
-    // Convenience to preserve older label windowLayer
+    /// Convenience to preserve older label windowLayer
     public init(
         windowID: CGWindowID,
         title: String?,

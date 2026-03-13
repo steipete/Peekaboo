@@ -5,7 +5,7 @@ import Testing
 @testable import PeekabooCLI
 
 @Suite(.tags(.safe)) struct HotkeyCommandTests {
-    @Test func hotkeyParsing() async throws {
+    @Test func `hotkey parsing`() throws {
         // Test comma-separated format
         let command1 = try HotkeyCommand.parse(["--keys", "cmd,c"])
         #expect(command1.resolvedKeys == "cmd,c")
@@ -29,7 +29,7 @@ import Testing
         #expect(command5.target.app == "TextEdit")
     }
 
-    @Test func invalidInputHandling() async throws {
+    @Test func `invalid input handling`() throws {
         // Test missing keys
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
@@ -45,7 +45,7 @@ import Testing
         }
     }
 
-    @Test func keyFormatNormalization() async throws {
+    @Test func `key format normalization`() throws {
         // Test that both formats work
         let command1 = try HotkeyCommand.parse(["--keys", "cmd,shift,t"])
         #expect(command1.resolvedKeys == "cmd,shift,t")
@@ -58,7 +58,7 @@ import Testing
         #expect(command3.resolvedKeys == "CMD,C") // Original case preserved
     }
 
-    @Test func complexHotkeys() async throws {
+    @Test func `complex hotkeys`() throws {
         // Test function keys
         let command1 = try HotkeyCommand.parse(["--keys", "f1"])
         #expect(command1.resolvedKeys == "f1")
@@ -72,7 +72,7 @@ import Testing
         #expect(command3.resolvedKeys == "cmd,space")
     }
 
-    @Test func positionalHotkeyParsing() async throws {
+    @Test func `positional hotkey parsing`() throws {
         let positionalComma = try HotkeyCommand.parse(["cmd,shift,t"])
         #expect(positionalComma.resolvedKeys == "cmd,shift,t")
 
@@ -80,7 +80,7 @@ import Testing
         #expect(positionalSpace.resolvedKeys == "cmd shift t")
     }
 
-    @Test func positionalOverridesOption() async throws {
+    @Test func `positional overrides option`() throws {
         let command = try HotkeyCommand.parse(["cmd,space", "--keys", "cmd,c"])
         #expect(command.resolvedKeys == "cmd,space")
     }

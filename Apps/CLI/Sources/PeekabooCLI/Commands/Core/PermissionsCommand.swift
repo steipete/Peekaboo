@@ -42,8 +42,13 @@ extension PermissionsCommand {
             return runtime
         }
 
-        var outputLogger: Logger { self.resolvedRuntime.logger }
-        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+        var outputLogger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -77,8 +82,13 @@ extension PermissionsCommand {
             return runtime
         }
 
-        var outputLogger: Logger { self.resolvedRuntime.logger }
-        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+        var outputLogger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {

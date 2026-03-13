@@ -14,11 +14,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Menu Service Extras", .tags(.safe))
+@Suite(.tags(.safe))
 struct MenuServiceTests {
-    @Test("Fallback/window extras replace placeholder AX names")
+    @Test
     @MainActor
-    func fallbackReplacesPlaceholder() async {
+    func `Fallback/window extras replace placeholder AX names`() {
         let accessible = [
             MenuExtraInfo(
                 title: "Item-0",
@@ -41,9 +41,9 @@ struct MenuServiceTests {
         #expect(merged[0].bundleIdentifier == "com.apple.controlcenter")
     }
 
-    @Test("Rich accessibility titles still win when fallback is generic")
+    @Test
     @MainActor
-    func accessibilityStillWins() async {
+    func `Rich accessibility titles still win when fallback is generic`() {
         let accessible = [
             MenuExtraInfo(
                 title: "Wi-Fi",
@@ -63,9 +63,9 @@ struct MenuServiceTests {
         #expect(merged[0].title == "Wi-Fi")
     }
 
-    @Test("Metadata merges when sources contribute different fields")
+    @Test
     @MainActor
-    func metadataMergesAcrossSources() async {
+    func `Metadata merges when sources contribute different fields`() {
         let accessible = [
             MenuExtraInfo(
                 title: "Item-2",
@@ -89,9 +89,9 @@ struct MenuServiceTests {
         #expect(merged[0].ownerName == "Control Center")
     }
 
-    @Test("Distinct extras remain sorted by X position")
+    @Test
     @MainActor
-    func sortedByPosition() async {
+    func `Distinct extras remain sorted by X position`() {
         let accessible = [
             MenuExtraInfo(title: "Wi-Fi", position: CGPoint(x: 50, y: 0)),
             MenuExtraInfo(title: "Bluetooth", position: CGPoint(x: 150, y: 0)),
@@ -106,8 +106,8 @@ struct MenuServiceTests {
         #expect(merged[0].position.x < merged[1].position.x)
     }
 
-    @Test("Control Center identifier mapping overrides placeholder labels")
-    func identifierMappingOverridesPlaceholder() {
+    @Test
+    func `Control Center identifier mapping overrides placeholder labels`() {
         let lookup = ControlCenterIdentifierLookup(mapping: [
             "2D61E17B-1FC1-41CA-945C-975B98812617": "Stage Manager",
         ])
@@ -116,9 +116,9 @@ struct MenuServiceTests {
         #expect(humanReadableMenuIdentifier("bb3cc23c-6950-4e96-8b40-850e09f46934", lookup: lookup) == nil)
     }
 
-    @Test("Fallback display names prefer owner names when raw title is a GUID")
+    @Test
     @MainActor
-    func fallbackFriendlyTitleUsesOwner() async {
+    func `Fallback display names prefer owner names when raw title is a GUID`() async {
         let service = MenuService()
         let owner = "Control Center"
         let guid = "bb3cc23c-6950-4e96-8b40-850e09f46934"
@@ -129,9 +129,9 @@ struct MenuServiceTests {
         #expect(friendly == owner)
     }
 
-    @Test("Menu bar display titles append index when fallback uses owner")
+    @Test
     @MainActor
-    func displayTitleAppendsIndexForOwnerFallback() async {
+    func `Menu bar display titles append index when fallback uses owner`() {
         let service = MenuService()
         let placeholderExtra = MenuExtraInfo(
             title: "Control Center",
@@ -146,9 +146,9 @@ struct MenuServiceTests {
         #expect(displayTitle == "Control Center #5")
     }
 
-    @Test("Fallback uses generic label when owner/title unavailable")
+    @Test
     @MainActor
-    func genericIndexFallback() async {
+    func `Fallback uses generic label when owner/title unavailable`() {
         let service = MenuService()
         let placeholderExtra = MenuExtraInfo(
             title: "",
@@ -163,8 +163,8 @@ struct MenuServiceTests {
         #expect(displayTitle == "Menu Bar Item #2")
     }
 
-    @Test("Traversal budget caps children")
-    func traversalBudgetChildCap() {
+    @Test
+    func `Traversal budget caps children`() {
         var budget = MenuTraversalBudget(limits: .init(maxDepth: 4, maxChildren: 2, timeBudget: 5))
 
         let logger = Logger(subsystem: "test", category: "menu")
@@ -177,8 +177,8 @@ struct MenuServiceTests {
         #expect(third == false)
     }
 
-    @Test("Traversal budget caps time")
-    func traversalBudgetTimeCap() async throws {
+    @Test
+    func `Traversal budget caps time`() async throws {
         var budget = MenuTraversalBudget(limits: .init(maxDepth: 4, maxChildren: 10, timeBudget: 0.001))
         let logger = Logger(subsystem: "test", category: "menu")
 
@@ -189,8 +189,8 @@ struct MenuServiceTests {
         #expect(secondAllowed == false)
     }
 
-    @Test("Normalized title matching ignores diacritics and whitespace")
-    func normalizedTitleMatching() {
+    @Test
+    func `Normalized title matching ignores diacritics and whitespace`() {
         let target = "  Résumé  "
         #expect(titlesMatch(candidate: "resume", target: target))
         #expect(titlesMatch(candidate: "Résumé", target: target))
@@ -198,24 +198,24 @@ struct MenuServiceTests {
         #expect(titlesMatch(candidate: "Résumé", target: "resume"))
     }
 
-    @Test("Normalized title strips accelerators and ellipsis")
-    func normalizedTitleStripsAccelerators() {
+    @Test
+    func `Normalized title strips accelerators and ellipsis`() {
         let target = "&File…"
         #expect(titlesMatch(candidate: "File...", target: target))
         #expect(titlesMatch(candidate: "file", target: target))
         #expect(titlesMatchPartial(candidate: "Recent File", target: target))
     }
 
-    @Test("Placeholder detection catches GUIDs and numbers")
-    func placeholderDetection() {
+    @Test
+    func `Placeholder detection catches GUIDs and numbers`() {
         #expect(isPlaceholderMenuTitle("12345"))
         #expect(isPlaceholderMenuTitle("bb3cc23c-6950-4e96-8b40-850e09f46934"))
         #expect(isPlaceholderMenuTitle("Menu Item"))
         #expect(isPlaceholderMenuTitle("Wi-Fi") == false)
     }
 
-    @Test("Traversal limits from policy")
-    func traversalLimitPolicy() {
+    @Test
+    func `Traversal limits from policy`() {
         let balanced = MenuTraversalLimits.from(policy: .balanced)
         let debug = MenuTraversalLimits.from(policy: .debug)
         #expect(balanced.maxDepth < debug.maxDepth)
@@ -223,9 +223,9 @@ struct MenuServiceTests {
         #expect(balanced.timeBudget < debug.timeBudget)
     }
 
-    @Test("Menu cache returns within TTL")
+    @Test
     @MainActor
-    func menuCacheReturnsWithinTTL() async throws {
+    func `Menu cache returns within TTL`() async throws {
         @MainActor
         final class FakeAppService: ApplicationServiceProtocol {
             let app: ServiceApplicationInfo
@@ -235,7 +235,10 @@ struct MenuServiceTests {
                 self.app = app
             }
 
-            func launchApplication(identifier: String) async throws -> ServiceApplicationInfo { self.app }
+            func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
+                self.app
+            }
+
             func activateApplication(identifier: String) async throws {}
             func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
                 UnifiedToolOutput(
@@ -244,13 +247,19 @@ struct MenuServiceTests {
                     metadata: .init(duration: 0))
             }
 
-            func getFrontmostApplication() async throws -> ServiceApplicationInfo { self.app }
+            func getFrontmostApplication() async throws -> ServiceApplicationInfo {
+                self.app
+            }
+
             func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
                 self.lookups += 1
                 return self.app
             }
 
-            func getRunningApplications() async throws -> [ServiceApplicationInfo] { [self.app] }
+            func getRunningApplications() async throws -> [ServiceApplicationInfo] {
+                [self.app]
+            }
+
             func listWindows(
                 for appIdentifier: String,
                 timeout: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData>
@@ -261,8 +270,14 @@ struct MenuServiceTests {
                     metadata: .init(duration: 0))
             }
 
-            func isApplicationRunning(identifier: String) async -> Bool { true }
-            func quitApplication(identifier: String, force: Bool) async throws -> Bool { true }
+            func isApplicationRunning(identifier: String) async -> Bool {
+                true
+            }
+
+            func quitApplication(identifier: String, force: Bool) async throws -> Bool {
+                true
+            }
+
             func hideApplication(identifier: String) async throws {}
             func unhideApplication(identifier: String) async throws {}
             func hideOtherApplications(identifier: String) async throws {}

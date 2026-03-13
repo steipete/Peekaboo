@@ -4,11 +4,10 @@ import PeekabooProtocols
 import PeekabooVisualizer
 import Testing
 
-@Suite("Visualizer event contract")
 @MainActor
 struct VisualizerEventStoreContractTests {
-    @Test("Payload encoding round-trips annotated screenshot")
-    func annotatedScreenshotPayload() throws {
+    @Test
+    func `Payload encoding round-trips annotated screenshot`() throws {
         let payload = VisualizerEvent.Payload.annotatedScreenshot(
             imageData: Data([0x89, 0x50]),
             elements: [DetectedElement(

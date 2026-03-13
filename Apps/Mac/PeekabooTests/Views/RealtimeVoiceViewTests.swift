@@ -10,7 +10,7 @@ import TachikomaAudio
 import Testing
 @testable import Peekaboo
 
-@Suite("RealtimeVoiceView Tests", .tags(.unit, .ui), .disabled("Uses full PeekabooServices which may hang"))
+@Suite(.tags(.unit, .ui), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct RealtimeVoiceViewTests {
     // MARK: - Test Helpers
@@ -32,8 +32,8 @@ struct RealtimeVoiceViewTests {
 
     // Removed test - just testing compilation is meaningless
 
-    @Test("Connection indicator shows correct state")
-    func connectionIndicatorState() throws {
+    @Test
+    func `Connection indicator shows correct state`() throws {
         let service = try self.createMockService()
 
         // Test different connection states
@@ -43,8 +43,8 @@ struct RealtimeVoiceViewTests {
 
     // MARK: - Voice Selection Tests
 
-    @Test("Voice picker contains all available voices")
-    func voicePickerOptions() throws {
+    @Test
+    func `Voice picker contains all available voices`() {
         let availableVoices: [RealtimeVoice] = [.alloy, .echo, .fable, .onyx, .nova, .shimmer]
 
         for voice in availableVoices {
@@ -53,8 +53,8 @@ struct RealtimeVoiceViewTests {
         }
     }
 
-    @Test("Voice display names are descriptive")
-    func voiceDisplayNames() throws {
+    @Test
+    func `Voice display names are descriptive`() {
         #expect(RealtimeVoice.alloy.displayName == "Alloy (Neutral)")
         #expect(RealtimeVoice.echo.displayName == "Echo (Smooth)")
         #expect(RealtimeVoice.fable.displayName == "Fable (British)")
@@ -65,8 +65,8 @@ struct RealtimeVoiceViewTests {
 
     // MARK: - Animation Tests
 
-    @Test("Waveform animation parameters are valid")
-    func waveformAnimationParameters() throws {
+    @Test
+    func `Waveform animation parameters are valid`() {
         // Test that animation values are within expected ranges
         let minFrequency = 0.1
         let maxFrequency = 1.0
@@ -78,8 +78,8 @@ struct RealtimeVoiceViewTests {
 
     // MARK: - State Display Tests
 
-    @Test("Connection states have proper display strings")
-    func connectionStateDisplay() throws {
+    @Test
+    func `Connection states have proper display strings`() {
         // Verify all states can be displayed
         let states: [ConversationState] = [.idle, .listening, .speaking, .processing]
 
@@ -95,8 +95,8 @@ struct RealtimeVoiceViewTests {
 
     // MARK: - Error Display Tests
 
-    @Test("Error messages are user-friendly")
-    func errorMessageDisplay() throws {
+    @Test
+    func `Error messages are user-friendly`() throws {
         let errors: [RealtimeError] = [
             .notConnected,
             .apiKeyMissing,
@@ -106,7 +106,7 @@ struct RealtimeVoiceViewTests {
         for error in errors {
             let description = error.errorDescription
             #expect(description != nil)
-            #expect(!description!.isEmpty)
+            #expect(try !(#require(description?.isEmpty)))
         }
     }
 
@@ -117,10 +117,10 @@ struct RealtimeVoiceViewTests {
 
 // MARK: - Mock Conversation State Tests
 
-@Suite("ConversationState Tests", .tags(.unit))
+@Suite(.tags(.unit))
 struct ConversationStateTests {
-    @Test("State transitions are logical")
-    func stateTransitions() throws {
+    @Test
+    func `State transitions are logical`() {
         // idle -> listening (start recording)
         // listening -> processing (stop recording, processing input)
         // processing -> speaking (AI responds)

@@ -1,11 +1,10 @@
 import Testing
 @testable import PeekabooVisualizer
 
-@Suite("Visualizer overlay sizing")
 @MainActor
 struct VisualizerOverlaySizingTests {
-    @Test("Hotkey overlay grows with more keys")
-    func hotkeyOverlayGrows() {
+    @Test
+    func `Hotkey overlay grows with more keys`() {
         let compact = VisualizerCoordinator.estimatedHotkeyOverlaySize(for: ["cmd", "k"])
         let wide = VisualizerCoordinator.estimatedHotkeyOverlaySize(for: ["cmd", "shift", "option", "ctrl", "space"])
 
@@ -15,8 +14,8 @@ struct VisualizerOverlaySizingTests {
         #expect(wide.height >= compact.height)
     }
 
-    @Test("Menu overlay grows with path length")
-    func menuOverlayGrows() {
+    @Test
+    func `Menu overlay grows with path length`() {
         let short = VisualizerCoordinator.estimatedMenuOverlaySize(for: ["File", "New"])
         let long = VisualizerCoordinator.estimatedMenuOverlaySize(for: ["File", "New", "Project", "Swift Package"])
 

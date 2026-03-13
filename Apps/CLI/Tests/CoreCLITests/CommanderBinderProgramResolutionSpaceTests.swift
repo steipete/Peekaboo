@@ -2,11 +2,10 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Program Resolution (Space + Dialog)")
 struct CommanderBinderSpaceDialogTests {
-    @Test("Commander program resolves space list options")
+    @Test
     @MainActor
-    func commanderResolvesSpaceList() throws {
+    func `Commander program resolves space list options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -19,9 +18,9 @@ struct CommanderBinderSpaceDialogTests {
         #expect(values.flags.contains("detailed"))
     }
 
-    @Test("Commander program resolves space switch options")
+    @Test
     @MainActor
-    func commanderResolvesSpaceSwitch() throws {
+    func `Commander program resolves space switch options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -34,9 +33,9 @@ struct CommanderBinderSpaceDialogTests {
         #expect(values.options["to"] == ["3"])
     }
 
-    @Test("Commander program resolves space move-window options")
+    @Test
     @MainActor
-    func commanderResolvesSpaceMoveWindow() throws {
+    func `Commander program resolves space move-window options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -57,9 +56,9 @@ struct CommanderBinderSpaceDialogTests {
         #expect(values.flags.contains("follow"))
     }
 
-    @Test("Commander program resolves dialog click options")
+    @Test
     @MainActor
-    func commanderResolvesDialogClick() throws {
+    func `Commander program resolves dialog click options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -74,9 +73,9 @@ struct CommanderBinderSpaceDialogTests {
         #expect(values.options["windowTitle"] == ["Save"])
     }
 
-    @Test("Commander program resolves dialog input options")
+    @Test
     @MainActor
-    func commanderResolvesDialogInput() throws {
+    func `Commander program resolves dialog input options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [

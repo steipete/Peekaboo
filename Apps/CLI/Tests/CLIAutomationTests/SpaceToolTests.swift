@@ -8,13 +8,12 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "SpaceTool Move Window Tests",
     .serialized,
     .tags(.automation)
 )
 struct SpaceToolMoveWindowTests {
-    @Test("move-window --to_current refreshes metadata and issues move call")
-    func moveWindowToCurrentSpace() async throws {
+    @Test
+    func `move-window --to_current refreshes metadata and issues move call`() async throws {
         let context = self.makeTestContext()
         await MainActor.run {
             MCPToolContext.configureDefaultContext {
@@ -81,7 +80,9 @@ struct SpaceToolMoveWindowTests {
         return (services, appName, windowInfo)
     }
 
-    private func sampleSpaces() -> [SpaceInfo] { [] }
+    private func sampleSpaces() -> [SpaceInfo] {
+        []
+    }
 }
 
 @MainActor

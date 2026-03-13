@@ -4,7 +4,6 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "All Commands JSON Output Support",
     .serialized,
     .tags(.integration),
     .enabled(if: CLITestEnvironment.runAutomationRead)
@@ -71,8 +70,8 @@ struct AllCommandsJSONOutputTests {
         ["dialog", "dismiss"],
         ["dialog", "list"],
     ]
-    @Test("All commands support --json flag")
-    func verifyAllCommandsHaveJSONOutputFlag() async throws {
+    @Test
+    func `All commands support --json flag`() async throws {
         var missingJSONOutputCommands: [String] = []
 
         for commandArgs in Self.commandsRequiringJSONOutput {
@@ -91,8 +90,8 @@ struct AllCommandsJSONOutputTests {
         )
     }
 
-    @Test("Commands produce valid JSON with --json")
-    func verifyCommandsProduceValidJSON() async throws {
+    @Test
+    func `Commands produce valid JSON with --json`() async throws {
         // Commands that can be safely tested without side effects
         let testableCommands: [(args: [String], description: String)] = [
             (["permissions", "--json"], "permissions"),
@@ -126,8 +125,8 @@ struct AllCommandsJSONOutputTests {
         )
     }
 
-    @Test("JSON output follows consistent schema")
-    func verifyJSONOutputSchema() async throws {
+    @Test
+    func `JSON output follows consistent schema`() async throws {
         let result = try await InProcessCommandRunner.runShared(["permissions", "--json"])
         let data = Data(result.combinedOutput.utf8)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -162,8 +161,8 @@ struct AllCommandsJSONOutputTests {
         }
     }
 
-    @Test("Error responses use JSON format")
-    func verifyErrorResponsesUseJSON() async throws {
+    @Test
+    func `Error responses use JSON format`() async throws {
         // Test commands that will produce errors
         let errorCommands: [(args: [String], description: String)] = [
             (["image", "--app", "NonExistentApp_XYZ_123", "--json"], "image missing app"),
@@ -211,8 +210,8 @@ struct AllCommandsJSONOutputTests {
         )
     }
 
-    @Test("Subcommands properly inherit JSON output")
-    func verifySubcommandsInheritJSONOutput() async throws {
+    @Test
+    func `Subcommands properly inherit JSON output`() async throws {
         // Test that subcommands can be called with --json
         let subcommandTests: [(args: [String], description: String)] = [
             (["app", "list", "--json"], "app list"),

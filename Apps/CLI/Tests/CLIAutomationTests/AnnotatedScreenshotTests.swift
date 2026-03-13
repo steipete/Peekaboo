@@ -2,5 +2,5 @@ import AppKit
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Annotated Screenshot Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct AnnotatedScreenshotTests {}

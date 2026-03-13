@@ -2,30 +2,30 @@ import AppKit
 import Testing
 @testable import Peekaboo
 
-@Suite("DockIconManager Tests", .tags(.ui, .unit), .disabled("Requires AppKit/NSApplication which may hang in tests"))
+@Suite(.tags(.ui, .unit), .disabled("Requires AppKit/NSApplication which may hang in tests"))
 @MainActor
 struct DockIconManagerTests {
     var manager: DockIconManager!
     var settings: PeekabooSettings!
 
-    @Test("Dock icon is shown by default when setting is true", .disabled("Requires NSApplication"))
-    mutating func dockIconShownByDefault() async {
+    @Test(.disabled("Requires NSApplication"))
+    mutating func `Dock icon is shown by default when setting is true`() async {
         await self.setup()
         self.settings.showInDock = true
         self.manager.updateDockVisibility()
         #expect(NSApp.activationPolicy() == .regular)
     }
 
-    @Test("Dock icon is hidden by default when setting is false", .disabled("Requires NSApplication"))
-    mutating func dockIconHiddenByDefault() async {
+    @Test(.disabled("Requires NSApplication"))
+    mutating func `Dock icon is hidden by default when setting is false`() async {
         await self.setup()
         self.settings.showInDock = false
         self.manager.updateDockVisibility()
         #expect(NSApp.activationPolicy() == .accessory)
     }
 
-    @Test("Dock icon is shown when a window is visible, regardless of setting", .disabled("Requires NSApplication"))
-    mutating func dockIconShownWithVisibleWindow() async {
+    @Test(.disabled("Requires NSApplication"))
+    mutating func `Dock icon is shown when a window is visible, regardless of setting`() async {
         await self.setup()
         self.settings.showInDock = false
         self.manager.updateDockVisibility()
@@ -44,8 +44,8 @@ struct DockIconManagerTests {
         #expect(NSApp.activationPolicy() == .accessory, "Dock icon should hide again after window is closed")
     }
 
-    @Test("Temporarily showing dock works", .disabled("Requires NSApplication"))
-    mutating func temporarilyShowDock() async {
+    @Test(.disabled("Requires NSApplication"))
+    mutating func `Temporarily showing dock works`() async {
         await self.setup()
         self.settings.showInDock = false
         self.manager.updateDockVisibility()

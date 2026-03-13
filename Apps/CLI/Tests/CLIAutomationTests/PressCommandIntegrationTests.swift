@@ -2,12 +2,12 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("PressCommand Integration Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct PressCommandIntegrationTests {
     // MARK: - Command Integration with TypeService
 
-    @Test("Press command generates correct key sequence")
-    func pressCommandGeneratesKeySequence() throws {
+    @Test
+    func `Press command generates correct key sequence`() throws {
         // Test that PressCommand correctly maps keys to SpecialKey values
         let testCases: [(input: [String], expectedCount: Int)] = [
             (["return"], 1),
@@ -27,8 +27,8 @@ struct PressCommandIntegrationTests {
         }
     }
 
-    @Test("Press command with repeat count multiplies actions")
-    func pressCommandRepeatCount() throws {
+    @Test
+    func `Press command with repeat count multiplies actions`() throws {
         // Test count parameter behavior
         let testCases: [(key: String, count: Int)] = [
             ("tab", 3),
@@ -47,8 +47,8 @@ struct PressCommandIntegrationTests {
         }
     }
 
-    @Test("Press command respects timing parameters")
-    func pressCommandTimingParameters() throws {
+    @Test
+    func `Press command respects timing parameters`() throws {
         // Test delay and hold parameters
         let command1 = try PressCommand.parse(["tab", "--delay", "200", "--hold", "100"])
         #expect(command1.delay == 200)
@@ -59,8 +59,8 @@ struct PressCommandIntegrationTests {
         #expect(command2.hold == 0)
     }
 
-    @Test("Press command validates all special keys")
-    func pressCommandValidatesAllKeys() throws {
+    @Test
+    func `Press command validates all special keys`() throws {
         // Comprehensive test of all valid special keys
         let allValidKeys = [
             // Navigation
@@ -87,15 +87,15 @@ struct PressCommandIntegrationTests {
         }
     }
 
-    @Test("Press command with snapshot parameter")
-    func pressCommandWithSnapshot() throws {
+    @Test
+    func `Press command with snapshot parameter`() throws {
         let snapshotId = "test-snapshot-123"
         let command = try PressCommand.parse(["return", "--snapshot", snapshotId])
         #expect(command.snapshot == snapshotId)
     }
 
-    @Test("Press command with focus options")
-    func pressCommandWithFocusOptions() throws {
+    @Test
+    func `Press command with focus options`() throws {
         // Test various focus option combinations
         let command1 = try PressCommand.parse(["tab", "--bring-to-current-space"])
         #expect(command1.focusOptions.bringToCurrentSpace == true)
@@ -109,16 +109,16 @@ struct PressCommandIntegrationTests {
         #expect(command3.focusOptions.autoFocus == false)
     }
 
-    @Test("Press command JSON output format")
-    func pressCommandJSONOutput() throws {
+    @Test
+    func `Press command JSON output format`() throws {
         let command = try PressCommand.parse(["tab", "--json"])
         #expect(command.jsonOutput == true)
     }
 
     // MARK: - Complex Sequences
 
-    @Test("Press command handles navigation sequences")
-    func pressNavigationSequences() throws {
+    @Test
+    func `Press command handles navigation sequences`() throws {
         // Common navigation patterns
         let navigationSequences: [([String], String)] = [
             (["down", "down", "return"], "Navigate down and select"),
@@ -139,8 +139,8 @@ struct PressCommandIntegrationTests {
         }
     }
 
-    @Test("Press command handles dialog navigation")
-    func pressDialogNavigation() throws {
+    @Test
+    func `Press command handles dialog navigation`() throws {
         // Common dialog interaction patterns
         let dialogPatterns: [([String], String)] = [
             (["tab", "space"], "Tab to checkbox and toggle"),
@@ -157,8 +157,8 @@ struct PressCommandIntegrationTests {
 
     // MARK: - Error Cases
 
-    @Test("Press command rejects invalid keys at parse time")
-    func pressCommandRejectsInvalidKeys() throws {
+    @Test
+    func `Press command rejects invalid keys at parse time`() throws {
         // These should fail during validation
         let invalidKeys = ["invalid_key", "notakey", "xyz"]
 

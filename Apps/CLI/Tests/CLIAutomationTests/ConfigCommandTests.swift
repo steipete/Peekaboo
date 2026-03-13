@@ -3,7 +3,7 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("ConfigCommand Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct ConfigCommandTests {
     // MARK: - Helpers
 
@@ -41,8 +41,8 @@ struct ConfigCommandTests {
         try await body(tempDir)
     }
 
-    @Test("ConfigCommand exists and has correct subcommands")
-    func configCommandStructure() {
+    @Test
+    func `ConfigCommand exists and has correct subcommands`() {
         // Verify the command exists
         let command = ConfigCommand.self
 
@@ -79,51 +79,51 @@ struct ConfigCommandTests {
         #expect(hasModelsProvider)
     }
 
-    @Test("InitCommand has correct configuration")
-    func initCommand() {
+    @Test
+    func `InitCommand has correct configuration`() {
         let command = ConfigCommand.InitCommand.self
         #expect(command.commandDescription.commandName == "init")
         #expect(command.commandDescription.abstract == "Create a default configuration file")
     }
 
-    @Test("ShowCommand has correct configuration")
-    func showCommand() {
+    @Test
+    func `ShowCommand has correct configuration`() {
         let command = ConfigCommand.ShowCommand.self
         #expect(command.commandDescription.commandName == "show")
         #expect(command.commandDescription.abstract == "Display current configuration")
     }
 
-    @Test("EditCommand has correct configuration")
-    func editCommand() {
+    @Test
+    func `EditCommand has correct configuration`() {
         let command = ConfigCommand.EditCommand.self
         #expect(command.commandDescription.commandName == "edit")
         #expect(command.commandDescription.abstract == "Open configuration file in your default editor")
     }
 
-    @Test("ValidateCommand has correct configuration")
-    func validateCommand() {
+    @Test
+    func `ValidateCommand has correct configuration`() {
         let command = ConfigCommand.ValidateCommand.self
         #expect(command.commandDescription.commandName == "validate")
         #expect(command.commandDescription.abstract == "Validate configuration file syntax")
     }
 
-    @Test("SetCredentialCommand has correct configuration")
-    func setCredentialCommand() {
+    @Test
+    func `SetCredentialCommand has correct configuration`() {
         let command = ConfigCommand.SetCredentialCommand.self
         #expect(command.commandDescription.commandName == "set-credential")
         #expect(command.commandDescription.abstract == "Set an API key or credential securely")
     }
 
-    @Test("AddProviderCommand validates provider IDs")
-    func providerIdValidation() {
+    @Test
+    func `AddProviderCommand validates provider IDs`() {
         #expect(ConfigCommand.AddProviderCommand.isValidProviderId("openrouter"))
         #expect(ConfigCommand.AddProviderCommand.isValidProviderId("acme-123"))
         #expect(!ConfigCommand.AddProviderCommand.isValidProviderId("spaces not-allowed"))
         #expect(!ConfigCommand.AddProviderCommand.isValidProviderId("🥸"))
     }
 
-    @Test("AddProviderCommand parses headers and rejects invalid formats")
-    func headerParsing() throws {
+    @Test
+    func `AddProviderCommand parses headers and rejects invalid formats`() throws {
         let parsed = try ConfigCommand.AddProviderCommand.parseHeaders("X-Key:one,Auth: Bearer")
         #expect(parsed?["x-key"] == "one")
         #expect(parsed?["auth"] == "Bearer")
@@ -133,8 +133,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Init command creates config file at overridden path")
-    func initCreatesConfig() async throws {
+    @Test
+    func `Init command creates config file at overridden path`() async throws {
         try await self.withTempConfigDir { dir in
             var command = ConfigCommand.InitCommand()
             try await command.run(using: self.makeRuntime())
@@ -144,8 +144,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add provider dry-run does not write")
-    func addProviderDryRun() async throws {
+    @Test
+    func `Add provider dry-run does not write`() async throws {
         try await self.withTempConfigDir { dir in
             var command = ConfigCommand.AddProviderCommand()
             command.providerId = "openrouter"
@@ -162,8 +162,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add provider rejects invalid URL")
-    func addProviderInvalidURL() async throws {
+    @Test
+    func `Add provider rejects invalid URL`() async throws {
         try await self.withTempConfigDir { _ in
             var command = ConfigCommand.AddProviderCommand()
             command.providerId = "bad"
@@ -178,8 +178,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Remove provider dry-run leaves config intact")
-    func removeProviderDryRun() async throws {
+    @Test
+    func `Remove provider dry-run leaves config intact`() async throws {
         try await self.withTempConfigDir { _ in
             var add = ConfigCommand.AddProviderCommand()
             add.providerId = "keep"
@@ -199,8 +199,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Validate command fails on malformed config")
-    func validateMalformedConfig() async throws {
+    @Test
+    func `Validate command fails on malformed config`() async throws {
         try await self.withTempConfigDir { dir in
             let badConfig = dir.appendingPathComponent("config.json")
             try "{ invalid json".write(to: badConfig, atomically: true, encoding: .utf8)
@@ -212,8 +212,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Add/remove provider persists to config")
-    func addAndRemoveProvider() async throws {
+    @Test
+    func `Add/remove provider persists to config`() async throws {
         try await self.withTempConfigDir { _ in
             var add = ConfigCommand.AddProviderCommand()
             add.providerId = "local"
@@ -237,8 +237,8 @@ struct ConfigCommandTests {
         }
     }
 
-    @Test("Edit print-path leaves filesystem untouched")
-    func editPrintPath() async throws {
+    @Test
+    func `Edit print-path leaves filesystem untouched`() async throws {
         try await self.withTempConfigDir { dir in
             let configPath = dir.appendingPathComponent("config.json").path
 

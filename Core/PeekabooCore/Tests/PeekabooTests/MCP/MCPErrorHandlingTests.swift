@@ -8,12 +8,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("MCP Error Handling Tests")
 struct MCPErrorHandlingTests {
     // MARK: - MCPError Tests
 
-    @Test("PeekabooCore.MCPError descriptions")
-    func mCPErrorDescriptions() {
+    @Test
+    func `PeekabooCore.MCPError descriptions`() {
         let errors: [(PeekabooCore.MCPError, String)] = [
             (.notImplemented("HTTP transport"), "HTTP transport is not yet implemented"),
             (.toolNotFound("missing-tool"), "Tool 'missing-tool' not found"),
@@ -26,10 +25,12 @@ struct MCPErrorHandlingTests {
         }
     }
 
-    @Test("PeekabooCore.MCPError with underlying error")
-    func mCPErrorWithUnderlyingError() {
+    @Test
+    func `PeekabooCore.MCPError with underlying error`() {
         struct TestError: Swift.Error, LocalizedError {
-            var errorDescription: String? { "Test error occurred" }
+            var errorDescription: String? {
+                "Test error occurred"
+            }
         }
 
         _ = TestError()
@@ -42,8 +43,8 @@ struct MCPErrorHandlingTests {
 
     // MARK: - Tool Argument Validation Tests
 
-    @Test("Tool handles corrupt JSON in arguments")
-    func corruptJSONArguments() async throws {
+    @Test
+    func `Tool handles corrupt JSON in arguments`() async throws {
         struct StrictTool: MCPTool {
             let name = "strict"
             let description = "Tool with strict JSON requirements"
@@ -79,8 +80,8 @@ struct MCPErrorHandlingTests {
 
     // MARK: - Transport Error Tests
 
-    @Test("Server handles unsupported transport types")
-    func unsupportedTransportTypes() async throws {
+    @Test
+    func `Server handles unsupported transport types`() async throws {
         let server = try await PeekabooMCPServer()
 
         // HTTP transport not implemented
@@ -106,8 +107,8 @@ struct MCPErrorHandlingTests {
 
     // MARK: - Tool Execution Error Tests
 
-    @Test("Tool gracefully handles system errors")
-    func systemErrorHandling() async throws {
+    @Test
+    func `Tool gracefully handles system errors`() async throws {
         struct FailingTool: MCPTool {
             let name = "failing"
             let description = "Tool that simulates system errors"
@@ -160,8 +161,8 @@ struct MCPErrorHandlingTests {
 
     // MARK: - Concurrent Error Handling
 
-    @Test("Concurrent tool failures don't affect other tools")
-    func concurrentToolFailures() async throws {
+    @Test
+    func `Concurrent tool failures don't affect other tools`() async throws {
         struct ConcurrentTestTool: MCPTool {
             let name: String
             let description = "Test tool"
@@ -211,7 +212,7 @@ struct MCPErrorHandlingTests {
         #expect(results.count == 4)
 
         for (name, result) in results {
-            let tool = tools.first { $0.name == name }!
+            let tool = try #require(tools.first { $0.name == name })
 
             switch result {
             case let .success(response):
@@ -225,8 +226,8 @@ struct MCPErrorHandlingTests {
 
     // MARK: - Recovery Tests
 
-    @Test("Tool recovers from transient errors")
-    func transientErrorRecovery() async throws {
+    @Test
+    func `Tool recovers from transient errors`() async throws {
         actor RetryableTool: MCPTool {
             let name = "retryable"
             let description = "Tool that fails then succeeds"
@@ -265,10 +266,9 @@ struct MCPErrorHandlingTests {
     }
 }
 
-@Suite("MCP Protocol Error Tests")
 struct MCPProtocolErrorTests {
-    @Test("Invalid MCP message format")
-    func invalidMessageFormat() {
+    @Test
+    func `Invalid MCP message format`() {
         // Test various malformed MCP messages
         let invalidMessages = [
             "not json at all",
@@ -296,8 +296,8 @@ struct MCPProtocolErrorTests {
         }
     }
 
-    @Test("Tool response size limits")
-    func toolResponseSizeLimits() async throws {
+    @Test
+    func `Tool response size limits`() async throws {
         struct LargeTool: MCPTool {
             let name = "large"
             let description = "Tool that generates large responses"
@@ -332,10 +332,10 @@ struct MCPProtocolErrorTests {
     }
 }
 
-@Suite("MCP Error Recovery Integration Tests", .tags(.integration))
+@Suite(.tags(.integration))
 struct MCPErrorRecoveryIntegrationTests {
-    @Test("Server recovers from tool crashes")
-    func serverToolCrashRecovery() async throws {
+    @Test
+    func `Server recovers from tool crashes`() {
         // This would test that the server continues running
         // even if individual tools crash or throw unexpected errors
 
@@ -346,8 +346,8 @@ struct MCPErrorRecoveryIntegrationTests {
         // 4. Call another tool successfully
     }
 
-    @Test("Client reconnection after disconnect")
-    func clientReconnection() async throws {
+    @Test
+    func `Client reconnection after disconnect`() {
         // This would test:
         // 1. Client connects to server
         // 2. Connection drops (network error, server restart, etc)

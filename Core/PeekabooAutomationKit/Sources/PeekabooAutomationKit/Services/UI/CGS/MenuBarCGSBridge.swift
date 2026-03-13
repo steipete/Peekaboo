@@ -5,7 +5,7 @@ import Foundation
 // Thin wrappers around private CGS APIs to enumerate menu bar item windows.
 // Mirrors Ice’s bridging to reach status item windows hosted by Control Center on macOS 26.
 
-// Option bits (mirrored from Ice)
+/// Option bits (mirrored from Ice)
 private struct CGSWindowListOption: OptionSet {
     let rawValue: UInt32
     static let onScreen = CGSWindowListOption(rawValue: 1 << 0)

@@ -5,13 +5,12 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("SnapshotManager Tests")
 @MainActor
 struct SnapshotManagerTests {
     let snapshotManager = SnapshotManager()
 
-    @Test("Create and retrieve snapshot")
-    func createAndRetrieveSnapshot() async throws {
+    @Test
+    func `Create and retrieve snapshot`() async throws {
         // Create a snapshot
         let snapshotId = try await snapshotManager.createSnapshot()
         #expect(!snapshotId.isEmpty)
@@ -25,8 +24,8 @@ struct SnapshotManagerTests {
         try await self.snapshotManager.cleanSnapshot(snapshotId: snapshotId)
     }
 
-    @Test("Store and retrieve detection result")
-    func storeAndRetrieveDetectionResult() async throws {
+    @Test
+    func `Store and retrieve detection result`() async throws {
         // Create a snapshot
         let snapshotId = try await snapshotManager.createSnapshot()
 
@@ -63,8 +62,8 @@ struct SnapshotManagerTests {
         try await self.snapshotManager.cleanSnapshot(snapshotId: snapshotId)
     }
 
-    @Test("Find elements by query")
-    func findElementsByQuery() async throws {
+    @Test
+    func `Find elements by query`() async throws {
         // Create a snapshot
         let snapshotId = try await snapshotManager.createSnapshot()
 
@@ -110,8 +109,8 @@ struct SnapshotManagerTests {
         try await self.snapshotManager.cleanSnapshot(snapshotId: snapshotId)
     }
 
-    @Test("Get most recent snapshot")
-    func testGetMostRecentSnapshot() async throws {
+    @Test
+    func `Get most recent snapshot`() async throws {
         // Create two snapshots with a delay
         let snapshot1 = try await snapshotManager.createSnapshot()
         try await Task.sleep(nanoseconds: 100_000_000) // 100ms
@@ -126,8 +125,8 @@ struct SnapshotManagerTests {
         try await self.snapshotManager.cleanSnapshot(snapshotId: snapshot2)
     }
 
-    @Test("Snapshot cleanup")
-    func snapshotCleanup() async throws {
+    @Test
+    func `Snapshot cleanup`() async throws {
         // Create multiple snapshots
         let snapshot1 = try await snapshotManager.createSnapshot()
         let snapshot2 = try await snapshotManager.createSnapshot()

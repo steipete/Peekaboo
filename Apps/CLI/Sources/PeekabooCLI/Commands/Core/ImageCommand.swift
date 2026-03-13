@@ -78,12 +78,25 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         return runtime
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
-    var outputLogger: Logger { self.logger }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
 
-    private var captureScale: CaptureScalePreference { self.retina ? .native : .logical1x }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    private var captureScale: CaptureScalePreference {
+        self.retina ? .native : .logical1x
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

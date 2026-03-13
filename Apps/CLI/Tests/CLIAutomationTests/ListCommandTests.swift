@@ -12,14 +12,13 @@ private typealias ScreensSubcommand = ListCommand.ScreensSubcommand
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "ListCommand CLI Harness Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct ListCommandCLIHarnessTests {
-    @Test("list apps outputs stub data in JSON mode")
-    func listAppsJSON() async throws {
+    @Test
+    func `list apps outputs stub data in JSON mode`() async throws {
         let applications = [
             ServiceApplicationInfo(
                 processIdentifier: 101,
@@ -47,8 +46,8 @@ struct ListCommandCLIHarnessTests {
         #expect(payload.data.applications.first?.name == "AlphaApp")
     }
 
-    @Test("list apps renders human-readable output")
-    func listAppsHumanReadable() async throws {
+    @Test
+    func `list apps renders human-readable output`() async throws {
         let applications = [
             ServiceApplicationInfo(
                 processIdentifier: 333,
@@ -67,8 +66,8 @@ struct ListCommandCLIHarnessTests {
         #expect(output.contains("PID"))
     }
 
-    @Test("list windows with include details filters output")
-    func listWindowsWithDetails() async throws {
+    @Test
+    func `list windows with include details filters output`() async throws {
         let appName = "Finder"
         let applications = [
             ServiceApplicationInfo(
@@ -113,8 +112,8 @@ struct ListCommandCLIHarnessTests {
         #expect(output.contains("\"spaceID\""))
     }
 
-    @Test("list apps fails when screen recording permission missing")
-    func listAppsPermissionDenied() async throws {
+    @Test
+    func `list apps fails when screen recording permission missing`() async throws {
         let applications = [
             ServiceApplicationInfo(
                 processIdentifier: 101,
@@ -174,12 +173,12 @@ struct ListCommandCLIHarnessTests {
 }
 #endif
 
-@Suite("ListCommand Tests", .serialized, .tags(.unit))
+@Suite(.serialized, .tags(.unit))
 struct ListCommandTests {
     // MARK: - Command Parsing Tests
 
-    @Test("ListCommand has correct subcommands", .tags(.fast))
-    func listCommandSubcommands() throws {
+    @Test(.tags(.fast))
+    func `ListCommand has correct subcommands`() {
         // Test that ListCommand has the expected subcommands
         #expect(ListCommand.commandDescription.subcommands.count == 5)
         let subcommandTypes = ListCommand.commandDescription.subcommands
@@ -190,22 +189,22 @@ struct ListCommandTests {
         #expect(subcommandTypes.contains { $0 == ScreensSubcommand.self })
     }
 
-    @Test("AppsSubcommand parsing with defaults", .tags(.fast))
-    func appsSubcommandParsing() throws {
+    @Test(.tags(.fast))
+    func `AppsSubcommand parsing with defaults`() throws {
         // Test parsing apps subcommand
         let command = try AppsSubcommand.parse([])
         #expect(command.jsonOutput == false)
     }
 
-    @Test("AppsSubcommand with JSON output flag", .tags(.fast))
-    func appsSubcommandWithJSONOutput() throws {
+    @Test(.tags(.fast))
+    func `AppsSubcommand with JSON output flag`() throws {
         // Test apps subcommand with JSON flag
         let command = try AppsSubcommand.parse(["--json"])
         #expect(command.jsonOutput == true)
     }
 
-    @Test("WindowsSubcommand parsing with required app", .tags(.fast))
-    func windowsSubcommandParsing() throws {
+    @Test(.tags(.fast))
+    func `WindowsSubcommand parsing with required app`() throws {
         // Test parsing windows subcommand with required app
         let command = try WindowsSubcommand.parse(["--app", "Finder"])
 
@@ -214,8 +213,8 @@ struct ListCommandTests {
         #expect(command.includeDetails == nil)
     }
 
-    @Test("WindowsSubcommand with detail options", .tags(.fast))
-    func windowsSubcommandWithDetails() throws {
+    @Test(.tags(.fast))
+    func `WindowsSubcommand with detail options`() throws {
         // Test windows subcommand with detail options
         let command = try WindowsSubcommand.parse([
             "--app", "Finder",
@@ -226,8 +225,8 @@ struct ListCommandTests {
         #expect(command.includeDetails == "bounds,ids")
     }
 
-    @Test("WindowsSubcommand requires app parameter", .tags(.fast))
-    func windowsSubcommandMissingApp() {
+    @Test(.tags(.fast))
+    func `WindowsSubcommand requires app parameter`() {
         // Test that windows subcommand requires app
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
@@ -239,7 +238,6 @@ struct ListCommandTests {
     // MARK: - Parameterized Command Tests
 
     @Test(
-        "WindowsSubcommand detail parsing",
         arguments: [
             "off_screen",
             "bounds",
@@ -249,7 +247,7 @@ struct ListCommandTests {
             "off_screen,bounds,ids"
         ]
     )
-    func windowsDetailParsing(details: String) throws {
+    func `WindowsSubcommand detail parsing`(details: String) throws {
         let command = try WindowsSubcommand.parse([
             "--app", "Safari",
             "--include-details", details,
@@ -260,8 +258,8 @@ struct ListCommandTests {
 
     // MARK: - Data Structure Tests
 
-    @Test("ApplicationInfo JSON encoding", .tags(.fast))
-    func applicationInfoEncoding() throws {
+    @Test(.tags(.fast))
+    func `ApplicationInfo JSON encoding`() throws {
         // Test ApplicationInfo JSON encoding
         let appInfo = ApplicationInfo(
             app_name: "Finder",
@@ -285,8 +283,8 @@ struct ListCommandTests {
         #expect(json?["window_count"] as? Int == 5)
     }
 
-    @Test("ApplicationListData JSON encoding", .tags(.fast))
-    func applicationListDataEncoding() throws {
+    @Test(.tags(.fast))
+    func `ApplicationListData JSON encoding`() throws {
         // Test ApplicationListData JSON encoding
         let appData = ApplicationListData(
             applications: [
@@ -318,8 +316,8 @@ struct ListCommandTests {
         #expect(apps?.count == 2)
     }
 
-    @Test("WindowInfo JSON encoding", .tags(.fast))
-    func windowInfoEncoding() throws {
+    @Test(.tags(.fast))
+    func `WindowInfo JSON encoding`() throws {
         // Test WindowInfo JSON encoding
         let windowInfo = WindowInfo(
             window_title: "Documents",
@@ -347,8 +345,8 @@ struct ListCommandTests {
         #expect(bounds?["height"] as? Int == 600)
     }
 
-    @Test("WindowListData JSON encoding", .tags(.fast))
-    func windowListDataEncoding() throws {
+    @Test(.tags(.fast))
+    func `WindowListData JSON encoding`() throws {
         // Test WindowListData JSON encoding
         let windowData = WindowListData(
             windows: [
@@ -385,8 +383,8 @@ struct ListCommandTests {
 
     // MARK: - Window Detail Option Tests
 
-    @Test("WindowDetailOption raw values", .tags(.fast))
-    func windowDetailOptionRawValues() {
+    @Test(.tags(.fast))
+    func `WindowDetailOption raw values`() {
         // Test window detail option values
         #expect(WindowDetailOption.off_screen.rawValue == "off_screen")
         #expect(WindowDetailOption.bounds.rawValue == "bounds")
@@ -395,8 +393,8 @@ struct ListCommandTests {
 
     // MARK: - Window Specifier Tests
 
-    @Test("WindowSpecifier with title", .tags(.fast))
-    func windowSpecifierTitle() {
+    @Test(.tags(.fast))
+    func `WindowSpecifier with title`() {
         // Test window specifier with title
         let specifier = WindowSpecifier.title("Documents")
 
@@ -408,8 +406,8 @@ struct ListCommandTests {
         }
     }
 
-    @Test("WindowSpecifier with index", .tags(.fast))
-    func windowSpecifierIndex() {
+    @Test(.tags(.fast))
+    func `WindowSpecifier with index`() {
         // Test window specifier with index
         let specifier = WindowSpecifier.index(0)
 
@@ -424,10 +422,9 @@ struct ListCommandTests {
     // MARK: - Performance Tests
 
     @Test(
-        "ApplicationListData encoding performance",
         arguments: [10, 50, 100, 200]
     )
-    func applicationListEncodingPerformance(appCount: Int) throws {
+    func `ApplicationListData encoding performance`(appCount: Int) throws {
         // Test performance of encoding many applications
         let apps = (0..<appCount).map { index -> ApplicationInfo in
             ApplicationInfo(
@@ -451,11 +448,10 @@ struct ListCommandTests {
     // MARK: - Window Count Display Tests
 
     @Test(
-        "printApplicationList hides window count when count is 1",
         .tags(.fast),
         .disabled("formatApplicationList method not found")
     )
-    func printApplicationListHidesWindowCountForSingleWindow() throws {
+    func `printApplicationList hides window count when count is 1`() {
         // Create test applications with different window counts
         let applications = [
             ApplicationInfo(
@@ -502,11 +498,10 @@ struct ListCommandTests {
     }
 
     @Test(
-        "printApplicationList shows window count for non-1 values",
         .tags(.fast),
         .disabled("formatApplicationList method not found")
     )
-    func printApplicationListShowsWindowCountForNonSingleWindow() throws {
+    func `printApplicationList shows window count for non-1 values`() {
         let applications = [
             ApplicationInfo(
                 app_name: "Zero Windows",
@@ -544,11 +539,10 @@ struct ListCommandTests {
     }
 
     @Test(
-        "printApplicationList formats output correctly",
         .tags(.fast),
         .disabled("formatApplicationList method not found")
     )
-    func printApplicationListFormatsOutputCorrectly() throws {
+    func `printApplicationList formats output correctly`() {
         let applications = [
             ApplicationInfo(
                 app_name: "Test App",
@@ -576,8 +570,8 @@ struct ListCommandTests {
         #expect(!output.contains("Windows: 1"))
     }
 
-    @Test("printApplicationList edge cases", .tags(.fast), .disabled("formatApplicationList method not found"))
-    func printApplicationListEdgeCases() throws {
+    @Test(.tags(.fast), .disabled("formatApplicationList method not found"))
+    func `printApplicationList edge cases`() {
         let applications = [
             ApplicationInfo(
                 app_name: "Edge Case 1",
@@ -611,8 +605,8 @@ struct ListCommandTests {
         #expect(output.contains("Status: Active"))
     }
 
-    @Test("printApplicationList mixed window counts", .tags(.fast), .disabled("formatApplicationList method not found"))
-    func printApplicationListMixedWindowCounts() throws {
+    @Test(.tags(.fast), .disabled("formatApplicationList method not found"))
+    func `printApplicationList mixed window counts`() {
         let applications = [
             ApplicationInfo(app_name: "App A", bundle_id: "com.a", pid: 1, is_active: false, window_count: 0),
             ApplicationInfo(app_name: "App B", bundle_id: "com.b", pid: 2, is_active: false, window_count: 1),
@@ -642,10 +636,10 @@ struct ListCommandTests {
 
 // MARK: - Extended List Command Tests
 
-@Suite("ListCommand Advanced Tests", .serialized, .tags(.integration))
+@Suite(.serialized, .tags(.integration))
 struct ListCommandAdvancedTests {
-    @Test("PermissionsSubcommand parsing", .tags(.fast))
-    func permissionsSubcommandParsing() throws {
+    @Test(.tags(.fast))
+    func `PermissionsSubcommand parsing`() throws {
         let command = try PermissionsSubcommand.parse([])
         #expect(command.jsonOutput == false)
 
@@ -653,8 +647,8 @@ struct ListCommandAdvancedTests {
         #expect(commandWithJSON.jsonOutput == true)
     }
 
-    @Test("Command help messages", .tags(.fast))
-    func commandHelpMessages() {
+    @Test(.tags(.fast))
+    func `Command help messages`() {
         let listHelp = ListCommand.helpMessage()
         #expect(listHelp.contains("List"))
 
@@ -669,14 +663,13 @@ struct ListCommandAdvancedTests {
     }
 
     @Test(
-        "Complex window info structures",
         arguments: [
             (title: "Main Window", id: 1001, onScreen: true),
             (title: "Hidden Window", id: 2001, onScreen: false),
             (title: "Minimized", id: 3001, onScreen: false)
         ]
     )
-    func complexWindowInfo(title: String, id: UInt32, onScreen: Bool) throws {
+    func `Complex window info structures`(title: String, id: UInt32, onScreen: Bool) throws {
         let windowInfo = WindowInfo(
             window_title: title,
             window_id: id,
@@ -699,7 +692,6 @@ struct ListCommandAdvancedTests {
     }
 
     @Test(
-        "Application state combinations",
         arguments: [
             (active: true, windowCount: 5),
             (active: false, windowCount: 0),
@@ -707,7 +699,7 @@ struct ListCommandAdvancedTests {
             (active: false, windowCount: 10),
         ]
     )
-    func applicationStates(active: Bool, windowCount: Int) {
+    func `Application state combinations`(active: Bool, windowCount: Int) {
         let appInfo = ApplicationInfo(
             app_name: "TestApp",
             bundle_id: "com.test.app",
@@ -726,8 +718,8 @@ struct ListCommandAdvancedTests {
         }
     }
 
-    @Test("Server permissions data encoding", .tags(.fast))
-    func serverPermissionsEncoding() throws {
+    @Test(.tags(.fast))
+    func `Server permissions data encoding`() throws {
         // Define the missing types locally for this test
         struct ServerPermissions: Codable {
             let screen_recording: Bool

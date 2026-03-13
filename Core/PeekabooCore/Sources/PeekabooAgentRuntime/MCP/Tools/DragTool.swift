@@ -383,7 +383,9 @@ private enum DragLocationInput {
 
 private struct DragToolError: Swift.Error {
     let message: String
-    init(_ message: String) { self.message = message }
+    init(_ message: String) {
+        self.message = message
+    }
 }
 
 private struct DragPointDescription {

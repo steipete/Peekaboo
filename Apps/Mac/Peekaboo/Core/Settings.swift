@@ -13,13 +13,13 @@ import Tachikoma
 @MainActor
 final class PeekabooSettings {
     static let defaultVisualizerAnimationSpeed: Double = 1.0
-    // Flag to prevent recursive saves during loading
+    /// Flag to prevent recursive saves during loading
     private var isLoading = false
     // Reference to ConfigurationManager
     private let configManager = ConfigurationManager.shared
     private weak var services: PeekabooServices?
 
-    // API Configuration - Now synced with config.json
+    /// API Configuration - Now synced with config.json
     var selectedProvider: String = "anthropic" {
         didSet {
             self.save()
@@ -52,7 +52,7 @@ final class PeekabooSettings {
         }
     }
 
-    // Vision model override
+    /// Vision model override
     var useCustomVisionModel: Bool = false {
         didSet {
             self.save()
@@ -91,7 +91,7 @@ final class PeekabooSettings {
         }
     }
 
-    // UI Preferences
+    /// UI Preferences
     var alwaysOnTop: Bool = false {
         didSet { self.save() }
     }
@@ -135,7 +135,7 @@ final class PeekabooSettings {
     // Keyboard shortcuts are now managed by sindresorhus/KeyboardShortcuts library
     // See KeyboardShortcutNames.swift for the defined shortcuts
 
-    // Mac-specific UI Features
+    /// Mac-specific UI Features
     var voiceActivationEnabled: Bool = true {
         didSet { self.save() }
     }
@@ -197,7 +197,7 @@ final class PeekabooSettings {
         }
     }
 
-    // Individual animation toggles
+    /// Individual animation toggles
     var screenshotFlashEnabled: Bool = true {
         didSet {
             self.save()
@@ -312,7 +312,7 @@ final class PeekabooSettings {
         }
     }
 
-    // Easter eggs
+    /// Easter eggs
     var ghostEasterEggEnabled: Bool = true {
         didSet {
             self.save()
@@ -327,13 +327,13 @@ final class PeekabooSettings {
         }
     }
 
-    // Custom Providers
+    /// Custom Providers
     @ObservationIgnored
     var customProviders: [String: Configuration.CustomProvider] {
         self.configManager.listCustomProviders()
     }
 
-    // Computed Properties
+    /// Computed Properties
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
         case "openai":
@@ -351,7 +351,7 @@ final class PeekabooSettings {
         }
     }
 
-    // Check if we're using environment variables
+    /// Check if we're using environment variables
     var isUsingOpenAIEnvironment: Bool {
         // If settings are empty and environment has the key
         self.openAIAPIKey.isEmpty && ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil

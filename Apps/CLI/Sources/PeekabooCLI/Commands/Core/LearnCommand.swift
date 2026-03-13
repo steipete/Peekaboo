@@ -18,7 +18,9 @@ struct LearnCommand {
         return runtime
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

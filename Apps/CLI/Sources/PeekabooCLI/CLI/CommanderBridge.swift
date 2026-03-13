@@ -10,20 +10,20 @@ struct CommanderCommandDescriptor {
     let subcommands: [CommanderCommandDescriptor]
 }
 
-struct CommanderCommandSummary: Codable, Sendable {
-    struct Argument: Codable, Sendable {
+struct CommanderCommandSummary: Codable {
+    struct Argument: Codable {
         let label: String
         let help: String?
         let isOptional: Bool
     }
 
-    struct Option: Codable, Sendable {
+    struct Option: Codable {
         let names: [String]
         let help: String?
         let parsing: String
     }
 
-    struct Flag: Codable, Sendable {
+    struct Flag: Codable {
         let names: [String]
         let help: String?
     }

@@ -5,11 +5,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("UIAutomationService Focus Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct UIAutomationServiceFocusTests {
-    @Test("getFocusedElement returns nil when no element focused")
+    @Test
     @MainActor
-    func getFocusedElementNoFocus() async {
+    func `getFocusedElement returns nil when no element focused`() async {
         let service = UIAutomationService()
 
         // Note: This test may be environment-dependent
@@ -24,9 +24,9 @@ struct UIAutomationServiceFocusTests {
         }
     }
 
-    @Test("getFocusedElement structure validation")
+    @Test
     @MainActor
-    func getFocusedElementStructure() async {
+    func `getFocusedElement structure validation`() async {
         let service = UIAutomationService()
 
         // This test validates that if we get a result, it has the expected structure
@@ -49,9 +49,9 @@ struct UIAutomationServiceFocusTests {
         }
     }
 
-    @Test("Focus info dictionary format validation")
+    @Test
     @MainActor
-    func focusInfoDictionaryFormat() async {
+    func `Focus info dictionary format validation`() async {
         let service = UIAutomationService()
 
         let result = await service.getFocusedElement()
@@ -72,10 +72,9 @@ struct UIAutomationServiceFocusTests {
 
 // MARK: - Mock Tests for Focus Information
 
-@Suite("Focus Information Mock Tests")
 struct FocusInformationMockTests {
-    @Test("UIFocusInfo basic properties")
-    func uIFocusInfoBasicProperties() {
+    @Test
+    func `UIFocusInfo basic properties`() {
         // Test UIFocusInfo structure
         let focusInfo = UIFocusInfo(
             role: "AXTextField",
@@ -92,8 +91,8 @@ struct FocusInformationMockTests {
         #expect(focusInfo.processId == 1234)
     }
 
-    @Test("UIFocusInfo with nil values")
-    func uIFocusInfoWithNilValues() {
+    @Test
+    func `UIFocusInfo with nil values`() {
         // Test UIFocusInfo with optional values as nil
         let focusInfo = UIFocusInfo(
             role: "AXButton",

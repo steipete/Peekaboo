@@ -5,16 +5,15 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("CoordinateTransformer Tests")
 @MainActor
 struct CoordinateTransformerTests {
     let transformer = CoordinateTransformer()
 
     // MARK: - Basic Transformation Tests
 
-    @Test("Transform between normalized and screen coordinates")
+    @Test
     @MainActor
-    func transformNormalizedToScreen() {
+    func `Transform between normalized and screen coordinates`() {
         let normalizedBounds = CGRect(x: 0.5, y: 0.5, width: 0.1, height: 0.1)
 
         // Transform from normalized to screen
@@ -32,9 +31,9 @@ struct CoordinateTransformerTests {
         #endif
     }
 
-    @Test("Transform between window and screen coordinates")
+    @Test
     @MainActor
-    func transformWindowToScreen() {
+    func `Transform between window and screen coordinates`() {
         let windowFrame = CGRect(x: 100, y: 200, width: 800, height: 600)
         let windowBounds = CGRect(x: 50, y: 50, width: 100, height: 100)
 
@@ -53,9 +52,9 @@ struct CoordinateTransformerTests {
         #endif
     }
 
-    @Test("Transform between view and normalized coordinates")
+    @Test
     @MainActor
-    func transformViewToNormalized() {
+    func `Transform between view and normalized coordinates`() {
         let viewSize = CGSize(width: 400, height: 300)
         let viewBounds = CGRect(x: 100, y: 75, width: 200, height: 150)
 
@@ -70,9 +69,9 @@ struct CoordinateTransformerTests {
         #expect(normalizedBounds.height == 0.5) // 150 / 300
     }
 
-    @Test("Round-trip transformation")
+    @Test
     @MainActor
-    func roundTripTransformation() {
+    func `Round-trip transformation`() {
         let originalBounds = CGRect(x: 100, y: 200, width: 300, height: 400)
         let viewSize = CGSize(width: 1000, height: 800)
 
@@ -95,9 +94,9 @@ struct CoordinateTransformerTests {
 
     // MARK: - Point Transformation Tests
 
-    @Test("Transform point between coordinate spaces")
+    @Test
     @MainActor
-    func transformPoint() {
+    func `Transform point between coordinate spaces`() {
         let point = CGPoint(x: 100, y: 200)
         let viewSize = CGSize(width: 800, height: 600)
 
@@ -112,9 +111,9 @@ struct CoordinateTransformerTests {
 
     // MARK: - Conversion Method Tests
 
-    @Test("Accessibility to screen conversion")
+    @Test
     @MainActor
-    func accessibilityToScreenConversion() {
+    func `Accessibility to screen conversion`() {
         let axBounds = CGRect(x: 100, y: 200, width: 300, height: 400)
         let screenBounds = self.transformer.fromAccessibilityToScreen(axBounds)
 
@@ -122,9 +121,9 @@ struct CoordinateTransformerTests {
         #expect(screenBounds == axBounds)
     }
 
-    @Test("Screen to view conversion with Y-flip")
+    @Test
     @MainActor
-    func screenToViewWithYFlip() {
+    func `Screen to view conversion with Y-flip`() {
         let screenBounds = CGRect(x: 100, y: 100, width: 200, height: 150)
         let viewSize = CGSize(width: 800, height: 600)
 
@@ -141,9 +140,9 @@ struct CoordinateTransformerTests {
         #endif
     }
 
-    @Test("Window to screen and back conversion")
+    @Test
     @MainActor
-    func windowToScreenAndBack() {
+    func `Window to screen and back conversion`() {
         let windowFrame = CGRect(x: 200, y: 100, width: 1000, height: 800)
         let elementBounds = CGRect(x: 50, y: 50, width: 100, height: 100)
 
@@ -157,9 +156,9 @@ struct CoordinateTransformerTests {
 
     // MARK: - Utility Method Tests
 
-    @Test("Scale bounds uniformly")
+    @Test
     @MainActor
-    func scaleBoundsUniform() {
+    func `Scale bounds uniformly`() {
         let bounds = CGRect(x: 10, y: 20, width: 100, height: 200)
         let scaled = self.transformer.scale(bounds, by: 2.0)
 
@@ -169,9 +168,9 @@ struct CoordinateTransformerTests {
         #expect(scaled.height == 400)
     }
 
-    @Test("Scale bounds with different X and Y factors")
+    @Test
     @MainActor
-    func scaleBoundsNonUniform() {
+    func `Scale bounds with different X and Y factors`() {
         let bounds = CGRect(x: 10, y: 20, width: 100, height: 200)
         let scaled = self.transformer.scale(bounds, xFactor: 2.0, yFactor: 0.5)
 
@@ -181,9 +180,9 @@ struct CoordinateTransformerTests {
         #expect(scaled.height == 100)
     }
 
-    @Test("Offset bounds")
+    @Test
     @MainActor
-    func offsetBounds() {
+    func `Offset bounds`() {
         let bounds = CGRect(x: 100, y: 200, width: 300, height: 400)
         let delta = CGPoint(x: 50, y: -50)
         let offset = self.transformer.offset(bounds, by: delta)
@@ -194,9 +193,9 @@ struct CoordinateTransformerTests {
         #expect(offset.height == 400)
     }
 
-    @Test("Clamp bounds within container")
+    @Test
     @MainActor
-    func clampBounds() {
+    func `Clamp bounds within container`() {
         let container = CGRect(x: 0, y: 0, width: 800, height: 600)
 
         // Test bounds that extend outside container
@@ -218,9 +217,9 @@ struct CoordinateTransformerTests {
 
     // MARK: - Screen Utility Tests
 
-    @Test("Primary screen bounds")
+    @Test
     @MainActor
-    func primaryScreenBounds() {
+    func `Primary screen bounds`() {
         let bounds = self.transformer.primaryScreenBounds
 
         #if canImport(AppKit)
@@ -234,9 +233,9 @@ struct CoordinateTransformerTests {
         #endif
     }
 
-    @Test("Combined screen bounds")
+    @Test
     @MainActor
-    func combinedScreenBounds() {
+    func `Combined screen bounds`() {
         let bounds = self.transformer.combinedScreenBounds
 
         // Should at least include the primary screen

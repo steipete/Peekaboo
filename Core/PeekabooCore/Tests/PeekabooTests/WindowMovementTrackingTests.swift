@@ -2,11 +2,11 @@ import CoreGraphics
 import PeekabooAutomationKit
 import Testing
 
-@Suite("Window Movement Tracking", .tags(.safe))
+@Suite(.tags(.safe))
 struct WindowMovementTrackingTests {
-    @Test("Adjusts points when window moves")
+    @Test
     @MainActor
-    func adjustsPointWhenWindowMoves() {
+    func `Adjusts points when window moves`() {
         let snapshot = UIAutomationSnapshot(
             windowBounds: CGRect(x: 100, y: 100, width: 200, height: 200),
             windowID: 42)
@@ -28,9 +28,9 @@ struct WindowMovementTrackingTests {
         }
     }
 
-    @Test("Returns stale when window resizes")
+    @Test
     @MainActor
-    func detectsResize() {
+    func `Returns stale when window resizes`() {
         let snapshot = UIAutomationSnapshot(
             windowBounds: CGRect(x: 0, y: 0, width: 200, height: 200),
             windowID: 99)

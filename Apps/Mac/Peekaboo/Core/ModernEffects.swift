@@ -183,11 +183,7 @@ struct ModernButton: View {
 // MARK: - Modern Card (Platform-Appropriate)
 
 struct ModernCard<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
+    @ViewBuilder let content: Content
 
     var body: some View {
         if #available(macOS 26.0, *) {
@@ -215,11 +211,7 @@ struct ModernCard<Content: View>: View {
 // MARK: - Modern Toolbar
 
 struct ModernToolbar<Content: View>: View {
-    let content: Content
-
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
+    @ViewBuilder let content: Content
 
     var body: some View {
         if #available(macOS 26.0, *) {

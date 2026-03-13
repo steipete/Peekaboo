@@ -71,9 +71,18 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
         var jsonOutput: Bool {
             // Tests access jsonOutput while only parsing arguments, so fall back to stored runtime options.
             self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
@@ -109,7 +118,9 @@ extension ListCommand {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
         var app: String
 
-        var positionalAppIdentifier: String { self.app }
+        var positionalAppIdentifier: String {
+            self.app
+        }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -126,9 +137,18 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
         var jsonOutput: Bool {
             // PIDWindowsSubcommandTests read jsonOutput immediately after parsing; prefer stored options over a missing
             // runtime.
@@ -272,9 +292,17 @@ extension ListCommand {
             return runtime
         }
 
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -323,10 +351,21 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -394,10 +433,21 @@ extension ListCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {

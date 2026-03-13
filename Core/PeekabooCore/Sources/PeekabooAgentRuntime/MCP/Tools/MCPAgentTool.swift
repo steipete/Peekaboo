@@ -310,5 +310,7 @@ private func parseModelString(_ modelString: String) -> LanguageModel {
 
 private struct AgentToolError: Error {
     let message: String
-    init(_ message: String) { self.message = message }
+    init(_ message: String) {
+        self.message = message
+    }
 }

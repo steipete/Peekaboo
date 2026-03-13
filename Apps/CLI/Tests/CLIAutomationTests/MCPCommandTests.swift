@@ -4,12 +4,11 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("MCP Command Tests")
 struct MCPCommandTests {
     // MARK: - Command Structure Tests
 
-    @Test("MCP command has correct subcommands")
-    func mCPCommandSubcommands() throws {
+    @Test
+    func `MCP command has correct subcommands`() {
         let command = MCPCommand.self
 
         #expect(command.commandDescription.commandName == "mcp")
@@ -21,16 +20,16 @@ struct MCPCommandTests {
         #expect(subcommandNames.contains("serve"))
     }
 
-    @Test("MCP serve command default options")
-    func mCPServeDefaults() throws {
+    @Test
+    func `MCP serve command default options`() throws {
         let serve = try MCPCommand.Serve.parse([])
 
         #expect(serve.transport == "stdio")
         #expect(serve.port == 8080)
     }
 
-    @Test("MCP serve command custom options")
-    func mCPServeCustomOptions() throws {
+    @Test
+    func `MCP serve command custom options`() throws {
         let serve = try MCPCommand.Serve.parse(["--transport", "http", "--port", "9000"])
 
         #expect(serve.transport == "http")
@@ -39,16 +38,16 @@ struct MCPCommandTests {
 
     // MARK: - Help Text Tests
 
-    @Test("MCP command help text")
-    func mCPCommandHelp() {
+    @Test
+    func `MCP command help text`() {
         let helpText = MCPCommand.helpMessage()
 
         #expect(helpText.contains("Model Context Protocol server operations"))
         #expect(helpText.contains("serve"))
     }
 
-    @Test("MCP serve help text")
-    func mCPServeHelp() {
+    @Test
+    func `MCP serve help text`() {
         let helpText = MCPCommand.Serve.helpMessage()
 
         #expect(helpText.contains("Start Peekaboo as an MCP server"))
@@ -60,8 +59,8 @@ struct MCPCommandTests {
 
     // MARK: - Argument Parsing Tests
 
-    @Test("Parse serve command with all transports")
-    func parseServeAllTransports() throws {
+    @Test
+    func `Parse serve command with all transports`() throws {
         let transports = ["stdio", "http", "sse"]
 
         for transport in transports {
@@ -72,8 +71,8 @@ struct MCPCommandTests {
 
     // MARK: - Validation Tests
 
-    @Test("Invalid port number throws error")
-    func invalidPortNumber() throws {
+    @Test
+    func `Invalid port number throws error`() throws {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try MCPCommand.Serve.parse(["--port=-1"])
@@ -82,10 +81,10 @@ struct MCPCommandTests {
     }
 }
 
-@Suite("MCP Command Integration Tests", .tags(.integration))
+@Suite(.tags(.integration))
 struct MCPCommandIntegrationTests {
-    @Test("Serve command transport type conversion")
-    func serveCommandTransportConversion() async throws {
+    @Test
+    func `Serve command transport type conversion`() throws {
         let serve = try MCPCommand.Serve.parse(["--transport", "stdio"])
 
         // This test would need to actually run the serve command
@@ -97,10 +96,9 @@ struct MCPCommandIntegrationTests {
 
 // MARK: - Mock Tests for Server Behavior
 
-@Suite("MCP Server Behavior Tests")
 struct MCPServerBehaviorTests {
-    @Test("Server exits cleanly on SIGTERM")
-    func serverSIGTERMHandling() async throws {
+    @Test
+    func `Server exits cleanly on SIGTERM`() throws {
         // For unit testing, verify the serve command structure.
         let serve = try CLIOutputCapture.suppressStderr {
             try MCPCommand.Serve.parse([])
@@ -108,8 +106,8 @@ struct MCPServerBehaviorTests {
         #expect(serve.transport == "stdio")
     }
 
-    @Test("Server validates transport types")
-    func serverTransportValidation() async throws {
+    @Test
+    func `Server validates transport types`() throws {
         var serve = try CLIOutputCapture.suppressStderr {
             try MCPCommand.Serve.parse([])
         }

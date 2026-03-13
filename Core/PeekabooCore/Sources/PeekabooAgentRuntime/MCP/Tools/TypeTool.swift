@@ -349,7 +349,9 @@ private struct TypeRequest {
 
 private struct TypeToolValidationError: Error {
     let message: String
-    init(_ message: String) { self.message = message }
+    init(_ message: String) {
+        self.message = message
+    }
 }
 
 private struct TargetElementContext {

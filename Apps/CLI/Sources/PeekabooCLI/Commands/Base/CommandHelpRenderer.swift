@@ -125,8 +125,7 @@ struct CommandHelpRenderer {
         let padding = min(max(rows.map(\.0.count).max() ?? 0, 12), 32)
         return rows.map { key, value in
             guard let value, !value.isEmpty else {
-                let displayKey = theme?.command(key) ?? key
-                return displayKey
+                return theme?.command(key) ?? key
             }
             let paddedKey: String = if key.count >= padding {
                 key

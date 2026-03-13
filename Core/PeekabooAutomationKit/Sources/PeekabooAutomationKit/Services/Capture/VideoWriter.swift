@@ -11,7 +11,9 @@ final class VideoWriter {
     private let frameDuration: CMTime
     private var frameIndex: Int64 = 0
 
-    var finalURL: URL { self.writer.outputURL }
+    var finalURL: URL {
+        self.writer.outputURL
+    }
 
     init(outputPath: String, width: Int, height: Int, fps: Double) throws {
         let url = URL(fileURLWithPath: outputPath)

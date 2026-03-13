@@ -1,7 +1,7 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Agent chat preconditions", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentChatPreconditionsTests {
     private func flags(
         json: Bool = false,
@@ -21,30 +21,30 @@ struct AgentChatPreconditionsTests {
         )
     }
 
-    @Test("JSON output blocks interactive chat")
-    func jsonOutputBlocks() {
+    @Test
+    func `JSON output blocks interactive chat`() {
         let violation = AgentChatPreconditions.firstViolation(for: self.flags(json: true))
         #expect(violation == AgentMessages.Chat.jsonDisabled)
     }
 
-    @Test("Audio modes block interactive chat")
-    func audioBlocks() {
+    @Test
+    func `Audio modes block interactive chat`() {
         let mic = AgentChatPreconditions.firstViolation(for: self.flags(audio: true))
         let file = AgentChatPreconditions.firstViolation(for: self.flags(audioFile: true))
         #expect(mic == AgentMessages.Chat.typedOnly)
         #expect(file == AgentMessages.Chat.typedOnly)
     }
 
-    @Test("Quiet and dry-run are rejected")
-    func quietAndDryRun() {
+    @Test
+    func `Quiet and dry-run are rejected`() {
         let quiet = AgentChatPreconditions.firstViolation(for: self.flags(quiet: true))
         let dryRun = AgentChatPreconditions.firstViolation(for: self.flags(dryRun: true))
         #expect(quiet == AgentMessages.Chat.quietDisabled)
         #expect(dryRun == AgentMessages.Chat.dryRunDisabled)
     }
 
-    @Test("All clear passes")
-    func passesWhenNoFlags() {
+    @Test
+    func `All clear passes`() {
         let violation = AgentChatPreconditions.firstViolation(for: self.flags())
         #expect(violation == nil)
     }

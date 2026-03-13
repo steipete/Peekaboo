@@ -7,12 +7,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Audio Content Tests - Tachikoma Integration")
-struct MessageContentAudioTests {
-    @Suite("Audio Data and Format Tests")
+enum MessageContentAudioTests {
     struct AudioDataTests {
-        @Test("AudioData initialization and properties")
-        func audioDataInitialization() {
+        @Test
+        func `AudioData initialization and properties`() {
             let testData = Data([0x52, 0x49, 0x46, 0x46]) // WAV header
             let audioData = AudioData(
                 data: testData,
@@ -29,8 +27,8 @@ struct MessageContentAudioTests {
             #expect(audioData.size == 4)
         }
 
-        @Test("AudioFormat properties")
-        func audioFormatProperties() {
+        @Test
+        func `AudioFormat properties`() {
             // Test lossless formats
             #expect(AudioFormat.wav.isLossless == true)
             #expect(AudioFormat.flac.isLossless == true)
@@ -48,8 +46,8 @@ struct MessageContentAudioTests {
             #expect(AudioFormat.opus.mimeType == "audio/opus")
         }
 
-        @Test("AudioData file operations")
-        func audioDataFileOperations() throws {
+        @Test
+        func `AudioData file operations`() throws {
             let tempDir = FileManager.default.temporaryDirectory
             let testFile = tempDir.appendingPathComponent("test_audio.wav")
             let testData = Data([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x24]) // Basic WAV header
@@ -67,10 +65,9 @@ struct MessageContentAudioTests {
         }
     }
 
-    @Suite("Audio Model Tests")
     struct AudioModelTests {
-        @Test("TranscriptionModel properties and capabilities")
-        func transcriptionModelProperties() {
+        @Test
+        func `TranscriptionModel properties and capabilities`() {
             // Test OpenAI transcription models
             let whisper1 = TranscriptionModel.openai(.whisper1)
             #expect(whisper1.modelId == "whisper-1")
@@ -88,8 +85,8 @@ struct MessageContentAudioTests {
             #expect(TranscriptionModel.whisper.modelId == "whisper-1")
         }
 
-        @Test("SpeechModel properties and capabilities")
-        func speechModelProperties() {
+        @Test
+        func `SpeechModel properties and capabilities`() {
             // Test OpenAI speech models
             let tts1 = SpeechModel.openai(.tts1)
             #expect(tts1.modelId == "tts-1")
@@ -106,8 +103,8 @@ struct MessageContentAudioTests {
             #expect(SpeechModel.highQuality.modelId.contains("hd"))
         }
 
-        @Test("Voice options and categorization")
-        func voiceOptionsAndCategorization() {
+        @Test
+        func `Voice options and categorization`() {
             // Test voice categories
             let femaleVoices = VoiceOption.female
             let maleVoices = VoiceOption.male
@@ -131,10 +128,9 @@ struct MessageContentAudioTests {
         }
     }
 
-    @Suite("Audio Function Integration Tests")
     struct AudioFunctionTests {
-        @Test("Audio transcription function structure", .enabled(if: false)) // Disabled - requires API key
-        func transcriptionFunctionStructure() async throws {
+        @Test(.enabled(if: false)) // Disabled - requires API key
+        func `Audio transcription function structure`() async throws {
             // Test transcription function exists and has correct structure
             do {
                 let input = AudioData(data: Data([0x01, 0x02, 0x03]), format: .wav)
@@ -146,8 +142,8 @@ struct MessageContentAudioTests {
             }
         }
 
-        @Test("Speech generation function structure", .enabled(if: false)) // Disabled - requires API key
-        func speechGenerationFunctionStructure() async throws {
+        @Test(.enabled(if: false)) // Disabled - requires API key
+        func `Speech generation function structure`() async throws {
             // Test speech generation function exists and has correct structure
             do {
                 _ = try await generateSpeech("Hello world", using: .openai(.tts1))
@@ -158,8 +154,8 @@ struct MessageContentAudioTests {
             }
         }
 
-        @Test("Audio error handling")
-        func audioErrorHandling() {
+        @Test
+        func `Audio error handling`() {
             // Test audio-specific error types exist
             let errors = [
                 TachikomaError.operationCancelled,
@@ -175,10 +171,9 @@ struct MessageContentAudioTests {
         }
     }
 
-    @Suite("Model Message Audio Content")
     struct ModelMessageAudioTests {
-        @Test("ModelMessage audio content integration")
-        func modelMessageAudioContent() {
+        @Test
+        func `ModelMessage audio content integration`() {
             // Test that ModelMessage can handle audio content
             let imageContent = ModelMessage.ContentPart.ImageContent(
                 data: "base64data",

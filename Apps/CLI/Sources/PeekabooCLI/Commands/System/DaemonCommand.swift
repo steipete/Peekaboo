@@ -55,10 +55,17 @@ extension DaemonCommand {
             return runtime
         }
 
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -142,10 +149,17 @@ extension DaemonCommand {
             return runtime
         }
 
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
@@ -209,10 +223,17 @@ extension DaemonCommand {
             return runtime
         }
 
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime

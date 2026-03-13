@@ -3,7 +3,7 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("PeekabooAgentService Tests", .tags(.ai, .unit), .disabled("Uses full PeekabooServices which may hang"))
+@Suite(.tags(.ai, .unit), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct PeekabooAgentServiceTests {
     var agentService: PeekabooAgentService!
@@ -28,14 +28,14 @@ struct PeekabooAgentServiceTests {
             services: services)
     }
 
-    @Test("Agent service initializes correctly")
-    mutating func agentServiceInitialization() {
+    @Test
+    mutating func `Agent service initializes correctly`() {
         self.setup()
         #expect(self.agentService != nil)
     }
 
-    @Test("Agent creates a valid set of tools")
-    mutating func agentCreatesTools() {
+    @Test
+    mutating func `Agent creates a valid set of tools`() {
         self.setup()
         let tools = self.agentService.createAgentTools()
         #expect(!tools.isEmpty)
@@ -46,8 +46,8 @@ struct PeekabooAgentServiceTests {
         #expect(tools.contains { $0.name == "type" })
     }
 
-    @Test("Task execution requires a valid API key")
-    mutating func taskExecutionRequiresAPIKey() async {
+    @Test
+    mutating func `Task execution requires a valid API key`() async {
         self.setup()
         self.settings.openAIAPIKey = ""
 
@@ -56,8 +56,8 @@ struct PeekabooAgentServiceTests {
         }
     }
 
-    @Test("Dry run mode returns successfully without execution")
-    mutating func dryRunMode() async throws {
+    @Test
+    mutating func `Dry run mode returns successfully without execution`() async throws {
         self.setup()
         self.settings.openAIAPIKey = "sk-test-key" // Needs a dummy key
 

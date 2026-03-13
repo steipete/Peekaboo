@@ -2,13 +2,11 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-@Suite("CaptureVideoCommand sampling")
 struct CaptureVideoCommandTests {
-    @Test("buildOptions clamps video defaults")
-    func buildOptions() async throws {
+    @Test
+    func `buildOptions clamps video defaults`() {
         let cmd = CaptureVideoCommand()
         let opts = cmd.buildOptions()
         #expect(opts.maxFrames >= 1)
@@ -16,15 +14,15 @@ struct CaptureVideoCommandTests {
         #expect(opts.diffStrategy == .fast)
     }
 
-    @Test("parsing requires input positional")
-    func parsingRequiresInput() async throws {
+    @Test
+    func `parsing requires input positional`() throws {
         #expect(throws: (any Error).self) {
             _ = try CaptureVideoCommand.parse([])
         }
     }
 
-    @Test("parsing sets input positional")
-    func parsingSetsInput() async throws {
+    @Test
+    func `parsing sets input positional`() throws {
         let cmd = try CaptureVideoCommand.parse(["/tmp/demo.mov"])
         #expect(cmd.input == "/tmp/demo.mov")
     }

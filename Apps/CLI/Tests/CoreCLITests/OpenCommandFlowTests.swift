@@ -3,11 +3,10 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("OpenCommand Flow Tests")
 @MainActor
 struct OpenCommandFlowTests {
-    @Test("Open command uses launcher for default handler")
-    func openCommandDefaultHandler() async throws {
+    @Test
+    func `Open command uses launcher for default handler`() async throws {
         let launcher = StubApplicationLauncher()
         launcher.openResponses = [StubRunningApplication(localizedName: "Safari", readyAfterChecks: 1)]
         let resolver = StubApplicationURLResolver()
@@ -36,8 +35,8 @@ struct OpenCommandFlowTests {
         #expect(call.activates == true)
     }
 
-    @Test("Open command respects handler override and focus flags")
-    func openCommandWithHandlerNoFocus() async throws {
+    @Test
+    func `Open command respects handler override and focus flags`() async throws {
         let launcher = StubApplicationLauncher()
         launcher.openResponses = [StubRunningApplication(localizedName: "Notes", readyAfterChecks: 1)]
         let resolver = StubApplicationURLResolver()
@@ -69,11 +68,10 @@ struct OpenCommandFlowTests {
     }
 }
 
-@Suite("AppCommand Launch Flow Tests")
 @MainActor
 struct AppCommandLaunchFlowTests {
-    @Test("Launch without --open activates app")
-    func launchWithoutDocuments() async throws {
+    @Test
+    func `Launch without --open activates app`() async throws {
         let launcher = StubApplicationLauncher()
         launcher.launchResponses = [StubRunningApplication(localizedName: "Finder", readyAfterChecks: 1)]
         let resolver = StubApplicationURLResolver()
@@ -101,8 +99,8 @@ struct AppCommandLaunchFlowTests {
         #expect(call.activates == true)
     }
 
-    @Test("Launch with --open documents skips focus when requested")
-    func launchWithDocumentsNoFocus() async throws {
+    @Test
+    func `Launch with --open documents skips focus when requested`() async throws {
         let launcher = StubApplicationLauncher()
         launcher.launchWithDocsResponses = [StubRunningApplication(localizedName: "Preview", readyAfterChecks: 1)]
         let resolver = StubApplicationURLResolver()

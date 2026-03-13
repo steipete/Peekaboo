@@ -180,7 +180,6 @@ struct AddCustomProviderView: View {
         }
     }
 
-    @ViewBuilder
     private func stepContent(for step: AddProviderStep) -> some View {
         ScrollView {
             VStack(spacing: 24) {

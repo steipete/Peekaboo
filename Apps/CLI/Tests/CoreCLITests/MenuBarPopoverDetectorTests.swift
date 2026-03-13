@@ -3,10 +3,9 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Menu bar popover detection")
 struct MenuBarPopoverDetectorTests {
-    @Test("accepts top-left coordinate popover near menu bar")
-    func topLeftCoordinatePopover() {
+    @Test
+    func `accepts top-left coordinate popover near menu bar`() {
         let screens = [MenuBarPopoverDetector.ScreenBounds(
             frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
             visibleFrame: CGRect(x: 0, y: 50, width: 1920, height: 1030)
@@ -32,8 +31,8 @@ struct MenuBarPopoverDetectorTests {
         #expect(candidates.first?.windowId == 42)
     }
 
-    @Test("accepts bottom-left coordinate popover near menu bar")
-    func bottomLeftCoordinatePopover() {
+    @Test
+    func `accepts bottom-left coordinate popover near menu bar`() {
         let screens = [MenuBarPopoverDetector.ScreenBounds(
             frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
             visibleFrame: CGRect(x: 0, y: 50, width: 1920, height: 1030)
@@ -59,8 +58,8 @@ struct MenuBarPopoverDetectorTests {
         #expect(candidates.first?.windowId == 7)
     }
 
-    @Test("rejects windows away from the menu bar")
-    func rejectsNonMenuBarWindows() {
+    @Test
+    func `rejects windows away from the menu bar`() {
         let screens = [MenuBarPopoverDetector.ScreenBounds(
             frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
             visibleFrame: CGRect(x: 0, y: 50, width: 1920, height: 1030)

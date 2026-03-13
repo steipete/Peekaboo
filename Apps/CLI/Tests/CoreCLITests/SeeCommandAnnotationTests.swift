@@ -5,16 +5,16 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
-@Suite("SeeCommand Annotation Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct SeeCommandAnnotationTests {
-    @Test("SeeCommand parses basic options standalone")
-    func parsesModeOption() throws {
+    @Test
+    func `SeeCommand parses basic options standalone`() throws {
         let command = try SeeCommand.parse(["--mode", "screen"])
         #expect(command.mode == .screen)
     }
 
-    @Test("Annotation creates annotated file with correct naming")
-    func annotationFileNaming() {
+    @Test
+    func `Annotation creates annotated file with correct naming`() {
         // Given an original path
         let originalPath = "/tmp/screenshot.png"
 
@@ -25,8 +25,8 @@ struct SeeCommandAnnotationTests {
         #expect(annotatedPath == "/tmp/screenshot_annotated.png")
     }
 
-    @Test("Element bounds are transformed correctly for annotations")
-    func elementBoundsTransformation() {
+    @Test
+    func `Element bounds are transformed correctly for annotations`() {
         // Given elements in screen coordinates
         let screenElement = DetectedElement(
             id: "B1",
@@ -54,8 +54,8 @@ struct SeeCommandAnnotationTests {
         #expect(transformedBounds.size.height == 50) // unchanged
     }
 
-    @Test("Annotation is disabled for screen mode captures")
-    func annotationDisabledForScreenMode() {
+    @Test
+    func `Annotation is disabled for screen mode captures`() {
         // This test documents that annotation should be disabled for full screen captures
         // due to performance constraints
 
@@ -71,8 +71,8 @@ struct SeeCommandAnnotationTests {
         #expect(Bool(true)) // Documentation-only test; use Bool(true) to avoid warning
     }
 
-    @Test("Coordinate system conversion for NSGraphicsContext")
-    func coordinateSystemConversion() {
+    @Test
+    func `Coordinate system conversion for NSGraphicsContext`() {
         // Given a window-relative element bounds with top-left origin
         let elementBounds = CGRect(x: 100, y: 100, width: 80, height: 40)
         let imageHeight: CGFloat = 600
@@ -93,8 +93,8 @@ struct SeeCommandAnnotationTests {
         #expect(drawingRect.size.height == 40)
     }
 
-    @Test("Detection metadata includes window context")
-    func detectionMetadataWindowContext() {
+    @Test
+    func `Detection metadata includes window context`() {
         // Given capture metadata with window info
         let windowInfo = WindowInfo(
             window_title: "Test Window",
@@ -157,8 +157,8 @@ struct SeeCommandAnnotationTests {
         #expect(captureMetadata.windowInfo?.title == "Test Window")
     }
 
-    @Test("Enhanced detection uses window context")
-    func enhancedDetectionWindowContext() async throws {
+    @Test
+    func `Enhanced detection uses window context`() {
         let imageData = Data(repeating: 0xAB, count: 4)
         let snapshotId = "test-snapshot-123"
         let appName = "Safari"
@@ -196,8 +196,8 @@ struct SeeCommandAnnotationTests {
         )
     }
 
-    @Test("Annotation excludes disabled elements")
-    func annotationExcludesDisabledElements() {
+    @Test
+    func `Annotation excludes disabled elements`() {
         // Given a mix of enabled and disabled elements
         let elements = DetectedElements(
             buttons: [
@@ -240,8 +240,8 @@ struct SeeCommandAnnotationTests {
         #expect(annotatedElements.first?.id == "B1")
     }
 
-    @Test("Role-based colors are assigned correctly")
-    func roleBasedColorAssignment() {
+    @Test
+    func `Role-based colors are assigned correctly`() throws {
         // Define expected colors (from SeeCommand)
         let roleColors: [ElementType: (r: CGFloat, g: CGFloat, b: CGFloat)] = [
             .button: (0, 0.48, 1.0), // #007AFF
@@ -266,7 +266,7 @@ struct SeeCommandAnnotationTests {
             )
 
             // In actual implementation, this would be done in generateAnnotatedScreenshot
-            let color = roleColors[element.type]!
+            let color = try #require(roleColors[element.type])
             #expect(color.r == expectedColor.r)
             #expect(color.g == expectedColor.g)
             #expect(color.b == expectedColor.b)

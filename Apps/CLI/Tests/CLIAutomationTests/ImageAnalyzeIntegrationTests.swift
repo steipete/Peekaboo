@@ -3,7 +3,7 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("ImageCommand Analyze Integration Tests", .serialized, .tags(.imageCapture, .imageAnalysis, .integration))
+@Suite(.serialized, .tags(.imageCapture, .imageAnalysis, .integration))
 struct ImageAnalyzeIntegrationTests {
     // MARK: - Test Helpers
 
@@ -34,8 +34,8 @@ struct ImageAnalyzeIntegrationTests {
 
     // MARK: - Analyze Error Handling Tests
 
-    @Test("Analyze with missing image file", .tags(.fast))
-    func analyzeWithMissingFile() async throws {
+    @Test(.tags(.fast))
+    func `Analyze with missing image file`() throws {
         // Note: We can't directly test analyzeImage as it's private
         // This test validates that the command accepts analyze option
         // The actual file validation happens during execution
@@ -48,8 +48,8 @@ struct ImageAnalyzeIntegrationTests {
         // Actual file validation would happen during command execution
     }
 
-    @Test("Analyze prompt variations", .tags(.fast))
-    func analyzePromptVariations() throws {
+    @Test(.tags(.fast))
+    func `Analyze prompt variations`() throws {
         let prompts = [
             "What is shown?",
             "Describe the UI elements in detail",
@@ -67,15 +67,15 @@ struct ImageAnalyzeIntegrationTests {
         }
     }
 
-    @Test("Long analyze prompts", .tags(.fast))
-    func longAnalyzePrompts() throws {
+    @Test(.tags(.fast))
+    func `Long analyze prompts`() throws {
         let longPrompt = String(repeating: "Please analyze this image and tell me ", count: 10) + "what you see."
         let command = try ImageCommand.parse(["--analyze", longPrompt])
         #expect(command.analyze == longPrompt)
     }
 
-    @Test("Unicode in analyze prompts", .tags(.fast))
-    func unicodeAnalyzePrompts() throws {
+    @Test(.tags(.fast))
+    func `Unicode in analyze prompts`() throws {
         let unicodePrompts = [
             "这个图片显示了什么？",
             "この画像には何が表示されていますか？",
@@ -91,8 +91,8 @@ struct ImageAnalyzeIntegrationTests {
 
     // MARK: - Multiple File Analysis Tests
 
-    @Test("Analysis with multi-mode capture", .tags(.fast))
-    func analysisWithMultiMode() throws {
+    @Test(.tags(.fast))
+    func `Analysis with multi-mode capture`() throws {
         // When capturing multiple windows, only the first should be analyzed
         let command = try ImageCommand.parse([
             "--mode", "multi",
@@ -107,8 +107,8 @@ struct ImageAnalyzeIntegrationTests {
 
     // MARK: - Configuration Integration Tests
 
-    @Test("Analyze with different AI provider configurations", .tags(.fast))
-    func analyzeWithDifferentProviders() throws {
+    @Test(.tags(.fast))
+    func `Analyze with different AI provider configurations`() throws {
         let providerConfigs = [
             "openai/gpt-5.1",
             "anthropic/claude-sonnet-4.5",
@@ -130,15 +130,15 @@ struct ImageAnalyzeIntegrationTests {
 
     // MARK: - Edge Case Tests
 
-    @Test("Empty analyze prompt handling", .tags(.fast))
-    func emptyAnalyzePrompt() throws {
+    @Test(.tags(.fast))
+    func `Empty analyze prompt handling`() throws {
         // Empty prompts should be allowed at parse time
         let command = try ImageCommand.parse(["--analyze", ""])
         #expect(command.analyze?.isEmpty == true)
     }
 
-    @Test("Analyze with all capture modes", .tags(.fast))
-    func analyzeWithAllCaptureModes() throws {
+    @Test(.tags(.fast))
+    func `Analyze with all capture modes`() throws {
         let modes: [(mode: String, expectedMode: CaptureMode?)] = [
             ("screen", .screen),
             ("window", .window),
@@ -157,8 +157,8 @@ struct ImageAnalyzeIntegrationTests {
         }
     }
 
-    @Test("Analyze option position in command", .tags(.fast))
-    func analyzeOptionPosition() throws {
+    @Test(.tags(.fast))
+    func `Analyze option position in command`() throws {
         // Test that analyze works regardless of position in command
         let commands = [
             ["--analyze", "Test", "--mode", "screen"],
@@ -173,8 +173,8 @@ struct ImageAnalyzeIntegrationTests {
         }
     }
 
-    @Test("Path handling with analysis", .tags(.fast))
-    func pathHandlingWithAnalysis() throws {
+    @Test(.tags(.fast))
+    func `Path handling with analysis`() throws {
         let testPaths = [
             "/tmp/analysis.png",
             "~/Desktop/screenshot-analysis.png",
@@ -196,10 +196,10 @@ struct ImageAnalyzeIntegrationTests {
 
 // MARK: - Mock AI Provider Tests
 
-@Suite("ImageCommand Mock AI Provider Tests", .serialized, .tags(.imageCapture, .imageAnalysis, .unit))
+@Suite(.serialized, .tags(.imageCapture, .imageAnalysis, .unit))
 struct ImageCommandMockAIProviderTests {
-    @Test("Analyze with mock provider", .tags(.fast))
-    func analyzeWithMockProvider() async throws {
+    @Test(.tags(.fast))
+    func `Analyze with mock provider`() throws {
         // This would test with a mock AI provider if we had one set up
         // For now, we're testing the command parsing and structure
         let command = try ImageCommand.parse([

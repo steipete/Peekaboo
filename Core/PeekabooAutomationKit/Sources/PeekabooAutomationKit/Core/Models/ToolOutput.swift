@@ -4,7 +4,7 @@ import PeekabooFoundation
 
 /// Unified output structure for all Peekaboo tools
 /// Used by CLI, Agent, macOS app, and MCP server
-public struct UnifiedToolOutput<T: Codable>: Codable, Sendable where T: Sendable {
+public struct UnifiedToolOutput<T: Codable & Sendable>: Codable, Sendable {
     /// The actual data returned by the tool
     public let data: T
 

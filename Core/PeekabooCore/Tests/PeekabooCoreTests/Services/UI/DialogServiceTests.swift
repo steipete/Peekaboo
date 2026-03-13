@@ -11,18 +11,17 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("DialogService Tests")
 struct DialogServiceTests {
-    @Test("Initialize dialog service")
+    @Test
     @MainActor
-    func initialization() async throws {
+    func `Initialize dialog service`() {
         let service = DialogService()
         #expect(service != nil)
     }
 
-    @Test("Field targeting by label works")
+    @Test
     @MainActor
-    func fieldTargetingByLabel() async throws {
+    func `Field targeting by label works`() async throws {
         // This test would need a real dialog to be open
         // For unit testing, we're just verifying the API exists
         let service = DialogService()
@@ -41,9 +40,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("Field targeting by index works")
+    @Test
     @MainActor
-    func fieldTargetingByIndex() async throws {
+    func `Field targeting by index works`() async throws {
         let service = DialogService()
 
         // Test that the method accepts numeric index
@@ -60,9 +59,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("Field targeting with nil uses first field")
+    @Test
     @MainActor
-    func fieldTargetingDefault() async throws {
+    func `Field targeting with nil uses first field`() async throws {
         let service = DialogService()
 
         // Test that nil field identifier is accepted
@@ -79,9 +78,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("Click button in dialog")
+    @Test
     @MainActor
-    func testClickButton() async throws {
+    func `Click button in dialog`() async throws {
         let service = DialogService()
 
         // Test that the method exists and accepts parameters
@@ -96,9 +95,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("List dialog elements")
+    @Test
     @MainActor
-    func testListDialogElements() async throws {
+    func `List dialog elements`() async throws {
         let service = DialogService()
 
         await #expect(throws: DialogError.self) {
@@ -106,9 +105,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("Handle file dialog")
+    @Test
     @MainActor
-    func testHandleFileDialog() async throws {
+    func `Handle file dialog`() async throws {
         let service = DialogService()
 
         // Test that the method exists and accepts parameters
@@ -125,9 +124,9 @@ struct DialogServiceTests {
         }
     }
 
-    @Test("Dialog action result structure")
+    @Test
     @MainActor
-    func dialogActionResult() async throws {
+    func `Dialog action result structure`() {
         // Test the result structure
         let result = DialogActionResult(
             success: true,
@@ -145,9 +144,9 @@ struct DialogServiceTests {
         #expect(result.details["cleared"] == "true")
     }
 
-    @Test("Dialog elements structure")
+    @Test
     @MainActor
-    func dialogElementsStructure() async throws {
+    func `Dialog elements structure`() {
         // Test the dialog elements structure
         let button = DialogButton(
             text: "OK",
@@ -181,9 +180,9 @@ struct DialogServiceTests {
         #expect(elements.staticTexts[0] == "Please enter your credentials")
     }
 
-    @Test("Character typing delegates through handler")
+    @Test
     @MainActor
-    func typeCharacterUsesHandler() async throws {
+    func `Character typing delegates through handler`() throws {
         let service = DialogService()
         var captured: String?
         DialogService.typeCharacterHandler = { captured = $0 }
@@ -193,9 +192,9 @@ struct DialogServiceTests {
         #expect(captured == "Z")
     }
 
-    @Test("typeCharacter called repeatedly uses handler each time")
+    @Test
     @MainActor
-    func typeCharacterMultipleCalls() async throws {
+    func `typeCharacter called repeatedly uses handler each time`() throws {
         let service = DialogService()
         var calls: [String] = []
         DialogService.typeCharacterHandler = { calls.append($0) }

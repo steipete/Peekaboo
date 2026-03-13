@@ -6,10 +6,9 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Anthropic Model Tests - Tachikoma Integration")
 struct AnthropicModelTests {
-    @Test("Anthropic model selection and properties")
-    func modelSelectionAndProperties() {
+    @Test
+    func `Anthropic model selection and properties`() {
         // Test current Anthropic models
         let opus45 = Model.anthropic(.opus45)
         let sonnet4 = Model.anthropic(.sonnet4)
@@ -31,8 +30,8 @@ struct AnthropicModelTests {
         #expect(haiku45.modelId.contains("haiku"))
     }
 
-    @Test("Anthropic default model selection")
-    func defaultModelSelection() {
+    @Test
+    func `Anthropic default model selection`() {
         // Test that Claude Opus is the default
         let defaultModel = Model.default
         let claudeModel = Model.claude
@@ -53,8 +52,8 @@ struct AnthropicModelTests {
         }
     }
 
-    @Test("Anthropic model generation integration", .enabled(if: false)) // Disabled - requires API key
-    func modelGenerationIntegration() async throws {
+    @Test(.enabled(if: false)) // Disabled - requires API key
+    func `Anthropic model generation integration`() async throws {
         // This test would require real API credentials
         // Testing the integration without actual API calls
 
@@ -78,8 +77,8 @@ struct AnthropicModelTests {
         }
     }
 
-    @Test("Anthropic vision model capabilities")
-    func visionModelCapabilities() {
+    @Test
+    func `Anthropic vision model capabilities`() {
         let visionCapableModels = [
             Model.anthropic(.opus45),
             Model.anthropic(.sonnet4),
@@ -91,8 +90,8 @@ struct AnthropicModelTests {
         }
     }
 
-    @Test("Anthropic model comparison")
-    func modelComparison() {
+    @Test
+    func `Anthropic model comparison`() {
         let opus45 = Model.anthropic(.opus45)
         let sonnet4 = Model.anthropic(.sonnet4)
         let haiku45 = Model.anthropic(.haiku45)
@@ -112,8 +111,8 @@ struct AnthropicModelTests {
         #expect(sonnet4.contextLength >= haiku45.contextLength)
     }
 
-    @Test("Anthropic thinking models")
-    func thinkingModels() {
+    @Test
+    func `Anthropic thinking models`() {
         // Test thinking variants
         let opus4Thinking = Model.anthropic(.opus4Thinking)
         let sonnet4Thinking = Model.anthropic(.sonnet4Thinking)

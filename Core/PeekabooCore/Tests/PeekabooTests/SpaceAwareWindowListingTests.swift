@@ -7,10 +7,9 @@ import Testing
 @testable import PeekabooVisualizer
 
 /// Tests for Space-aware window listing functionality
-@Suite("Space-Aware Window Listing")
 struct SpaceAwareWindowListingTests {
-    @Test("ServiceWindowInfo includes space information")
-    func serviceWindowInfoSpaceProperties() {
+    @Test
+    func `ServiceWindowInfo includes space information`() {
         // Create a window info with space details
         let windowInfo = ServiceWindowInfo(
             windowID: 1234,
@@ -28,8 +27,8 @@ struct SpaceAwareWindowListingTests {
         #expect(windowInfo.spaceName == "Work Space")
     }
 
-    @Test("ServiceWindowInfo equality includes space properties")
-    func serviceWindowInfoEquality() {
+    @Test
+    func `ServiceWindowInfo equality includes space properties`() {
         let windowInfo1 = ServiceWindowInfo(
             windowID: 1234,
             title: "Test Window",
@@ -55,8 +54,8 @@ struct SpaceAwareWindowListingTests {
         #expect(windowInfo1 != windowInfo3)
     }
 
-    @Test("ServiceWindowInfo handles nil space information")
-    func serviceWindowInfoNilSpace() {
+    @Test
+    func `ServiceWindowInfo handles nil space information`() {
         let windowInfo = ServiceWindowInfo(
             windowID: 1234,
             title: "Test Window",
@@ -66,8 +65,8 @@ struct SpaceAwareWindowListingTests {
         #expect(windowInfo.spaceName == nil)
     }
 
-    @Test("ServiceWindowInfo Codable includes space properties")
-    func serviceWindowInfoCodable() throws {
+    @Test
+    func `ServiceWindowInfo Codable includes space properties`() throws {
         let windowInfo = ServiceWindowInfo(
             windowID: 1234,
             title: "Test Window",
@@ -94,8 +93,8 @@ struct SpaceAwareWindowListingTests {
     }
 
     @MainActor
-    @Test("SpaceManagementService provides space info for windows")
-    func spaceManagementServiceWindowSpaces() {
+    @Test
+    func `SpaceManagementService provides space info for windows`() {
         let spaceService = SpaceManagementService()
 
         // In test environment, there might not be any windows
@@ -109,8 +108,8 @@ struct SpaceAwareWindowListingTests {
     }
 
     @MainActor
-    @Test("SpaceManagementService returns current space")
-    func spaceManagementServiceCurrentSpace() {
+    @Test
+    func `SpaceManagementService returns current space`() {
         let spaceService = SpaceManagementService()
 
         let currentSpace = spaceService.getCurrentSpace()
@@ -132,8 +131,8 @@ struct SpaceAwareWindowListingTests {
         }
     }
 
-    @Test("Window grouping by space ID")
-    func windowGroupingBySpace() {
+    @Test
+    func `Window grouping by space ID`() {
         // Create sample windows on different spaces
         let windows = [
             ServiceWindowInfo(

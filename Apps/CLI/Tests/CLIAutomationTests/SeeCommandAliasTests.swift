@@ -1,10 +1,10 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("SeeCommand Alias Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct SeeCommandAliasTests {
-    @Test("Legacy --output/--save/-o map to --path")
-    func parseOutputAliases() throws {
+    @Test
+    func `Legacy --output/--save/-o map to --path`() throws {
         let outputCommand = try SeeCommand.parse(["--output", "/tmp/output.png"])
         #expect(outputCommand.path == "/tmp/output.png")
 
@@ -15,8 +15,8 @@ struct SeeCommandAliasTests {
         #expect(shortCommand.path == "/tmp/short.png")
     }
 
-    @Test("Global --json alias enables JSON output")
-    func parseJsonAlias() throws {
+    @Test
+    func `Global --json alias enables JSON output`() throws {
         let command = try SeeCommand.parse([
             "--json",
             "--path", "/tmp/screenshot.png",

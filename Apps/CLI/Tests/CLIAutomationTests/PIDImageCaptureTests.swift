@@ -5,10 +5,10 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("PID Image Capture Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct PIDImageCaptureTests {
-    @Test("Capture windows by PID - valid PID")
-    func captureWindowsByValidPID() async throws {
+    @Test
+    func `Capture windows by PID - valid PID`() async throws {
         // Skip in CI environment
         guard ProcessInfo.processInfo.environment["CI"] == nil else {
             return
@@ -47,8 +47,8 @@ struct PIDImageCaptureTests {
         }
     }
 
-    @Test("Capture windows by PID - multiple app instances")
-    func captureWindowsByPIDMultipleInstances() async throws {
+    @Test
+    func `Capture windows by PID - multiple app instances`() async throws {
         // Skip in CI environment
         guard ProcessInfo.processInfo.environment["CI"] == nil else {
             return
@@ -87,8 +87,8 @@ struct PIDImageCaptureTests {
         }
     }
 
-    @Test("Invalid PID formats in image capture")
-    func invalidPIDFormatsInImageCapture() throws {
+    @Test
+    func `Invalid PID formats in image capture`() throws {
         let invalidPIDs = [
             "PID:", // Missing PID number
             "PID:abc", // Non-numeric PID
@@ -119,8 +119,8 @@ struct PIDImageCaptureTests {
         }
     }
 
-    @Test("PID targeting with window specifiers")
-    func pidTargetingWithWindowSpecifiers() throws {
+    @Test
+    func `PID targeting with window specifiers`() throws {
         // Test that PID can be combined with window index
         let command1 = try ImageCommand.parse([
             "--app", "PID:1234",
@@ -142,8 +142,8 @@ struct PIDImageCaptureTests {
         #expect(command2.windowTitle == "Document")
     }
 
-    @Test("PID targeting filename generation")
-    func pidTargetingFilenameGeneration() throws {
+    @Test
+    func `PID targeting filename generation`() {
         // Test that filenames include PID information
         let pid: pid_t = 1234
         let appName = "TestApp"
@@ -158,7 +158,7 @@ struct PIDImageCaptureTests {
         #expect(expectedFilename.contains(appName))
     }
 
-    // Helper function to simulate capture with PID
+    /// Helper function to simulate capture with PID
     private func captureWithPID(
         command: ImageCommand,
         targetPID: pid_t

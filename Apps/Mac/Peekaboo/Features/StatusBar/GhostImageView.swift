@@ -115,7 +115,7 @@ struct GhostImageView: View {
     }
 }
 
-// Create a view modifier to replace Image("ghost.idle") etc.
+/// Create a view modifier to replace Image("ghost.idle") etc.
 extension Image {
     @MainActor
     static var ghostIdle: some View {

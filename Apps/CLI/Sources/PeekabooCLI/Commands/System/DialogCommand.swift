@@ -57,10 +57,21 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -161,10 +172,21 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -268,10 +290,21 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -421,10 +454,21 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -511,10 +555,21 @@ struct DialogCommand: ParsableCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Describe the active dialog by enumerating buttons, text fields, and static text.
         @MainActor

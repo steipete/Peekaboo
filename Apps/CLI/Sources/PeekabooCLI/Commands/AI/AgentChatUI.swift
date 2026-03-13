@@ -8,7 +8,7 @@ import PeekabooAgentRuntime
 import Tachikoma
 import TauTUI
 
-// Minimal loader component to keep chat rendering responsive without pulling in full spinner logic.
+/// Minimal loader component to keep chat rendering responsive without pulling in full spinner logic.
 @MainActor
 private final class Loader: Component {
     private var message: String

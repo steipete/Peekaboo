@@ -34,9 +34,17 @@ struct SleepCommand: OutputFormattable, RuntimeOptionsConfigurable {
         return self.runtimeOptions.makeConfiguration()
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.configuration.jsonOutput }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.configuration.jsonOutput
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

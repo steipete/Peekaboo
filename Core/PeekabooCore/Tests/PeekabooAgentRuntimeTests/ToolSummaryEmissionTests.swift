@@ -5,10 +5,9 @@ import PeekabooAutomation
 import TachikomaMCP
 import Testing
 
-@Suite("Tool summary emission")
 struct ToolSummaryEmissionTests {
-    @Test("Shell tool attaches command metadata")
-    func shellToolEmitsSummary() async throws {
+    @Test
+    func `Shell tool attaches command metadata`() async throws {
         let tool = ShellTool()
         let response = try await tool.execute(arguments: ToolArguments(raw: ["command": "echo summary-test"]))
 
@@ -25,8 +24,8 @@ struct ToolSummaryEmissionTests {
         #expect(description.hasPrefix("Run `echo summary-test`"))
     }
 
-    @Test("Sleep tool stores wait duration")
-    func sleepToolEmitsSummary() async throws {
+    @Test
+    func `Sleep tool stores wait duration`() async throws {
         let tool = SleepTool()
         let response = try await tool.execute(arguments: ToolArguments(raw: ["duration": 5]))
 

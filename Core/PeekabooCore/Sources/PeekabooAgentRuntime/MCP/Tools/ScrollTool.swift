@@ -183,5 +183,7 @@ private struct ScrollTargetDescription {
 
 private struct ScrollToolValidationError: Error {
     let message: String
-    init(_ message: String) { self.message = message }
+    init(_ message: String) {
+        self.message = message
+    }
 }

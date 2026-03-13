@@ -10,7 +10,7 @@ public final class SnapshotManager: SnapshotManagerProtocol {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "SnapshotManager")
     private let snapshotActor = SnapshotStorageActor()
 
-    // Snapshot validity window (10 minutes)
+    /// Snapshot validity window (10 minutes)
     private let snapshotValidityWindow: TimeInterval = 600
 
     public init() {}

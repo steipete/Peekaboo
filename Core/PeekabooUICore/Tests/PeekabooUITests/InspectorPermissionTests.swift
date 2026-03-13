@@ -1,11 +1,11 @@
 import Testing
 @testable import PeekabooUICore
 
-@Suite("Inspector Permission Tests", .tags(.permissions))
+@Suite(.tags(.permissions))
 @MainActor
 struct InspectorPermissionTests {
-    @Test("Permission providers update status without prompt")
-    func permissionStatusUpdates() {
+    @Test
+    func `Permission providers update status without prompt`() {
         var view = InspectorView()
         InspectorView.setPermissionProvidersForTesting(check: { true }, prompt: { false })
         defer { InspectorView.resetPermissionProvidersForTesting() }
@@ -18,8 +18,8 @@ struct InspectorPermissionTests {
         #expect(view.test_permissionStatus() == .denied)
     }
 
-    @Test("Prompt uses prompt provider")
-    func promptUsesProvider() {
+    @Test
+    func `Prompt uses prompt provider`() {
         var view = InspectorView()
         InspectorView.setPermissionProvidersForTesting(check: { false }, prompt: { true })
         defer { InspectorView.resetPermissionProvidersForTesting() }

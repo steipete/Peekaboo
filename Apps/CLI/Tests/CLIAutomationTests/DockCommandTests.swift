@@ -5,10 +5,10 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("DockCommand", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DockCommandTests {
-    @Test("Help output is consistent with V1")
-    func helpOutput() async throws {
+    @Test
+    func `Help output is consistent with V1`() async throws {
         let result = try await self.runCommand(["dock", "--help"])
         let output = result.output
 
@@ -21,8 +21,8 @@ struct DockCommandTests {
         #expect(output.contains("list"))
     }
 
-    @Test("List command JSON structure")
-    func listCommandJSON() async throws {
+    @Test
+    func `List command JSON structure`() async throws {
         let result = try await self.runCommand(["dock", "list", "--json"])
         let output = result.output
 

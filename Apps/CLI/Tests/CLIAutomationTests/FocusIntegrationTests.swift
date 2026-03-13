@@ -11,13 +11,12 @@ private enum FocusIntegrationTestConfig {
 }
 
 @Suite(
-    "Focus Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions && FocusIntegrationTestConfig.enabled())
 )
 struct FocusIntegrationTests {
-    // Helper function to run peekaboo commands
+    /// Helper function to run peekaboo commands
     private func runPeekabooCommand(
         _ arguments: [String],
         allowedExitStatuses: Set<Int32> = [0]
@@ -31,8 +30,8 @@ struct FocusIntegrationTests {
 
     // MARK: - Snapshot-based Focus Tests
 
-    @Test("click with snapshot auto-focuses window")
-    func clickWithSnapshotAutoFocus() async throws {
+    @Test
+    func `click with snapshot auto-focuses window`() async throws {
         // Create a snapshot with Finder
         let seeOutput = try await runPeekabooCommand([
             "see",
@@ -59,8 +58,8 @@ struct FocusIntegrationTests {
         #expect(clickData.success == true || clickData.error != nil)
     }
 
-    @Test("type with snapshot auto-focuses window")
-    func typeWithSnapshotAutoFocus() async throws {
+    @Test
+    func `type with snapshot auto-focuses window`() async throws {
         // Create a snapshot with a text editor if available
         let apps = ["TextEdit", "Notes", "Stickies"]
         var snapshotId: String?
@@ -97,8 +96,8 @@ struct FocusIntegrationTests {
 
     // MARK: - Application-based Focus Tests
 
-    @Test("menu command auto-focuses application")
-    func menuCommandAutoFocus() async throws {
+    @Test
+    func `menu command auto-focuses application`() async throws {
         // Menu command should auto-focus the app
         let output = try await runPeekabooCommand([
             "menu", "View",
@@ -113,8 +112,8 @@ struct FocusIntegrationTests {
 
     // MARK: - Focus Options Integration Tests
 
-    @Test("click respects no-auto-focus flag")
-    func clickNoAutoFocus() async throws {
+    @Test
+    func `click respects no-auto-focus flag`() async throws {
         // Create snapshot
         let seeOutput = try await runPeekabooCommand([
             "see",
@@ -142,8 +141,8 @@ struct FocusIntegrationTests {
         #expect(clickData.success == true || clickData.error != nil)
     }
 
-    @Test("type with custom focus timeout")
-    func typeCustomTimeout() async throws {
+    @Test
+    func `type with custom focus timeout`() async throws {
         // Type with very short timeout
         let output = try await runPeekabooCommand([
             "type", "test",
@@ -156,8 +155,8 @@ struct FocusIntegrationTests {
         #expect(data.success == true || data.error != nil)
     }
 
-    @Test("menu with high retry count")
-    func menuHighRetryCount() async throws {
+    @Test
+    func `menu with high retry count`() async throws {
         let output = try await runPeekabooCommand([
             "menu", "File",
             "--app", "TextEdit",
@@ -172,8 +171,8 @@ struct FocusIntegrationTests {
 
     // MARK: - Window Focus with Space Integration
 
-    @Test("window focus switches Space if needed")
-    func windowFocusSpaceSwitch() async throws {
+    @Test
+    func `window focus switches Space if needed`() async throws {
         // This test would ideally create a window on another Space
         // For now, test that the option is accepted
         let output = try await runPeekabooCommand([
@@ -187,8 +186,8 @@ struct FocusIntegrationTests {
         #expect(data.success == true || data.error != nil)
     }
 
-    @Test("window focus moves window to current Space")
-    func windowFocusMoveHere() async throws {
+    @Test
+    func `window focus moves window to current Space`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "TextEdit",
@@ -202,8 +201,8 @@ struct FocusIntegrationTests {
 
     // MARK: - Error Handling Tests
 
-    @Test("focus non-existent application")
-    func focusNonExistentApp() async throws {
+    @Test
+    func `focus non-existent application`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "NonExistentApp12345",
@@ -218,8 +217,8 @@ struct FocusIntegrationTests {
         )
     }
 
-    @Test("focus window with invalid title")
-    func focusInvalidWindowTitle() async throws {
+    @Test
+    func `focus window with invalid title`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "Finder",

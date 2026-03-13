@@ -39,9 +39,13 @@ extension AppCommand {
             self.resolvedRuntime.services
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Enumerate running applications, apply filtering flags, and emit the chosen output representation.
         @MainActor

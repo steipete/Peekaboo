@@ -3,11 +3,10 @@ import PeekabooAutomation
 import PeekabooCore
 import Testing
 
-@Suite("ToolRegistry contract")
 @MainActor
 struct ToolRegistryContractTests {
-    @Test("Default services expose automation tools")
-    func registryIncludesAutomationTools() async throws {
+    @Test
+    func `Default services expose automation tools`() {
         let services = PeekabooServices()
         services.installAgentRuntimeDefaults()
 
@@ -15,8 +14,8 @@ struct ToolRegistryContractTests {
         #expect(!tools.isEmpty)
     }
 
-    @Test("installAgentRuntimeDefaults feeds MCP context")
-    func installsMCPContext() async throws {
+    @Test
+    func `installAgentRuntimeDefaults feeds MCP context`() {
         let services = PeekabooServices()
         services.installAgentRuntimeDefaults()
 

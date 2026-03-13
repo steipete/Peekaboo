@@ -8,13 +8,11 @@
 import CoreGraphics
 import Foundation
 import Testing
-
 @testable import PeekabooAgentRuntime
 
-@Suite("Desktop Context")
 struct DesktopContextTests {
-    @Test("Desktop context stores all properties")
-    func desktopContextProperties() {
+    @Test
+    func `Desktop context stores all properties`() {
         let windowInfo = FocusedWindowInfo(
             appName: "Safari",
             title: "Apple",
@@ -39,8 +37,8 @@ struct DesktopContextTests {
         #expect(context.timestamp == timestamp)
     }
 
-    @Test("Desktop context with nil values")
-    func desktopContextNilValues() {
+    @Test
+    func `Desktop context with nil values`() {
         let context = DesktopContext(
             focusedWindow: nil,
             cursorPosition: nil,
@@ -56,10 +54,9 @@ struct DesktopContextTests {
     }
 }
 
-@Suite("Focused Window Info")
 struct FocusedWindowInfoTests {
-    @Test("Focused window info stores all properties")
-    func focusedWindowInfoProperties() {
+    @Test
+    func `Focused window info stores all properties`() {
         let bounds = CGRect(x: 100, y: 50, width: 800, height: 600)
         let info = FocusedWindowInfo(
             appName: "Terminal",
@@ -74,8 +71,8 @@ struct FocusedWindowInfoTests {
         #expect(info.processId == 54321)
     }
 
-    @Test("Focused window info with nil bounds")
-    func focusedWindowInfoNilBounds() {
+    @Test
+    func `Focused window info with nil bounds`() {
         let info = FocusedWindowInfo(
             appName: "Finder",
             title: "",
@@ -88,8 +85,8 @@ struct FocusedWindowInfoTests {
         #expect(info.bounds == nil)
     }
 
-    @Test("Focused window info with empty title")
-    func focusedWindowInfoEmptyTitle() {
+    @Test
+    func `Focused window info with empty title`() {
         let info = FocusedWindowInfo(
             appName: "Activity Monitor",
             title: "",

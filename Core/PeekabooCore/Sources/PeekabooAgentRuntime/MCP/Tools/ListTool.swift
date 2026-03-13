@@ -344,7 +344,7 @@ private struct WindowListFormatter {
     }
 }
 
-// Extension to get processor architecture
+/// Extension to get processor architecture
 extension ProcessInfo {
     fileprivate nonisolated var processorArchitecture: String {
         #if arch(arm64)

@@ -13,7 +13,7 @@ private enum MenuHarnessConfig {
     }
 }
 
-// Generic response structure for tests
+/// Generic response structure for tests
 struct MenuTestResponse: Codable {
     let success: Bool
     let data: MenuExtractionData?
@@ -60,7 +60,7 @@ struct MenuExtractionData: Codable {
     }
 }
 
-// Helper for decoding arbitrary JSON
+/// Helper for decoding arbitrary JSON
 struct AnyCodable: Codable {
     let value: Any
 
@@ -107,15 +107,14 @@ struct AnyCodable: Codable {
 }
 
 @Suite(
-    "Menu Extraction Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions),
     .disabled("Requires local testing with RUN_LOCAL_TESTS")
 )
 struct MenuExtractionTests {
-    @Test("Extract menu structure without clicking")
-    func menuExtraction() async throws {
+    @Test
+    func `Extract menu structure without clicking`() async throws {
         // This test requires a running application
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
@@ -161,8 +160,8 @@ struct MenuExtractionTests {
         #endif
     }
 
-    @Test("Menu extraction includes keyboard shortcuts")
-    func menuKeyboardShortcuts() async throws {
+    @Test
+    func `Menu extraction includes keyboard shortcuts`() async throws {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
@@ -190,8 +189,8 @@ struct MenuExtractionTests {
         #endif
     }
 
-    @Test("Menu list-all extracts frontmost app menus")
-    func menuListAll() async throws {
+    @Test
+    func `Menu list-all extracts frontmost app menus`() async throws {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
@@ -220,8 +219,8 @@ struct MenuExtractionTests {
         #endif
     }
 
-    @Test("Menu extraction handles nested submenus")
-    func nestedSubmenus() async throws {
+    @Test
+    func `Menu extraction handles nested submenus`() async throws {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
@@ -253,8 +252,8 @@ struct MenuExtractionTests {
         #endif
     }
 
-    @Test("Menu extraction properly handles disabled items")
-    func disabledMenuItems() async throws {
+    @Test
+    func `Menu extraction properly handles disabled items`() async throws {
         #if !os(Linux)
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] != nil else { return }
 
@@ -288,7 +287,6 @@ struct MenuExtractionTests {
 }
 
 @Suite(
-    "Menu & Dialog Local Harness",
     .serialized,
     .tags(.automation),
     .enabled(if: MenuHarnessConfig.runLocalHarnessEnabled())
@@ -303,10 +301,9 @@ struct MenuDialogLocalHarnessTests {
     }()
 
     @Test(
-        "TextEdit menu list and click succeed via Poltergeist",
         .timeLimit(.minutes(2))
     )
-    func textEditMenuFlow() async throws {
+    func `TextEdit menu list and click succeed via Poltergeist`() async throws {
         try self.ensureAppLaunched("TextEdit")
         try await self.ensureUntitledTextEditDocument()
 
@@ -325,10 +322,9 @@ struct MenuDialogLocalHarnessTests {
     }
 
     @Test(
-        "Calculator menu list + Scientific toggle",
         .timeLimit(.minutes(2))
     )
-    func calculatorMenuFlow() throws {
+    func `Calculator menu list + Scientific toggle`() throws {
         try self.ensureAppLaunched("Calculator")
 
         let listResponse: CodableJSONResponse<MenuListData> = try self.runJSONCommand(
@@ -346,10 +342,9 @@ struct MenuDialogLocalHarnessTests {
     }
 
     @Test(
-        "Menu click survives window churn",
         .timeLimit(.minutes(2))
     )
-    func textEditMenuAfterWindowChurn() async throws {
+    func `Menu click survives window churn`() async throws {
         try self.ensureAppLaunched("TextEdit")
         try await self.ensureUntitledTextEditDocument()
 
@@ -379,10 +374,9 @@ struct MenuDialogLocalHarnessTests {
     }
 
     @Test(
-        "TextEdit Save dialog lists buttons via polter",
         .timeLimit(.minutes(2))
     )
-    func textEditDialogListViaPolter() async throws {
+    func `TextEdit Save dialog lists buttons via polter`() async throws {
         try self.ensureAppLaunched("TextEdit")
         try await self.ensureUntitledTextEditDocument()
         try await self.triggerSavePanel()
@@ -413,10 +407,9 @@ struct MenuDialogLocalHarnessTests {
     }
 
     @Test(
-        "Menu stress loop runs for 45 seconds without stale window errors",
         .timeLimit(.minutes(3))
     )
-    func menuStressLoop() async throws {
+    func `Menu stress loop runs for 45 seconds without stale window errors`() async throws {
         try await self.runMenuStressLoop(
             appName: "TextEdit",
             menuPath: "File > New",

@@ -19,7 +19,7 @@ final class AcceleratedTextDetector {
 
     // MARK: - Properties
 
-    // Sobel kernels as Int16 for vImage convolution
+    /// Sobel kernels as Int16 for vImage convolution
     private let sobelXKernel: [Int16] = [
         -1, 0, 1,
         -2, 0, 2,
@@ -42,7 +42,7 @@ final class AcceleratedTextDetector {
     private let maxBufferWidth: Int = 200
     private let maxBufferHeight: Int = 100
 
-    // Edge detection threshold (0-255 scale)
+    /// Edge detection threshold (0-255 scale)
     private let edgeThreshold: UInt8 = 30
 
     // MARK: - Initialization

@@ -9,18 +9,18 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ElementDetectionService Tests", .tags(.ui, .safe))
+@Suite(.tags(.ui, .safe))
 @MainActor
 struct ElementDetectionServiceTests {
-    @Test("Initialize ElementDetectionService")
-    func initializeService() async throws {
+    @Test
+    func `Initialize ElementDetectionService`() {
         let snapshotManager = MockSnapshotManager()
         let service: ElementDetectionService? = ElementDetectionService(snapshotManager: snapshotManager)
         #expect(service != nil)
     }
 
-    @Test("Detect elements from screenshot")
-    func detectElementsFromScreenshot() async throws {
+    @Test
+    func `Detect elements from screenshot`() async throws {
         let snapshotManager = MockSnapshotManager()
         let service = ElementDetectionService(snapshotManager: snapshotManager)
 
@@ -42,8 +42,8 @@ struct ElementDetectionServiceTests {
         }
     }
 
-    @Test("Window detection works for non-active apps")
-    func detectWindowsForNonActiveApp() async throws {
+    @Test
+    func `Window detection works for non-active apps`() {
         let snapshotManager = MockSnapshotManager()
         _ = ElementDetectionService(snapshotManager: snapshotManager)
 
@@ -61,8 +61,8 @@ struct ElementDetectionServiceTests {
         #expect(Bool(true)) // Placeholder for actual test implementation
     }
 
-    @Test("Map element types correctly")
-    func elementTypeMapping() async throws {
+    @Test
+    func `Map element types correctly`() {
         let snapshotManager = MockSnapshotManager()
         _ = ElementDetectionService(snapshotManager: snapshotManager)
 
@@ -87,8 +87,8 @@ struct ElementDetectionServiceTests {
         #expect(!roleMappings.isEmpty)
     }
 
-    @Test("Find element by ID")
-    func findElementById() async throws {
+    @Test
+    func `Find element by ID`() async throws {
         let snapshotManager = MockSnapshotManager()
 
         // Create mock detection result
@@ -149,8 +149,8 @@ struct ElementDetectionServiceTests {
         }
     }
 
-    @Test("DetectedElements functionality")
-    func detectedElementsOperations() async throws {
+    @Test
+    func `DetectedElements functionality`() {
         let button1 = DetectedElement(
             id: "btn-1",
             type: .button,
@@ -189,8 +189,8 @@ struct ElementDetectionServiceTests {
             disabledId: "btn-2")
     }
 
-    @Test("Actionable element detection")
-    func detectActionableElements() async throws {
+    @Test
+    func `Actionable element detection`() {
         // Create elements with various actionable states
         let elements = [
             DetectedElement(
@@ -242,8 +242,8 @@ struct ElementDetectionServiceTests {
         #expect(actionableElements.contains { $0.id == "actionable-2" })
     }
 
-    @Test("Keyboard shortcut extraction")
-    func extractKeyboardShortcuts() async throws {
+    @Test
+    func `Keyboard shortcut extraction`() {
         let elements = [
             DetectedElement(
                 id: "menu-1",

@@ -7,14 +7,13 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "MoveCommand Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct MoveCommandTests {
-    @Test("move --help lists options")
-    func moveHelp() async throws {
+    @Test
+    func `move --help lists options`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: ["--help"], context: context)
 
@@ -22,8 +21,8 @@ struct MoveCommandTests {
         #expect(self.output(from: result).contains("Move the mouse cursor"))
     }
 
-    @Test("Coordinate moves call automation service")
-    func coordinateMove() async throws {
+    @Test
+    func `Coordinate moves call automation service`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(
             arguments: ["100,200", "--duration", "750", "--steps", "10"],
@@ -39,8 +38,8 @@ struct MoveCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Move command requires a target")
-    func requiresTarget() async throws {
+    @Test
+    func `Move command requires a target`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: [], context: context)
 
@@ -49,8 +48,8 @@ struct MoveCommandTests {
         #expect(moveCalls.isEmpty)
     }
 
-    @Test("Move by element ID resolves using stored detection results")
-    func moveByElementId() async throws {
+    @Test
+    func `Move by element ID resolves using stored detection results`() async throws {
         let context = await self.makeContext()
         let element = DetectedElement(
             id: "B1",
@@ -79,8 +78,8 @@ struct MoveCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Move by query waits for element using automation service")
-    func moveByQuery() async throws {
+    @Test
+    func `Move by query waits for element using automation service`() async throws {
         let context = await self.makeContext { automation, snapshots in
             snapshots.mostRecentSnapshotId = "snapshot-query"
             let element = DetectedElement(
@@ -106,8 +105,8 @@ struct MoveCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("JSON output contains expected shape")
-    func jsonOutput() async throws {
+    @Test
+    func `JSON output contains expected shape`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: ["150,250", "--json"], context: context)
 
@@ -122,8 +121,8 @@ struct MoveCommandTests {
         #expect(payload.data.profile == "linear")
     }
 
-    @Test("Human profile toggles movement mode")
-    func humanProfileSelection() async throws {
+    @Test
+    func `Human profile toggles movement mode`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: ["100,200", "--profile", "human"], context: context)
 

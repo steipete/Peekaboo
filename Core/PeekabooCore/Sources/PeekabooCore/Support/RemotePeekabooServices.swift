@@ -308,9 +308,13 @@ public final class RemoteDockService: DockServiceProtocol {
         try await self.client.rightClickDockItem(appName: appName, menuItem: menuItem)
     }
 
-    public func hideDock() async throws { try await self.client.hideDock() }
+    public func hideDock() async throws {
+        try await self.client.hideDock()
+    }
 
-    public func showDock() async throws { try await self.client.showDock() }
+    public func showDock() async throws {
+        try await self.client.showDock()
+    }
 
     public func isDockAutoHidden() async -> Bool {
         await (try? self.client.isDockHidden()) ?? false

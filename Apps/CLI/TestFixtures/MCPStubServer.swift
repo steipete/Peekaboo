@@ -5,8 +5,14 @@ import Foundation
 struct JSONRPCMessage {
     let dictionary: [String: Any]
 
-    var method: String? { self.dictionary["method"] as? String }
-    var id: Any? { self.dictionary["id"] }
+    var method: String? {
+        self.dictionary["method"] as? String
+    }
+
+    var id: Any? {
+        self.dictionary["id"]
+    }
+
     var params: [String: Any]? {
         self.dictionary["params"] as? [String: Any]
     }

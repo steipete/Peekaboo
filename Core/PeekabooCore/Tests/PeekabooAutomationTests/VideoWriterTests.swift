@@ -3,14 +3,12 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 import Testing
-
 @testable import PeekabooCore
 
 @MainActor
-@Suite("Video writer + capture video output")
 struct VideoWriterTests {
-    @Test("scaledVideoSize caps longest edge and keeps aspect")
-    func scaledVideoSizeRespectsCap() {
+    @Test
+    func `scaledVideoSize caps longest edge and keeps aspect`() {
         let size = CGSize(width: 4000, height: 2000)
         let capped = WatchCaptureSession.scaledVideoSize(for: size, maxDimension: 1440)
         #expect(capped.width == 1440)
@@ -21,8 +19,8 @@ struct VideoWriterTests {
         #expect(unchanged.height == 2000)
     }
 
-    @Test("video sessions bound output size and preserve fps")
-    func videoSessionBuildsBoundedMP4() async throws {
+    @Test
+    func `video sessions bound output size and preserve fps`() async throws {
         let frameSize = CGSize(width: 4000, height: 2000)
         let frameSource = FakeFrameSource(frameCount: 5, size: frameSize)
         let outputDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -81,8 +79,8 @@ struct VideoWriterTests {
         #expect(result.videoOut?.hasSuffix("capture.mp4") == true)
     }
 
-    @Test("video timestamps follow asset timeline, not wall clock")
-    func videoTimestampsMatchVideoTimeline() async throws {
+    @Test
+    func `video timestamps follow asset timeline, not wall clock`() async throws {
         let timestamps = [0, 500, 1000, 1500]
         let frameSource = FakeFrameSource(
             frameCount: timestamps.count,
@@ -214,12 +212,25 @@ private struct NoOpScreenCaptureService: ScreenCaptureServiceProtocol {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
-    func hasScreenRecordingPermission() async -> Bool { true }
+    func hasScreenRecordingPermission() async -> Bool {
+        true
+    }
 }
 
 private struct NoOpScreenService: ScreenServiceProtocol {
-    func listScreens() -> [ScreenInfo] { [] }
-    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? { nil }
-    func screen(at index: Int) -> ScreenInfo? { nil }
-    var primaryScreen: ScreenInfo? { nil }
+    func listScreens() -> [ScreenInfo] {
+        []
+    }
+
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        nil
+    }
+
+    func screen(at index: Int) -> ScreenInfo? {
+        nil
+    }
+
+    var primaryScreen: ScreenInfo? {
+        nil
+    }
 }

@@ -4,10 +4,10 @@ import Tachikoma
 import Testing
 @testable import PeekabooAgentRuntime
 
-@Suite("Tool filtering", .serialized)
+@Suite(.serialized)
 struct ToolFilteringTests {
-    @Test("Config allow list narrows tools")
-    func configAllowList() throws {
+    @Test
+    func `Config allow list narrows tools`() throws {
         try withTempConfig(
             """
             {
@@ -25,8 +25,8 @@ struct ToolFilteringTests {
             }
     }
 
-    @Test("Env allow overrides config allow; deny accumulates")
-    func envOverridesConfig() throws {
+    @Test
+    func `Env allow overrides config allow; deny accumulates`() throws {
         try withTempConfig(
             """
             {
@@ -53,8 +53,8 @@ struct ToolFilteringTests {
             }
     }
 
-    @Test("Hyphenated names normalize to snake_case")
-    func normalizesNames() throws {
+    @Test
+    func `Hyphenated names normalize to snake_case`() throws {
         try withTempConfig(
             """
             {

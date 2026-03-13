@@ -19,7 +19,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     private let settings: PeekabooSettings
     private let updater: any UpdaterProviding
 
-    // Icon animation
+    /// Icon animation
     private let animationController = MenuBarAnimationController()
 
     init(

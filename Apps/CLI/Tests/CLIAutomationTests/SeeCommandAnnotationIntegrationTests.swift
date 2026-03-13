@@ -7,15 +7,14 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "SeeCommand Annotation Integration Tests",
     .serialized,
     .tags(.safe),
     .disabled("Requires local environment")
 )
 struct SeeCommandAnnotationIntegrationTests {
-    @Test("Annotation correctly places elements on Safari window")
+    @Test
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func safariAnnotationPlacement() async throws {
+    func `Annotation correctly places elements on Safari window`() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
@@ -35,9 +34,9 @@ struct SeeCommandAnnotationIntegrationTests {
         Self.cleanupScreenshots(path, annotatedPath)
     }
 
-    @Test("Elements detected from correct window, not overlay")
+    @Test
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func correctWindowDetection() async throws {
+    func `Elements detected from correct window, not overlay`() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
@@ -87,10 +86,10 @@ struct SeeCommandAnnotationIntegrationTests {
         )
     }
 
-    @Test("Window bounds affect element coordinate transformation")
+    @Test
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
     @MainActor
-    func windowBoundsTransformation() async throws {
+    func `Window bounds affect element coordinate transformation`() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }
@@ -123,8 +122,8 @@ struct SeeCommandAnnotationIntegrationTests {
         }
     }
 
-    @Test("Annotation handles multiple element types")
-    func multipleElementTypes() throws {
+    @Test
+    func `Annotation handles multiple element types`() {
         let elements = Self.makeSampleElements()
 
         #expect(elements.all.count == 4)
@@ -134,9 +133,9 @@ struct SeeCommandAnnotationIntegrationTests {
         #expect(elements.groups.first?.id.hasPrefix("G") == true)
     }
 
-    @Test("Annotation file size is reasonable")
+    @Test
     @available(*, message: "Run with RUN_LOCAL_TESTS=true")
-    func annotationFileSize() async throws {
+    func `Annotation file size is reasonable`() async throws {
         guard ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true" else {
             return
         }

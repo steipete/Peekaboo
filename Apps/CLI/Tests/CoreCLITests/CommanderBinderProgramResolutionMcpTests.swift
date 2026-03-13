@@ -2,11 +2,10 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Program Resolution (MCP + Window)")
 struct CommanderBinderMCPWindowTests {
-    @Test("Commander program resolves MCP serve options")
+    @Test
     @MainActor
-    func commanderResolvesMcpServe() throws {
+    func `Commander program resolves MCP serve options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -21,9 +20,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.options["port"] == ["9090"])
     }
 
-    @Test("Commander program resolves window close options")
+    @Test
     @MainActor
-    func commanderResolvesWindowClose() throws {
+    func `Commander program resolves window close options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -38,9 +37,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.options["windowTitle"] == ["Inbox"])
     }
 
-    @Test("Commander program resolves window move options")
+    @Test
     @MainActor
-    func commanderResolvesWindowMove() throws {
+    func `Commander program resolves window move options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -57,9 +56,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.options["y"] == ["240"])
     }
 
-    @Test("Commander program resolves window focus options")
+    @Test
     @MainActor
-    func commanderResolvesWindowFocus() throws {
+    func `Commander program resolves window focus options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -78,9 +77,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.flags.contains("bringToCurrentSpace"))
     }
 
-    @Test("Commander program resolves app launch options")
+    @Test
     @MainActor
-    func commanderResolvesAppLaunch() throws {
+    func `Commander program resolves app launch options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -97,9 +96,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.flags.contains("waitUntilReady"))
     }
 
-    @Test("Commander program resolves app quit options")
+    @Test
     @MainActor
-    func commanderResolvesAppQuit() throws {
+    func `Commander program resolves app quit options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -116,9 +115,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.flags.contains("force"))
     }
 
-    @Test("Commander program resolves menu click options")
+    @Test
     @MainActor
-    func commanderResolvesMenuClick() throws {
+    func `Commander program resolves menu click options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -135,9 +134,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(values.flags.contains("noAutoFocus"))
     }
 
-    @Test("Commander program resolves permissions default subcommand")
+    @Test
     @MainActor
-    func commanderResolvesPermissionsDefault() throws {
+    func `Commander program resolves permissions default subcommand`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -149,9 +148,9 @@ struct CommanderBinderMCPWindowTests {
         #expect(invocation.parsedValues.flags.contains("jsonOutput"))
     }
 
-    @Test("Commander program resolves tools command options")
+    @Test
     @MainActor
-    func commanderResolvesToolsCommand() throws {
+    func `Commander program resolves tools command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [

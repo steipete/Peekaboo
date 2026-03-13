@@ -7,10 +7,9 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("PeekabooMCPServer Tests")
 struct PeekabooMCPServerTests {
-    @Test("Server initialization creates server with correct capabilities")
-    func serverInitialization() async throws {
+    @Test
+    func `Server initialization creates server with correct capabilities`() async throws {
         _ = try await makeServer()
 
         // Server should be initialized but we can't directly access private properties
@@ -22,8 +21,8 @@ struct PeekabooMCPServerTests {
         // 2. Testing through the public API (serve method)
     }
 
-    @Test("Server registers all expected tools")
-    func toolRegistration() async throws {
+    @Test
+    func `Server registers all expected tools`() async throws {
         _ = try await makeServer()
 
         // We need to test that all tools are registered
@@ -33,8 +32,8 @@ struct PeekabooMCPServerTests {
         // This is a limitation of the current design
     }
 
-    @Test("Server handles ListTools request")
-    func listToolsHandler() async throws {
+    @Test
+    func `Server handles ListTools request`() async throws {
         // This test would require setting up a mock transport
         // and sending actual MCP protocol messages
 
@@ -47,8 +46,8 @@ struct PeekabooMCPServerTests {
         // 3. Verify the response contains all expected tools
     }
 
-    @Test("Server handles CallTool request for valid tool")
-    func callToolValidTool() async throws {
+    @Test
+    func `Server handles CallTool request for valid tool`() async throws {
         _ = try await makeServer()
 
         // Test would involve:
@@ -57,8 +56,8 @@ struct PeekabooMCPServerTests {
         // 3. Verifying successful response
     }
 
-    @Test("Server handles CallTool request for invalid tool")
-    func callToolInvalidTool() async throws {
+    @Test
+    func `Server handles CallTool request for invalid tool`() async throws {
         _ = try await makeServer()
 
         // Test would involve:
@@ -67,8 +66,8 @@ struct PeekabooMCPServerTests {
         // 3. Verifying error response with appropriate error code
     }
 
-    @Test("Server handles Initialize request")
-    func initializeHandler() async throws {
+    @Test
+    func `Server handles Initialize request`() async throws {
         _ = try await makeServer()
 
         // Test would verify:
@@ -77,8 +76,8 @@ struct PeekabooMCPServerTests {
         // 3. Server info contains correct name and version
     }
 
-    @Test("Server gracefully handles transport errors")
-    func transportErrorHandling() async throws {
+    @Test
+    func `Server gracefully handles transport errors`() async throws {
         _ = try await makeServer()
 
         // Test scenarios:
@@ -144,18 +143,18 @@ enum MockTransportError: Swift.Error {
 
 // MARK: - Integration Test Suite
 
-@Suite("MCP Server Integration Tests", .tags(.integration))
+@Suite(.tags(.integration))
 struct MCPServerIntegrationTests {
-    @Test("Server starts and stops cleanly on stdio transport")
-    func stdioTransportLifecycle() async throws {
+    @Test
+    func `Server starts and stops cleanly on stdio transport`() async throws {
         _ = try await makeServer()
 
         // We can't easily test stdio transport in unit tests
         // This would be better as an integration test with actual process spawning
     }
 
-    @Test("Server handles concurrent tool calls")
-    func concurrentToolCalls() async throws {
+    @Test
+    func `Server handles concurrent tool calls`() async throws {
         _ = try await makeServer()
 
         // Test would involve:
@@ -164,8 +163,8 @@ struct MCPServerIntegrationTests {
         // 3. Checking for race conditions or deadlocks
     }
 
-    @Test("Server maintains session state correctly")
-    func sessionState() async throws {
+    @Test
+    func `Server maintains session state correctly`() async throws {
         _ = try await makeServer()
 
         // Test scenarios:
@@ -177,17 +176,17 @@ struct MCPServerIntegrationTests {
 
 // MARK: - Performance Test Suite
 
-@Suite("MCP Server Performance Tests", .tags(.performance))
+@Suite(.tags(.performance))
 struct MCPServerPerformanceTests {
-    @Test("Tool listing performance")
-    func toolListingPerformance() async throws {
+    @Test
+    func `Tool listing performance`() async throws {
         _ = try await makeServer()
         // Measure time to list tools
         // Should complete in < 10ms
     }
 
-    @Test("Tool execution performance for simple tools")
-    func simpleToolPerformance() async throws {
+    @Test
+    func `Tool execution performance for simple tools`() async throws {
         _ = try await makeServer()
         // Test tools like "sleep" that have minimal overhead
         // Should complete in < 50ms including protocol overhead

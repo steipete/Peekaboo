@@ -5,12 +5,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ConfigurationManager environment helpers")
 struct ConfigurationManagerEnvironmentTests {
     private let manager = ConfigurationManager.shared
 
-    @Test("expandEnvironmentVariables uses process environment when ConfigReader unavailable")
-    func expandsEnvironmentVariables() {
+    @Test
+    func `expandEnvironmentVariables uses process environment when ConfigReader unavailable`() {
         let key = "PEEKABOO_ENV_TEST"
         setenv(key, "peekaboo-success", 1)
         defer { unsetenv(key) }
@@ -19,8 +18,8 @@ struct ConfigurationManagerEnvironmentTests {
         #expect(expanded == "peekaboo-success")
     }
 
-    @Test("getValue prefers environment before defaults")
-    func getValuePrefersEnvironment() {
+    @Test
+    func `getValue prefers environment before defaults`() {
         let key = "PEEKABOO_ENV_CHOICE"
         setenv(key, "env-choice", 1)
         defer { unsetenv(key) }

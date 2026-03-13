@@ -10,12 +10,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("TypedValue Tests")
 struct TypedValueTests {
     // MARK: - Basic Type Tests
 
-    @Test("Null value creation and accessors")
-    func testNullValue() {
+    @Test
+    func `Null value creation and accessors`() {
         let value = TypedValue.null
         #expect(value.isNull == true)
         #expect(value.valueType == .null)
@@ -27,8 +26,8 @@ struct TypedValueTests {
         #expect(value.objectValue == nil)
     }
 
-    @Test("Bool value creation and accessors")
-    func testBoolValue() {
+    @Test
+    func `Bool value creation and accessors`() {
         let value = TypedValue.bool(true)
         #expect(value.boolValue == true)
         #expect(value.valueType == .boolean)
@@ -37,8 +36,8 @@ struct TypedValueTests {
         #expect(value.stringValue == nil)
     }
 
-    @Test("Int value creation and accessors")
-    func testIntValue() {
+    @Test
+    func `Int value creation and accessors`() {
         let value = TypedValue.int(42)
         #expect(value.intValue == 42)
         #expect(value.doubleValue == 42.0)
@@ -47,8 +46,8 @@ struct TypedValueTests {
         #expect(value.stringValue == nil)
     }
 
-    @Test("Double value creation and accessors")
-    func testDoubleValue() {
+    @Test
+    func `Double value creation and accessors`() {
         let value = TypedValue.double(3.14)
         #expect(value.doubleValue == 3.14)
         #expect(value.valueType == .number)
@@ -57,8 +56,8 @@ struct TypedValueTests {
         #expect(value.stringValue == nil)
     }
 
-    @Test("String value creation and accessors")
-    func testStringValue() {
+    @Test
+    func `String value creation and accessors`() {
         let value = TypedValue.string("hello")
         #expect(value.stringValue == "hello")
         #expect(value.valueType == .string)
@@ -66,8 +65,8 @@ struct TypedValueTests {
         #expect(value.boolValue == nil)
     }
 
-    @Test("Array value creation and accessors")
-    func testArrayValue() {
+    @Test
+    func `Array value creation and accessors`() {
         let value = TypedValue.array([.int(1), .string("two"), .bool(true)])
         #expect(value.arrayValue?.count == 3)
         #expect(value.arrayValue?[0].intValue == 1)
@@ -76,8 +75,8 @@ struct TypedValueTests {
         #expect(value.valueType == .array)
     }
 
-    @Test("Object value creation and accessors")
-    func testObjectValue() {
+    @Test
+    func `Object value creation and accessors`() {
         let value = TypedValue.object([
             "name": .string("John"),
             "age": .int(30),
@@ -91,8 +90,8 @@ struct TypedValueTests {
 
     // MARK: - JSON Conversion Tests
 
-    @Test("Convert to JSON - primitive types")
-    func toJSONPrimitives() {
+    @Test
+    func `Convert to JSON - primitive types`() {
         #expect(TypedValue.null.toJSON() is NSNull)
         #expect(TypedValue.bool(true).toJSON() as? Bool == true)
         #expect(TypedValue.int(42).toJSON() as? Int == 42)
@@ -100,8 +99,8 @@ struct TypedValueTests {
         #expect(TypedValue.string("test").toJSON() as? String == "test")
     }
 
-    @Test("Convert to JSON - complex types")
-    func toJSONComplex() {
+    @Test
+    func `Convert to JSON - complex types`() {
         let arrayValue = TypedValue.array([.int(1), .string("two")])
         let jsonArray = arrayValue.toJSON() as? [Any]
         #expect(jsonArray?.count == 2)
@@ -113,8 +112,8 @@ struct TypedValueTests {
         #expect(jsonObject?["key"] as? String == "value")
     }
 
-    @Test("Create from JSON - primitive types")
-    func fromJSONPrimitives() throws {
+    @Test
+    func `Create from JSON - primitive types`() throws {
         let nullValue = try TypedValue.fromJSON(NSNull())
         #expect(nullValue.isNull == true)
 
@@ -131,8 +130,8 @@ struct TypedValueTests {
         #expect(stringValue.stringValue == "test")
     }
 
-    @Test("Create from JSON - complex types")
-    func fromJSONComplex() throws {
+    @Test
+    func `Create from JSON - complex types`() throws {
         let arrayJSON: [Any] = [1, "two", true]
         let arrayValue = try TypedValue.fromJSON(arrayJSON)
         #expect(arrayValue.arrayValue?.count == 3)
@@ -143,8 +142,8 @@ struct TypedValueTests {
         #expect(objectValue.objectValue?["age"]?.intValue == 30)
     }
 
-    @Test("Integer coercion from double")
-    func integerCoercion() throws {
+    @Test
+    func `Integer coercion from double`() throws {
         let wholeDouble = try TypedValue.fromJSON(42.0)
         #expect(wholeDouble.intValue == 42)
         #expect(wholeDouble.valueType == .integer)
@@ -157,8 +156,8 @@ struct TypedValueTests {
 
     // MARK: - Codable Tests
 
-    @Test("Encode and decode primitive types")
-    func codablePrimitives() throws {
+    @Test
+    func `Encode and decode primitive types`() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
 
@@ -177,8 +176,8 @@ struct TypedValueTests {
         }
     }
 
-    @Test("Encode and decode complex types")
-    func codableComplex() throws {
+    @Test
+    func `Encode and decode complex types`() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()
 
@@ -199,8 +198,8 @@ struct TypedValueTests {
 
     // MARK: - ExpressibleBy Tests
 
-    @Test("ExpressibleBy literal conformances")
-    func expressibleByLiterals() {
+    @Test
+    func `ExpressibleBy literal conformances`() {
         let nilValue: TypedValue = nil
         #expect(nilValue.isNull == true)
 
@@ -225,8 +224,8 @@ struct TypedValueTests {
 
     // MARK: - Convenience Methods Tests
 
-    @Test("Type matching")
-    func typeMatching() {
+    @Test
+    func `Type matching`() {
         #expect(TypedValue.bool(true).matches(Bool.self) == true)
         #expect(TypedValue.int(42).matches(Int.self) == true)
         #expect(TypedValue.double(3.14).matches(Double.self) == true)
@@ -237,8 +236,8 @@ struct TypedValueTests {
         #expect(TypedValue.int(42).matches(String.self) == false)
     }
 
-    @Test("Type casting")
-    func typeCasting() {
+    @Test
+    func `Type casting`() {
         #expect(TypedValue.bool(true).cast(to: Bool.self) == true)
         #expect(TypedValue.int(42).cast(to: Int.self) == 42)
         #expect(TypedValue.double(3.14).cast(to: Double.self) == 3.14)
@@ -248,8 +247,8 @@ struct TypedValueTests {
         #expect(TypedValue.int(42).cast(to: String.self) == nil)
     }
 
-    @Test("Dictionary conversion")
-    func dictionaryConversion() throws {
+    @Test
+    func `Dictionary conversion`() throws {
         let dict: [String: Any] = [
             "name": "John",
             "age": 30,
@@ -267,8 +266,8 @@ struct TypedValueTests {
 
     // MARK: - Edge Cases
 
-    @Test("Nested structures")
-    func nestedStructures() throws {
+    @Test
+    func `Nested structures`() throws {
         let nestedJSON: [String: Any] = [
             "user": [
                 "name": "John",
@@ -291,8 +290,8 @@ struct TypedValueTests {
         #expect(settingsValue?.objectValue?["notifications"]?.boolValue == true)
     }
 
-    @Test("Round-trip conversion maintains types")
-    func roundTripConversion() throws {
+    @Test
+    func `Round-trip conversion maintains types`() throws {
         let original: [String: Any] = [
             "int": 42,
             "double": 3.14,
@@ -317,8 +316,8 @@ struct TypedValueTests {
         #expect((converted?["object"] as? [String: Any])?["nested"] as? String == "value")
     }
 
-    @Test("Error handling for unsupported types")
-    func unsupportedTypes() throws {
+    @Test
+    func `Error handling for unsupported types`() throws {
         struct CustomType {}
         let custom = CustomType()
 
@@ -329,8 +328,8 @@ struct TypedValueTests {
 
     // MARK: - Hashable Tests
 
-    @Test("Hashable conformance")
-    func hashable() {
+    @Test
+    func `Hashable conformance`() {
         var set = Set<TypedValue>()
         set.insert(.null)
         set.insert(.bool(true))
@@ -349,8 +348,8 @@ struct TypedValueTests {
 
     // MARK: - Equatable Tests
 
-    @Test("Equality comparison")
-    func equality() {
+    @Test
+    func `Equality comparison`() {
         #expect(TypedValue.null == TypedValue.null)
         #expect(TypedValue.bool(true) == TypedValue.bool(true))
         #expect(TypedValue.bool(true) != TypedValue.bool(false))

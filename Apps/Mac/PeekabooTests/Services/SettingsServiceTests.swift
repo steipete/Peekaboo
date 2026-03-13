@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Peekaboo
 
-@Suite("PeekabooSettings Tests", .tags(.services, .unit))
+@Suite(.tags(.services, .unit))
 @MainActor
 final class PeekabooSettingsTests {
     var settings: PeekabooSettings!
@@ -14,8 +14,8 @@ final class PeekabooSettingsTests {
         }
     }
 
-    @Test("Default values are set correctly")
-    func defaultValues() {
+    @Test
+    func `Default values are set correctly`() {
         #expect(self.settings.openAIAPIKey.isEmpty)
         #expect(self.settings.selectedModel == "gpt-4o")
         #expect(self.settings.alwaysOnTop == false)
@@ -28,8 +28,8 @@ final class PeekabooSettingsTests {
         #expect(self.settings.temperature == 0.7)
     }
 
-    @Test("API key validation")
-    func aPIKeyValidation() {
+    @Test
+    func `API key validation`() {
         // Empty key should be invalid
         #expect(!self.settings.hasValidAPIKey)
 
@@ -42,8 +42,8 @@ final class PeekabooSettingsTests {
         #expect(!self.settings.hasValidAPIKey)
     }
 
-    @Test("Model selection updates correctly")
-    func modelSelection() {
+    @Test
+    func `Model selection updates correctly`() {
         let models = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"]
 
         for model in models {
@@ -52,7 +52,7 @@ final class PeekabooSettingsTests {
         }
     }
 
-    @Test("Temperature bounds are enforced", arguments: [
+    @Test(arguments: [
         (-1.0, 0.0), // Below minimum
         (0.0, 0.0), // Minimum
         (0.5, 0.5), // Valid middle
@@ -60,25 +60,25 @@ final class PeekabooSettingsTests {
         (2.0, 1.0), // Above maximum
         (2.5, 1.0) // Way above maximum
     ])
-    func temperatureBounds(input: Double, expected: Double) {
+    func `Temperature bounds are enforced`(input: Double, expected: Double) {
         self.settings.temperature = input
         #expect(self.settings.temperature == expected)
     }
 
-    @Test("Max tokens bounds are enforced", arguments: [
+    @Test(arguments: [
         (0, 1), // Below minimum
         (1, 1), // Minimum
         (8192, 8192), // Valid middle
         (128_000, 128_000), // Maximum
         (200_000, 128_000) // Above maximum
     ])
-    func maxTokensBounds(input: Int, expected: Int) {
+    func `Max tokens bounds are enforced`(input: Int, expected: Int) {
         self.settings.maxTokens = input
         #expect(self.settings.maxTokens == expected)
     }
 
-    @Test("Toggle settings work correctly")
-    func togglePeekabooSettings() {
+    @Test
+    func `Toggle settings work correctly`() throws {
         // Test all boolean settings
         let toggles: [(WritableKeyPath<PeekabooSettings, Bool>, String)] = [
             (\.alwaysOnTop, "alwaysOnTop"),
@@ -90,27 +90,27 @@ final class PeekabooSettingsTests {
         ]
 
         for (keyPath, _) in toggles {
-            let originalValue = self.settings![keyPath: keyPath]
+            let originalValue = try #require(self.settings?[keyPath: keyPath])
 
             // Toggle on
-            self.settings![keyPath: keyPath] = true
-            #expect(self.settings![keyPath: keyPath] == true)
+            self.settings?[keyPath: keyPath] = true
+            #expect(self.settings?[keyPath: keyPath] == true)
 
             // Toggle off
-            self.settings![keyPath: keyPath] = false
-            #expect(self.settings![keyPath: keyPath] == false)
+            self.settings?[keyPath: keyPath] = false
+            #expect(self.settings?[keyPath: keyPath] == false)
 
             // Restore original
-            self.settings![keyPath: keyPath] = originalValue
+            self.settings?[keyPath: keyPath] = originalValue
         }
     }
 }
 
-@Suite("PeekabooSettings Persistence Tests", .tags(.services, .integration))
+@Suite(.tags(.services, .integration))
 @MainActor
 struct PeekabooSettingsPersistenceTests {
-    @Test("PeekabooSettings persist across instances")
-    func settingsPersistence() async throws {
+    @Test
+    func `PeekabooSettings persist across instances`() async {
         let suiteName = UUID().uuidString
         let testAPIKey = "sk-test-persistence-key"
         let testModel = "o1-preview"

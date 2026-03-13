@@ -42,7 +42,7 @@ struct SessionDetailView: View {
     }
 }
 
-// Message row component (reused from MainWindow)
+/// Message row component (reused from MainWindow)
 private struct SessionMessageRow: View {
     let message: ConversationMessage
 
@@ -93,7 +93,7 @@ private struct SessionMessageRow: View {
     }
 }
 
-// Tool call view (reused from MainWindow)
+/// Tool call view (reused from MainWindow)
 @available(macOS 15.0, *)
 private struct SessionToolCallView: View {
     let toolCall: ConversationToolCall

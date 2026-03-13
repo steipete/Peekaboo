@@ -7,15 +7,15 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("PermissionsService Tests", .tags(.permissions, .unit))
+@Suite(.tags(.permissions, .unit))
 @MainActor
 struct PermissionsServiceTests {
     let permissionsService = PermissionsService()
 
     // MARK: - Screen Recording Permission Tests
 
-    @Test("Screen recording permission check returns boolean", .tags(.fast))
-    func checkScreenRecordingPermission() {
+    @Test(.tags(.fast))
+    func `Screen recording permission check returns boolean`() {
         // Test screen recording permission check
         let hasPermission = self.permissionsService.checkScreenRecordingPermission()
 
@@ -24,8 +24,8 @@ struct PermissionsServiceTests {
         _ = hasPermission
     }
 
-    @Test("Screen recording permission check is consistent", .tags(.fast))
-    func screenRecordingPermissionConsistency() {
+    @Test(.tags(.fast))
+    func `Screen recording permission check is consistent`() {
         // Test that multiple calls return consistent results
         let firstCheck = self.permissionsService.checkScreenRecordingPermission()
         let secondCheck = self.permissionsService.checkScreenRecordingPermission()
@@ -33,8 +33,8 @@ struct PermissionsServiceTests {
         #expect(firstCheck == secondCheck)
     }
 
-    @Test("Screen recording permission check performance", arguments: 1...5)
-    func screenRecordingPermissionPerformance(iteration: Int) {
+    @Test(arguments: 1...5)
+    func `Screen recording permission check performance`(iteration: Int) {
         // Permission checks should be fast
         _ = self.permissionsService.checkScreenRecordingPermission()
         // Performance is measured by the test framework's execution time
@@ -42,8 +42,8 @@ struct PermissionsServiceTests {
 
     // MARK: - Accessibility Permission Tests
 
-    @Test("Accessibility permission check returns boolean", .tags(.fast))
-    func checkAccessibilityPermission() {
+    @Test(.tags(.fast))
+    func `Accessibility permission check returns boolean`() {
         // Test accessibility permission check
         let hasPermission = self.permissionsService.checkAccessibilityPermission()
 
@@ -52,8 +52,8 @@ struct PermissionsServiceTests {
         _ = hasPermission
     }
 
-    @Test("Accessibility permission matches AXPermissionHelpers", .tags(.fast))
-    func accessibilityPermissionWithTrustedCheck() {
+    @Test(.tags(.fast))
+    func `Accessibility permission matches AXPermissionHelpers`() {
         // Compare our check with the AXorcist helper to ensure parity.
         let isTrusted = AXPermissionHelpers.hasAccessibilityPermissions()
         let hasPermission = self.permissionsService.checkAccessibilityPermission()
@@ -64,8 +64,8 @@ struct PermissionsServiceTests {
 
     // MARK: - Combined Permission Tests
 
-    @Test("Both permissions return valid results", .tags(.fast))
-    func bothPermissions() {
+    @Test(.tags(.fast))
+    func `Both permissions return valid results`() {
         // Test both permission checks
         let screenRecording = self.permissionsService.checkScreenRecordingPermission()
         let accessibility = self.permissionsService.checkAccessibilityPermission()
@@ -77,8 +77,8 @@ struct PermissionsServiceTests {
 
     // MARK: - Require Permission Tests
 
-    @Test("Require screen recording permission throws CaptureError when denied", .tags(.fast))
-    func requireScreenRecordingPermission() {
+    @Test(.tags(.fast))
+    func `Require screen recording permission throws CaptureError when denied`() {
         let hasPermission = self.permissionsService.checkScreenRecordingPermission()
 
         if hasPermission {
@@ -106,8 +106,8 @@ struct PermissionsServiceTests {
         }
     }
 
-    @Test("Require accessibility permission throws CaptureError when denied", .tags(.fast))
-    func requireAccessibilityPermission() {
+    @Test(.tags(.fast))
+    func `Require accessibility permission throws CaptureError when denied`() {
         let hasPermission = self.permissionsService.checkAccessibilityPermission()
 
         if hasPermission {
@@ -137,8 +137,8 @@ struct PermissionsServiceTests {
 
     // MARK: - All Permissions Check
 
-    @Test("Check all permissions returns status object", .tags(.fast))
-    func checkAllPermissionsReturnsStatus() {
+    @Test(.tags(.fast))
+    func `Check all permissions returns status object`() {
         let status = self.permissionsService.checkAllPermissions()
 
         // Verify the status object has the expected properties

@@ -5,10 +5,9 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Service Bridge Routing")
 @MainActor
 struct ServiceBridgeTests {
-    @Test func automationClickForwardsCalls() async throws {
+    @Test func `automation click forwards calls`() async throws {
         let automation = MockAutomationService()
         try await AutomationServiceBridge.click(
             automation: automation,
@@ -21,7 +20,7 @@ struct ServiceBridgeTests {
         #expect(automation.clickCalls.first?.snapshotId == "snapshot-123")
     }
 
-    @Test func automationWaitReturnsMockResult() async throws {
+    @Test func `automation wait returns mock result`() async throws {
         let element = DetectedElement(
             id: "B1",
             type: .button,
@@ -45,7 +44,7 @@ struct ServiceBridgeTests {
         #expect(mock.waitCalls.count == 1)
     }
 
-    @Test func windowBridgeReturnsStubbedWindows() async throws {
+    @Test func `window bridge returns stubbed windows`() async throws {
         let window = ServiceWindowInfo(
             windowID: 101,
             title: "Main",
@@ -58,7 +57,7 @@ struct ServiceBridgeTests {
         #expect(windows == [window])
     }
 
-    @Test func menuBridgeListsMenuBarItems() async throws {
+    @Test func `menu bridge lists menu bar items`() async throws {
         let menuItems = [MenuBarItemInfo(
             title: "Item",
             index: 0,
@@ -75,7 +74,7 @@ struct ServiceBridgeTests {
         #expect(items.first?.title == "Item")
     }
 
-    @Test func dockBridgeListsItems() async throws {
+    @Test func `dock bridge lists items`() async throws {
         let dockItems = [DockItem(
             index: 0,
             title: "Peekaboo",
@@ -132,7 +131,9 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
     }
 
-    func scroll(_ request: ScrollRequest) async throws { _ = request }
+    func scroll(_ request: ScrollRequest) async throws {
+        _ = request
+    }
 
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
 
@@ -144,7 +145,9 @@ final class MockAutomationService: UIAutomationServiceProtocol {
         profile _: MouseMovementProfile
     ) async throws {}
 
-    func hasAccessibilityPermission() async -> Bool { true }
+    func hasAccessibilityPermission() async -> Bool {
+        true
+    }
 
     func waitForElement(
         target: ClickTarget,
@@ -167,7 +170,9 @@ final class MockAutomationService: UIAutomationServiceProtocol {
 
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 
-    func getFocusedElement() -> UIFocusInfo? { nil }
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("not implemented")
@@ -189,8 +194,13 @@ final class MockWindowService: WindowManagementServiceProtocol {
     func resizeWindow(target _: WindowTarget, to _: CGSize) async throws {}
     func setWindowBounds(target _: WindowTarget, bounds _: CGRect) async throws {}
     func focusWindow(target _: WindowTarget) async throws {}
-    func listWindows(target _: WindowTarget) async throws -> [ServiceWindowInfo] { self.windowsResult }
-    func getFocusedWindow() async throws -> ServiceWindowInfo? { self.windowsResult.first }
+    func listWindows(target _: WindowTarget) async throws -> [ServiceWindowInfo] {
+        self.windowsResult
+    }
+
+    func getFocusedWindow() async throws -> ServiceWindowInfo? {
+        self.windowsResult.first
+    }
 }
 
 @MainActor
@@ -201,23 +211,46 @@ final class MockMenuService: MenuServiceProtocol {
         self.barItems = barItems
     }
 
-    func listMenus(for _: String) async throws -> MenuStructure { self.emptyStructure }
-    func listFrontmostMenus() async throws -> MenuStructure { self.emptyStructure }
+    func listMenus(for _: String) async throws -> MenuStructure {
+        self.emptyStructure
+    }
+
+    func listFrontmostMenus() async throws -> MenuStructure {
+        self.emptyStructure
+    }
+
     func clickMenuItem(app _: String, itemPath _: String) async throws {}
     func clickMenuItemByName(app _: String, itemName _: String) async throws {}
     func clickMenuExtra(title _: String) async throws {}
-    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool { false }
-    func menuExtraOpenMenuFrame(title _: String, ownerPID _: pid_t?) async throws -> CGRect? { nil }
-    func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
-    func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { self.barItems }
-    func clickMenuBarItem(named _: String) async throws -> PeekabooCore.ClickResult { .init(
-        elementDescription: "",
-        location: nil
-    ) }
-    func clickMenuBarItem(at _: Int) async throws -> PeekabooCore.ClickResult { .init(
-        elementDescription: "",
-        location: nil
-    ) }
+    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool {
+        false
+    }
+
+    func menuExtraOpenMenuFrame(title _: String, ownerPID _: pid_t?) async throws -> CGRect? {
+        nil
+    }
+
+    func listMenuExtras() async throws -> [MenuExtraInfo] {
+        []
+    }
+
+    func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] {
+        self.barItems
+    }
+
+    func clickMenuBarItem(named _: String) async throws -> PeekabooCore.ClickResult {
+        .init(
+            elementDescription: "",
+            location: nil
+        )
+    }
+
+    func clickMenuBarItem(at _: Int) async throws -> PeekabooCore.ClickResult {
+        .init(
+            elementDescription: "",
+            location: nil
+        )
+    }
 
     private var emptyStructure: MenuStructure {
         MenuStructure(
@@ -235,13 +268,21 @@ final class MockDockService: DockServiceProtocol {
         self.items = items
     }
 
-    func listDockItems(includeAll _: Bool) async throws -> [DockItem] { self.items }
+    func listDockItems(includeAll _: Bool) async throws -> [DockItem] {
+        self.items
+    }
+
     func launchFromDock(appName _: String) async throws {}
     func addToDock(path _: String, persistent _: Bool) async throws {}
     func removeFromDock(appName _: String) async throws {}
     func rightClickDockItem(appName _: String, menuItem _: String?) async throws {}
     func hideDock() async throws {}
     func showDock() async throws {}
-    func isDockAutoHidden() async -> Bool { false }
-    func findDockItem(name _: String) async throws -> DockItem { self.items.first! }
+    func isDockAutoHidden() async -> Bool {
+        false
+    }
+
+    func findDockItem(name _: String) async throws -> DockItem {
+        self.items.first!
+    }
 }

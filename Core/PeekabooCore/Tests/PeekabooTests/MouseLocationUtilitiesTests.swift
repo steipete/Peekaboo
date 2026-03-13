@@ -2,11 +2,10 @@ import AppKit
 import Testing
 @testable import PeekabooAutomationKit
 
-@Suite("MouseLocationUtilities Tests")
 @MainActor
 struct MouseLocationUtilitiesTests {
-    @Test("Falls back to frontmost app when locator is nil")
-    func fallbackToFrontmost() async throws {
+    @Test
+    func `Falls back to frontmost app when locator is nil`() {
         var frontmostCalls = 0
         MouseLocationUtilities.setAppProvidersForTesting(
             appProvider: { nil },

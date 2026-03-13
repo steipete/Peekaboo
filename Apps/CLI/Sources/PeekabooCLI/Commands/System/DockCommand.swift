@@ -62,10 +62,21 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -132,10 +143,21 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -194,10 +216,21 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -238,10 +271,21 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -284,10 +328,21 @@ extension DockCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {

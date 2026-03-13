@@ -7,25 +7,24 @@ import Testing
 @testable import PeekabooVisualizer
 
 @Suite(
-    "ScreenCaptureService Multi-Screen Tests - Current API",
     .tags(.ui, .requiresDisplay, .safe),
     .enabled(if: TestEnvironment.runScreenCaptureScenarios))
 @MainActor
 struct ScreenCaptureServiceMultiScreenTests {
-    // Helper to create service with mock logging
+    /// Helper to create service with mock logging
     private func createScreenCaptureService() -> ScreenCaptureService {
         let mockLoggingService = MockLoggingService()
         return ScreenCaptureService(loggingService: mockLoggingService)
     }
 
-    @Test("ScreenCaptureService initializes with logging service")
-    func serviceInitialization() async throws {
+    @Test
+    func `ScreenCaptureService initializes with logging service`() {
         let service: ScreenCaptureService? = self.createScreenCaptureService()
         #expect(service != nil)
     }
 
-    @Test("Screen capture service has screen recording permission check")
-    func screenRecordingPermissionCheck() async throws {
+    @Test
+    func `Screen capture service has screen recording permission check`() async {
         let service = self.createScreenCaptureService()
 
         // Test that the permission check method exists and returns a value
@@ -35,8 +34,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(hasPermission == true || hasPermission == false)
     }
 
-    @Test("Screen capture service validation")
-    func screenCaptureServiceValidation() async throws {
+    @Test
+    func `Screen capture service validation`() async {
         let service = self.createScreenCaptureService()
 
         // Test that service can check permissions without crashing
@@ -44,8 +43,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(hasPermission == true || hasPermission == false)
     }
 
-    @Test("Multiple screen enumeration")
-    func multipleScreenEnumeration() async throws {
+    @Test
+    func `Multiple screen enumeration`() {
         // Test that we can check for multiple screens without crashing
         // Note: Actual screen enumeration would require screen recording permission
         // Test screen index validation concepts
@@ -57,8 +56,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         }
     }
 
-    @Test("Screen capture format concepts")
-    func screenCaptureFormatConcepts() async throws {
+    @Test
+    func `Screen capture format concepts`() {
         // Test format concepts (PNG, JPEG exist as strings)
         let formatNames = ["png", "jpg", "jpeg"]
         for formatName in formatNames {
@@ -67,8 +66,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         }
     }
 
-    @Test("Screen capture bounds calculation")
-    func screenCaptureBoundsCalculation() async throws {
+    @Test
+    func `Screen capture bounds calculation`() {
         // Test coordinate system and bounds calculations
         let testBounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
 
@@ -83,8 +82,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(invalidBounds.height == 0)
     }
 
-    @Test("Screen capture error handling concepts")
-    func screenCaptureErrorHandlingConcepts() async throws {
+    @Test
+    func `Screen capture error handling concepts`() async {
         let service = self.createScreenCaptureService()
 
         // Test basic error handling concepts
@@ -99,8 +98,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         // and would test specific error conditions
     }
 
-    @Test("Screen capture metadata concepts")
-    func screenCaptureMetadataConcepts() async throws {
+    @Test
+    func `Screen capture metadata concepts`() {
         let captureTime = Date()
 
         // Test basic metadata concepts
@@ -116,8 +115,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(windowTitle == nil)
     }
 
-    @Test("Window capture on different screens")
-    func windowCaptureOnDifferentScreens() async throws {
+    @Test
+    func `Window capture on different screens`() {
         // Test that service can be configured to capture windows on all screens
         // This test validates the fix for capturing windows on non-primary screens
 
@@ -146,8 +145,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(correctWindowBounds.height > 100) // Full window, not just menu bar
     }
 
-    @Test("Legacy API window enumeration includes all screens")
-    func legacyAPIWindowEnumeration() async throws {
+    @Test
+    func `Legacy API window enumeration includes all screens`() {
         // Test that validates the legacy API fix
         // Changed from [.optionOnScreenOnly] to [.optionAll]
 
@@ -174,8 +173,8 @@ struct ScreenCaptureServiceMultiScreenTests {
         #expect(testWindows.count == 3)
     }
 
-    @Test("Modern API window capture includes off-screen windows")
-    func modernAPIWindowCapture() async throws {
+    @Test
+    func `Modern API window capture includes off-screen windows`() {
         // Test that validates the modern API fix
         // Changed onScreenWindowsOnly from true to false
 

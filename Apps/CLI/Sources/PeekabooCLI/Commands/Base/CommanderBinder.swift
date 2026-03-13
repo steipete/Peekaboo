@@ -27,10 +27,10 @@ enum CommanderCLIBinder {
         return command
     }
 
-    static func instantiateCommand<T>(
+    static func instantiateCommand<T: ParsableCommand>(
         ofType type: T.Type,
         parsedValues: ParsedValues
-    ) throws -> T where T: ParsableCommand {
+    ) throws -> T {
         guard let command = try instantiateCommand(type: type, parsedValues: parsedValues) as? T else {
             preconditionFailure("Commander instantiation failed to produce expected type \(T.self)")
         }
@@ -226,7 +226,7 @@ protocol CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws
 }
 
-enum CommanderBindingError: LocalizedError, Sendable, Equatable {
+enum CommanderBindingError: LocalizedError, Equatable {
     case missingArgument(label: String)
     case invalidArgument(label: String, value: String, reason: String)
 

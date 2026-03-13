@@ -11,14 +11,13 @@ private enum SeeCommandPlaygroundTestConfig {
 }
 
 @Suite(
-    "SeeCommand Playground Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: SeeCommandPlaygroundTestConfig.enabled())
 )
 struct SeeCommandPlaygroundTests {
-    @Test("Hidden web-style fields are detected in Playground")
-    func hiddenFieldsAreDetected() async throws {
+    @Test
+    func `Hidden web-style fields are detected in Playground`() async throws {
         guard SeeCommandPlaygroundTestConfig.enabled() else { return }
 
         _ = try? await self.runPeekabooCommand([

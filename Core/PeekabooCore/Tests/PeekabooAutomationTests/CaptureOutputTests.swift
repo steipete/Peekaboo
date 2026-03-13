@@ -2,11 +2,10 @@ import CoreImage
 import Testing
 @testable import PeekabooAutomationKit
 
-@Suite("CaptureOutput finish semantics")
 struct CaptureOutputTests {
-    @Test("finish resumes continuation with success")
+    @Test
     @MainActor
-    func finishSuccess() async throws {
+    func `finish resumes continuation with success`() async throws {
         let output = makeOutput()
         let dummyImage = CGImage(
             width: 1,
@@ -30,9 +29,9 @@ struct CaptureOutputTests {
         #expect(result.width == 1)
     }
 
-    @Test("finish resumes continuation with failure")
+    @Test
     @MainActor
-    func finishFailure() async {
+    func `finish resumes continuation with failure`() async {
         let output = makeOutput()
         struct DummyError: Error {}
 
@@ -49,9 +48,9 @@ struct CaptureOutputTests {
         }
     }
 
-    @Test("waitForImage cancels without leaking continuation")
+    @Test
     @MainActor
-    func waitForImageCancellation() async throws {
+    func `waitForImage cancels without leaking continuation`() async throws {
         let output = makeOutput()
         let task = Task {
             try await output.waitForImage()
@@ -67,9 +66,9 @@ struct CaptureOutputTests {
         }
     }
 
-    @Test("waitForImage times out and resumes exactly once")
+    @Test
     @MainActor
-    func waitForImageTimeout() async throws {
+    func `waitForImage times out and resumes exactly once`() async throws {
         let output = makeOutput()
         do {
             _ = try await output.waitForImage()

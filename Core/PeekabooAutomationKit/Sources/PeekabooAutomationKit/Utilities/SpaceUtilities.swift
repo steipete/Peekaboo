@@ -1,54 +1,54 @@
-/// Space (Virtual Desktop) Management Utilities
-///
-/// This file provides utilities for managing macOS Spaces (virtual desktops) using
-/// private CoreGraphics APIs. These APIs enable advanced window management features
-/// that are not available through public frameworks.
-///
-/// ## \(AgentDisplayTokens.Status.warning) Important Warning
-///
-/// This implementation relies on private CGS (CoreGraphics Services) APIs that:
-/// - Are undocumented and unsupported by Apple
-/// - May change or break between macOS versions
-/// - Could cause crashes if used incorrectly
-/// - May require special entitlements in the future
-///
-/// ## Key Features
-///
-/// 1. **Space Information**: List all Spaces and their properties
-/// 2. **Space Navigation**: Switch between Spaces programmatically
-/// 3. **Window Movement**: Move windows between Spaces
-/// 4. **Space Detection**: Find which Space contains a window
-///
-/// ## Requirements (macOS 15 Sequoia+)
-///
-/// - Screen Recording permission (for CGSCopySpacesForWindows)
-/// - Accessibility permission (for window manipulation)
-/// - Must be called from main thread
-/// - NSApplication must be initialized
-///
-/// ## Usage Examples
-///
-/// ```swift
-/// let service = SpaceManagementService()
-///
-/// // List all Spaces
-/// let spaces = service.getAllSpaces()
-/// for space in spaces {
-///     print("Space \(space.id): \(space.type) - Active: \(space.isActive)")
-/// }
-///
-/// // Switch to a Space
-/// try await service.switchToSpace(spaceNumber: 2)
-///
-/// // Move window to current Space
-/// try service.moveWindowToCurrentSpace(windowID: 1234)
-/// ```
-///
-/// ## References
-///
-/// - Based on reverse-engineered CGS APIs
-/// - Similar implementations: yabai, Amethyst, Rectangle
-/// - No official documentation available
+// Space (Virtual Desktop) Management Utilities
+//
+// This file provides utilities for managing macOS Spaces (virtual desktops) using
+// private CoreGraphics APIs. These APIs enable advanced window management features
+// that are not available through public frameworks.
+//
+// ## \(AgentDisplayTokens.Status.warning) Important Warning
+//
+// This implementation relies on private CGS (CoreGraphics Services) APIs that:
+// - Are undocumented and unsupported by Apple
+// - May change or break between macOS versions
+// - Could cause crashes if used incorrectly
+// - May require special entitlements in the future
+//
+// ## Key Features
+//
+// 1. **Space Information**: List all Spaces and their properties
+// 2. **Space Navigation**: Switch between Spaces programmatically
+// 3. **Window Movement**: Move windows between Spaces
+// 4. **Space Detection**: Find which Space contains a window
+//
+// ## Requirements (macOS 15 Sequoia+)
+//
+// - Screen Recording permission (for CGSCopySpacesForWindows)
+// - Accessibility permission (for window manipulation)
+// - Must be called from main thread
+// - NSApplication must be initialized
+//
+// ## Usage Examples
+//
+// ```swift
+// let service = SpaceManagementService()
+//
+// // List all Spaces
+// let spaces = service.getAllSpaces()
+// for space in spaces {
+//     print("Space \(space.id): \(space.type) - Active: \(space.isActive)")
+// }
+//
+// // Switch to a Space
+// try await service.switchToSpace(spaceNumber: 2)
+//
+// // Move window to current Space
+// try service.moveWindowToCurrentSpace(windowID: 1234)
+// ```
+//
+// ## References
+//
+// - Based on reverse-engineered CGS APIs
+// - Similar implementations: yabai, Amethyst, Rectangle
+// - No official documentation available
 
 import AppKit
 @preconcurrency import CoreFoundation

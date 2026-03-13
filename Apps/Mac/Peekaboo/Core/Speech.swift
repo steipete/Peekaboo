@@ -80,7 +80,7 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
     var isAvailable = false
     var error: Error?
 
-    // Recognition mode
+    /// Recognition mode
     var recognitionMode: RecognitionMode = .native
 
     // Native speech recognition

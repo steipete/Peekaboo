@@ -6,15 +6,13 @@
 //
 
 import Testing
-
 @testable import PeekabooAgentRuntime
 
-@Suite("Agent Enhancement Options")
 struct AgentEnhancementOptionsTests {
     // MARK: - Default Preset Tests
 
-    @Test("Default preset enables context awareness only")
-    func defaultPresetConfiguration() {
+    @Test
+    func `Default preset enables context awareness only`() {
         let options = AgentEnhancementOptions.default
 
         #expect(options.contextAware == true)
@@ -23,8 +21,8 @@ struct AgentEnhancementOptionsTests {
         #expect(options.regionFocusAfterAction == false)
     }
 
-    @Test("Default preset has sensible threshold values")
-    func defaultPresetThresholds() {
+    @Test
+    func `Default preset has sensible threshold values`() {
         let options = AgentEnhancementOptions.default
 
         #expect(options.changeThreshold == 0.05)
@@ -34,8 +32,8 @@ struct AgentEnhancementOptionsTests {
 
     // MARK: - Minimal Preset Tests
 
-    @Test("Minimal preset disables all enhancements")
-    func minimalPresetConfiguration() {
+    @Test
+    func `Minimal preset disables all enhancements`() {
         let options = AgentEnhancementOptions.minimal
 
         #expect(options.contextAware == false)
@@ -46,8 +44,8 @@ struct AgentEnhancementOptionsTests {
 
     // MARK: - Full Preset Tests
 
-    @Test("Full preset enables all enhancements")
-    func fullPresetConfiguration() {
+    @Test
+    func `Full preset enables all enhancements`() {
         let options = AgentEnhancementOptions.full
 
         #expect(options.contextAware == true)
@@ -56,8 +54,8 @@ struct AgentEnhancementOptionsTests {
         #expect(options.regionFocusAfterAction == true)
     }
 
-    @Test("Full preset has increased retry count")
-    func fullPresetRetryCount() {
+    @Test
+    func `Full preset has increased retry count`() {
         let options = AgentEnhancementOptions.full
 
         #expect(options.maxVerificationRetries == 2)
@@ -65,8 +63,8 @@ struct AgentEnhancementOptionsTests {
 
     // MARK: - Verified Preset Tests
 
-    @Test("Verified preset enables context and verification only")
-    func verifiedPresetConfiguration() {
+    @Test
+    func `Verified preset enables context and verification only`() {
         let options = AgentEnhancementOptions.verified
 
         #expect(options.contextAware == true)
@@ -77,8 +75,8 @@ struct AgentEnhancementOptionsTests {
 
     // MARK: - Custom Configuration Tests
 
-    @Test("Custom configuration preserves all values")
-    func customConfiguration() {
+    @Test
+    func `Custom configuration preserves all values`() {
         let options = AgentEnhancementOptions(
             contextAware: true,
             verifyActions: true,
@@ -103,17 +101,16 @@ struct AgentEnhancementOptionsTests {
 
 // MARK: - VerifiableActionType Tests
 
-@Suite("Verifiable Action Types")
 struct VerifiableActionTypeTests {
-    @Test("All action types are mutating")
-    func allActionTypesAreMutating() {
+    @Test
+    func `All action types are mutating`() {
         for actionType in VerifiableActionType.allCases {
             #expect(actionType.isMutating == true, "Expected \(actionType.rawValue) to be mutating")
         }
     }
 
-    @Test("Action types have correct raw values")
-    func actionTypeRawValues() {
+    @Test
+    func `Action types have correct raw values`() {
         #expect(VerifiableActionType.click.rawValue == "click")
         #expect(VerifiableActionType.type.rawValue == "type")
         #expect(VerifiableActionType.scroll.rawValue == "scroll")
@@ -124,8 +121,8 @@ struct VerifiableActionTypeTests {
         #expect(VerifiableActionType.dialog.rawValue == "dialog")
     }
 
-    @Test("Action types can be initialized from raw values")
-    func actionTypeFromRawValue() {
+    @Test
+    func `Action types can be initialized from raw values`() {
         #expect(VerifiableActionType(rawValue: "click") == .click)
         #expect(VerifiableActionType(rawValue: "launch_app") == .launchApp)
         #expect(VerifiableActionType(rawValue: "invalid") == nil)

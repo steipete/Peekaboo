@@ -15,17 +15,15 @@ private func runCommand(
 }
 
 @Suite(
-    "Agent Menu Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct AgentMenuTests {
     @Test(
-        "Agent can discover menus using list subcommand",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentMenuDiscovery() async throws {
+    func `Agent can discover menus using list subcommand`() async throws {
         #if !os(Linux)
         let environment = ProcessInfo.processInfo.environment
         guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
@@ -61,10 +59,9 @@ struct AgentMenuTests {
     }
 
     @Test(
-        "Agent can navigate menus to perform actions",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentMenuNavigation() async throws {
+    func `Agent can navigate menus to perform actions`() async throws {
         #if !os(Linux)
         let environment = ProcessInfo.processInfo.environment
         guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
@@ -98,10 +95,9 @@ struct AgentMenuTests {
     }
 
     @Test(
-        "Agent uses menu discovery before clicking",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentMenuDiscoveryBeforeAction() async throws {
+    func `Agent uses menu discovery before clicking`() async throws {
         #if !os(Linux)
         let environment = ProcessInfo.processInfo.environment
         guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }
@@ -140,10 +136,9 @@ struct AgentMenuTests {
     }
 
     @Test(
-        "Agent handles menu errors gracefully",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentMenuErrorHandling() async throws {
+    func `Agent handles menu errors gracefully`() async throws {
         #if !os(Linux)
         let environment = ProcessInfo.processInfo.environment
         guard environment["OPENAI_API_KEY"] != nil || environment["ANTHROPIC_API_KEY"] != nil else { return }

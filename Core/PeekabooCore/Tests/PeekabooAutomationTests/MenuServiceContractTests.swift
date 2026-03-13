@@ -2,11 +2,10 @@ import PeekabooAutomation
 import PeekabooFoundation
 import Testing
 
-@Suite("MenuService contract")
 @MainActor
 struct MenuServiceContractTests {
-    @Test("listMenus throws appNotFound for missing app")
-    func listMenusMissingApp() async throws {
+    @Test
+    func `listMenus throws appNotFound for missing app`() async throws {
         let service = MenuService()
 
         do {

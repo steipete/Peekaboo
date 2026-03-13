@@ -12,10 +12,10 @@ private enum WindowCommandLocalIntegrationTestConfig {
     }
 }
 
-@Suite("WindowCommand Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct WindowCommandTests {
     @Test
-    func windowCommandHelp() async throws {
+    func `window command help`() async throws {
         let output = try await runPeekabooCommand(["window", "--help"])
 
         #expect(output.contains("Manipulate application windows"))
@@ -29,8 +29,8 @@ struct WindowCommandTests {
         #expect(output.contains("list"))
     }
 
-    @Test("window list hides non-shareable overlays")
-    func windowListSkipsHiddenWindows() async throws {
+    @Test
+    func `window list hides non-shareable overlays`() async throws {
         let appName = "OverlayApp"
         let appInfo = ServiceApplicationInfo(
             processIdentifier: 5555,
@@ -80,7 +80,7 @@ struct WindowCommandTests {
     }
 
     @Test
-    func windowCloseHelp() async throws {
+    func `window close help`() async throws {
         let output = try await runPeekabooCommand(["window", "close", "--help"])
 
         #expect(output.contains("Close a window"))
@@ -90,7 +90,7 @@ struct WindowCommandTests {
     }
 
     @Test
-    func windowListCommand() async throws {
+    func `window list command`() async throws {
         // Test that window list delegates to list windows command (via stubbed services)
         let appName = "Finder"
         let context = await MainActor.run {
@@ -131,7 +131,7 @@ struct WindowCommandTests {
     }
 
     @Test
-    func windowCommandWithoutApp() async throws {
+    func `window command without app`() async throws {
         // Test that window commands require --app
         let commands = ["close", "minimize", "maximize", "focus"]
 
@@ -143,21 +143,21 @@ struct WindowCommandTests {
     }
 
     @Test
-    func windowMoveRequiresCoordinates() async throws {
+    func `window move requires coordinates`() async throws {
         await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand(["window", "move", "--app", "Finder"])
         }
     }
 
     @Test
-    func windowResizeRequiresDimensions() async throws {
+    func `window resize requires dimensions`() async throws {
         await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand(["window", "resize", "--app", "Finder"])
         }
     }
 
     @Test
-    func windowSetBoundsRequiresAllParameters() async throws {
+    func `window set bounds requires all parameters`() async throws {
         await #expect(throws: (any Error).self) {
             _ = try await self.runPeekabooCommand([
                 "window",
@@ -172,8 +172,8 @@ struct WindowCommandTests {
         }
     }
 
-    @Test("set-bounds reports refreshed bounds")
-    func windowSetBoundsReportsFreshBounds() async throws {
+    @Test
+    func `set-bounds reports refreshed bounds`() async throws {
         let appName = "TextEdit"
         let bundleID = "com.apple.TextEdit"
         let initialBounds = CGRect(x: 10, y: 20, width: 320, height: 240)
@@ -238,8 +238,8 @@ struct WindowCommandTests {
         #expect(Int(refreshed.size.height) == Int(updatedBounds.size.height))
     }
 
-    @Test("resize reports refreshed bounds")
-    func windowResizeReportsFreshBounds() async throws {
+    @Test
+    func `resize reports refreshed bounds`() async throws {
         let appName = "TextEdit"
         let bundleID = "com.apple.TextEdit"
         let initialBounds = CGRect(x: 50, y: 60, width: 200, height: 150)
@@ -293,7 +293,7 @@ struct WindowCommandTests {
         #expect(bounds.height == Int(updatedSize.height))
     }
 
-    // Helper function to run peekaboo commands
+    /// Helper function to run peekaboo commands
     private func runPeekabooCommand(
         _ arguments: [String],
         allowedExitStatuses: Set<Int32> = [0, 64]
@@ -362,14 +362,13 @@ struct WindowCommandTests {
 // MARK: - Local Integration Tests
 
 @Suite(
-    "Window Command Local Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions && WindowCommandLocalIntegrationTestConfig.enabled())
 )
 struct WindowCommandLocalIntegrationTests {
     @Test
-    func windowMinimizeTextEdit() async throws {
+    func `window minimize text edit`() async throws {
         // This test requires TextEdit to be running and local permissions
 
         // First, ensure TextEdit is running and has a window
@@ -399,7 +398,7 @@ struct WindowCommandLocalIntegrationTests {
     }
 
     @Test
-    func windowMoveTextEdit() async throws {
+    func `window move text edit`() async throws {
         // This test requires TextEdit to be running and local permissions
 
         // Try to move TextEdit window
@@ -432,7 +431,7 @@ struct WindowCommandLocalIntegrationTests {
     }
 
     @Test
-    func windowFocusTextEdit() async throws {
+    func `window focus text edit`() async throws {
         // This test requires TextEdit to be running
 
         // Try to focus TextEdit window
@@ -454,7 +453,7 @@ struct WindowCommandLocalIntegrationTests {
         #expect(data.success == true)
     }
 
-    // Helper function for local tests
+    /// Helper function for local tests
     private func runPeekabooCommand(
         _ arguments: [String],
         allowedExitStatuses: Set<Int32> = [0, 1, 64]

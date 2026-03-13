@@ -8,8 +8,10 @@ public final class PeekabooAIService {
     private let resolvedModels: [LanguageModel]
     private let defaultModel: LanguageModel
 
-    // Exposed for tests (internal)
-    var resolvedDefaultModel: LanguageModel { self.defaultModel }
+    /// Exposed for tests (internal)
+    var resolvedDefaultModel: LanguageModel {
+        self.defaultModel
+    }
 
     public init(configuration: ConfigurationManager = .shared) {
         self.configuration = configuration

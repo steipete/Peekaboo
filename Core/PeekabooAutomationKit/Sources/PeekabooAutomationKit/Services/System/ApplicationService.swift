@@ -48,8 +48,8 @@ public final class ApplicationService: ApplicationServiceProtocol {
     private let permissions: PermissionsService
     private let feedbackClient: any AutomationFeedbackClient
 
-    // Timeout for accessibility API calls to prevent hangs
-    // AX can be sluggish on some apps (e.g., Arc); allow more headroom.
+    /// Timeout for accessibility API calls to prevent hangs
+    /// AX can be sluggish on some apps (e.g., Arc); allow more headroom.
     private static let axTimeout: Float = 10.0
 
     public init(

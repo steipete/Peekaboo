@@ -7,14 +7,13 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "ScrollCommand Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct ScrollCommandTests {
-    @Test("scroll --help surfaces command documentation")
-    func scrollHelp() async throws {
+    @Test
+    func `scroll --help surfaces command documentation`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(arguments: ["--help"], context: context)
 
@@ -23,8 +22,8 @@ struct ScrollCommandTests {
         #expect(output.contains("Scroll the mouse wheel in any direction"))
     }
 
-    @Test("Scroll command requires a direction")
-    func requiresDirection() async throws {
+    @Test
+    func `Scroll command requires a direction`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(arguments: [], context: context)
 
@@ -35,8 +34,8 @@ struct ScrollCommandTests {
         #expect(scrollCalls.isEmpty)
     }
 
-    @Test("Scroll forwards parameters to automation service")
-    func forwardsParameters() async throws {
+    @Test
+    func `Scroll forwards parameters to automation service`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
             arguments: [
@@ -70,8 +69,8 @@ struct ScrollCommandTests {
         #expect(payload.data.amount == 5)
     }
 
-    @Test("Scroll without snapshot still executes")
-    func executesWithoutSnapshot() async throws {
+    @Test
+    func `Scroll without snapshot still executes`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
             arguments: ["--direction", "up", "--amount", "2"],
@@ -86,8 +85,8 @@ struct ScrollCommandTests {
         #expect(call.request.amount == 2)
     }
 
-    @Test("Smooth scrolling adjusts total ticks in JSON output")
-    func smoothScrollingIncreasesTicks() async throws {
+    @Test
+    func `Smooth scrolling adjusts total ticks in JSON output`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
             arguments: ["--direction", "down", "--amount", "4", "--smooth", "--json"],
@@ -100,10 +99,10 @@ struct ScrollCommandTests {
         #expect(payload.data.totalTicks == 12) // 4 * 3 when smooth
     }
 
-    @Test("Direction validation accepts common values", arguments: [
+    @Test(arguments: [
         "up", "down", "left", "right",
     ])
-    func directionValidation(value: String) async throws {
+    func `Direction validation accepts common values`(value: String) async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(arguments: ["--direction", value], context: context)
         #expect(result.exitStatus == 0)
@@ -143,10 +142,10 @@ struct ScrollCommandTests {
 }
 #endif
 
-@Suite("ScrollCommand Result Structures", .tags(.safe))
+@Suite(.tags(.safe))
 struct ScrollCommandResultStructTests {
-    @Test("Scroll result structure maintains fields")
-    func scrollResultStructure() {
+    @Test
+    func `Scroll result structure maintains fields`() {
         let result = ScrollResult(
             success: true,
             direction: "down",

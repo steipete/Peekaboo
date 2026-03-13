@@ -408,13 +408,13 @@ enum AutomationServiceBridge {
     }
 }
 
-struct TypeActionsRequest: Sendable {
+struct TypeActionsRequest {
     let actions: [TypeAction]
     let cadence: TypingCadence
     let snapshotId: String?
 }
 
-struct DragRequest: Sendable {
+struct DragRequest {
     let from: CGPoint
     let to: CGPoint
     let duration: Int

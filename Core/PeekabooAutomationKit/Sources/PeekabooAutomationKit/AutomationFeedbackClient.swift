@@ -48,20 +48,41 @@ public protocol AutomationFeedbackClient: Sendable {
 extension AutomationFeedbackClient {
     public func connect() {}
 
-    public func showClickFeedback(at _: CGPoint, type _: ClickType) async -> Bool { false }
+    public func showClickFeedback(at _: CGPoint, type _: ClickType) async -> Bool {
+        false
+    }
+
     public func showTypingFeedback(
         keys _: [String],
         duration _: TimeInterval,
-        cadence _: TypingCadence) async -> Bool { false }
-    public func showScrollFeedback(at _: CGPoint, direction _: ScrollDirection, amount _: Int) async -> Bool { false }
-    public func showHotkeyDisplay(keys _: [String], duration _: TimeInterval) async -> Bool { false }
-    public func showSwipeGesture(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool { false }
-    public func showMouseMovement(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool { false }
+        cadence _: TypingCadence) async -> Bool
+    {
+        false
+    }
+
+    public func showScrollFeedback(at _: CGPoint, direction _: ScrollDirection, amount _: Int) async -> Bool {
+        false
+    }
+
+    public func showHotkeyDisplay(keys _: [String], duration _: TimeInterval) async -> Bool {
+        false
+    }
+
+    public func showSwipeGesture(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool {
+        false
+    }
+
+    public func showMouseMovement(from _: CGPoint, to _: CGPoint, duration _: TimeInterval) async -> Bool {
+        false
+    }
 
     public func showWindowOperation(
         _: WindowOperationKind,
         windowRect _: CGRect,
-        duration _: TimeInterval) async -> Bool { false }
+        duration _: TimeInterval) async -> Bool
+    {
+        false
+    }
 
     public func showDialogInteraction(
         element _: DialogElementType,
@@ -71,14 +92,29 @@ extension AutomationFeedbackClient {
         false
     }
 
-    public func showMenuNavigation(menuPath _: [String]) async -> Bool { false }
-    public func showSpaceSwitch(from _: Int, to _: Int, direction _: SpaceSwitchDirection) async -> Bool { false }
+    public func showMenuNavigation(menuPath _: [String]) async -> Bool {
+        false
+    }
 
-    public func showAppLaunch(appName _: String, iconPath _: String?) async -> Bool { false }
-    public func showAppQuit(appName _: String, iconPath _: String?) async -> Bool { false }
+    public func showSpaceSwitch(from _: Int, to _: Int, direction _: SpaceSwitchDirection) async -> Bool {
+        false
+    }
 
-    public func showScreenshotFlash(in _: CGRect) async -> Bool { false }
-    public func showWatchCapture(in _: CGRect) async -> Bool { false }
+    public func showAppLaunch(appName _: String, iconPath _: String?) async -> Bool {
+        false
+    }
+
+    public func showAppQuit(appName _: String, iconPath _: String?) async -> Bool {
+        false
+    }
+
+    public func showScreenshotFlash(in _: CGRect) async -> Bool {
+        false
+    }
+
+    public func showWatchCapture(in _: CGRect) async -> Bool {
+        false
+    }
 }
 
 @MainActor

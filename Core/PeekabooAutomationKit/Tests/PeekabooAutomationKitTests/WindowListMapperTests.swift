@@ -1,6 +1,5 @@
 import CoreGraphics
 import XCTest
-
 @testable import PeekabooAutomationKit
 
 final class WindowListMapperTests: XCTestCase {

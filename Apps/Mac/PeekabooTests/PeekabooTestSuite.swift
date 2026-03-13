@@ -1,16 +1,15 @@
 import Foundation
 import Testing
 
-// Main test suite that organizes all tests
-@Suite("Peekaboo Test Suite")
+/// Main test suite that organizes all tests
 struct PeekabooTestSuite {
     // This suite acts as the root container for all tests
     // Individual test files are automatically discovered by Swift Testing
 }
 
-// Test configuration and helpers
-@Test("Test environment is properly configured", .tags(.fast))
-func environmentConfiguration() {
+/// Test configuration and helpers
+@Test(.tags(.fast))
+func `environment is properly configured`() {
     // Verify we're using Swift Testing, not XCTest
     #expect(Bool(true)) // Basic sanity check
 
@@ -19,7 +18,7 @@ func environmentConfiguration() {
     #expect(tagCount == 10)
 }
 
-// Test execution helpers
+/// Test execution helpers
 extension Test {
     /// Helper to check if we're running in CI environment
     static var isCI: Bool {

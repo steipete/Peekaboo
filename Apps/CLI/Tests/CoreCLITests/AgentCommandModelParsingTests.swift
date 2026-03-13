@@ -3,10 +3,10 @@ import Tachikoma
 import Testing
 @testable import PeekabooCLI
 
-@Suite("AgentCommand Model Parsing Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentCommandTests {
-    @Test("Supported OpenAI aliases map to GPT-5.1")
-    func openAIModelParsing() async throws {
+    @Test
+    func `Supported OpenAI aliases map to GPT-5.1`() throws {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("gpt-5.1") == .openai(.gpt51))
@@ -20,8 +20,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("gpt-4o-mini") == .openai(.gpt51))
     }
 
-    @Test("Supported Anthropic aliases map to Claude Opus 4.5")
-    func anthropicModelParsing() async throws {
+    @Test
+    func `Supported Anthropic aliases map to Claude Opus 4.5`() throws {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.opus45))
@@ -31,8 +31,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("claude-3-sonnet") == nil)
     }
 
-    @Test("Unsupported providers are rejected")
-    func unsupportedModelsReturnNil() async throws {
+    @Test
+    func `Unsupported providers are rejected`() throws {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("grok-4") == nil)
@@ -40,8 +40,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("ollama/llava") == nil)
     }
 
-    @Test("Google Gemini 3 Flash is accepted")
-    func googleModelParsing() async throws {
+    @Test
+    func `Google Gemini 3 Flash is accepted`() throws {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("gemini-3-flash") == .google(.gemini3Flash))
@@ -49,8 +49,8 @@ struct AgentCommandTests {
         #expect(command.parseModelString("gemini-2.5-pro") == nil)
     }
 
-    @Test("Model string normalization trims whitespace")
-    func modelStringNormalization() async throws {
+    @Test
+    func `Model string normalization trims whitespace`() throws {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt51))
@@ -61,10 +61,10 @@ struct AgentCommandTests {
 }
 
 /// Tests for model selection integration
-@Suite("Model Selection Integration Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct ModelSelectionIntegrationTests {
-    @Test("Model parameter handling in AgentCommand")
-    func modelParameterHandling() async throws {
+    @Test
+    func `Model parameter handling in AgentCommand`() throws {
         var command = try AgentCommand.parse([])
         command.model = "gpt-5"
 
@@ -84,8 +84,8 @@ struct ModelSelectionIntegrationTests {
         #expect(parsedGemini == .google(.gemini3Flash))
     }
 
-    @Test("Model description consistency")
-    func modelDescriptionConsistency() async throws {
+    @Test
+    func `Model description consistency`() throws {
         let command = try AgentCommand.parse([])
 
         let testCases: [(String, LanguageModel)] = [
@@ -101,8 +101,8 @@ struct ModelSelectionIntegrationTests {
         }
     }
 
-    @Test("Validated model selection handles optional input")
-    func validatedModelSelectionOptional() async throws {
+    @Test
+    func `Validated model selection handles optional input`() throws {
         var command = try AgentCommand.parse([])
         #expect(try command.validatedModelSelection() == nil)
 
@@ -111,8 +111,8 @@ struct ModelSelectionIntegrationTests {
         #expect(parsed == .openai(.gpt51))
     }
 
-    @Test("Invalid model option surfaces user-friendly error")
-    func invalidModelSelectionThrows() async throws {
+    @Test
+    func `Invalid model option surfaces user-friendly error`() throws {
         var command = try AgentCommand.parse([])
         command.model = "llama-3.2"
 

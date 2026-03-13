@@ -3,10 +3,9 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("WindowFilterHelper deduplication")
 struct WindowFilterHelperDeduplicationTests {
-    @Test("filter removes duplicate window IDs while preserving order")
-    func filterRemovesDuplicateWindowIDs() {
+    @Test
+    func `filter removes duplicate window IDs while preserving order`() {
         let window1 = ServiceWindowInfo(
             windowID: 42,
             title: "First",

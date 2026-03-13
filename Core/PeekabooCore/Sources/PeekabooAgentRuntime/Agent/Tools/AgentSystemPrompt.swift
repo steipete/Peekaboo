@@ -1,5 +1,4 @@
 import Foundation
-
 import Tachikoma
 
 // MARK: - Agent System Prompt

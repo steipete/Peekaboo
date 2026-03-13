@@ -3,7 +3,7 @@ import Testing
 @testable import Peekaboo
 @testable import PeekabooCore
 
-@Suite("Permissions Tests", .tags(.services, .unit))
+@Suite(.tags(.services, .unit))
 @MainActor
 struct PermissionsTests {
     class MockObservablePermissionsService: ObservablePermissionsServiceProtocol {
@@ -16,7 +16,10 @@ struct PermissionsTests {
             self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
         }
 
-        func checkPermissions() { self.checkPermissionsCallCount += 1 }
+        func checkPermissions() {
+            self.checkPermissionsCallCount += 1
+        }
+
         func requestScreenRecording() throws {}
         func requestAccessibility() throws {}
         func requestAppleScript() throws {}
@@ -33,15 +36,15 @@ struct PermissionsTests {
         self.permissions = Permissions(permissionsService: mockService)
     }
 
-    @Test("Service initializes with unknown permissions")
-    func initialState() {
+    @Test
+    func `Service initializes with unknown permissions`() {
         // Initial state should be unknown since we haven't checked yet
         #expect(self.permissions.screenRecordingStatus == .notDetermined)
         #expect(self.permissions.accessibilityStatus == .notDetermined)
     }
 
-    @Test("Has all permissions when both are authorized")
-    func testHasAllPermissions() {
+    @Test
+    func `Has all permissions when both are authorized`() {
         self.permissions.screenRecordingStatus = .authorized
         self.permissions.accessibilityStatus = .authorized
         #expect(self.permissions.hasAllPermissions == true)
@@ -59,7 +62,7 @@ struct PermissionsTests {
         #expect(self.permissions.hasAllPermissions == false)
     }
 
-    @Test("Permission status combinations", arguments: [
+    @Test(arguments: [
         (
             ObservablePermissionsService.PermissionState.authorized,
             ObservablePermissionsService.PermissionState.authorized,
@@ -89,7 +92,7 @@ struct PermissionsTests {
             ObservablePermissionsService.PermissionState.notDetermined,
             false)
     ])
-    func permissionCombinations(
+    func `Permission status combinations`(
         screenRecording: ObservablePermissionsService.PermissionState,
         accessibility: ObservablePermissionsService.PermissionState,
         expectedHasAll: Bool)
@@ -99,9 +102,9 @@ struct PermissionsTests {
         #expect(self.permissions.hasAllPermissions == expectedHasAll)
     }
 
-    @Test("Permission checking updates status")
+    @Test
     @MainActor
-    func checkPermissions() async {
+    func `Permission checking updates status`() async {
         // This test verifies the check method runs without crashing.
         await self.permissions.check()
 
@@ -110,9 +113,9 @@ struct PermissionsTests {
         #expect(self.permissions.accessibilityStatus != .notDetermined)
     }
 
-    @Test("Optional permission checks are throttled")
+    @Test
     @MainActor
-    func optionalChecksThrottled() async {
+    func `Optional permission checks are throttled`() async {
         #expect(self.mockPermissionsService.checkPermissionsCallCount == 0)
 
         self.permissions.setIncludeOptionalPermissions(true)
@@ -129,12 +132,12 @@ struct PermissionsTests {
     }
 }
 
-@Suite("Permissions System Tests", .tags(.services, .integration, .permissions))
+@Suite(.tags(.services, .integration, .permissions))
 @MainActor
 struct PermissionsSystemTests {
-    @Test("Request permissions opens system preferences")
+    @Test
     @MainActor
-    func requestPermissions() async throws {
+    func `Request permissions opens system preferences`() async throws {
         let permissions = Permissions()
 
         // This test is mainly to ensure the method doesn't crash

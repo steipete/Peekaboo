@@ -2,16 +2,14 @@ import Commander
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-// Note: These are lightweight, non-I/O tests—real screen/video IO is not exercised here.
-// They validate flag validation and MP4 toggle plumbing to replace the removed watch suites
-// without requiring fixtures or permissions.
-@Suite("Capture command validation")
+/// Note: These are lightweight, non-I/O tests—real screen/video IO is not exercised here.
+/// They validate flag validation and MP4 toggle plumbing to replace the removed watch suites
+/// without requiring fixtures or permissions.
 struct CaptureEndToEndTests {
-    @Test("video flags reject dual sampling")
-    func videoMutualExclusion() async throws {
+    @Test
+    func `video flags reject dual sampling`() async throws {
         var cmd = CaptureVideoCommand()
         cmd.input = "/tmp/foo.mov"
         cmd.sampleFps = 2
@@ -21,8 +19,8 @@ struct CaptureEndToEndTests {
         }
     }
 
-    @Test("live uses temp output when no path provided")
-    func liveTempPath() async throws {
+    @Test
+    func `live uses temp output when no path provided`() throws {
         let cmd = CaptureLiveCommand()
         let url = try cmd.resolveOutputDirectory()
         #expect(url.path.contains("capture-sessions"))

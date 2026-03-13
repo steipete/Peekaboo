@@ -3,7 +3,6 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Menu bar popover resolver")
 struct MenuBarPopoverResolverTests {
     private let candidates = [
         MenuBarPopoverCandidate(
@@ -23,8 +22,8 @@ struct MenuBarPopoverResolverTests {
         2: MenuBarPopoverWindowInfo(ownerName: "Other", title: nil),
     ]
 
-    @Test("prefers PID over OCR and area")
-    func prefersPIDOverOCRAndArea() async throws {
+    @Test
+    func `prefers PID over OCR and area`() async throws {
         let context = MenuBarPopoverResolverContext(
             appHint: "Trimmy",
             preferredOwnerName: "Trimmy",
@@ -62,8 +61,8 @@ struct MenuBarPopoverResolverTests {
         #expect(resolution?.windowId == 1)
     }
 
-    @Test("prefers owner name over OCR")
-    func prefersOwnerNameOverOCR() async throws {
+    @Test
+    func `prefers owner name over OCR`() async throws {
         let context = MenuBarPopoverResolverContext(
             appHint: "Trimmy",
             preferredOwnerName: "Trimmy",
@@ -94,8 +93,8 @@ struct MenuBarPopoverResolverTests {
         #expect(resolution?.windowId == 1)
     }
 
-    @Test("prefers OCR over area")
-    func prefersOCROverArea() async throws {
+    @Test
+    func `prefers OCR over area`() async throws {
         let context = MenuBarPopoverResolverContext(
             appHint: nil,
             preferredOwnerName: nil,
@@ -133,8 +132,8 @@ struct MenuBarPopoverResolverTests {
         #expect(resolution?.windowId == 2)
     }
 
-    @Test("falls back to area when OCR fails")
-    func fallsBackToAreaWhenOCRFails() async throws {
+    @Test
+    func `falls back to area when OCR fails`() async throws {
         let context = MenuBarPopoverResolverContext(
             appHint: nil,
             preferredOwnerName: nil,

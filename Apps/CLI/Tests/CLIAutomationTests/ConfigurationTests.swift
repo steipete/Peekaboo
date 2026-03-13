@@ -2,12 +2,12 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Configuration Tests", .tags(.unit), .serialized)
+@Suite(.tags(.unit), .serialized)
 struct ConfigurationTests {
     // MARK: - JSONC Parser Tests
 
-    @Test("Strip single-line comments from JSONC", .tags(.fast))
-    func stripSingleLineComments() throws {
+    @Test(.tags(.fast))
+    func `Strip single-line comments from JSONC`() throws {
         let manager = ConfigurationManager.shared
 
         let jsonc = """
@@ -26,8 +26,8 @@ struct ConfigurationTests {
         #expect(parsed["number"] as? Int == 42)
     }
 
-    @Test("Strip multi-line comments from JSONC", .tags(.fast))
-    func stripMultiLineComments() throws {
+    @Test(.tags(.fast))
+    func `Strip multi-line comments from JSONC`() throws {
         let manager = ConfigurationManager.shared
 
         let jsonc = """
@@ -48,8 +48,8 @@ struct ConfigurationTests {
         #expect(parsed["number"] as? Int == 42)
     }
 
-    @Test("Preserve comments inside strings", .tags(.fast))
-    func preserveCommentsInStrings() throws {
+    @Test(.tags(.fast))
+    func `Preserve comments inside strings`() throws {
         let manager = ConfigurationManager.shared
 
         let jsonc = """
@@ -71,8 +71,8 @@ struct ConfigurationTests {
 
     // MARK: - Environment Variable Expansion Tests
 
-    @Test("Expand environment variables", .tags(.fast))
-    func expandEnvironmentVariables() throws {
+    @Test(.tags(.fast))
+    func `Expand environment variables`() {
         let manager = ConfigurationManager.shared
 
         // Set test environment variables
@@ -101,8 +101,8 @@ struct ConfigurationTests {
 
     // MARK: - Configuration Value Precedence Tests
 
-    @Test("Configuration value precedence", .tags(.fast))
-    func configurationPrecedence() {
+    @Test(.tags(.fast))
+    func `Configuration value precedence`() {
         let manager = ConfigurationManager.shared
 
         // Test precedence: CLI > env > config > default
@@ -148,8 +148,8 @@ struct ConfigurationTests {
 
     // MARK: - Configuration Loading Tests
 
-    @Test("Parse valid configuration", .tags(.fast))
-    func parseValidConfiguration() throws {
+    @Test(.tags(.fast))
+    func `Parse valid configuration`() throws {
         let json = """
         {
             "aiProviders": {
@@ -186,8 +186,8 @@ struct ConfigurationTests {
         #expect(config.logging?.path == "/tmp/peekaboo.log")
     }
 
-    @Test("Parse partial configuration", .tags(.fast))
-    func parsePartialConfiguration() throws {
+    @Test(.tags(.fast))
+    func `Parse partial configuration`() throws {
         let json = """
         {
             "aiProviders": {
@@ -207,8 +207,8 @@ struct ConfigurationTests {
 
     // MARK: - Path Expansion Tests
 
-    @Test("Expand tilde in paths", .tags(.fast))
-    func expandTildeInPaths() {
+    @Test(.tags(.fast))
+    func `Expand tilde in paths`() {
         let manager = ConfigurationManager.shared
 
         let path = manager.getDefaultSavePath(cliValue: "~/Desktop/Screenshots")
@@ -219,8 +219,8 @@ struct ConfigurationTests {
 
     // MARK: - Integration Tests
 
-    @Test("Get AI providers with configuration", .tags(.fast))
-    func getAIProvidersWithConfig() {
+    @Test(.tags(.fast))
+    func `Get AI providers with configuration`() {
         let manager = ConfigurationManager.shared
 
         // Capture baseline (may include persisted user configuration)
@@ -242,8 +242,8 @@ struct ConfigurationTests {
         #expect(restoredProviders == baselineProviders)
     }
 
-    @Test("Get OpenAI API key with configuration", .tags(.fast))
-    func getOpenAIAPIKeyWithConfig() {
+    @Test(.tags(.fast))
+    func `Get OpenAI API key with configuration`() {
         let manager = ConfigurationManager.shared
 
         // Capture baseline (may come from credentials)
@@ -264,8 +264,8 @@ struct ConfigurationTests {
         #expect(restoredKey == baselineKey)
     }
 
-    @Test("Get Ollama base URL with configuration", .tags(.fast))
-    func getOllamaBaseURLWithConfig() {
+    @Test(.tags(.fast))
+    func `Get Ollama base URL with configuration`() {
         let manager = ConfigurationManager.shared
 
         // Test default value

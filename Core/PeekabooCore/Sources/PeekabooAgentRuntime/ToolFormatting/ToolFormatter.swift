@@ -34,7 +34,7 @@ public protocol ToolFormatter {
 
 /// Base implementation of ToolFormatter with common functionality
 open class BaseToolFormatter: ToolFormatter {
-    // Format the tool execution start message
+    /// Format the tool execution start message
     public let toolType: ToolType
 
     public init(toolType: ToolType) {

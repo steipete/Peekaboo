@@ -199,7 +199,7 @@ extension ImageTool {
     }
 }
 
-// Extended format that includes "data" option
+/// Extended format that includes "data" option
 enum ImageFormatOption: String, Codable {
     case png
     case jpg
@@ -445,7 +445,7 @@ extension ImageFormatOption {
         }
     }
 
-    // Convert to ImageFormat for actual image saving
+    /// Convert to ImageFormat for actual image saving
     var imageFormat: ImageFormat {
         switch self {
         case .png, .data: .png

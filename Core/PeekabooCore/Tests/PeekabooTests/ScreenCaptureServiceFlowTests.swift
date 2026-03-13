@@ -8,7 +8,7 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ScreenCaptureService test harness", .tags(.ui))
+@Suite(.tags(.ui))
 @MainActor
 struct ScreenCaptureServiceFlowTests {
     private func makeFixtures() -> ScreenCaptureService.TestFixtures {
@@ -51,8 +51,8 @@ struct ScreenCaptureServiceFlowTests {
         return ScreenCaptureService.TestFixtures(displays: [primary, external], windows: windows)
     }
 
-    @Test("captureScreen returns fixture metadata")
-    func captureScreenUsesFixtures() async throws {
+    @Test
+    func `captureScreen returns fixture metadata`() async throws {
         let fixtures = self.makeFixtures()
         let logging = MockLoggingService()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures, loggingService: logging)
@@ -64,8 +64,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(logging.loggedEntries.isEmpty == false)
     }
 
-    @Test("captureScreen respects scale preference")
-    func captureScreenRespectsScalePreference() async throws {
+    @Test
+    func `captureScreen respects scale preference`() async throws {
         let retinaDisplay = ScreenCaptureService.TestFixtures.Display(
             name: "Retina",
             bounds: CGRect(x: 0, y: 0, width: 1200, height: 800),
@@ -92,8 +92,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(native.metadata.displayInfo?.scaleFactor == 2.0)
     }
 
-    @Test("captureWindow resolves applications via fixtures")
-    func captureWindowUsesFixtures() async throws {
+    @Test
+    func `captureWindow resolves applications via fixtures`() async throws {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
 
@@ -104,8 +104,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(result.metadata.windowInfo?.index == 1)
     }
 
-    @Test("captureWindow scales when requested")
-    func captureWindowRespectsScale() async throws {
+    @Test
+    func `captureWindow scales when requested`() async throws {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
 
@@ -126,8 +126,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(native.metadata.displayInfo?.scaleFactor == 2.0)
     }
 
-    @Test("permission denial surfaces permission error")
-    func permissionFailureShortCircuitsCapture() async {
+    @Test
+    func `permission denial surfaces permission error`() async {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures, permissionGranted: false)
 
@@ -141,8 +141,8 @@ struct ScreenCaptureServiceFlowTests {
         }
     }
 
-    @Test("captureArea returns area metadata")
-    func captureAreaRespectsRequestedRect() async throws {
+    @Test
+    func `captureArea returns area metadata`() async throws {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
         let rect = CGRect(x: 20, y: 40, width: 128, height: 256)
@@ -154,8 +154,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(result.metadata.displayInfo?.bounds == rect)
     }
 
-    @Test("modern timeout falls back to legacy")
-    func modernTimeoutFallsBackToLegacy() async throws {
+    @Test
+    func `modern timeout falls back to legacy`() async throws {
         let fixtures = self.makeFixtures()
         let failingOperator = TimeoutModernOperator()
         let legacyOperator = FixtureCaptureOperator(fixtures: fixtures)
@@ -177,8 +177,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(failingOperator.captureScreenAttempts == 1)
     }
 
-    @Test("captureScreen checks permission once")
-    func captureScreenChecksPermissionOnce() async throws {
+    @Test
+    func `captureScreen checks permission once`() async throws {
         let fixtures = self.makeFixtures()
         let permission = CountingPermissionEvaluator()
 
@@ -199,8 +199,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(recordedCalls == 1)
     }
 
-    @Test("displayLocalSourceRect converts global to display-local")
-    func displayLocalSourceRectUsesDisplayOrigin() {
+    @Test
+    func `displayLocalSourceRect converts global to display-local`() {
         // ScreenCaptureKit expects `sourceRect` in display-local coordinates (origin at (0,0) for that display),
         // but `SCDisplay.frame` / `SCWindow.frame` are global desktop coordinates (matching `NSScreen.frame`).
         //
@@ -213,8 +213,8 @@ struct ScreenCaptureServiceFlowTests {
         #expect(local == CGRect(x: 80, y: 60, width: 300, height: 200))
     }
 
-    @Test("displayLocalSourceRect handles negative display origins")
-    func displayLocalSourceRectHandlesNegativeOrigins() {
+    @Test
+    func `displayLocalSourceRect handles negative display origins`() {
         let displayFrame = CGRect(x: -3008, y: 0, width: 3008, height: 1692)
         let globalRect = CGRect(x: -2998, y: 10, width: 200, height: 150)
 
@@ -230,9 +230,13 @@ struct ScreenCaptureServiceFlowTests {
 private final class StubAutomationFeedbackClient: AutomationFeedbackClient, @unchecked Sendable {
     func connect() {}
 
-    func showScreenshotFlash(in _: CGRect) async -> Bool { false }
+    func showScreenshotFlash(in _: CGRect) async -> Bool {
+        false
+    }
 
-    func showWatchCapture(in _: CGRect) async -> Bool { false }
+    func showWatchCapture(in _: CGRect) async -> Bool {
+        false
+    }
 }
 
 @MainActor

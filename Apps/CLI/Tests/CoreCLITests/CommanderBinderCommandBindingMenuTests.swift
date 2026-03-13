@@ -2,10 +2,9 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Command Binding (Menu + Dock)")
 struct CommanderBinderMenuDockTests {
-    @Test("Scroll command binding")
-    func bindScrollCommand() throws {
+    @Test
+    func `Scroll command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -32,8 +31,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.focusOptions.spaceSwitch == true)
     }
 
-    @Test("Menu click binding")
-    func bindMenuClick() throws {
+    @Test
+    func `Menu click binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -53,8 +52,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.focusOptions.spaceSwitch == true)
     }
 
-    @Test("Menu click binding without app")
-    func bindMenuClickMissingApp() throws {
+    @Test
+    func `Menu click binding without app`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: MenuCommand.ClickSubcommand.self,
@@ -63,8 +62,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.target.app == nil)
     }
 
-    @Test("Menu click-extra binding")
-    func bindMenuClickExtra() throws {
+    @Test
+    func `Menu click-extra binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -81,8 +80,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.item == "Turn Wi-Fi Off")
     }
 
-    @Test("Menu list binding")
-    func bindMenuList() throws {
+    @Test
+    func `Menu list binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -98,8 +97,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.includeDisabled == true)
     }
 
-    @Test("Menu list binding without app")
-    func bindMenuListMissingApp() throws {
+    @Test
+    func `Menu list binding without app`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: MenuCommand.ListSubcommand.self,
@@ -108,8 +107,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.target.app == nil)
     }
 
-    @Test("Menu list-all binding")
-    func bindMenuListAll() throws {
+    @Test
+    func `Menu list-all binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [:],
@@ -123,8 +122,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.includeFrames == true)
     }
 
-    @Test("Dock launch binding")
-    func bindDockLaunch() throws {
+    @Test
+    func `Dock launch binding`() throws {
         let parsed = ParsedValues(positional: ["Safari"], options: [:], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: DockCommand.LaunchSubcommand.self,
@@ -133,8 +132,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.app == "Safari")
     }
 
-    @Test("Dock right-click binding")
-    func bindDockRightClick() throws {
+    @Test
+    func `Dock right-click binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -151,8 +150,8 @@ struct CommanderBinderMenuDockTests {
         #expect(command.select == "New Window")
     }
 
-    @Test("Dock right-click requires app")
-    func bindDockRightClickMissingApp() {
+    @Test
+    func `Dock right-click requires app`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "app")) {
             _ = try CommanderCLIBinder.instantiateCommand(
@@ -162,8 +161,8 @@ struct CommanderBinderMenuDockTests {
         }
     }
 
-    @Test("Dock list binding")
-    func bindDockList() throws {
+    @Test
+    func `Dock list binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: ["includeAll"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: DockCommand.ListSubcommand.self,

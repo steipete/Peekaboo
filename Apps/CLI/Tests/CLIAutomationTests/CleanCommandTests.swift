@@ -3,10 +3,10 @@ import Testing
 @testable import PeekabooCLI
 
 /// Tests for CleanCommand
-@Suite("CleanCommand Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct CleanCommandTests {
-    @Test("Clean command validation")
-    func commandValidation() throws {
+    @Test
+    func `Clean command validation`() throws {
         // Test that specifying multiple options fails
         var command = try CleanCommand.parse([])
         command.allSnapshots = true
@@ -18,16 +18,16 @@ struct CleanCommandTests {
         #expect(command.olderThan == 24)
     }
 
-    @Test("Dry run flag")
-    func dryRunFlag() throws {
+    @Test
+    func `Dry run flag`() throws {
         var command = try CleanCommand.parse([])
         command.dryRun = true
 
         #expect(command.dryRun == true)
     }
 
-    @Test("Clean command parsing")
-    func cleanCommandParsing() throws {
+    @Test
+    func `Clean command parsing`() throws {
         // Test parsing with --all-snapshots
         let command1 = try CleanCommand.parse(["--all-snapshots"])
         #expect(command1.allSnapshots == true)

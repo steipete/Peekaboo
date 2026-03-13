@@ -79,7 +79,9 @@ public protocol RecoverableError: PeekabooErrorProtocol {
 }
 
 extension RecoverableError {
-    public nonisolated var maxRecoveryAttempts: Int { 3 }
+    public nonisolated var maxRecoveryAttempts: Int {
+        3
+    }
 }
 
 // MARK: - Network Error Protocol
@@ -97,7 +99,9 @@ public protocol NetworkError: PeekabooErrorProtocol {
 }
 
 extension NetworkError {
-    public nonisolated var category: ErrorCategory { .network }
+    public nonisolated var category: ErrorCategory {
+        .network
+    }
 
     public nonisolated var isTemporary: Bool {
         guard let code = statusCode else { return true }
@@ -124,8 +128,13 @@ public protocol ValidationError: PeekabooErrorProtocol {
 }
 
 extension ValidationError {
-    public nonisolated var category: ErrorCategory { .validation }
-    public nonisolated var isRecoverable: Bool { false }
+    public nonisolated var category: ErrorCategory {
+        .validation
+    }
+
+    public nonisolated var isRecoverable: Bool {
+        false
+    }
 }
 
 // MARK: - Error Context Builder

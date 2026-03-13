@@ -43,7 +43,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
     case noAIProviderAvailable
     case aiProviderError(String)
 
-    // Service errors
+    /// Service errors
     case serviceUnavailable(String)
 
     // Network errors
@@ -58,7 +58,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
     case permissionDenied(String)
     case notImplemented(String)
 
-    // Generic errors - removed context since it can't be Sendable
+    /// Generic errors - removed context since it can't be Sendable
     case operationError(message: String)
 
     public var errorDescription: String? {

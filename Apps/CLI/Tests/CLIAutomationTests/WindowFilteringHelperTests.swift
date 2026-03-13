@@ -3,10 +3,10 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
-@Suite("WindowFilteringHelper Tests", .serialized, .tags(.unit))
+@Suite(.serialized, .tags(.unit))
 struct WindowFilteringHelperTests {
-    @Test("Capture mode drops non-shareable windows")
-    func captureModeSkipsNonShareable() {
+    @Test
+    func `Capture mode drops non-shareable windows`() {
         let windows = [
             ServiceWindowInfo(
                 windowID: 1,
@@ -35,8 +35,8 @@ struct WindowFilteringHelperTests {
         #expect(filtered.first?.title == "Editor")
     }
 
-    @Test("List mode keeps minimized windows")
-    func listModeKeepsMinimized() {
+    @Test
+    func `List mode keeps minimized windows`() {
         let windows = [
             ServiceWindowInfo(
                 windowID: 3,

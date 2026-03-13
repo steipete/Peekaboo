@@ -7,11 +7,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Element+Timeout Tests - Current API")
 struct ElementTimeoutTests {
-    @Test("Set messaging timeout on element")
+    @Test
     @MainActor
-    func testSetMessagingTimeout() async throws {
+    func `Set messaging timeout on element`() {
         // Given - Get an element for a running app
         guard let finderApp = self.finderApplication() else {
             return
@@ -26,9 +25,9 @@ struct ElementTimeoutTests {
         #expect(element.role() == AXRoleNames.kAXApplicationRole)
     }
 
-    @Test("Windows with timeout returns windows")
+    @Test
     @MainActor
-    func windowsWithTimeoutReturnsWindows() async throws {
+    func `Windows with timeout returns windows`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return
@@ -53,9 +52,9 @@ struct ElementTimeoutTests {
         }
     }
 
-    @Test("Element children basic access")
+    @Test
     @MainActor
-    func elementChildrenBasicAccess() async throws {
+    func `Element children basic access`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return
@@ -79,9 +78,9 @@ struct ElementTimeoutTests {
         }
     }
 
-    @Test("Element menu bar with timeout")
+    @Test
     @MainActor
-    func elementMenuBarWithTimeout() async throws {
+    func `Element menu bar with timeout`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return
@@ -99,9 +98,9 @@ struct ElementTimeoutTests {
         }
     }
 
-    @Test("Element focus basic access")
+    @Test
     @MainActor
-    func elementFocusBasicAccess() async throws {
+    func `Element focus basic access`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return
@@ -122,9 +121,9 @@ struct ElementTimeoutTests {
         #expect(Bool(true))
     }
 
-    @Test("Element attribute basic access")
+    @Test
     @MainActor
-    func elementAttributeBasicAccess() async throws {
+    func `Element attribute basic access`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return
@@ -144,9 +143,9 @@ struct ElementTimeoutTests {
         #expect(Bool(true))
     }
 
-    @Test("Multiple menu items with timeout")
+    @Test
     @MainActor
-    func multipleMenuItemsWithTimeout() async throws {
+    func `Multiple menu items with timeout`() {
         // Given
         guard let finderApp = self.finderApplication() else {
             return
@@ -176,9 +175,9 @@ struct ElementTimeoutTests {
         }
     }
 
-    @Test("Timeout configuration affects behavior")
+    @Test
     @MainActor
-    func timeoutConfigurationAffectsBehavior() async throws {
+    func `Timeout configuration affects behavior`() {
         // Given - Get Finder element
         guard let finderApp = self.finderApplication() else {
             return

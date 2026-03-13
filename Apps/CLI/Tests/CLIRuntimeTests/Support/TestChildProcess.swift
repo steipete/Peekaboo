@@ -84,6 +84,11 @@ enum TestChildProcess {
 
 struct RuntimeError: Error, CustomStringConvertible {
     let message: String
-    init(_ message: String) { self.message = message }
-    var description: String { self.message }
+    init(_ message: String) {
+        self.message = message
+    }
+
+    var description: String {
+        self.message
+    }
 }

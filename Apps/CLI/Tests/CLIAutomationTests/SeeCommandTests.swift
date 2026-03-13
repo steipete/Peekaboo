@@ -6,10 +6,10 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("SeeCommand Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct SeeCommandTests {
-    @Test("See command parses correctly with minimal arguments")
-    func parseMinimalArguments() throws {
+    @Test
+    func `See command parses correctly with minimal arguments`() throws {
         let command = try SeeCommand.parse(["--path", "/tmp/test.png"])
         #expect(command.path == "/tmp/test.png")
         #expect(command.app == nil)
@@ -19,8 +19,8 @@ struct SeeCommandTests {
         #expect(command.jsonOutput == false)
     }
 
-    @Test("See command parses all arguments correctly")
-    func parseAllArguments() throws {
+    @Test
+    func `See command parses all arguments correctly`() throws {
         let command = try SeeCommand.parse([
             "--app", "Safari",
             "--path", "/tmp/screenshot.png",
@@ -33,53 +33,53 @@ struct SeeCommandTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("See command handles different capture modes", arguments: [
+    @Test(arguments: [
         "screen",
         "window",
         "frontmost",
     ])
-    func parseCaptureMode(modeString: String) throws {
+    func `See command handles different capture modes`(modeString: String) throws {
         let command = try SeeCommand.parse(["--mode", modeString])
         #expect(command.mode?.rawValue == modeString)
     }
 
-    @Test("See command auto-infers window mode when app is specified")
-    func autoInferWindowModeWithApp() throws {
+    @Test
+    func `See command auto-infers window mode when app is specified`() throws {
         let command = try SeeCommand.parse(["--app", "Safari"])
         #expect(command.app == "Safari")
         #expect(command.mode == nil) // Mode not explicitly set
     }
 
-    @Test("See command parses screen-index parameter")
-    func parseScreenIndex() throws {
+    @Test
+    func `See command parses screen-index parameter`() throws {
         let command = try SeeCommand.parse(["--mode", "screen", "--screen-index", "1"])
         #expect(command.mode == .screen)
         #expect(command.screenIndex == 1)
     }
 
-    @Test("See command screen-index only works with screen mode")
-    func screenIndexRequiresScreenMode() throws {
+    @Test
+    func `See command screen-index only works with screen mode`() throws {
         // Should parse without error even if not in screen mode
         let command = try SeeCommand.parse(["--mode", "window", "--screen-index", "0"])
         #expect(command.screenIndex == 0)
         // The validation happens at runtime, not parse time
     }
 
-    @Test("See command handles multi-screen capture defaults")
-    func multiScreenDefaults() throws {
+    @Test
+    func `See command handles multi-screen capture defaults`() throws {
         let command = try SeeCommand.parse(["--mode", "screen"])
         #expect(command.screenIndex == nil) // No index means capture all screens
     }
 
-    @Test("See command auto-infers window mode when window title is specified")
-    func autoInferWindowModeWithTitle() throws {
+    @Test
+    func `See command auto-infers window mode when window title is specified`() throws {
         let command = try SeeCommand.parse(["--window-title", "Document"])
         #expect(command.windowTitle == "Document")
         #expect(command.mode == nil) // Mode not explicitly set
     }
 
-    @Test("See result structure contains all required fields")
-    func seeResultStructure() {
+    @Test
+    func `See result structure contains all required fields`() {
         let element = UIElementSummary(
             id: "B1",
             role: "button",
@@ -120,8 +120,8 @@ struct SeeCommandTests {
         #expect(result.window_title == "Test Window")
     }
 
-    @Test("See command validates path parameter")
-    func validatePathParameter() {
+    @Test
+    func `See command validates path parameter`() {
         // Test that command can be created with valid path
         #expect(throws: Never.self) {
             _ = try SeeCommand.parse(["--path", "/tmp/valid.png"])
@@ -134,16 +134,16 @@ struct SeeCommandTests {
         }
     }
 
-    @Test("See command with analyze option")
-    func parseAnalyzeOption() throws {
+    @Test
+    func `See command with analyze option`() throws {
         let command = try SeeCommand.parse([
             "--analyze", "What is shown in this screenshot?",
         ])
         #expect(command.analyze == "What is shown in this screenshot?")
     }
 
-    @Test("See command with window title")
-    func parseWindowTitle() throws {
+    @Test
+    func `See command with window title`() throws {
         let command = try SeeCommand.parse([
             "--app", "Safari",
             "--window-title", "GitHub",
@@ -153,10 +153,10 @@ struct SeeCommandTests {
     }
 }
 
-@Suite("SeeCommand Runtime Tests", .serialized, .tags(.fast))
+@Suite(.serialized, .tags(.fast))
 struct SeeCommandRuntimeTests {
-    @Test("See command stores screenshot metadata and prints summary")
-    func seeCommandStoresScreenshot() async throws {
+    @Test
+    func `See command stores screenshot metadata and prints summary`() async throws {
         try await self.withTempConfigEnv { _ in
             let fixture = Self.makeSeeCommandRuntimeFixture()
             let automation = StubAutomationService()
@@ -187,8 +187,8 @@ struct SeeCommandRuntimeTests {
         }
     }
 
-    @Test("See command JSON includes accessibility metadata fields")
-    func seeCommandJsonIncludesAccessibilityMetadata() async throws {
+    @Test
+    func `See command JSON includes accessibility metadata fields`() async throws {
         let fixture = Self.makeSeeCommandRuntimeFixture()
         let automation = StubAutomationService()
 

@@ -5,10 +5,10 @@ import Testing
 
 private typealias WindowsSubcommand = ListCommand.WindowsSubcommand
 
-@Suite("PID Windows Subcommand Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct PIDWindowsSubcommandTests {
-    @Test("Parse windows subcommand with PID")
-    func parseWindowsSubcommandWithPID() throws {
+    @Test
+    func `Parse windows subcommand with PID`() throws {
         // Test parsing windows subcommand with PID
         let command = try WindowsSubcommand.parse([
             "--app", "PID:1234",
@@ -19,8 +19,8 @@ struct PIDWindowsSubcommandTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Parse windows subcommand with PID and details")
-    func parseWindowsSubcommandWithPIDAndDetails() throws {
+    @Test
+    func `Parse windows subcommand with PID and details`() throws {
         // Test windows subcommand with PID and window details
         let command = try WindowsSubcommand.parse([
             "--app", "PID:5678",
@@ -33,8 +33,8 @@ struct PIDWindowsSubcommandTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Various PID formats in windows subcommand")
-    func variousPIDFormatsInWindowsSubcommand() throws {
+    @Test
+    func `Various PID formats in windows subcommand`() throws {
         let pidFormats = [
             "PID:1", // Single digit
             "PID:123", // Three digits

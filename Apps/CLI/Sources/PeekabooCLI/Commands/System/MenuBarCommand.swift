@@ -68,14 +68,29 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
 
-    private var configuration: CommandRuntime.Configuration { self.resolvedRuntime.configuration }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
 
-    var jsonOutput: Bool { self.configuration.jsonOutput }
-    private var isVerbose: Bool { self.configuration.verbose }
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    private var configuration: CommandRuntime.Configuration {
+        self.resolvedRuntime.configuration
+    }
+
+    var jsonOutput: Bool {
+        self.configuration.jsonOutput
+    }
+
+    private var isVerbose: Bool {
+        self.configuration.verbose
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

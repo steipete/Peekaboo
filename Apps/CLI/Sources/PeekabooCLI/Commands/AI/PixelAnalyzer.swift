@@ -136,9 +136,7 @@ struct PixelAnalyzer {
 
         // Calculate variance
         let squaredDiffs = brightnesses.map { pow($0 - mean, 2) }
-        let variance = squaredDiffs.reduce(0, +) / Float(brightnesses.count)
-
-        return variance
+        return squaredDiffs.reduce(0, +) / Float(brightnesses.count)
     }
 
     private func calculateContrast(_ colors: [NSColor]) -> Float {
@@ -163,7 +161,7 @@ struct PixelAnalyzer {
     }
 }
 
-// Extension for checking if a region has high contrast (text, edges)
+/// Extension for checking if a region has high contrast (text, edges)
 extension PixelAnalyzer {
     /// Quick check if region likely contains text or edges
     func hasHighContrast(in rect: NSRect) -> Bool {

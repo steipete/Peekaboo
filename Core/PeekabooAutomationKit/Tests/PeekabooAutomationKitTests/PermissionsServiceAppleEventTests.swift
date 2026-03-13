@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooAutomationKit
 
 @Suite(.serialized) @MainActor struct PermissionsServiceAppleEventTests {
-    @Test func appleEventTargetDescriptorUsesBundleIdentifierType() throws {
+    @Test func `apple event target descriptor uses bundle identifier type`() throws {
         let bundleIdentifier = "com.apple.systemevents"
 
         var duplicatedDesc = try #require(
@@ -18,7 +18,7 @@ import Testing
         _ = try #require(duplicatedDesc.dataHandle, "Expected duplicated AEDesc to have a data handle")
     }
 
-    @Test func appleEventTargetDescriptorDuplicationReturnsUniqueHandlesPerCall() throws {
+    @Test func `apple event target descriptor duplication returns unique handles per call`() throws {
         let bundleIdentifier = "com.apple.systemevents"
 
         var firstDesc = try #require(

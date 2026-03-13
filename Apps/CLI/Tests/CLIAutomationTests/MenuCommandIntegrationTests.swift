@@ -4,10 +4,10 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Menu Command Integration Tests", .serialized, .tags(.automation))
+@Suite(.serialized, .tags(.automation))
 struct MenuCommandIntegrationTests {
-    @Test("menu list returns JSON even when no windows exist")
-    func menuListNoWindows() async throws {
+    @Test
+    func `menu list returns JSON even when no windows exist`() async throws {
         let context = self.makeMenuContext(hasWindows: false)
         let result = try await self.runMenuCommand(
             [
@@ -31,8 +31,8 @@ struct MenuCommandIntegrationTests {
         #expect(context.menuService.listMenusRequests == [context.appInfo.name])
     }
 
-    @Test("menu click succeeds after list when auto focus is disabled")
-    func menuClickAfterList() async throws {
+    @Test
+    func `menu click succeeds after list when auto focus is disabled`() async throws {
         let context = self.makeMenuContext(hasWindows: false)
 
         _ = try await self.runMenuCommand(

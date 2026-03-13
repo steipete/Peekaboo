@@ -1,13 +1,11 @@
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-@Suite("CaptureCommand basic wiring")
 struct CaptureCommandTests {
-    @Test("buildOptions clamps values")
-    func buildOptionsClamps() async throws {
+    @Test
+    func `buildOptions clamps values`() throws {
         var cmd = CaptureLiveCommand()
         cmd.duration = 999
         cmd.idleFps = 9
@@ -31,8 +29,8 @@ struct CaptureCommandTests {
         #expect(opts.resolutionCap == 10)
     }
 
-    @Test("video options defaults")
-    func videoOptionsDefaults() async throws {
+    @Test
+    func `video options defaults`() {
         let cmd = CaptureVideoCommand()
         let opts = cmd.buildOptions()
         #expect(opts.maxFrames >= 1)

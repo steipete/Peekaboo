@@ -5,10 +5,10 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Annotation Coordinate Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct AnnotationCoordinateTests {
-    @Test("Window-relative coordinate transformation")
-    func windowRelativeTransformation() {
+    @Test
+    func `Window-relative coordinate transformation`() {
         // Given screen coordinates
         let screenBounds = CGRect(x: 500, y: 300, width: 100, height: 50)
         let windowBounds = CGRect(x: 400, y: 200, width: 800, height: 600)
@@ -24,8 +24,8 @@ struct AnnotationCoordinateTests {
         #expect(windowRelativeBounds.size == screenBounds.size) // Size unchanged
     }
 
-    @Test("Y-coordinate flip for NSGraphicsContext")
-    func yCoordinateFlip() {
+    @Test
+    func `Y-coordinate flip for NSGraphicsContext`() {
         // Given window-relative bounds with top-left origin
         let elementBounds = CGRect(x: 100, y: 150, width: 80, height: 40)
         let imageHeight: CGFloat = 600
@@ -45,8 +45,8 @@ struct AnnotationCoordinateTests {
         #expect(drawingBounds.size == elementBounds.size) // Size unchanged
     }
 
-    @Test("Complete transformation pipeline")
-    func completeTransformationPipeline() {
+    @Test
+    func `Complete transformation pipeline`() {
         // Given: Element in screen coordinates
         let screenElement = CGRect(x: 600, y: 250, width: 120, height: 60)
         let windowBounds = CGRect(x: 450, y: 150, width: 1000, height: 700)
@@ -77,8 +77,8 @@ struct AnnotationCoordinateTests {
         #expect(finalDrawingRect.height == 60)
     }
 
-    @Test("Annotation file path generation")
-    func annotationFilePathGeneration() {
+    @Test
+    func `Annotation file path generation`() {
         let testPaths = [
             ("/tmp/screenshot.png", "/tmp/screenshot_annotated.png"),
             ("/Users/test/image.png", "/Users/test/image_annotated.png"),
@@ -92,8 +92,8 @@ struct AnnotationCoordinateTests {
         }
     }
 
-    @Test("Element filtering for annotation")
-    func elementFilteringForAnnotation() {
+    @Test
+    func `Element filtering for annotation`() {
         // Create test elements
         let enabledButton = self.createTestElement(id: "B1", isEnabled: true)
         let disabledButton = self.createTestElement(id: "B2", isEnabled: false)
@@ -113,7 +113,7 @@ struct AnnotationCoordinateTests {
         #expect(!annotatedElements.contains { $0.id == "L1" })
     }
 
-    // Helper function to create test elements
+    /// Helper function to create test elements
     private func createTestElement(
         id: String,
         isEnabled: Bool,

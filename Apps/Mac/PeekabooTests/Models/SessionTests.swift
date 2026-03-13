@@ -3,10 +3,10 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("ConversationSession Model Tests", .tags(.models, .unit))
+@Suite(.tags(.models, .unit))
 struct ConversationSessionTests {
-    @Test("Session initializes with correct defaults")
-    func sessionInitialization() {
+    @Test
+    func `Session initializes with correct defaults`() {
         let session = ConversationSession(title: "Test Session")
 
         #expect(!session.id.isEmpty)
@@ -17,16 +17,16 @@ struct ConversationSessionTests {
         #expect(session.summary.isEmpty)
     }
 
-    @Test("Session IDs are unique")
-    func uniqueSessionIDs() {
+    @Test
+    func `Session IDs are unique`() {
         let sessions = (0..<100).map { _ in ConversationSession(title: "Test") }
         let uniqueIDs = Set(sessions.map(\.id))
 
         #expect(uniqueIDs.count == sessions.count)
     }
 
-    @Test("Session codable roundtrip")
-    func sessionCodable() throws {
+    @Test
+    func `Session codable roundtrip`() throws {
         // Create a session with messages
         var session = ConversationSession(title: "Codable Test")
         session.messages = [
@@ -66,10 +66,10 @@ struct ConversationSessionTests {
     }
 }
 
-@Suite("ConversationMessage Model Tests", .tags(.models, .unit))
+@Suite(.tags(.models, .unit))
 struct ConversationMessageTests {
-    @Test("Message role types")
-    func messageRoles() {
+    @Test
+    func `Message role types`() {
         let userMessage = ConversationMessage(
             role: .user,
             content: "User content")
@@ -87,8 +87,8 @@ struct ConversationMessageTests {
         #expect(systemMessage.role == .system)
     }
 
-    @Test("Message with tool calls")
-    func messageWithToolCalls() {
+    @Test
+    func `Message with tool calls`() {
         let toolCalls = [
             ConversationToolCall(
                 name: "screenshot",
@@ -111,10 +111,10 @@ struct ConversationMessageTests {
     }
 }
 
-@Suite("ConversationToolCall Model Tests", .tags(.models, .unit))
+@Suite(.tags(.models, .unit))
 struct ConversationToolCallTests {
-    @Test("Tool call initialization")
-    func toolCallInit() {
+    @Test
+    func `Tool call initialization`() {
         let arguments = "{\"app\":\"Safari\",\"window\":1,\"includeDesktop\":true}"
 
         let toolCall = ConversationToolCall(
@@ -129,8 +129,8 @@ struct ConversationToolCallTests {
         #expect(toolCall.result == "Screenshot saved to /tmp/screenshot.png")
     }
 
-    @Test("Tool call codable with complex arguments")
-    func toolCallCodable() throws {
+    @Test
+    func `Tool call codable with complex arguments`() throws {
         let arguments = """
         {"string":"value","number":42,"float":3.14,"bool":true,
         "array":[1,2,3],"nested":{"key":"value"}}

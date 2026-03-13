@@ -186,10 +186,9 @@ struct PlaygroundApp: App {
             return "\(cleaned) element"
         }
 
-        let className = String(describing: type(of: hitView))
+        return String(describing: type(of: hitView))
             .replacingOccurrences(of: "SwiftUI.", with: "")
             .replacingOccurrences(of: "AppKit.", with: "")
-        return className
     }
 
     private func formatClickLogMessage(

@@ -389,7 +389,7 @@ struct EditCustomProviderView: View {
     }
 }
 
-// Helper struct to make tuple identifiable for sheet presentation
+/// Helper struct to make tuple identifiable for sheet presentation
 struct IdentifiableCustomProvider: Identifiable {
     let id: String
     let provider: Configuration.CustomProvider

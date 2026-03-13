@@ -5,10 +5,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Element Role Resolver", .tags(.fast))
+@Suite(.tags(.fast))
 struct ElementRoleResolverTests {
-    @Test("Editable groups become text fields")
-    func editableGroup() {
+    @Test
+    func `Editable groups become text fields`() {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: nil,
@@ -18,8 +18,8 @@ struct ElementRoleResolverTests {
         #expect(resolved == .textField)
     }
 
-    @Test("Role description hint promotes group")
-    func roleDescriptionPromotion() {
+    @Test
+    func `Role description hint promotes group`() {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: "text field",
@@ -29,8 +29,8 @@ struct ElementRoleResolverTests {
         #expect(resolved == .textField)
     }
 
-    @Test("Other groups stay grouped")
-    func plainGroup() {
+    @Test
+    func `Other groups stay grouped`() {
         let info = ElementRoleInfo(
             role: "AXGroup",
             roleDescription: "group",

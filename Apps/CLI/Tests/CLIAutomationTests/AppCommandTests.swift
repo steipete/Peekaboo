@@ -4,17 +4,17 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("App Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct AppCommandTests {
-    @Test("App command exists")
-    func appCommandExists() {
+    @Test
+    func `App command exists`() {
         let config = AppCommand.commandDescription
         #expect(config.commandName == "app")
         #expect(config.abstract.contains("Control applications"))
     }
 
-    @Test("App command has expected subcommands")
-    func appSubcommands() {
+    @Test
+    func `App command has expected subcommands`() {
         let subcommands = AppCommand.commandDescription.subcommands
         #expect(subcommands.count == 7)
 
@@ -33,8 +33,8 @@ struct AppCommandTests {
         #expect(subcommandNames.contains("list"))
     }
 
-    @Test("App launch command help")
-    func appLaunchHelp() async throws {
+    @Test
+    func `App launch command help`() async throws {
         let output = try await runAppCommand(["app", "launch", "--help"])
 
         #expect(output.contains("Launch an application"))
@@ -44,8 +44,8 @@ struct AppCommandTests {
         #expect(output.contains("--no-focus"))
     }
 
-    @Test("App quit command validation")
-    func appQuitValidation() async throws {
+    @Test
+    func `App quit command validation`() async throws {
         // Test missing app/all
         await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "quit"])
@@ -57,31 +57,31 @@ struct AppCommandTests {
         }
     }
 
-    @Test("App hide command validation")
-    func appHideValidation() async throws {
+    @Test
+    func `App hide command validation`() async throws {
         // Normal hide should work
         let output = try await runAppCommand(["app", "hide", "--app", "Finder", "--help"])
         #expect(output.contains("Hide an application"))
     }
 
-    @Test("App show command validation")
-    func appShowValidation() async throws {
+    @Test
+    func `App show command validation`() async throws {
         // Test missing app/all
         await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "unhide"])
         }
     }
 
-    @Test("App switch command validation")
-    func appSwitchValidation() async throws {
+    @Test
+    func `App switch command validation`() async throws {
         // Test missing to/cycle
         await #expect(throws: (any Error).self) {
             _ = try await runAppCommand(["app", "switch"])
         }
     }
 
-    @Test("App lifecycle flow")
-    func appLifecycleFlow() {
+    @Test
+    func `App lifecycle flow`() {
         // This tests the logical flow of app lifecycle commands
         let launchCmd = ["app", "launch", "--app", "TextEdit", "--wait-until-ready"]
         let hideCmd = ["app", "hide", "--app", "TextEdit"]
@@ -99,15 +99,14 @@ struct AppCommandTests {
 // MARK: - App Command Integration Tests
 
 @Suite(
-    "App Command Integration Tests",
     .serialized,
     .tags(.automation, .localOnly),
     .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"
         && !(ProcessInfo.processInfo.environment["PEEKABOO_CLI_PATH"] ?? "").isEmpty)
 )
 struct AppCommandIntegrationTests {
-    @Test("Launch TextEdit via external CLI")
-    func launchApp() async throws {
+    @Test
+    func `Launch TextEdit via external CLI`() throws {
         struct LaunchResult: Codable {
             let action: String
             let app_name: String
@@ -146,8 +145,8 @@ struct AppCommandIntegrationTests {
         #expect(response.data.pid > 0)
     }
 
-    @Test("Hide and unhide Finder via external CLI")
-    func hideShowApp() async throws {
+    @Test
+    func `Hide and unhide Finder via external CLI`() throws {
         struct UnhideResult: Codable {
             let action: String
             let app_name: String

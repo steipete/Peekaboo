@@ -4,11 +4,11 @@ import Testing
 @testable import PeekabooAutomation
 @testable import PeekabooCore
 
-@Suite("UIAutomationService Wait Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct UIAutomationServiceWaitTests {
-    @Test("Coordinates return immediately")
+    @Test
     @MainActor
-    func coordinatesReturnImmediately() async throws {
+    func `Coordinates return immediately`() async throws {
         let service = UIAutomationService(snapshotManager: InMemorySnapshotManager())
 
         let result = try await service.waitForElement(
@@ -20,9 +20,9 @@ struct UIAutomationServiceWaitTests {
         #expect(result.waitTime == 0)
     }
 
-    @Test("Element ID resolves from snapshot cache")
+    @Test
     @MainActor
-    func elementIdResolvesFromSnapshotCache() async throws {
+    func `Element ID resolves from snapshot cache`() async throws {
         let elements = DetectedElements(
             buttons: [DetectedElement(
                 id: "B42",
@@ -44,9 +44,9 @@ struct UIAutomationServiceWaitTests {
         #expect(result.waitTime < 0.1)
     }
 
-    @Test("Query resolves using snapshot detection cache")
+    @Test
     @MainActor
-    func queryResolvesFromSnapshotDetection() async throws {
+    func `Query resolves using snapshot detection cache`() async throws {
         let elements = DetectedElements(
             buttons: [DetectedElement(
                 id: "B1",
@@ -67,9 +67,9 @@ struct UIAutomationServiceWaitTests {
         #expect(result.element?.label?.lowercased() == "submit")
     }
 
-    @Test("Query resolves via element identifier attribute")
+    @Test
     @MainActor
-    func queryResolvesIdentifierAttribute() async throws {
+    func `Query resolves via element identifier attribute`() async throws {
         let elements = DetectedElements(
             sliders: [DetectedElement(
                 id: "S1",

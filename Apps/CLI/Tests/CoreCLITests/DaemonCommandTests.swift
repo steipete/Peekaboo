@@ -1,39 +1,39 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Daemon Command Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct DaemonCommandTests {
-    @Test("DaemonCommand description")
-    func daemonCommandDescription() {
+    @Test
+    func `DaemonCommand description`() {
         let config = DaemonCommand.commandDescription
         #expect(config.commandName == "daemon")
         #expect(config.abstract == "Manage the headless Peekaboo daemon")
         #expect(config.subcommands.count == 4)
     }
 
-    @Test("Daemon start defaults")
-    func daemonStartDefaults() throws {
+    @Test
+    func `Daemon start defaults`() throws {
         let command = try DaemonCommand.Start.parse([])
         #expect(command.bridgeSocket == nil)
         #expect(command.pollIntervalMs == nil)
         #expect(command.waitSeconds == 3)
     }
 
-    @Test("Daemon stop defaults")
-    func daemonStopDefaults() throws {
+    @Test
+    func `Daemon stop defaults`() throws {
         let command = try DaemonCommand.Stop.parse([])
         #expect(command.bridgeSocket == nil)
         #expect(command.waitSeconds == 3)
     }
 
-    @Test("Daemon status defaults")
-    func daemonStatusDefaults() throws {
+    @Test
+    func `Daemon status defaults`() throws {
         let command = try DaemonCommand.Status.parse([])
         #expect(command.bridgeSocket == nil)
     }
 
-    @Test("Daemon run parsing")
-    func daemonRunParsing() throws {
+    @Test
+    func `Daemon run parsing`() throws {
         let args = ["--mode", "manual", "--bridge-socket", "/tmp/peekaboo.sock", "--poll-interval-ms", "500"]
         let command = try DaemonCommand.Run.parse(args)
         #expect(command.mode == "manual")

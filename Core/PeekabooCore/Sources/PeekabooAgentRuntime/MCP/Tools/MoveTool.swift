@@ -370,5 +370,7 @@ private struct MovementExecution {
 
 private struct MoveToolValidationError: Error {
     let message: String
-    init(_ message: String) { self.message = message }
+    init(_ message: String) {
+        self.message = message
+    }
 }

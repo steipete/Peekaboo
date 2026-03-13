@@ -2,10 +2,9 @@ import Foundation
 import PeekabooAutomation
 import Testing
 
-@Suite("Tool configuration")
 struct ToolConfigTests {
-    @Test("Codable round-trip for tool lists")
-    func codableRoundTrip() throws {
+    @Test
+    func `Codable round-trip for tool lists`() throws {
         let tools = Configuration.ToolConfig(allow: ["see", "click"], deny: ["shell"])
         let config = Configuration(tools: tools)
 

@@ -6,7 +6,6 @@ import Testing
 @testable import PeekabooCLI
 
 @Suite(
-    "Screenshot Validation Tests",
     .serialized,
     .tags(.localOnly, .screenshot, .integration),
     .enabled(if: CLITestEnvironment.runAutomationActions)
@@ -14,9 +13,9 @@ import Testing
 struct ScreenshotValidationTests {
     // MARK: - Image Analysis Tests
 
-    @Test("Validate screenshot contains expected content", .tags(.imageAnalysis))
+    @Test(.tags(.imageAnalysis))
     @MainActor
-    func validateScreenshotContent() async throws {
+    func `Validate screenshot contains expected content`() async throws {
         // Create a temporary test window with known content
         let testWindow = self.createTestWindow(withContent: .text("PEEKABOO_TEST_12345"))
         defer { testWindow.close() }
@@ -46,9 +45,9 @@ struct ScreenshotValidationTests {
         print("Captured image size: \(image.size)")
     }
 
-    @Test("Compare screenshots for visual regression", .tags(.regression))
+    @Test(.tags(.regression))
     @MainActor
-    func visualRegressionTest() async throws {
+    func `Compare screenshots for visual regression`() async throws {
         // Create test window with specific visual pattern
         let testWindow = self.createTestWindow(withContent: .grid)
         defer { testWindow.close() }
@@ -81,12 +80,12 @@ struct ScreenshotValidationTests {
         #expect(currentImage != nil)
 
         // In practice, we'd use image diff algorithms here
-        #expect(baselineImage!.size == currentImage!.size)
+        #expect(baselineImage?.size == currentImage!.size)
     }
 
-    @Test("Test different image formats", .tags(.formats))
+    @Test(.tags(.formats))
     @MainActor
-    func imageFormats() async throws {
+    func `different image formats`() async throws {
         let testWindow = self.createTestWindow(withContent: .gradient)
         defer { testWindow.close() }
 
@@ -120,8 +119,8 @@ struct ScreenshotValidationTests {
 
     // MARK: - Multi-Display Tests
 
-    @Test("Capture from multiple displays", .tags(.multiDisplay))
-    func multiDisplayCapture() async throws {
+    @Test(.tags(.multiDisplay))
+    func `Capture from multiple displays`() async throws {
         let screens = NSScreen.screens
         print("Found \(screens.count) display(s)")
 
@@ -169,9 +168,9 @@ struct ScreenshotValidationTests {
 
     // MARK: - Performance Tests
 
-    @Test("Screenshot capture performance", .tags(.performance))
+    @Test(.tags(.performance))
     @MainActor
-    func capturePerformance() async throws {
+    func `Screenshot capture performance`() async throws {
         let testWindow = self.createTestWindow(withContent: .solid(.white))
         defer { testWindow.close() }
 

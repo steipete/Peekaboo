@@ -7,21 +7,21 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Window Identity Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
+@Suite(.enabled(if: TestEnvironment.runAutomationScenarios))
 struct WindowIdentityUtilitiesTests {
     // MARK: - WindowIdentityService Tests
 
-    @Test("WindowIdentityService initialization")
+    @Test
     @MainActor
-    func windowIdentityServiceInit() {
+    func `WindowIdentityService initialization`() {
         _ = WindowIdentityService()
         // Should initialize without crashing
         // Service is non-optional, so it will always be created
     }
 
-    @Test("getWindowID from nil element returns nil")
+    @Test
     @MainActor
-    func getWindowIDFromNil() {
+    func `getWindowID from nil element returns nil`() {
         let service = WindowIdentityService()
 
         // Create a dummy Element that's not a window
@@ -31,18 +31,18 @@ struct WindowIdentityUtilitiesTests {
         #expect(result == nil)
     }
 
-    @Test("windowExists with invalid ID")
+    @Test
     @MainActor
-    func windowExistsInvalid() {
+    func `windowExists with invalid ID`() {
         let service = WindowIdentityService()
 
         #expect(service.windowExists(windowID: 0) == false)
         #expect(service.windowExists(windowID: 999_999_999) == false)
     }
 
-    @Test("isWindowOnScreen with invalid ID")
+    @Test
     @MainActor
-    func isWindowOnScreenInvalid() {
+    func `isWindowOnScreen with invalid ID`() {
         let service = WindowIdentityService()
 
         let zero = service.isWindowOnScreen(windowID: 0)
@@ -52,9 +52,9 @@ struct WindowIdentityUtilitiesTests {
         #expect(zero == absurd)
     }
 
-    @Test("getWindows for Finder")
+    @Test
     @MainActor
-    func getWindowsForFinder() {
+    func `getWindows for Finder`() {
         let service = WindowIdentityService()
 
         // Find Finder app
@@ -75,9 +75,9 @@ struct WindowIdentityUtilitiesTests {
         }
     }
 
-    @Test("findWindow with invalid ID returns nil")
+    @Test
     @MainActor
-    func findWindowInvalidID() {
+    func `findWindow with invalid ID returns nil`() {
         let service = WindowIdentityService()
 
         let result = service.findWindow(byID: 0)
@@ -89,8 +89,8 @@ struct WindowIdentityUtilitiesTests {
 
     // MARK: - WindowIdentityInfo Tests
 
-    @Test("WindowIdentityInfo initialization")
-    func windowIdentityInfoInit() {
+    @Test
+    func `WindowIdentityInfo initialization`() {
         let info = WindowIdentityInfo(
             windowID: 12345,
             title: "Test Window",
@@ -116,8 +116,8 @@ struct WindowIdentityUtilitiesTests {
         #expect(info.axIdentifier == "test-ax-id")
     }
 
-    @Test("WindowIdentityInfo isMainWindow")
-    func windowIdentityInfoIsMainWindow() {
+    @Test
+    func `WindowIdentityInfo isMainWindow`() {
         let mainWindow = WindowIdentityInfo(
             windowID: 1,
             title: "Main",
@@ -145,8 +145,8 @@ struct WindowIdentityUtilitiesTests {
         #expect(notMainWindow.isMainWindow == false)
     }
 
-    @Test("WindowIdentityInfo isDialog")
-    func windowIdentityInfoIsDialog() {
+    @Test
+    func `WindowIdentityInfo isDialog`() {
         let dialogWindow = WindowIdentityInfo(
             windowID: 1,
             title: "Dialog",
@@ -189,9 +189,9 @@ struct WindowIdentityUtilitiesTests {
 
     // MARK: - Integration Tests
 
-    @Test("getWindowInfo for real window")
+    @Test
     @MainActor
-    func getWindowInfoRealWindow() async throws {
+    func `getWindowInfo for real window`() async throws {
         let identityService = WindowIdentityService()
         let windowService = WindowManagementService()
 
@@ -226,9 +226,9 @@ struct WindowIdentityUtilitiesTests {
         }
     }
 
-    @Test("findWindow in specific app")
+    @Test
     @MainActor
-    func findWindowInApp() {
+    func `findWindow in specific app`() {
         let service = WindowIdentityService()
 
         // Find Finder app

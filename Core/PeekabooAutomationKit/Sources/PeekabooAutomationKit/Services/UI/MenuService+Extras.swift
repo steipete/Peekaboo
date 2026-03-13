@@ -12,7 +12,10 @@ import PeekabooFoundation
 
 @MainActor
 extension MenuService {
-    private var menuBarAXTimeoutSec: Float { 0.25 }
+    private var menuBarAXTimeoutSec: Float {
+        0.25
+    }
+
     private var deepMenuBarAXSweepEnabled: Bool {
         ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_DEEP_AX_SWEEP"] == "1"
     }
@@ -1056,7 +1059,7 @@ extension MenuService {
     {
         let running = apps
         var results: [MenuExtraInfo] = []
-        let commonMenuTitles: Set<String> = [
+        let commonMenuTitles: Set = [
             "apple", "file", "edit", "view", "window", "help", "history", "bookmarks", "navigate", "tab", "tools",
             "cut", "copy", "paste", "format",
         ]

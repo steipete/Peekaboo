@@ -41,14 +41,13 @@ struct InspectorWindow: View {
     }
 }
 
-// Window accessor to configure NSWindow properties
+/// Window accessor to configure NSWindow properties
 struct WindowAccessor: NSViewRepresentable {
     let windowAction: (NSWindow) -> Void
 
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
+        NSView()
         // Don't try to access window here - it's not available yet
-        return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {

@@ -3,7 +3,7 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
-@Suite("Agent Resume Functionality Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentResumeTests {
     // MARK: - AgentSessionManager Tests
 

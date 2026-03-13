@@ -10,19 +10,18 @@ import Testing
 
 #if PEEKABOO_INCLUDE_AUTOMATION_TESTS
 @Suite(
-    "TypeService Tests",
     .tags(.ui, .automation),
     .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct TypeServiceTests {
-    @Test("Initialize TypeService")
-    func initializeService() async throws {
+    @Test
+    func `Initialize TypeService`() {
         let service: TypeService? = TypeService()
         #expect(service != nil)
     }
 
-    @Test("Type text")
-    func typeBasicText() async throws {
+    @Test
+    func `Type text`() async throws {
         let service = TypeService()
 
         // Test basic text typing
@@ -34,8 +33,8 @@ struct TypeServiceTests {
             snapshotId: nil)
     }
 
-    @Test("Type with special characters")
-    func typeSpecialCharacters() async throws {
+    @Test
+    func `Type with special characters`() async throws {
         let service = TypeService()
 
         // Test typing with special characters
@@ -48,8 +47,8 @@ struct TypeServiceTests {
             snapshotId: nil)
     }
 
-    @Test("Type in specific element")
-    func typeInElement() async throws {
+    @Test
+    func `Type in specific element`() async throws {
         let service = TypeService()
 
         // Test typing in a specific element (by query)
@@ -67,8 +66,8 @@ struct TypeServiceTests {
         }
     }
 
-    @Test("Clear and type")
-    func clearAndType() async throws {
+    @Test
+    func `Clear and type`() async throws {
         let service = TypeService()
 
         // Test clearing before typing
@@ -80,8 +79,8 @@ struct TypeServiceTests {
             snapshotId: nil)
     }
 
-    @Test("Type actions")
-    func typeActions() async throws {
+    @Test
+    func `Type actions`() async throws {
         let service = TypeService()
 
         // Test type actions
@@ -103,8 +102,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses > 0)
     }
 
-    @Test("Type with fast speed")
-    func typeWithFastSpeed() async throws {
+    @Test
+    func `Type with fast speed`() async throws {
         let service = TypeService()
 
         // Test typing with no delay
@@ -116,8 +115,8 @@ struct TypeServiceTests {
             snapshotId: nil)
     }
 
-    @Test("Type with slow speed")
-    func typeWithSlowSpeed() async throws {
+    @Test
+    func `Type with slow speed`() async throws {
         let service = TypeService()
 
         // Test typing with delay
@@ -134,8 +133,8 @@ struct TypeServiceTests {
         #expect(duration >= 0.3)
     }
 
-    @Test("Empty text handling")
-    func typeEmptyText() async throws {
+    @Test
+    func `Empty text handling`() async throws {
         let service = TypeService()
 
         // Should handle empty text gracefully
@@ -147,8 +146,8 @@ struct TypeServiceTests {
             snapshotId: nil)
     }
 
-    @Test("Unicode text")
-    func typeUnicodeText() async throws {
+    @Test
+    func `Unicode text`() async throws {
         let service = TypeService()
 
         // Test various Unicode characters
@@ -171,8 +170,8 @@ struct TypeServiceTests {
         }
     }
 
-    @Test("Special key actions")
-    func specialKeyActions() async throws {
+    @Test
+    func `Special key actions`() async throws {
         let service = TypeService()
 
         // Test special key actions
@@ -195,8 +194,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses == actions.count)
     }
 
-    @Test("New special keys")
-    func newSpecialKeys() async throws {
+    @Test
+    func `New special keys`() async throws {
         let service = TypeService()
 
         // Test newly added special keys
@@ -221,8 +220,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses == newKeyActions.count)
     }
 
-    @Test("Escape sequences in text")
-    func escapeSequencesInText() async throws {
+    @Test
+    func `Escape sequences in text`() async throws {
         let service = TypeService()
 
         // Test escape sequences converted to TypeActions
@@ -251,8 +250,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses > 0)
     }
 
-    @Test("Mixed text and special keys")
-    func mixedTextAndKeys() async throws {
+    @Test
+    func `Mixed text and special keys`() async throws {
         let service = TypeService()
 
         // Test mixing text and various special keys
@@ -284,8 +283,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses >= expectedKeyPresses)
     }
 
-    @Test("All function keys")
-    func allFunctionKeys() async throws {
+    @Test
+    func `All function keys`() async throws {
         let service = TypeService()
 
         // Test all function keys F1-F12
@@ -301,8 +300,8 @@ struct TypeServiceTests {
         #expect(result.keyPresses == 12)
     }
 
-    @Test("Human cadence typing uses WPM profile")
-    func humanCadenceTyping() async throws {
+    @Test
+    func `Human cadence typing uses WPM profile`() async throws {
         let randomSource = DeterministicTypingRandomSource(values: [0.2, 0.8, 0.4, 0.6])
         let service = TypeService(randomSource: randomSource)
 

@@ -2,14 +2,12 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 import Testing
-
 @testable import PeekabooCore
 
 @MainActor
-@Suite("CaptureSession with fake frame source")
 struct CaptureSessionTests {
-    @Test("keeps all frames and writes contact/metadata")
-    func keepAllFrames() async throws {
+    @Test
+    func `keeps all frames and writes contact/metadata`() async throws {
         let framesToEmit = 5
         let frameSource = FakeFrameSource(frameCount: framesToEmit, size: CGSize(width: 100, height: 80))
         let outputDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
@@ -126,7 +124,9 @@ private struct NoOpScreenCaptureService: ScreenCaptureServiceProtocol {
         throw PeekabooError.captureFailed(reason: "unused")
     }
 
-    func hasScreenRecordingPermission() async -> Bool { true }
+    func hasScreenRecordingPermission() async -> Bool {
+        true
+    }
 }
 
 private struct NoOpScreenService: ScreenServiceProtocol {
@@ -143,7 +143,15 @@ private struct NoOpScreenService: ScreenServiceProtocol {
         ]
     }
 
-    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? { self.listScreens().first }
-    func screen(at index: Int) -> ScreenInfo? { self.listScreens().first(where: { $0.index == index }) }
-    var primaryScreen: ScreenInfo? { self.listScreens().first }
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        self.listScreens().first
+    }
+
+    func screen(at index: Int) -> ScreenInfo? {
+        self.listScreens().first(where: { $0.index == index })
+    }
+
+    var primaryScreen: ScreenInfo? {
+        self.listScreens().first
+    }
 }

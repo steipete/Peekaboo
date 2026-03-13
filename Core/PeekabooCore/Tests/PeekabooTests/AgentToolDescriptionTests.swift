@@ -5,13 +5,12 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Agent Tool Description Tests")
 struct AgentToolDescriptionTests {
     // MARK: - Tool Definition Structure Tests
 
-    @Test("All agent tools have comprehensive descriptions")
+    @Test
     @MainActor
-    func allToolsHaveDescriptions() {
+    func `All agent tools have comprehensive descriptions`() {
         let allTools = makeAgentTools()
 
         for tool in allTools {
@@ -24,9 +23,9 @@ struct AgentToolDescriptionTests {
         }
     }
 
-    @Test("Tool descriptions follow consistent format")
+    @Test
     @MainActor
-    func toolDescriptionFormat() {
+    func `Tool descriptions follow consistent format`() {
         let allTools = makeAgentTools()
 
         for tool in allTools {
@@ -60,9 +59,9 @@ struct AgentToolDescriptionTests {
 
     // MARK: - Specific Tool Enhancement Tests
 
-    @Test("Click tool has enhanced element matching description")
+    @Test
     @MainActor
-    func clickToolEnhancedDescription() {
+    func `Click tool has enhanced element matching description`() {
         guard let clickTool = makeAgentTools().first(where: { $0.name == "click" }) else {
             Issue.record("Click tool not found")
             return
@@ -82,9 +81,9 @@ struct AgentToolDescriptionTests {
         #expect(discussion.contains("--double"))
     }
 
-    @Test("Type tool includes escape sequence documentation")
+    @Test
     @MainActor
-    func typeToolEscapeSequences() {
+    func `Type tool includes escape sequence documentation`() {
         guard let typeTool = makeAgentTools().first(where: { $0.name == "type" }) else {
             Issue.record("Type tool not found")
             return
@@ -98,9 +97,9 @@ struct AgentToolDescriptionTests {
         #expect(discussion.contains("escape") || discussion.contains("\\"))
     }
 
-    @Test("See tool has comprehensive UI detection description")
+    @Test
     @MainActor
-    func seeToolUIDetection() {
+    func `See tool has comprehensive UI detection description`() {
         guard let seeTool = makeAgentTools().first(where: { $0.name == "see" }) else {
             Issue.record("See tool not found")
             return
@@ -116,9 +115,9 @@ struct AgentToolDescriptionTests {
         #expect(discussion.contains("snapshot"))
     }
 
-    @Test("Shell tool has quoting examples")
+    @Test
     @MainActor
-    func shellToolQuotingExamples() {
+    func `Shell tool has quoting examples`() {
         guard let shellTool = makeAgentTools().first(where: { $0.name == "shell" }) else {
             Issue.record("Shell tool not found")
             return
@@ -136,9 +135,9 @@ struct AgentToolDescriptionTests {
 
     // MARK: - Parameter Documentation Tests
 
-    @Test("Required parameters are clearly marked")
+    @Test
     @MainActor
-    func requiredParametersMarked() {
+    func `Required parameters are clearly marked`() {
         let allTools = makeAgentTools()
 
         for tool in allTools {
@@ -151,9 +150,9 @@ struct AgentToolDescriptionTests {
         }
     }
 
-    @Test("Optional parameters have default values documented")
+    @Test
     @MainActor
-    func optionalParameterDefaults() {
+    func `Optional parameters have default values documented`() {
         let allTools = makeAgentTools()
 
         for tool in allTools {
@@ -174,9 +173,9 @@ struct AgentToolDescriptionTests {
 
     // MARK: - Tool Category Tests
 
-    @Test("Tools are properly categorized")
+    @Test
     @MainActor
-    func toolCategorization() {
+    func `Tools are properly categorized`() {
         let allTools = makeAgentTools()
         let categorizedTools = Dictionary(grouping: allTools, by: { $0.category })
 
@@ -198,9 +197,9 @@ struct AgentToolDescriptionTests {
 
     // MARK: - Error Guidance Tests
 
-    @Test("Tools provide helpful error guidance")
+    @Test
     @MainActor
-    func toolErrorGuidance() {
+    func `Tools provide helpful error guidance`() {
         // Only check tools that are expected to have error guidance
         // Based on actual tool definitions, only 'click' has TROUBLESHOOTING section
         let toolsWithErrorGuidance = ["click"]
@@ -263,9 +262,9 @@ struct AgentToolDescriptionTests {
 
     // MARK: - Example Quality Tests
 
-    @Test("Tool examples are realistic and helpful")
+    @Test
     @MainActor
-    func toolExampleQuality() {
+    func `Tool examples are realistic and helpful`() {
         let allTools = makeAgentTools()
 
         for tool in allTools where tool.discussion.contains("EXAMPLE") {

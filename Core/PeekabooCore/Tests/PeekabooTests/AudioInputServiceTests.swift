@@ -14,22 +14,21 @@ private enum AudioTestEnvironment {
     }
 }
 
-@Suite("AudioInputService Tests", .tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
+@Suite(.tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
 struct AudioInputServiceTests {
-    @Suite("Initialization")
     struct InitializationTests {
-        @Test("AudioInputService initializes with AI service dependency")
+        @Test
         @MainActor
-        func initializeService() async throws {
+        func `AudioInputService initializes with AI service dependency`() {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
             #expect(service.isAvailable == service.isAvailable) // Just verify it compiles
             #expect(!service.isRecording)
         }
 
-        @Test("Audio availability check returns expected value")
+        @Test
         @MainActor
-        func checkAvailability() async throws {
+        func `Audio availability check returns expected value`() {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
             // On macOS this should always return true in our simplified implementation
@@ -37,11 +36,10 @@ struct AudioInputServiceTests {
         }
     }
 
-    @Suite("Recording State Management")
     struct RecordingStateTests {
-        @Test("Cannot start recording when already recording")
+        @Test
         @MainActor
-        func preventDoubleRecording() async throws {
+        func `Cannot start recording when already recording`() async throws {
             let recorder = MockAudioRecorder()
             let service = AudioInputServiceTests.makeService(recorder: recorder)
 
@@ -58,9 +56,9 @@ struct AudioInputServiceTests {
             _ = try? await service.stopRecording()
         }
 
-        @Test("Cannot stop recording when not recording")
+        @Test
         @MainActor
-        func preventStopWithoutStart() async throws {
+        func `Cannot stop recording when not recording`() async throws {
             let recorder = MockAudioRecorder()
             let service = AudioInputServiceTests.makeService(recorder: recorder)
 
@@ -71,9 +69,9 @@ struct AudioInputServiceTests {
             }
         }
 
-        @Test("Recording state transitions correctly")
+        @Test
         @MainActor
-        func recordingStateTransitions() async throws {
+        func `Recording state transitions correctly`() async throws {
             let recorder = MockAudioRecorder()
             let service = AudioInputServiceTests.makeService(recorder: recorder)
 
@@ -89,9 +87,9 @@ struct AudioInputServiceTests {
             #expect(!service.isRecording)
         }
 
-        @Test("Recorder state is observed only while recording")
+        @Test
         @MainActor
-        func observesRecorderStateOnlyWhileRecording() async throws {
+        func `Recorder state is observed only while recording`() async throws {
             let recorder = MockAudioRecorder()
             let service = AudioInputServiceTests.makeService(recorder: recorder)
 
@@ -118,11 +116,10 @@ struct AudioInputServiceTests {
         }
     }
 
-    @Suite("File Transcription")
     struct FileTranscriptionTests {
-        @Test("Transcribe audio file validates file existence")
+        @Test
         @MainActor
-        func validateFileExistence() async throws {
+        func `Transcribe audio file validates file existence`() async throws {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
 
@@ -133,9 +130,9 @@ struct AudioInputServiceTests {
             }
         }
 
-        @Test("Transcribe audio file validates supported file types")
+        @Test
         @MainActor
-        func validateFileTypes() async throws {
+        func `Transcribe audio file validates supported file types`() async throws {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
 
@@ -150,9 +147,9 @@ struct AudioInputServiceTests {
             }
         }
 
-        @Test("Transcribe audio file validates file size")
+        @Test
         @MainActor
-        func validateFileSize() async throws {
+        func `Transcribe audio file validates file size`() async throws {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
 
@@ -170,9 +167,9 @@ struct AudioInputServiceTests {
             }
         }
 
-        @Test("Transcribe requires OpenAI API key")
+        @Test
         @MainActor
-        func requiresAPIKey() async throws {
+        func `Transcribe requires OpenAI API key`() async throws {
             let service = AudioInputServiceTests.makeService(hasAPIKey: false)
 
             // Create a valid temporary audio file
@@ -188,10 +185,9 @@ struct AudioInputServiceTests {
         }
     }
 
-    @Suite("Error Messages")
     struct ErrorMessageTests {
-        @Test("Error descriptions are user-friendly")
-        func errorDescriptions() {
+        @Test
+        func `Error descriptions are user-friendly`() {
             let errors: [(AudioInputError, String)] = [
                 (.alreadyRecording, "Already recording audio"),
                 (.notRecording, "Not currently recording"),
@@ -243,7 +239,7 @@ final class MockAudioRecorder: AudioRecorderProtocol, @unchecked Sendable {
     func resumeRecording() async {}
 }
 
-struct MockCredentialProvider: AudioTranscriptionCredentialProviding, Sendable {
+struct MockCredentialProvider: AudioTranscriptionCredentialProviding {
     let key: String?
 
     func currentOpenAIKey() -> String? {
@@ -268,9 +264,8 @@ extension AudioInputServiceTests {
 
 // MARK: - Additional Comprehensive Tests
 
-@Suite("AudioInputService Comprehensive Tests", .tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
+@Suite(.tags(.unit, .agent), .enabled(if: AudioTestEnvironment.shouldRun))
 struct AudioInputServiceComprehensiveTests {
-    @Suite("Mock Audio File Tests")
     struct MockAudioFileTests {
         /// Create a mock WAV file for testing
         static func createMockWAVFile() throws -> URL {
@@ -303,9 +298,9 @@ struct AudioInputServiceComprehensiveTests {
             return fileURL
         }
 
-        @Test("Transcribe valid WAV file")
+        @Test
         @MainActor
-        func transcribeValidWAVFile() async throws {
+        func `Transcribe valid WAV file`() async throws {
             let service = AudioInputServiceTests.makeService(hasAPIKey: false)
 
             // Use real test WAV file from Resources
@@ -326,9 +321,9 @@ struct AudioInputServiceComprehensiveTests {
             }
         }
 
-        @Test("Reject files over size limit")
+        @Test
         @MainActor
-        func rejectLargeFiles() async throws {
+        func `Reject files over size limit`() async throws {
             let aiService = PeekabooAIService()
             let service = AudioInputService(aiService: aiService)
 

@@ -11,18 +11,17 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("PeekabooAIService Tests")
 struct PeekabooAIServiceTests {
-    @Test("Initialize AI service")
+    @Test
     @MainActor
-    func initialization() async throws {
+    func `Initialize AI service`() {
         let service = PeekabooAIService()
         #expect(service != nil)
     }
 
-    @Test("List available models")
+    @Test
     @MainActor
-    func testAvailableModels() async throws {
+    func `List available models`() {
         let service = PeekabooAIService()
         let models = service.availableModels()
 
@@ -30,9 +29,9 @@ struct PeekabooAIServiceTests {
         #expect(models == [.openai(.gpt51), .anthropic(.opus45)])
     }
 
-    @Test("Respects configured provider default")
+    @Test
     @MainActor
-    func respectsConfiguredProvider() async throws {
+    func `Respects configured provider default`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -59,9 +58,9 @@ struct PeekabooAIServiceTests {
         #expect(service.availableModels() == [.anthropic(.sonnet45)])
     }
 
-    @Test("Uses provider list ordering for default model")
+    @Test
     @MainActor
-    func usesProvidersListOrdering() async throws {
+    func `Uses provider list ordering for default model`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -87,9 +86,9 @@ struct PeekabooAIServiceTests {
         #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
     }
 
-    @Test("Parses Ollama provider/model entries without defaulting to Llama")
+    @Test
     @MainActor
-    func parsesOllamaProviderModel() async throws {
+    func `Parses Ollama provider/model entries without defaulting to Llama`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -115,9 +114,9 @@ struct PeekabooAIServiceTests {
         #expect(service.availableModels() == [.ollama(.custom("qwen2.5vl:latest"))])
     }
 
-    @Test("Environment provider list overrides config for Ollama models")
+    @Test
     @MainActor
-    func environmentOverridesConfigForOllama() async throws {
+    func `Environment provider list overrides config for Ollama models`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -145,9 +144,9 @@ struct PeekabooAIServiceTests {
         #expect(service.availableModels() == [.ollama(.custom("qwen2.5vl:latest"))])
     }
 
-    @Test("Automatically loads configuration when resolving providers")
+    @Test
     @MainActor
-    func autoLoadsConfiguration() async throws {
+    func `Automatically loads configuration when resolving providers`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -173,9 +172,9 @@ struct PeekabooAIServiceTests {
         #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
     }
 
-    @Test("Falls back to Anthropic when only Anthropic key is present")
+    @Test
     @MainActor
-    func fallbackAnthropicWithKey() async throws {
+    func `Falls back to Anthropic when only Anthropic key is present`() {
         setenv("ANTHROPIC_API_KEY", "key", 1)
         unsetenv("OPENAI_API_KEY")
         unsetenv("PEEKABOO_CONFIG_DIR")
@@ -192,9 +191,9 @@ struct PeekabooAIServiceTests {
         #expect(service.availableModels() == [.anthropic(.opus45)])
     }
 
-    @Test("Falls back to OpenAI when no config or keys present")
+    @Test
     @MainActor
-    func fallbackOpenAIWhenEmpty() async throws {
+    func `Falls back to OpenAI when no config or keys present`() {
         unsetenv("PEEKABOO_CONFIG_DIR")
         unsetenv("OPENAI_API_KEY")
         unsetenv("ANTHROPIC_API_KEY")
@@ -206,9 +205,9 @@ struct PeekabooAIServiceTests {
         #expect(service.availableModels().first == .openai(.gpt51))
     }
 
-    @Test("Generate text with default model")
+    @Test
     @MainActor
-    func testGenerateText() async throws {
+    func `Generate text with default model`() async throws {
         let service = PeekabooAIService()
 
         // Skip test if no API key is configured
@@ -221,9 +220,9 @@ struct PeekabooAIServiceTests {
         #expect(result.lowercased().contains("test"))
     }
 
-    @Test("Analyze image data")
+    @Test
     @MainActor
-    func analyzeImageData() async throws {
+    func `Analyze image data`() async throws {
         let service = PeekabooAIService()
 
         // Skip test if no API key is configured
@@ -243,9 +242,9 @@ struct PeekabooAIServiceTests {
         #expect(result.lowercased().contains("red") || result.lowercased().contains("color"))
     }
 
-    @Test("Analyze image file")
+    @Test
     @MainActor
-    func testAnalyzeImageFile() async throws {
+    func `Analyze image file`() async throws {
         let service = PeekabooAIService()
 
         // Skip test if no API key is configured
@@ -272,9 +271,9 @@ struct PeekabooAIServiceTests {
         #expect(result.lowercased().contains("yes") || result.lowercased().contains("image"))
     }
 
-    @Test("Use custom model for generation")
+    @Test
     @MainActor
-    func customModel() async throws {
+    func `Use custom model for generation`() async throws {
         let service = PeekabooAIService()
 
         // Skip test if no API key is configured
@@ -290,7 +289,7 @@ struct PeekabooAIServiceTests {
         #expect(result.lowercased().contains("test"))
     }
 
-    // Helper function to create test image data
+    /// Helper function to create test image data
     private func createTestImageData() -> Data {
         // Create a simple 1x1 red pixel PNG
         let width = 1

@@ -2,11 +2,10 @@ import CoreGraphics
 import Testing
 @testable import PeekabooAutomationKit
 
-@Suite("Window List Index Normalization")
 @MainActor
 struct WindowListIndexNormalizationTests {
-    @Test("normalizeWindowIndices keeps order and makes indices contiguous")
-    func normalizeWindowIndices() {
+    @Test
+    func `normalizeWindowIndices keeps order and makes indices contiguous`() {
         let windows = [
             ServiceWindowInfo(
                 windowID: 111,
@@ -51,8 +50,8 @@ struct WindowListIndexNormalizationTests {
         #expect(normalized.map(\.index) == [0, 1])
     }
 
-    @Test("normalizeWindowIndices handles empty input")
-    func normalizeWindowIndicesEmpty() {
+    @Test
+    func `normalizeWindowIndices handles empty input`() {
         #expect(ApplicationService.normalizeWindowIndices([]).isEmpty)
     }
 }

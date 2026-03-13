@@ -474,7 +474,9 @@ private enum WindowAction: String, CaseIterable {
     case setBounds = "set-bounds"
     case focus
 
-    var description: String { self.rawValue }
+    var description: String {
+        self.rawValue
+    }
 }
 
 private struct WindowActionInputs {

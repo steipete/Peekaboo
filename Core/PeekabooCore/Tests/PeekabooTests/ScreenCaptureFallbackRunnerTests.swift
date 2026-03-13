@@ -10,11 +10,10 @@ private struct FallbackEvent {
     let error: (any Error)?
 }
 
-@Suite("ScreenCaptureFallbackRunner")
 struct ScreenCaptureFallbackRunnerTests {
     @MainActor
-    @Test("success on first engine records observer")
-    func successFirstEngine() async throws {
+    @Test
+    func `success on first engine records observer`() async throws {
         let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
         var events: [FallbackEvent] = []
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy]) { op, api, duration, success, error in
@@ -47,8 +46,8 @@ struct ScreenCaptureFallbackRunnerTests {
     }
 
     @MainActor
-    @Test("fallback to legacy records both events")
-    func fallbackRecordsEvents() async throws {
+    @Test
+    func `fallback to legacy records both events`() async throws {
         enum Dummy: Error { case fail }
         let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
         var call = 0

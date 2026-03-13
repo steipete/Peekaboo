@@ -4,21 +4,20 @@ import Testing
 @testable import PeekabooCLI
 
 @Suite(
-    "ClickCommand Tests",
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct ClickCommandTests {
-    @Test("Click command  requires argument or option")
-    func requiresArgumentOrOption() async throws {
+    @Test
+    func `Click command  requires argument or option`() throws {
         var command = try ClickCommand.parse([])
         #expect(throws: (any Error).self) {
             try command.validate()
         }
     }
 
-    @Test("Click command  parses coordinates correctly")
-    func parsesCoordinates() async throws {
+    @Test
+    func `Click command  parses coordinates correctly`() async throws {
         let context = await self.makeContext()
         let result = try await InProcessCommandRunner.run(
             ["click", "--coords", "100,200", "--json"],
@@ -35,8 +34,8 @@ struct ClickCommandTests {
         }
     }
 
-    @Test("Click command  validates coordinate format")
-    func validatesCoordinateFormat() async throws {
+    @Test
+    func `Click command  validates coordinate format`() throws {
         var command = try ClickCommand.parse(["--coords", "invalid", "--json"])
         #expect(throws: (any Error).self) {
             try command.validate()

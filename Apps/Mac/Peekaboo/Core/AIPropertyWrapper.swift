@@ -233,30 +233,9 @@ extension View {
 
 @available(macOS 14.0, *)
 extension EnvironmentValues {
-    public var aiModel: Model {
-        get { self[AIModelKey.self] }
-        set { self[AIModelKey.self] = newValue }
-    }
+    @Entry public var aiModel: Model = .default
 
-    public var aiSettings: GenerationSettings {
-        get { self[AISettingsKey.self] }
-        set { self[AISettingsKey.self] = newValue }
-    }
+    @Entry public var aiSettings: GenerationSettings = .default
 
-    public var aiTools: [AgentTool]? {
-        get { self[AIToolsKey.self] }
-        set { self[AIToolsKey.self] = newValue }
-    }
-}
-
-private struct AIModelKey: EnvironmentKey {
-    static let defaultValue: Model = .default
-}
-
-private struct AISettingsKey: EnvironmentKey {
-    static let defaultValue: GenerationSettings = .default
-}
-
-private struct AIToolsKey: EnvironmentKey {
-    static let defaultValue: [AgentTool]? = nil
+    @Entry public var aiTools: [AgentTool]?
 }

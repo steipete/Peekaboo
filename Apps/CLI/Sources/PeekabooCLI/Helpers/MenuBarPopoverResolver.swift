@@ -2,8 +2,8 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
-struct MenuBarPopoverResolution: Sendable {
-    enum Reason: String, Sendable {
+struct MenuBarPopoverResolution {
+    enum Reason: String {
         case ownerPID = "owner_pid"
         case ownerName = "owner_name"
         case preferredX = "preferred_x"
@@ -22,7 +22,7 @@ struct MenuBarPopoverResolution: Sendable {
     let captureResult: CaptureResult?
 }
 
-struct MenuBarPopoverResolverContext: Sendable {
+struct MenuBarPopoverResolverContext {
     let appHint: String?
     let preferredOwnerName: String?
     let ownerPID: pid_t?
@@ -53,7 +53,7 @@ struct MenuBarPopoverResolverContext: Sendable {
 }
 
 enum MenuBarPopoverResolver {
-    struct OCRMatch: Sendable {
+    struct OCRMatch {
         let captureResult: CaptureResult?
         let bounds: CGRect?
     }

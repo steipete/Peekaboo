@@ -4,10 +4,10 @@ import PeekabooCore
 import PeekabooFoundation
 import Testing
 
-@Suite("PID Targeting Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct PIDTargetingTests {
-    @Test("Find application by valid PID", .enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
-    func findByValidPID() async throws {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil))
+    func `Find application by valid PID`() async throws {
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
         guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited })
@@ -30,8 +30,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("Invalid PID format throws error")
-    func invalidPIDFormat() async throws {
+    @Test
+    func `Invalid PID format throws error`() async throws {
         // Test various invalid PID formats
         let invalidPIDs = [
             "PID:", // Missing PID number
@@ -49,8 +49,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("Non-existent PID throws notFound error")
-    func nonExistentPID() async throws {
+    @Test
+    func `Non-existent PID throws notFound error`() async throws {
         // Use a very high PID that's unlikely to exist
         let nonExistentPID = "PID:999999"
 
@@ -61,8 +61,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("PID prefix matching is case-insensitive")
-    func pidPrefixCaseInsensitivity() async throws {
+    @Test
+    func `PID prefix matching is case-insensitive`() async throws {
         // Get any running application
         let runningApps = NSWorkspace.shared.runningApplications
         guard let testApp = runningApps.first(where: { $0.localizedName != nil && $0.activationPolicy != .prohibited })
@@ -87,8 +87,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("PID targeting has priority over name matching")
-    func pidPriorityOverName() async throws {
+    @Test
+    func `PID targeting has priority over name matching`() async throws {
         // Get Finder's PID since it's always running
         let runningApps = NSWorkspace.shared.runningApplications
         guard let finder = runningApps.first(where: { $0.bundleIdentifier == "com.apple.finder" }) else {
@@ -110,8 +110,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("Find application by bundle ID")
-    func findByBundleID() async throws {
+    @Test
+    func `Find application by bundle ID`() async throws {
         let applicationService = await MainActor.run { ApplicationService() }
 
         // Try to find Finder by bundle ID
@@ -124,8 +124,8 @@ struct PIDTargetingTests {
         }
     }
 
-    @Test("Find application by name")
-    func findByName() async throws {
+    @Test
+    func `Find application by name`() async throws {
         let applicationService = await MainActor.run { ApplicationService() }
 
         // Try to find Finder by name (case-insensitive)

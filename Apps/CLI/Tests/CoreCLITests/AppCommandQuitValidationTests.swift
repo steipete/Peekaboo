@@ -3,7 +3,6 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("AppCommand quit validation")
 @MainActor
 struct AppCommandQuitValidationTests {
     private func makeRuntime() -> CommandRuntime {
@@ -13,8 +12,8 @@ struct AppCommandQuitValidationTests {
         )
     }
 
-    @Test("Rejects --all combined with --app")
-    func rejectAllWithApp() async {
+    @Test
+    func `Rejects --all combined with --app`() async {
         var command = AppCommand.QuitSubcommand()
         command.all = true
         command.app = "Finder"
@@ -25,8 +24,8 @@ struct AppCommandQuitValidationTests {
         #expect(exitCode == .failure)
     }
 
-    @Test("Rejects --except without --all")
-    func rejectExceptWithoutAll() async {
+    @Test
+    func `Rejects --except without --all`() async {
         var command = AppCommand.QuitSubcommand()
         command.except = "Finder"
 
@@ -36,8 +35,8 @@ struct AppCommandQuitValidationTests {
         #expect(exitCode == .failure)
     }
 
-    @Test("Rejects missing target when not using --all")
-    func rejectMissingTarget() async {
+    @Test
+    func `Rejects missing target when not using --all`() async {
         var command = AppCommand.QuitSubcommand()
 
         let exitCode = await #expect(throws: ExitCode.self) {

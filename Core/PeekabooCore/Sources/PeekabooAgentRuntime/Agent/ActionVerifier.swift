@@ -242,7 +242,7 @@ public final class ActionVerifier {
     }
 
     private func isReadOnlyTool(_ toolName: String) -> Bool {
-        let readOnlyTools: Set<String> = [
+        let readOnlyTools: Set = [
             "see", "screenshot", "capture", "analyze", "image",
             "list", "list_apps", "list_windows", "list_menus", "list_dock",
             "focused", "find_element", "list_elements",

@@ -69,7 +69,8 @@ extension AgentCommand {
                 return
             } catch {
                 self.printAgentExecutionError(
-                    "Failed to launch TauTUI chat: \(error.localizedDescription). Falling back to basic chat.")
+                    "Failed to launch TauTUI chat: \(error.localizedDescription). Falling back to basic chat."
+                )
             }
         }
 

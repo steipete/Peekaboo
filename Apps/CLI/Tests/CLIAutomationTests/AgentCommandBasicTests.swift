@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Agent Command Basic Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentCommandBasicTests {
-    @Test("Agent command exists and has correct configuration")
-    func agentCommandExists() {
+    @Test
+    func `Agent command exists and has correct configuration`() {
         // Verify the command configuration
         let config = AgentCommand.commandDescription
         #expect(config.commandName == "agent")

@@ -1,13 +1,12 @@
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-@Suite("RunCommand JSON Failure Output", .serialized, .tags(.unit))
+@Suite(.serialized, .tags(.unit))
 struct RunCommandJSONFailureOutputTests {
-    @Test("run --json outputs a single JSON payload when steps fail")
-    func runCommandJSONFailureDoesNotDoublePrint() async throws {
+    @Test
+    func `run --json outputs a single JSON payload when steps fail`() async throws {
         let scriptPath = "/tmp/failing-json-script-\(UUID().uuidString).peekaboo.json"
         let script = PeekabooScript(
             description: "Failing script",

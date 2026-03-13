@@ -10,12 +10,7 @@ import SwiftUI
 /// A container view that positions animation content within a full-screen window
 struct PositionedAnimationView<Content: View>: View {
     let targetRect: CGRect
-    let content: Content
-
-    init(targetRect: CGRect, @ViewBuilder content: () -> Content) {
-        self.targetRect = targetRect
-        self.content = content()
-    }
+    @ViewBuilder let content: Content
 
     var body: some View {
         ZStack(alignment: .topLeading) {

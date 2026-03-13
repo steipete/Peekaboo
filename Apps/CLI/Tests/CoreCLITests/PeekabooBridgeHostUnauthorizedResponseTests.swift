@@ -4,10 +4,9 @@ import PeekabooBridge
 import PeekabooCore
 import Testing
 
-@Suite("Peekaboo Bridge Host")
 struct PeekabooBridgeHostUnauthorizedResponseTests {
-    @Test("unauthorized clients receive an error response (not EOF)")
-    func unauthorizedClientsReceiveErrorResponse() async throws {
+    @Test
+    func `unauthorized clients receive an error response (not EOF)`() async throws {
         let socketPath = "/tmp/peekaboo-bridge-host-\(UUID().uuidString).sock"
 
         let server = await MainActor.run {

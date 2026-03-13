@@ -6,11 +6,10 @@
 import Testing
 @testable import PeekabooUICore
 
-@Suite("Overlay manager behavior")
 struct OverlayManagerTests {
     @MainActor
-    @Test("Defaults are configured for all applications")
-    func defaults() {
+    @Test
+    func `Defaults are configured for all applications`() {
         let manager = OverlayManager()
         defer { manager.cleanup() }
 
@@ -24,8 +23,8 @@ struct OverlayManagerTests {
     }
 
     @MainActor
-    @Test("Selection mode updates trigger refresh")
-    func selectionModeUpdates() {
+    @Test
+    func `Selection mode updates trigger refresh`() {
         let manager = OverlayManager()
         defer { manager.cleanup() }
 
@@ -36,8 +35,8 @@ struct OverlayManagerTests {
     }
 
     @MainActor
-    @Test("Detail level updates")
-    func detailLevelUpdates() {
+    @Test
+    func `Detail level updates`() {
         let manager = OverlayManager()
         defer { manager.cleanup() }
 

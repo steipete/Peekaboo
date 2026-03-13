@@ -3,11 +3,10 @@ import PeekabooAutomation
 import Testing
 @testable import PeekabooAgentRuntime
 
-@Suite("SeeTool Visualizer Support")
 @MainActor
 struct SeeToolVisualizerTests {
-    @Test("Converts accessibility bounds into screen-space rectangles")
-    func convertsAccessibilityRect() {
+    @Test
+    func `Converts accessibility bounds into screen-space rectangles`() {
         let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
         let accessibilityRect = CGRect(x: 120, y: 50, width: 200, height: 40)
 
@@ -20,8 +19,8 @@ struct SeeToolVisualizerTests {
         #expect(converted.height == 40)
     }
 
-    @Test("Produces protocol elements with flipped coordinates")
-    func producesVisualizerElements() {
+    @Test
+    func `Produces protocol elements with flipped coordinates`() {
         let sample = PeekabooAutomation.DetectedElement(
             id: "B1",
             type: .button,

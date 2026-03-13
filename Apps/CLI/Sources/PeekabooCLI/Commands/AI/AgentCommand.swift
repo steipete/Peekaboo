@@ -20,7 +20,7 @@ struct AgentSessionInfo: Codable {
     let messageCount: Int
 }
 
-// Simple debug logging check
+/// Simple debug logging check
 private var isDebugLoggingEnabled: Bool {
     // Check if verbose mode is enabled via log level
     if let logLevel = ProcessInfo.processInfo.environment["PEEKABOO_LOG_LEVEL"]?.lowercased() {
@@ -168,9 +168,13 @@ struct AgentCommand: RuntimeOptionsConfigurable {
         self.resolvedRuntime.logger
     }
 
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
 
-    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+    var verbose: Bool {
+        self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose
+    }
 }
 
 @MainActor
@@ -192,7 +196,9 @@ private final class TerminalModeGuard {
         self.active = true
     }
 
-    var fileDescriptor: Int32 { self.fd }
+    var fileDescriptor: Int32 {
+        self.fd
+    }
 
     func restore() {
         guard self.active else { return }
@@ -782,7 +788,9 @@ extension AgentCommand {
         self.normalizedTaskInput != nil || self.audio || self.audioFile != nil
     }
 
-    var resolvedMaxSteps: Int { self.maxSteps ?? 100 }
+    var resolvedMaxSteps: Int {
+        self.maxSteps ?? 100
+    }
 
     private func resolvedQueueMode() throws -> QueueMode {
         guard let raw = self.queueMode?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {

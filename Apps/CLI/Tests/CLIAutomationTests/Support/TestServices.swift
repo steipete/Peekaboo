@@ -93,13 +93,13 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 
 @MainActor
 final class StubAutomationService: UIAutomationServiceProtocol {
-    struct ClickCall: Sendable {
+    struct ClickCall {
         let target: ClickTarget
         let clickType: ClickType
         let snapshotId: String?
     }
 
-    struct TypeTextCall: Sendable {
+    struct TypeTextCall {
         let text: String
         let target: String?
         let clearExisting: Bool
@@ -107,17 +107,17 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let snapshotId: String?
     }
 
-    struct TypeActionsCall: Sendable {
+    struct TypeActionsCall {
         let actions: [TypeAction]
         let cadence: TypingCadence
         let snapshotId: String?
     }
 
-    struct ScrollCall: Sendable {
+    struct ScrollCall {
         let request: ScrollRequest
     }
 
-    struct SwipeCall: Sendable {
+    struct SwipeCall {
         let from: CGPoint
         let to: CGPoint
         let duration: Int
@@ -125,7 +125,7 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let profile: MouseMovementProfile
     }
 
-    struct DragCall: Sendable {
+    struct DragCall {
         let from: CGPoint
         let to: CGPoint
         let duration: Int
@@ -134,19 +134,19 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let profile: MouseMovementProfile
     }
 
-    struct MoveMouseCall: Sendable {
+    struct MoveMouseCall {
         let destination: CGPoint
         let duration: Int
         let steps: Int
         let profile: MouseMovementProfile
     }
 
-    struct HotkeyCall: Sendable {
+    struct HotkeyCall {
         let keys: String
         let holdDuration: Int
     }
 
-    struct WaitForElementCall: Sendable {
+    struct WaitForElementCall {
         let target: ClickTarget
         let timeout: TimeInterval
         let snapshotId: String?
@@ -216,7 +216,8 @@ final class StubAutomationService: UIAutomationServiceProtocol {
                 clearExisting: clearExisting,
                 typingDelay: typingDelay,
                 snapshotId: snapshotId
-            ))
+            )
+        )
     }
 
     func typeActions(
@@ -455,7 +456,7 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
     private(set) var storedElements: [String: [String: PeekabooCore.UIElement]] = [:]
     private(set) var storedAnnotatedScreenshots: [String: [String]] = [:]
     var mostRecentSnapshotId: String?
-    struct ScreenshotRecord: Sendable {
+    struct ScreenshotRecord {
         let path: String
         let applicationBundleId: String?
         let applicationProcessId: Int32?
@@ -1226,7 +1227,7 @@ enum TestServicesFactory {
         screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
     ) -> PeekabooServices {
         let screenService = StubScreenService(screens: screens)
-        let services = PeekabooServices(
+        return PeekabooServices(
             logging: LoggingService(),
             screenCapture: screenCapture,
             applications: applications,
@@ -1245,8 +1246,6 @@ enum TestServicesFactory {
             configuration: ConfigurationManager.shared,
             screens: screenService
         )
-
-        return services
     }
 
     @MainActor

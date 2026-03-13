@@ -309,12 +309,10 @@ public class ApplicationToolFormatter: BaseToolFormatter {
         }.prefix(3)
 
         guard !titles.isEmpty else { return nil }
-        let formatted = titles.map { title -> String in
+        return titles.map { title -> String in
             let truncated = title.count > 30 ? String(title.prefix(30)) + "..." : title
             return "\"\(truncated)\""
         }.joined(separator: ", ")
-
-        return formatted
     }
 
     private func formatMemorySize(_ bytes: Int) -> String {

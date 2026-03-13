@@ -37,10 +37,10 @@ public enum LegacyAgentTool: String, CaseIterable, Sendable {
     case dockClick = "dock_click"
     case listDock = "list_dock"
 
-    // Shell tool
+    /// Shell tool
     case shell
 
-    // Utility tools
+    /// Utility tools
     case wait
 
     /// The string identifier used for tool calls

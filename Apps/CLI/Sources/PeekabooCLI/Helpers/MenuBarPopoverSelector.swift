@@ -22,11 +22,10 @@ enum MenuBarPopoverSelector {
             return exact
         }
 
-        let partial = candidates.filter { candidate in
+        return candidates.filter { candidate in
             let ownerName = windowInfoById[candidate.windowId]?.ownerName?.lowercased() ?? ""
             return ownerName.contains(normalized)
         }
-        return partial
     }
 
     static func rankCandidates(

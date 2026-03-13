@@ -8,13 +8,11 @@
 import CoreGraphics
 import Foundation
 import Testing
-
 @testable import PeekabooAgentRuntime
 
-@Suite("Action Descriptor")
 struct ActionDescriptorTests {
-    @Test("Action descriptor stores all properties")
-    func actionDescriptorProperties() {
+    @Test
+    func `Action descriptor stores all properties`() {
         let point = CGPoint(x: 100, y: 200)
         let timestamp = Date()
 
@@ -33,8 +31,8 @@ struct ActionDescriptorTests {
         #expect(descriptor.timestamp == timestamp)
     }
 
-    @Test("Action descriptor with minimal properties")
-    func actionDescriptorMinimal() {
+    @Test
+    func `Action descriptor with minimal properties`() {
         let descriptor = ActionDescriptor(
             toolName: "hotkey",
             arguments: ["keys": "cmd+c"]
@@ -46,8 +44,8 @@ struct ActionDescriptorTests {
         #expect(descriptor.targetPoint == nil)
     }
 
-    @Test("Action descriptor uses current date by default")
-    func actionDescriptorDefaultTimestamp() {
+    @Test
+    func `Action descriptor uses current date by default`() {
         let before = Date()
         let descriptor = ActionDescriptor(
             toolName: "type",
@@ -60,10 +58,9 @@ struct ActionDescriptorTests {
     }
 }
 
-@Suite("Verification Result")
 struct VerificationResultTests {
-    @Test("Successful verification result")
-    func successfulVerification() {
+    @Test
+    func `Successful verification result`() {
         let result = VerificationResult(
             success: true,
             confidence: 0.95,
@@ -78,8 +75,8 @@ struct VerificationResultTests {
         #expect(result.shouldRetry == false)
     }
 
-    @Test("Failed verification with high confidence triggers retry")
-    func failedHighConfidenceTriggersRetry() {
+    @Test
+    func `Failed verification with high confidence triggers retry`() {
         let result = VerificationResult(
             success: false,
             confidence: 0.85,
@@ -91,8 +88,8 @@ struct VerificationResultTests {
         #expect(result.shouldRetry == true)
     }
 
-    @Test("Failed verification with low confidence does not trigger retry")
-    func failedLowConfidenceNoRetry() {
+    @Test
+    func `Failed verification with low confidence does not trigger retry`() {
         let result = VerificationResult(
             success: false,
             confidence: 0.4,
@@ -104,8 +101,8 @@ struct VerificationResultTests {
         #expect(result.shouldRetry == false)
     }
 
-    @Test("Retry threshold is at 0.6 confidence")
-    func retryThreshold() {
+    @Test
+    func `Retry threshold is at 0.6 confidence`() {
         let atThreshold = VerificationResult(
             success: false,
             confidence: 0.6,
@@ -124,19 +121,20 @@ struct VerificationResultTests {
     }
 }
 
-@Suite("Verification Error")
 struct VerificationErrorTests {
-    @Test("Image conversion error has correct description")
-    func imageConversionErrorDescription() {
+    @Test
+    func `Image conversion error has correct description`() {
         let error = VerificationError.imageConversionFailed
 
         #expect(error.errorDescription?.contains("convert screenshot") == true)
     }
 
-    @Test("AI call error includes underlying error")
-    func aiCallErrorDescription() {
+    @Test
+    func `AI call error includes underlying error`() {
         struct TestError: Error, LocalizedError {
-            var errorDescription: String? { "Test failure" }
+            var errorDescription: String? {
+                "Test failure"
+            }
         }
 
         let error = VerificationError.aiCallFailed(underlying: TestError())
@@ -145,8 +143,8 @@ struct VerificationErrorTests {
         #expect(error.errorDescription?.contains("Test failure") == true)
     }
 
-    @Test("Parse error includes response preview")
-    func parseErrorDescription() {
+    @Test
+    func `Parse error includes response preview`() {
         let error = VerificationError.parseError(response: "Invalid JSON response")
 
         #expect(error.errorDescription?.contains("parse") == true)

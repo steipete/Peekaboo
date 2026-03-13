@@ -49,7 +49,9 @@ public final class PeekabooAgentService: AgentServiceProtocol {
     var isVerbose: Bool = false
 
     /// The default model used by this agent service
-    public var defaultModel: String { self.defaultLanguageModel.description }
+    public var defaultModel: String {
+        self.defaultLanguageModel.description
+    }
 
     /// Get the masked API key for the current model
     public var maskedApiKey: String? {
@@ -521,9 +523,8 @@ extension PeekabooAgentService {
     /// List available sessions
     public func listSessions() async throws -> [SessionSummary] {
         // List available sessions
-        let sessions = self.sessionManager.listSessions()
+        self.sessionManager.listSessions()
         // SessionSummary is already returned from listSessions()
-        return sessions
     }
 
     /// Get detailed session information

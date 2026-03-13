@@ -5,7 +5,7 @@ import Testing
 @testable import PeekabooVisualizer
 
 @Test
-func configurationManager() async {
+func `configuration manager`() {
     let manager = ConfigurationManager.shared
     let providers = manager.getAIProviders()
     #expect(!providers.isEmpty)

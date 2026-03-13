@@ -3,10 +3,9 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Menu bar focus verification")
 struct MenuBarFocusVerificationTests {
-    @Test("matches by PID")
-    func matchesByPID() {
+    @Test
+    func `matches by PID`() {
         let frontmost = ServiceApplicationInfo(
             processIdentifier: 200,
             bundleIdentifier: "com.trimmy.app",
@@ -27,8 +26,8 @@ struct MenuBarFocusVerificationTests {
         #expect(matches)
     }
 
-    @Test("matches by bundle identifier")
-    func matchesByBundleIdentifier() {
+    @Test
+    func `matches by bundle identifier`() {
         let frontmost = ServiceApplicationInfo(
             processIdentifier: 201,
             bundleIdentifier: "com.trimmy.app",
@@ -49,8 +48,8 @@ struct MenuBarFocusVerificationTests {
         #expect(matches)
     }
 
-    @Test("matches by owner name")
-    func matchesByOwnerName() {
+    @Test
+    func `matches by owner name`() {
         let frontmost = ServiceApplicationInfo(
             processIdentifier: 202,
             bundleIdentifier: nil,
@@ -71,8 +70,8 @@ struct MenuBarFocusVerificationTests {
         #expect(matches)
     }
 
-    @Test("rejects mismatched target")
-    func rejectsMismatch() {
+    @Test
+    func `rejects mismatched target`() {
         let frontmost = ServiceApplicationInfo(
             processIdentifier: 203,
             bundleIdentifier: "com.apple.Safari",

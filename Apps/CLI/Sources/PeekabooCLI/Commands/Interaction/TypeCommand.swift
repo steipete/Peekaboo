@@ -53,10 +53,22 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
     private var resolvedText: String? {
         if let primary = text, !primary.isEmpty {
             return primary

@@ -1,13 +1,12 @@
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-@Suite("dialog file JSON output", .serialized, .tags(.unit))
+@Suite(.serialized, .tags(.unit))
 struct DialogFileJSONOutputTests {
-    @Test("dialog file forwards path_navigation_method in JSON")
-    func dialogFileIncludesPathNavigationMethod() async throws {
+    @Test
+    func `dialog file forwards path_navigation_method in JSON`() async throws {
         let elements = DialogElements(
             dialogInfo: DialogInfo(
                 title: "Save",

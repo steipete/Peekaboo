@@ -11,11 +11,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Dock Service Tests")
 struct DockServiceTests {
-    @Test("List dock items")
+    @Test
     @MainActor
-    func testListDockItems() async throws {
+    func `List dock items`() async throws {
         let service = DockService()
 
         // List without separators
@@ -36,9 +35,9 @@ struct DockServiceTests {
         #expect(trashItem?.itemType == .trash)
     }
 
-    @Test("List dock items with all")
+    @Test
     @MainActor
-    func listDockItemsIncludeAll() async throws {
+    func `List dock items with all`() async throws {
         let service = DockService()
 
         // List with separators
@@ -54,9 +53,9 @@ struct DockServiceTests {
         _ = hasSeparators // Just checking, not asserting
     }
 
-    @Test("Find dock item")
+    @Test
     @MainActor
-    func testFindDockItem() async throws {
+    func `Find dock item`() async throws {
         let service = DockService()
 
         // Find Finder (should always exist)
@@ -73,9 +72,9 @@ struct DockServiceTests {
         #expect(finderPartial.title.lowercased().contains("find"))
     }
 
-    @Test("Find non-existent dock item")
+    @Test
     @MainActor
-    func findNonExistentDockItem() async throws {
+    func `Find non-existent dock item`() async throws {
         let service = DockService()
 
         do {
@@ -87,9 +86,9 @@ struct DockServiceTests {
         }
     }
 
-    @Test("Check dock auto-hide state")
+    @Test
     @MainActor
-    func dockAutoHideState() async throws {
+    func `Check dock auto-hide state`() async throws {
         let service = DockService()
 
         // Get current state
@@ -117,9 +116,9 @@ struct DockServiceTests {
         #expect(finalState == initialState)
     }
 
-    @Test("Add and remove from dock")
+    @Test
     @MainActor
-    func addAndRemoveFromDock() async throws {
+    func `Add and remove from dock`() async throws {
         let service = DockService()
 
         // Use Calculator as test app (should exist on all Macs)
@@ -162,9 +161,9 @@ struct DockServiceTests {
         }
     }
 
-    @Test("Launch from dock")
+    @Test
     @MainActor
-    func testLaunchFromDock() async throws {
+    func `Launch from dock`() async throws {
         let service = DockService()
 
         // Find an app that's in the dock but not running
@@ -194,9 +193,9 @@ struct DockServiceTests {
         #expect(launchedItem != nil)
     }
 
-    @Test("Right-click dock item")
+    @Test
     @MainActor
-    func testRightClickDockItem() async throws {
+    func `Right-click dock item`() async throws {
         let service = DockService()
 
         // Right-click Finder (always available)
@@ -211,9 +210,9 @@ struct DockServiceTests {
         #expect(true) // If we got here, test passed
     }
 
-    @Test("Dock item properties")
+    @Test
     @MainActor
-    func dockItemProperties() async throws {
+    func `Dock item properties`() async throws {
         let service = DockService()
 
         let items = try await service.listDockItems(includeAll: false)

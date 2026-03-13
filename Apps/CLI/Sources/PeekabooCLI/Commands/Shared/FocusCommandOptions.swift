@@ -23,8 +23,13 @@ struct FocusCommandOptions: CommanderParsable, FocusOptionsProtocol {
 
     // MARK: FocusOptionsProtocol
 
-    var autoFocus: Bool { !self.noAutoFocus }
-    var focusTimeout: TimeInterval? { self.focusTimeoutSeconds }
+    var autoFocus: Bool {
+        !self.noAutoFocus
+    }
+
+    var focusTimeout: TimeInterval? {
+        self.focusTimeoutSeconds
+    }
 
     // MARK: Bridging helper
 

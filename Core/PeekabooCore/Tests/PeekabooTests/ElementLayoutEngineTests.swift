@@ -5,16 +5,15 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ElementLayoutEngine Tests")
 @MainActor
 struct ElementLayoutEngineTests {
     let layoutEngine = ElementLayoutEngine()
 
     // MARK: - Indicator Positioning Tests
 
-    @Test("Calculate circle indicator positions")
+    @Test
     @MainActor
-    func calculateCircleIndicatorPositions() {
+    func `Calculate circle indicator positions`() {
         let elementBounds = CGRect(x: 100, y: 200, width: 300, height: 150)
         let diameter: Double = 20
 
@@ -40,9 +39,9 @@ struct ElementLayoutEngineTests {
         #expect(bottomRightPos.y == 340) // 350 - 20/2
     }
 
-    @Test("Calculate rectangle indicator position")
+    @Test
     @MainActor
-    func calculateRectangleIndicatorPosition() {
+    func `Calculate rectangle indicator position`() {
         let elementBounds = CGRect(x: 100, y: 200, width: 300, height: 150)
         let rectStyle = IndicatorStyle.rectangle
 
@@ -55,9 +54,9 @@ struct ElementLayoutEngineTests {
 
     // MARK: - Label Positioning Tests
 
-    @Test("Calculate label position with circle indicator")
+    @Test
     @MainActor
-    func calculateLabelPositionWithCircleIndicator() {
+    func `Calculate label position with circle indicator`() {
         let elementBounds = CGRect(x: 50, y: 50, width: 200, height: 100)
         let containerSize = CGSize(width: 800, height: 600)
         let labelSize = CGSize(width: 60, height: 20)
@@ -91,9 +90,9 @@ struct ElementLayoutEngineTests {
         #expect(topRightLabelPos.y == 58)
     }
 
-    @Test("Calculate label position with rectangle indicator")
+    @Test
     @MainActor
-    func calculateLabelPositionWithRectangleIndicator() {
+    func `Calculate label position with rectangle indicator`() {
         let elementBounds = CGRect(x: 100, y: 100, width: 200, height: 80)
         let containerSize = CGSize(width: 800, height: 600)
         let labelSize = CGSize(width: 60, height: 20)
@@ -134,9 +133,9 @@ struct ElementLayoutEngineTests {
 
     // MARK: - Bounds Calculation Tests
 
-    @Test("Expanded bounds calculation")
+    @Test
     @MainActor
-    func expandedBoundsCalculation() {
+    func `Expanded bounds calculation`() {
         let originalBounds = CGRect(x: 100, y: 200, width: 150, height: 100)
 
         // Default expansion of 2
@@ -158,9 +157,9 @@ struct ElementLayoutEngineTests {
         #expect(expandedZero == originalBounds)
     }
 
-    @Test("Group bounds calculation")
+    @Test
     @MainActor
-    func groupBoundsCalculation() {
+    func `Group bounds calculation`() {
         let elements = [
             VisualizableElement(
                 id: "B1",
@@ -189,18 +188,18 @@ struct ElementLayoutEngineTests {
         }
     }
 
-    @Test("Group bounds with empty array")
+    @Test
     @MainActor
-    func groupBoundsEmpty() {
+    func `Group bounds with empty array`() {
         let emptyElements: [VisualizableElement] = []
         let groupBounds = self.layoutEngine.groupBounds(for: emptyElements)
 
         #expect(groupBounds == nil)
     }
 
-    @Test("Group bounds with single element")
+    @Test
     @MainActor
-    func groupBoundsSingleElement() {
+    func `Group bounds with single element`() {
         let singleElement = [
             VisualizableElement(
                 id: "B1",
@@ -215,9 +214,9 @@ struct ElementLayoutEngineTests {
 
     // MARK: - Layout Collision Tests
 
-    @Test("Avoid label collisions")
+    @Test
     @MainActor
-    func avoidLabelCollisions() {
+    func `Avoid label collisions`() {
         let containerSize = CGSize(width: 800, height: 600)
         let labelSize = CGSize(width: 60, height: 20)
 
@@ -258,9 +257,9 @@ struct ElementLayoutEngineTests {
 
     // MARK: - Edge Cases
 
-    @Test("Handle zero-sized elements")
+    @Test
     @MainActor
-    func handleZeroSizedElements() {
+    func `Handle zero-sized elements`() {
         let zeroBounds = CGRect(x: 100, y: 200, width: 0, height: 0)
         let containerSize = CGSize(width: 800, height: 600)
         let rectStyle = IndicatorStyle.rectangle
@@ -278,9 +277,9 @@ struct ElementLayoutEngineTests {
         #expect(labelPos.x == 100)
     }
 
-    @Test("Handle negative bounds")
+    @Test
     @MainActor
-    func handleNegativeBounds() {
+    func `Handle negative bounds`() {
         let negativeBounds = CGRect(x: -50, y: -100, width: 100, height: 80)
         let expandedBounds = self.layoutEngine.expandedBounds(for: negativeBounds, expansion: 10)
 

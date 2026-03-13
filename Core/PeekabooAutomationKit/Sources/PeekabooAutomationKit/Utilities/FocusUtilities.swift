@@ -1,45 +1,45 @@
-/// Window Focus Management Utilities
-///
-/// This file provides comprehensive window focus management with support for:
-/// - Automatic window focusing before interactions
-/// - Space (virtual desktop) switching
-/// - Window movement between Spaces
-/// - Focus verification with retries
-///
-/// ## Architecture
-///
-/// The focus system has three layers:
-///
-/// 1. **FocusOptions**: Command-line argument parsing for focus configuration
-/// 2. **FocusManagementService**: Core focus logic with Space support
-/// 3. **Integration**: Automatic focus in click, type, and menu commands
-///
-/// ## Key Features
-///
-/// 1. **Auto-Focus**: Automatically focus windows before interactions
-/// 2. **Space Switching**: Switch to window's Space if on different desktop
-/// 3. **Window Movement**: Bring windows to current Space
-/// 4. **Focus Verification**: Verify focus with configurable retries
-/// 5. **Snapshot Integration**: Store window IDs for fast refocusing
-///
-/// ## Usage Examples
-///
-/// ```swift
-/// // Command-line usage
-/// peekaboo click button --focus-timeout 3.0 --space-switch
-/// peekaboo type "Hello" --no-auto-focus
-/// peekaboo window focus --app Safari --move-here
-///
-/// // Programmatic usage
-/// let service = FocusManagementService()
-/// let options = FocusManagementService.FocusOptions(
-///     timeout: 5.0,
-///     retryCount: 3,
-///     switchSpace: true
-/// )
-/// try await service.focusWindow(windowID: 1234, options: options)
-/// ```
-///
+// Window Focus Management Utilities
+//
+// This file provides comprehensive window focus management with support for:
+// - Automatic window focusing before interactions
+// - Space (virtual desktop) switching
+// - Window movement between Spaces
+// - Focus verification with retries
+//
+// ## Architecture
+//
+// The focus system has three layers:
+//
+// 1. **FocusOptions**: Command-line argument parsing for focus configuration
+// 2. **FocusManagementService**: Core focus logic with Space support
+// 3. **Integration**: Automatic focus in click, type, and menu commands
+//
+// ## Key Features
+//
+// 1. **Auto-Focus**: Automatically focus windows before interactions
+// 2. **Space Switching**: Switch to window's Space if on different desktop
+// 3. **Window Movement**: Bring windows to current Space
+// 4. **Focus Verification**: Verify focus with configurable retries
+// 5. **Snapshot Integration**: Store window IDs for fast refocusing
+//
+// ## Usage Examples
+//
+// ```swift
+// // Command-line usage
+// peekaboo click button --focus-timeout 3.0 --space-switch
+// peekaboo type "Hello" --no-auto-focus
+// peekaboo window focus --app Safari --move-here
+//
+// // Programmatic usage
+// let service = FocusManagementService()
+// let options = FocusManagementService.FocusOptions(
+//     timeout: 5.0,
+//     retryCount: 3,
+//     switchSpace: true
+// )
+// try await service.focusWindow(windowID: 1234, options: options)
+// ```
+//
 
 import AppKit
 import AXorcist

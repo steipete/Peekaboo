@@ -5,12 +5,12 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Application Models Tests", .tags(.models, .unit))
+@Suite(.tags(.models, .unit))
 struct ApplicationModelsTests {
     // MARK: - Enum Tests
 
-    @Test("WindowDetailOption enum values and parsing", .tags(.fast))
-    func windowDetailOption() {
+    @Test(.tags(.fast))
+    func `WindowDetailOption enum values and parsing`() {
         // Test WindowDetailOption enum values
         #expect(WindowDetailOption.off_screen.rawValue == "off_screen")
         #expect(WindowDetailOption.bounds.rawValue == "bounds")
@@ -25,8 +25,8 @@ struct ApplicationModelsTests {
 
     // MARK: - Model Structure Tests
 
-    @Test("WindowBounds initialization and properties", .tags(.fast))
-    func windowBounds() {
+    @Test(.tags(.fast))
+    func `WindowBounds initialization and properties`() {
         let bounds = WindowBounds(x: 100, y: 200, width: 1200, height: 800)
 
         #expect(bounds.x == 100)
@@ -35,8 +35,8 @@ struct ApplicationModelsTests {
         #expect(bounds.height == 800)
     }
 
-    @Test("ApplicationInfo initialization", .tags(.fast))
-    func applicationInfo() {
+    @Test(.tags(.fast))
+    func `ApplicationInfo initialization`() {
         let appInfo = ApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
@@ -51,8 +51,8 @@ struct ApplicationModelsTests {
         #expect(appInfo.window_count == 2)
     }
 
-    @Test("WindowInfo initialization", .tags(.fast))
-    func windowInfo() {
+    @Test(.tags(.fast))
+    func `WindowInfo initialization`() {
         let bounds = WindowBounds(x: 100, y: 200, width: 1200, height: 800)
         let windowInfo = WindowInfo(
             window_title: "Safari - Main Window",
@@ -72,8 +72,8 @@ struct ApplicationModelsTests {
         #expect(windowInfo.is_on_screen == true)
     }
 
-    @Test("TargetApplicationInfo", .tags(.fast))
-    func targetApplicationInfo() {
+    @Test(.tags(.fast))
+    func `target application info`() {
         let targetApp = TargetApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
@@ -86,8 +86,8 @@ struct ApplicationModelsTests {
 
     // MARK: - Collection Data Tests
 
-    @Test("ApplicationListData contains applications", .tags(.fast))
-    func applicationListData() {
+    @Test(.tags(.fast))
+    func `ApplicationListData contains applications`() {
         let app1 = ApplicationInfo(
             app_name: "Safari",
             bundle_id: "com.apple.Safari",
@@ -109,8 +109,8 @@ struct ApplicationModelsTests {
         #expect(appListData.applications[1].app_name == "Terminal")
     }
 
-    @Test("WindowListData with target application", .tags(.fast))
-    func windowListData() {
+    @Test(.tags(.fast))
+    func `WindowListData with target application`() {
         let bounds = WindowBounds(x: 100, y: 100, width: 1200, height: 800)
         let window = WindowInfo(
             window_title: "Safari - Main Window",

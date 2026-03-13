@@ -69,5 +69,7 @@ protocol ApplicationResolvablePositional: ApplicationResolvable {
 }
 
 extension ApplicationResolvablePositional {
-    var app: String? { self.positionalAppIdentifier }
+    var app: String? {
+        self.positionalAppIdentifier
+    }
 }

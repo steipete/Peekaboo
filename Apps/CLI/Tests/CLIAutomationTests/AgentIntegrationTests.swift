@@ -5,20 +5,18 @@ import Testing
 #if !PEEKABOO_SKIP_AUTOMATION
 
 @Suite(
-    "Agent Integration Tests",
     .serialized,
     .tags(.integration, .automation),
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct AgentIntegrationTests {
-    // Only run these tests if explicitly enabled
+    /// Only run these tests if explicitly enabled
     let runIntegrationTests = ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"
 
     @Test(
-        "Agent can execute simple TextEdit task",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentTextEditTask() async throws {
+    func `Agent can execute simple TextEdit task`() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
@@ -57,10 +55,9 @@ struct AgentIntegrationTests {
     }
 
     @Test(
-        "Agent handles window automation",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true")
     )
-    func agentWindowAutomation() async throws {
+    func `Agent handles window automation`() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
@@ -96,8 +93,8 @@ struct AgentIntegrationTests {
         }
     }
 
-    @Test("Agent dry run mode", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
-    func agentDryRun() async throws {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
+    func `Agent dry run mode`() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
@@ -121,8 +118,8 @@ struct AgentIntegrationTests {
         }
     }
 
-    @Test("Direct Peekaboo invocation", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
-    func directPeekabooInvocation() async throws {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
+    func `Direct Peekaboo invocation`() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
@@ -144,8 +141,8 @@ struct AgentIntegrationTests {
         #expect(hasImageOrSeeCommand == true)
     }
 
-    @Test("Agent respects max steps", .enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
-    func agentMaxSteps() async throws {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["RUN_AGENT_TESTS"] == "true"))
+    func `Agent respects max steps`() async throws {
         guard ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil else {
             throw TestError.missingAPIKey
         }
@@ -177,7 +174,7 @@ struct AgentIntegrationTests {
     }
 }
 
-// Test output structures
+/// Test output structures
 struct AgentTestOutput: Codable {
     let success: Bool
     let data: AgentResultData?

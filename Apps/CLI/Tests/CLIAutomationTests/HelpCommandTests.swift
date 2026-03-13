@@ -4,10 +4,10 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Help Command Tests", .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct HelpCommandTests {
-    @Test("No arguments shows help")
-    func noArgumentsShowsHelp() async throws {
+    @Test
+    func `No arguments shows help`() async throws {
         let output = try await runPeekaboo([]).stdout
 
         // Verify help content is shown
@@ -21,8 +21,8 @@ struct HelpCommandTests {
         #expect(output.contains("--json/-j"))
     }
 
-    @Test("--help flag shows help")
-    func helpFlagShowsHelp() async throws {
+    @Test
+    func `--help flag shows help`() async throws {
         let output = try await runPeekaboo(["--help"]).stdout
 
         // Should show same help as no arguments
@@ -30,8 +30,8 @@ struct HelpCommandTests {
         #expect(output.contains("polter peekaboo <command>"))
     }
 
-    @Test("help subcommand for each tool")
-    func helpForEachSubcommand() async throws {
+    @Test
+    func `help subcommand for each tool`() async throws {
         let subcommands = [
             "image",
             "list",
@@ -77,8 +77,8 @@ struct HelpCommandTests {
         }
     }
 
-    @Test("help with invalid subcommand")
-    func helpWithInvalidSubcommand() async throws {
+    @Test
+    func `help with invalid subcommand`() async throws {
         // This should show an error, not invoke the agent
         let result = try await runPeekaboo(["help", "nonexistent"])
 
@@ -88,8 +88,8 @@ struct HelpCommandTests {
         #expect(!output.contains("[info] Peekaboo Agent"))
     }
 
-    @Test("Subcommand --help flag")
-    func subcommandHelpFlag() async throws {
+    @Test
+    func `Subcommand --help flag`() async throws {
         // Test that each subcommand's --help flag works
         let subcommands = ["image", "list", "config", "agent", "see", "click"]
 

@@ -3,10 +3,10 @@ import Testing
 @testable import PeekabooCLI
 
 /// Tests for ToolsCommand functionality
-@Suite("Tools Command Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct ToolsCommandTests {
-    @Test("ToolsCommand configuration")
-    func toolsCommandDescription() {
+    @Test
+    func `ToolsCommand configuration`() {
         let config = ToolsCommand.commandDescription
 
         #expect(config.commandName == "tools")
@@ -19,8 +19,8 @@ struct ToolsCommandTests {
         #expect(discussion.contains("--json-output"))
     }
 
-    @Test("ToolsCommand default values")
-    func toolsCommandDefaults() throws {
+    @Test
+    func `ToolsCommand default values`() throws {
         let command = try ToolsCommand.parse([])
 
         #expect(command.verbose == false)
@@ -28,49 +28,49 @@ struct ToolsCommandTests {
         #expect(command.noSort == false)
     }
 
-    @Test("ToolsCommand argument parsing - verbose")
-    func argumentParsingVerbose() throws {
+    @Test
+    func `ToolsCommand argument parsing - verbose`() throws {
         let args = ["--verbose"]
         let command = try ToolsCommand.parse(args)
 
         #expect(command.verbose == true)
     }
 
-    @Test("ToolsCommand argument parsing - json output")
-    func argumentParsingJsonOutput() throws {
+    @Test
+    func `ToolsCommand argument parsing - json output`() throws {
         let args = ["--json"]
         let command = try ToolsCommand.parse(args)
 
         #expect(command.jsonOutput == true)
     }
 
-    @Test("ToolsCommand argument parsing - no sort")
-    func argumentParsingNoSort() throws {
+    @Test
+    func `ToolsCommand argument parsing - no sort`() throws {
         let args = ["--no-sort"]
         let command = try ToolsCommand.parse(args)
 
         #expect(command.noSort == true)
     }
 
-    @Test("ToolsCommand description property")
-    func descriptionProperty() throws {
+    @Test
+    func `ToolsCommand description property`() throws {
         let command = try ToolsCommand.parse([])
         #expect(command.description == "Tools command for listing and filtering available tools")
     }
 }
 
 /// Mock tests to verify command structure without execution
-@Suite("Tools Command Structure Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct ToolsCommandStructureTests {
-    @Test("Command has required AsyncParsableCommand conformance")
-    func asyncParsableCommandConformance() throws {
+    @Test
+    func `Command has required AsyncParsableCommand conformance`() throws {
         let command = try ToolsCommand.parse([])
 
         #expect(type(of: command) == ToolsCommand.self)
     }
 
-    @Test("Command configuration is properly set")
-    func commandConfigurationProperties() {
+    @Test
+    func `Command configuration is properly set`() {
         let config = ToolsCommand.commandDescription
 
         #expect(config.commandName == "tools")
@@ -84,8 +84,8 @@ struct ToolsCommandStructureTests {
         #expect(discussion.contains("--json-output"))
     }
 
-    @Test("Command properties have correct types and attributes")
-    func commandProperties() throws {
+    @Test
+    func `Command properties have correct types and attributes`() throws {
         let command = try ToolsCommand.parse([])
 
         #expect(type(of: command.verbose) == Bool.self)

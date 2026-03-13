@@ -80,10 +80,21 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         return runtime
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-    var outputLogger: Logger { self.logger }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    var jsonOutput: Bool {
+        self.resolvedRuntime.configuration.jsonOutput
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -176,7 +187,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         }
     }
 
-    // Exposed internally for tests.
+    /// Exposed internally for tests.
     func resolveMode() -> LiveCaptureMode {
         if let explicit = self.mode {
             if explicit.lowercased() == "region" { return .area }
@@ -283,11 +294,10 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
 
     func resolveOutputDirectory() throws -> URL {
         if let path { return URL(fileURLWithPath: path, isDirectory: true) }
-        let temp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo")
             .appendingPathComponent("capture-sessions", isDirectory: true)
             .appendingPathComponent("capture-\(UUID().uuidString)", isDirectory: true)
-        return temp
     }
 
     private func output(_ result: LiveCaptureSessionResult) {
@@ -422,10 +432,21 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
         return runtime
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-    var outputLogger: Logger { self.logger }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    var jsonOutput: Bool {
+        self.resolvedRuntime.configuration.jsonOutput
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -517,11 +538,10 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
 
     func resolveOutputDirectory() throws -> URL {
         if let path { return URL(fileURLWithPath: path, isDirectory: true) }
-        let temp = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("peekaboo")
             .appendingPathComponent("capture-sessions", isDirectory: true)
             .appendingPathComponent("capture-\(UUID().uuidString)", isDirectory: true)
-        return temp
     }
 
     private func output(_ result: LiveCaptureSessionResult) {
@@ -603,5 +623,5 @@ extension CaptureWatchAlias: CommanderBindableCommand {
     }
 }
 
-// Back-compat alias for tests/agents
+/// Back-compat alias for tests/agents
 typealias WatchCommand = CaptureLiveCommand

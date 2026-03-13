@@ -7,11 +7,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ApplicationService Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
+@Suite(.enabled(if: TestEnvironment.runAutomationScenarios))
 struct ApplicationServiceTests {
-    @Test("List windows with timeout")
+    @Test
     @MainActor
-    func listWindowsWithTimeout() async throws {
+    func `List windows with timeout`() async throws {
         // Given
         let service = ApplicationService()
 
@@ -23,9 +23,9 @@ struct ApplicationServiceTests {
         #expect(result.metadata.duration < 2.0) // Allow headroom on slower hosts
     }
 
-    @Test("List windows respects custom timeout")
+    @Test
     @MainActor
-    func listWindowsRespectsCustomTimeout() async throws {
+    func `List windows respects custom timeout`() async throws {
         // Given
         let service = ApplicationService()
         let startTime = Date()
@@ -43,9 +43,9 @@ struct ApplicationServiceTests {
             } || !result.data.windows.isEmpty)
     }
 
-    @Test("List windows with nil timeout uses default")
+    @Test
     @MainActor
-    func listWindowsWithNilTimeoutUsesDefault() async throws {
+    func `List windows with nil timeout uses default`() async throws {
         // Given
         let service = ApplicationService()
 
@@ -57,9 +57,9 @@ struct ApplicationServiceTests {
         // Default timeout is 2 seconds as defined in ApplicationService
     }
 
-    @Test("Hybrid window enumeration with screen recording")
+    @Test
     @MainActor
-    func hybridWindowEnumerationWithScreenRecording() async throws {
+    func `Hybrid window enumeration with screen recording`() async throws {
         // Given
         let service = ApplicationService()
         let hasScreenRecording = PermissionsService().checkScreenRecordingPermission()
@@ -78,9 +78,9 @@ struct ApplicationServiceTests {
         }
     }
 
-    @Test("Window enumeration handles terminated apps gracefully")
+    @Test
     @MainActor
-    func windowEnumerationHandlesTerminatedApps() async throws {
+    func `Window enumeration handles terminated apps gracefully`() async throws {
         // Given
         let service = ApplicationService()
 
@@ -94,9 +94,9 @@ struct ApplicationServiceTests {
         }
     }
 
-    @Test("List windows returns proper output structure")
+    @Test
     @MainActor
-    func listWindowsOutputStructure() async throws {
+    func `List windows returns proper output structure`() async throws {
         // Given
         let service = ApplicationService()
 
@@ -110,9 +110,9 @@ struct ApplicationServiceTests {
         #expect(!output.metadata.hints.isEmpty)
     }
 
-    @Test("Timeout configuration is applied")
+    @Test
     @MainActor
-    func timeoutConfigurationIsApplied() async throws {
+    func `Timeout configuration is applied`() {
         // Given
         let service: ApplicationService? = ApplicationService()
 
@@ -124,9 +124,9 @@ struct ApplicationServiceTests {
         #expect(service != nil)
     }
 
-    @Test("List windows handles partial results on timeout")
+    @Test
     @MainActor
-    func listWindowsHandlesPartialResultsOnTimeout() async throws {
+    func `List windows handles partial results on timeout`() async throws {
         // Given
         let service = ApplicationService()
 

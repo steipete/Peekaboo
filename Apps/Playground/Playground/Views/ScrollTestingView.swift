@@ -472,7 +472,9 @@ private struct AXScrollTargetOverlay: NSViewRepresentable {
         private var idValue = ""
         private var labelValue = ""
 
-        override var isOpaque: Bool { false }
+        override var isOpaque: Bool {
+            false
+        }
 
         override func draw(_ dirtyRect: NSRect) {
             // transparent overlay

@@ -44,10 +44,21 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         return self.runtimeOptions.makeConfiguration()
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.configuration.jsonOutput }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.configuration.jsonOutput
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

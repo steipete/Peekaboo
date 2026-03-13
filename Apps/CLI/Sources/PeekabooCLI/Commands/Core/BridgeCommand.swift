@@ -64,11 +64,21 @@ extension BridgeCommand {
             return self.runtimeOptions.makeConfiguration()
         }
 
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
 
-        var jsonOutput: Bool { self.configuration.jsonOutput }
-        private var verbose: Bool { self.configuration.verbose }
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.configuration.jsonOutput
+        }
+
+        private var verbose: Bool {
+            self.configuration.verbose
+        }
 
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
@@ -132,7 +142,7 @@ extension BridgeCommand.StatusSubcommand: CommanderBindableCommand {
 
 // MARK: - Diagnostics model
 
-private struct BridgeDiagnostics: Sendable {
+private struct BridgeDiagnostics {
     private let logger: Logger
 
     init(logger: Logger) {
@@ -244,7 +254,7 @@ private struct BridgeDiagnostics: Sendable {
     }
 }
 
-private struct BridgeStatusReport: Codable, Sendable {
+private struct BridgeStatusReport: Codable {
     let remoteSkipped: Bool
     let remoteSkipReason: String?
     let selected: BridgeSelectionReport
@@ -252,7 +262,7 @@ private struct BridgeStatusReport: Codable, Sendable {
     let client: BridgeClientReport
 }
 
-private struct BridgeClientReport: Codable, Sendable {
+private struct BridgeClientReport: Codable {
     let bundleIdentifier: String?
     let teamIdentifier: String?
     let processIdentifier: pid_t
@@ -272,7 +282,7 @@ private struct BridgeClientReport: Codable, Sendable {
     }
 }
 
-private struct BridgeCandidateReport: Codable, Sendable {
+private struct BridgeCandidateReport: Codable {
     let socketPath: String
     let result: BridgeCandidateResult
 
@@ -304,13 +314,13 @@ private struct BridgeCandidateReport: Codable, Sendable {
     }
 }
 
-private enum BridgeCandidateResult: Codable, Sendable {
+private enum BridgeCandidateResult: Codable {
     case skipped
     case success(BridgeHandshakeReport)
     case failure(BridgeCandidateErrorReport)
 }
 
-private struct BridgeHandshakeReport: Codable, Sendable {
+private struct BridgeHandshakeReport: Codable {
     let negotiatedVersion: PeekabooBridgeProtocolVersion
     let hostKind: PeekabooBridgeHostKind
     let build: String?
@@ -330,7 +340,7 @@ private struct BridgeHandshakeReport: Codable, Sendable {
     }
 }
 
-private struct BridgeCandidateErrorReport: Codable, Sendable {
+private struct BridgeCandidateErrorReport: Codable {
     let kind: String
     let code: String?
     let message: String
@@ -378,8 +388,8 @@ private struct BridgeCandidateErrorReport: Codable, Sendable {
     }
 }
 
-private struct BridgeSelectionReport: Codable, Sendable {
-    enum Source: String, Codable, Sendable {
+private struct BridgeSelectionReport: Codable {
+    enum Source: String, Codable {
         case remote
         case local
     }

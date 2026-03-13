@@ -1,5 +1,5 @@
 import Testing
 
-@Suite struct PlaceholderTests {
+struct PlaceholderTests {
     @Test func placeholder() {}
 }

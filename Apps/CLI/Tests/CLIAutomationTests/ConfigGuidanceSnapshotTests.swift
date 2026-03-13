@@ -3,10 +3,9 @@ import Testing
 @testable import PeekabooCLI
 @testable import Tachikoma
 
-@Suite("Config guidance snapshots")
 struct ConfigGuidanceSnapshotTests {
-    @Test("init guidance matches snapshot")
-    func initGuidanceMatchesSnapshot() throws {
+    @Test
+    func `init guidance matches snapshot`() throws {
         // Replace placeholder with deterministic path for comparison
         let rendered = TKConfigMessages.initGuidance
             .map { $0.replacingOccurrences(of: "{path}", with: "/tmp/config.json") }

@@ -65,11 +65,11 @@ public final class AudioInputService {
     public private(set) var isRecording = false
     public private(set) var recordingDuration: TimeInterval = 0
 
-    // Maximum file size: 25MB (OpenAI Whisper limit)
+    /// Maximum file size: 25MB (OpenAI Whisper limit)
     @ObservationIgnored
     private let maxFileSize = 25 * 1024 * 1024
 
-    // Supported audio formats for transcription
+    /// Supported audio formats for transcription
     @ObservationIgnored
     private let supportedExtensions = ["wav", "mp3", "m4a", "mp4", "mpeg", "mpga", "webm"]
 
@@ -167,8 +167,7 @@ public final class AudioInputService {
             self.logger.info("Stopped audio recording")
 
             // Transcribe the recorded audio using TachikomaAudio
-            let text = try await transcribe(audioData)
-            return text
+            return try await transcribe(audioData)
         } catch let error as AudioRecordingError {
             // Convert AudioRecordingError to AudioInputError
             switch error {
@@ -269,8 +268,7 @@ extension PeekabooAIService {
     public func transcribeAudio(at url: URL) async throws -> String {
         // Use TachikomaAudio's convenient transcribe function
         do {
-            let text = try await transcribe(contentsOf: url)
-            return text
+            return try await transcribe(contentsOf: url)
         } catch {
             // Convert errors to AudioInputError for compatibility
             if let tachikomaError = error as? TachikomaError {

@@ -15,7 +15,7 @@ public struct NotFoundError {
         self.context = context
     }
 
-    // Factory methods that return PeekabooError
+    /// Factory methods that return PeekabooError
     public static func application(_ identifier: String) -> PeekabooError {
         .appNotFound(identifier)
     }
@@ -33,7 +33,7 @@ public struct NotFoundError {
     }
 }
 
-// Make NotFoundError throwable by converting to PeekabooError
+/// Make NotFoundError throwable by converting to PeekabooError
 extension NotFoundError: Error {
     public var asPeekabooError: PeekabooError {
         switch self.code {
@@ -95,7 +95,7 @@ public struct LegacyValidationError {
     }
 }
 
-// Make ValidationError throwable
+/// Make ValidationError throwable
 extension LegacyValidationError: Error {
     public var asPeekabooError: PeekabooError {
         switch self.code {

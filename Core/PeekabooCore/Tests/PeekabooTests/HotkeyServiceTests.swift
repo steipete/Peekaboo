@@ -9,19 +9,18 @@ import Testing
 @testable import PeekabooVisualizer
 
 @Suite(
-    "HotkeyService Tests",
     .tags(.ui, .automation),
     .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct HotkeyServiceTests {
-    @Test("Initialize HotkeyService")
-    func initializeService() async throws {
+    @Test
+    func `Initialize HotkeyService`() {
         let service: HotkeyService? = HotkeyService()
         #expect(service != nil)
     }
 
-    @Test("Press single modifier hotkeys")
-    func singleModifierHotkeys() async throws {
+    @Test
+    func `Press single modifier hotkeys`() async throws {
         let service = HotkeyService()
 
         // Test common single-modifier hotkeys
@@ -35,8 +34,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "opt,tab", holdDuration: 100) // Option,Tab
     }
 
-    @Test("Press multiple modifier hotkeys")
-    func multipleModifierHotkeys() async throws {
+    @Test
+    func `Press multiple modifier hotkeys`() async throws {
         let service = HotkeyService()
 
         // Test multiple modifier combinations
@@ -49,8 +48,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "cmd,opt,shift,delete", holdDuration: 100)
     }
 
-    @Test("Press function keys")
-    func functionKeys() async throws {
+    @Test
+    func `Press function keys`() async throws {
         let service = HotkeyService()
 
         // Test function keys
@@ -64,8 +63,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "ctrl,f3", holdDuration: 100) // Mission Control
     }
 
-    @Test("Press navigation keys")
-    func navigationKeys() async throws {
+    @Test
+    func `Press navigation keys`() async throws {
         let service = HotkeyService()
 
         // Test arrow keys with modifiers
@@ -79,8 +78,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "opt,left", holdDuration: 100)
     }
 
-    @Test("Press special keys")
-    func specialKeys() async throws {
+    @Test
+    func `Press special keys`() async throws {
         let service = HotkeyService()
 
         // Test special keys
@@ -96,8 +95,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "cmd,tab", holdDuration: 100) // App switcher
     }
 
-    @Test("Common application hotkeys")
-    func commonAppHotkeys() async throws {
+    @Test
+    func `Common application hotkeys`() async throws {
         let service = HotkeyService()
 
         // Test common application hotkeys
@@ -111,8 +110,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "cmd,slash", holdDuration: 100) // Help
     }
 
-    @Test("System hotkeys")
-    func systemHotkeys() async throws {
+    @Test
+    func `System hotkeys`() async throws {
         let service = HotkeyService()
 
         // Test system-level hotkeys (be careful with these in tests)
@@ -121,24 +120,24 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "ctrl,space", holdDuration: 100) // Switch input source
     }
 
-    @Test("Fast key press")
-    func fastKeyPress() async throws {
+    @Test
+    func `Fast key press`() async throws {
         let service = HotkeyService()
 
         // Test with minimal hold duration
         try await service.hotkey(keys: "cmd,a", holdDuration: 10)
     }
 
-    @Test("Long key hold")
-    func longKeyHold() async throws {
+    @Test
+    func `Long key hold`() async throws {
         let service = HotkeyService()
 
         // Test with longer hold duration
         try await service.hotkey(keys: "cmd,a", holdDuration: 500)
     }
 
-    @Test("All modifiers")
-    func allModifiers() async throws {
+    @Test
+    func `All modifiers`() async throws {
         let service = HotkeyService()
 
         // Test with all modifiers
@@ -147,8 +146,8 @@ struct HotkeyServiceTests {
             holdDuration: 100)
     }
 
-    @Test("Alternative modifier names")
-    func alternativeModifierNames() async throws {
+    @Test
+    func `Alternative modifier names`() async throws {
         let service = HotkeyService()
 
         // Test alternative modifier names
@@ -158,8 +157,8 @@ struct HotkeyServiceTests {
         try await service.hotkey(keys: "alt,d", holdDuration: 100)
     }
 
-    @Test("Hotkey normalization keeps synonyms")
-    func hotkeyNormalization() async throws {
+    @Test
+    func `Hotkey normalization keeps synonyms`() {
         let service = HotkeyService()
         let normalized = service.normalizeKeysForTesting([
             "command",
@@ -174,8 +173,8 @@ struct HotkeyServiceTests {
         #expect(normalized == ["cmd", "space", "delete", "alt", "escape", "cmd", "cmd", "delete"])
     }
 
-    @Test("Empty hotkey strings throw invalid input")
-    func emptyHotkeyThrows() async {
+    @Test
+    func `Empty hotkey strings throw invalid input`() async {
         let service = HotkeyService()
         await #expect(throws: PeekabooError.self) {
             try await service.hotkey(keys: "   ", holdDuration: 0)

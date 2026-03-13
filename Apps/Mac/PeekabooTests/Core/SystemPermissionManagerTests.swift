@@ -3,13 +3,13 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("PermissionsService Tests", .tags(.permissions, .unit))
+@Suite(.tags(.permissions, .unit))
 @MainActor
 struct PermissionsServiceTests {
     let service = PermissionsService()
 
-    @Test("Permission status check - Screen Recording")
-    func screenRecordingStatus() {
+    @Test
+    func `Permission status check - Screen Recording`() {
         // Check screen recording permission
         let hasPermission = self.service.checkScreenRecordingPermission()
 
@@ -17,8 +17,8 @@ struct PermissionsServiceTests {
         #expect(hasPermission == true || hasPermission == false)
     }
 
-    @Test("Permission status check - Accessibility")
-    func accessibilityStatus() {
+    @Test
+    func `Permission status check - Accessibility`() {
         // Check accessibility permission
         let hasPermission = self.service.checkAccessibilityPermission()
 
@@ -26,8 +26,8 @@ struct PermissionsServiceTests {
         #expect(hasPermission == true || hasPermission == false)
     }
 
-    @Test("Combined permission check")
-    func allPermissionsCheck() {
+    @Test
+    func `Combined permission check`() {
         // Check if all required permissions are granted
         let status = self.service.checkAllPermissions()
 
@@ -38,8 +38,8 @@ struct PermissionsServiceTests {
         #expect(status.allGranted == (hasScreenRecording && hasAccessibility))
     }
 
-    @Test("Permission required for specific features")
-    func featurePermissionRequirements() {
+    @Test
+    func `Permission required for specific features`() {
         // This logic has been moved out of the permissions service
         // and is now handled by the components that require the permissions.
         // This test is no longer applicable to PermissionsService.

@@ -8,12 +8,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("MCP Tool Execution Tests")
 struct MCPToolExecutionTests {
     // MARK: - Sleep Tool Tests
 
-    @Test("Sleep tool execution with valid duration")
-    func sleepToolValidDuration() async throws {
+    @Test
+    func `Sleep tool execution with valid duration`() async throws {
         try await MCPToolTestHelpers.withContext {
             let tool = SleepTool()
             // Use a shorter duration for testing
@@ -32,8 +31,8 @@ struct MCPToolExecutionTests {
         }
     }
 
-    @Test("Sleep tool with missing duration")
-    func sleepToolMissingDuration() async throws {
+    @Test
+    func `Sleep tool with missing duration`() async throws {
         try await MCPToolTestHelpers.withContext {
             let tool = SleepTool()
             let args = ToolArguments(raw: [:])
@@ -49,8 +48,8 @@ struct MCPToolExecutionTests {
 
     // MARK: - Permissions Tool Tests
 
-    @Test("Permissions tool execution")
-    func permissionsToolExecution() async throws {
+    @Test
+    func `Permissions tool execution`() async throws {
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
         let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
         let context = await MCPToolTestHelpers.makeContext(
@@ -70,8 +69,8 @@ struct MCPToolExecutionTests {
 
     // MARK: - List Tool Tests
 
-    @Test("List tool for apps")
-    func listToolApps() async throws {
+    @Test
+    func `List tool for apps`() async throws {
         let mockApplications = await MainActor.run {
             MockApplicationService(
                 applications: [
@@ -96,8 +95,8 @@ struct MCPToolExecutionTests {
         }
     }
 
-    @Test("List tool with invalid type")
-    func listToolInvalidType() async throws {
+    @Test
+    func `List tool with invalid type`() async throws {
         let mockApplications = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
         let tool = ListTool(context: context)
@@ -112,8 +111,8 @@ struct MCPToolExecutionTests {
 
     // MARK: - App Tool Tests
 
-    @Test("App tool launch")
-    func appToolLaunch() async throws {
+    @Test
+    func `App tool launch`() async throws {
         let mockApps = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApps)
         let tool = AppTool(context: context)
@@ -133,8 +132,8 @@ struct MCPToolExecutionTests {
         }
     }
 
-    @Test("App tool missing action")
-    func appToolMissingAction() async throws {
+    @Test
+    func `App tool missing action`() async throws {
         let mockApps = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApps)
         let tool = AppTool(context: context)
@@ -229,7 +228,9 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         steps _: Int,
         profile _: MouseMovementProfile) async throws {}
 
-    func hasAccessibilityPermission() async -> Bool { self.accessibilityGranted }
+    func hasAccessibilityPermission() async -> Bool {
+        self.accessibilityGranted
+    }
 
     func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
         -> WaitForElementResult
@@ -252,7 +253,9 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         steps _: Int,
         profile _: MouseMovementProfile) async throws {}
 
-    func getFocusedElement() -> UIFocusInfo? { nil }
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("mock find element")
@@ -271,14 +274,18 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         displayIndex _: Int?,
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
-    { self.makeResult(mode: .screen) }
+    {
+        self.makeResult(mode: .screen)
+    }
 
     func captureWindow(
         appIdentifier _: String,
         windowIndex _: Int?,
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
-    { self.makeResult(mode: .window) }
+    {
+        self.makeResult(mode: .window)
+    }
 
     func captureFrontmost(
         visualizerMode _: CaptureVisualizerMode,
@@ -295,7 +302,9 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         self.makeResult(mode: .area)
     }
 
-    func hasScreenRecordingPermission() async -> Bool { self.screenRecordingGranted }
+    func hasScreenRecordingPermission() async -> Bool {
+        self.screenRecordingGranted
+    }
 
     private func makeResult(mode: CaptureMode) -> CaptureResult {
         CaptureResult(
@@ -361,7 +370,9 @@ private final class MockApplicationService: ApplicationServiceProtocol {
 
     func activateApplication(identifier _: String) async throws {}
 
-    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool { true }
+    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool {
+        true
+    }
 
     func hideApplication(identifier _: String) async throws {}
 
@@ -372,10 +383,9 @@ private final class MockApplicationService: ApplicationServiceProtocol {
     func showAllApplications() async throws {}
 }
 
-@Suite("MCP Tool Error Handling Tests")
 struct MCPToolErrorHandlingTests {
-    @Test("Tool handles invalid argument types gracefully")
-    func invalidArgumentTypes() async throws {
+    @Test
+    func `Tool handles invalid argument types gracefully`() async throws {
         try await MCPToolTestHelpers.withContext {
             let tool = TypeTool()
 
@@ -390,8 +400,8 @@ struct MCPToolErrorHandlingTests {
         }
     }
 
-    @Test("Tool handles missing required arguments")
-    func missingRequiredArguments() async throws {
+    @Test
+    func `Tool handles missing required arguments`() async throws {
         try await MCPToolTestHelpers.withContext {
             let tool = ClickTool()
 
@@ -409,8 +419,8 @@ struct MCPToolErrorHandlingTests {
         }
     }
 
-    @Test("Tool handles malformed coordinate strings")
-    func malformedCoordinates() async throws {
+    @Test
+    func `Tool handles malformed coordinate strings`() async throws {
         try await MCPToolTestHelpers.withContext {
             let tool = ClickTool()
             let args = ToolArguments(raw: ["coords": "not-a-coordinate"])
@@ -424,8 +434,8 @@ struct MCPToolErrorHandlingTests {
         }
     }
 
-    @Test("Type tool defaults to human cadence")
-    func typeToolUsesHumanCadence() async throws {
+    @Test
+    func `Type tool defaults to human cadence`() async throws {
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
 
         try await MCPToolTestHelpers.withContext(automation: automation) {
@@ -447,8 +457,8 @@ struct MCPToolErrorHandlingTests {
         }
     }
 
-    @Test("Type tool honors linear profile")
-    func typeToolLinearProfile() async throws {
+    @Test
+    func `Type tool honors linear profile`() async throws {
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
 
         try await MCPToolTestHelpers.withContext(automation: automation) {
@@ -475,10 +485,10 @@ struct MCPToolErrorHandlingTests {
     }
 }
 
-@Suite("MCP Tool Integration Tests", .tags(.integration))
+@Suite(.tags(.integration))
 struct MCPToolIntegrationTests {
-    @Test("Multiple tools can execute concurrently")
-    func concurrentToolExecution() async throws {
+    @Test
+    func `Multiple tools can execute concurrently`() async throws {
         let apps = [ServiceApplicationInfo(processIdentifier: 1, bundleIdentifier: "com.test.app", name: "TestApp")]
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
         let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
@@ -504,8 +514,8 @@ struct MCPToolIntegrationTests {
         }
     }
 
-    @Test("Tool execution with complex arguments")
-    func complexArgumentHandling() async throws {
+    @Test
+    func `Tool execution with complex arguments`() async throws {
         // Test tools that accept complex nested arguments
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
         let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }

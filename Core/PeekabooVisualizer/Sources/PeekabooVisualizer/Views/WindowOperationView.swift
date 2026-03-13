@@ -308,7 +308,7 @@ extension WindowOperation {
     }
 }
 
-// Helper extension for CGSize scale effect
+/// Helper extension for CGSize scale effect
 extension View {
     func scaleEffect(_ scale: CGSize) -> some View {
         self.scaleEffect(x: scale.width, y: scale.height)

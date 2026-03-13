@@ -2,11 +2,10 @@ import Darwin
 import Testing
 @testable import PeekabooCLI
 
-@Suite("ClickCommand coordinate crash regression")
 struct ClickCommandCoordsCrashRegressionTests {
-    @Test("click --coords ',' returns failure (no crash)")
+    @Test
     @MainActor
-    func clickCoordsCommaReturnsFailure() async {
+    func `click --coords ',' returns failure (no crash)`() async {
         let status = await executePeekabooCLI(arguments: ["peekaboo", "click", "--coords", ",", "--json"])
         #expect(status == EXIT_FAILURE)
     }

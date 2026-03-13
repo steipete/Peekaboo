@@ -111,10 +111,17 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.services
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
-        var shouldFocusAfterLaunch: Bool { !self.noFocus }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
+
+        var shouldFocusAfterLaunch: Bool {
+            !self.noFocus
+        }
 
         /// Resolve the requested app target, launch it, optionally wait until ready, and emit output.
         @MainActor
@@ -288,9 +295,13 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.services
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Resolve the targeted applications, issue quit or force-quit requests, and report results per app.
         @MainActor
@@ -448,7 +459,9 @@ struct AppCommand: ParsableCommand {
         @Option(help: "Application to hide")
         var app: String
 
-        var positionalAppIdentifier: String { self.app }
+        var positionalAppIdentifier: String {
+            self.app
+        }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -465,13 +478,17 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
         @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Hide the specified application and emit confirmation in either text or JSON form.
         @MainActor
@@ -525,7 +542,9 @@ struct AppCommand: ParsableCommand {
         @Option(help: "Application to unhide")
         var app: String
 
-        var positionalAppIdentifier: String { self.app }
+        var positionalAppIdentifier: String {
+            self.app
+        }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -545,13 +564,17 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
         @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Unhide the target application and optionally re-activate its main window.
         @MainActor
@@ -641,13 +664,17 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.logger
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
         @MainActor private var services: any PeekabooServiceProviding {
             self.resolvedRuntime.services
         }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Switch focus either by cycling (Cmd+Tab) or by activating a specific application.
         @MainActor
@@ -767,7 +794,9 @@ struct AppCommand: ParsableCommand {
         @Argument(help: "Application name, bundle ID, or 'PID:12345' for process ID")
         var app: String
 
-        var positionalAppIdentifier: String { self.app }
+        var positionalAppIdentifier: String {
+            self.app
+        }
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -797,9 +826,13 @@ struct AppCommand: ParsableCommand {
             self.resolvedRuntime.services
         }
 
-        var outputLogger: Logger { self.logger }
+        var outputLogger: Logger {
+            self.logger
+        }
 
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Quit the target app, wait if requested, relaunch it, and report success metrics.
         @MainActor

@@ -3,10 +3,10 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Clean Command Simple Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct CleanCommandSimpleTests {
-    @Test("Clean command parses all-sessions flag")
-    func parseAllSessions() throws {
+    @Test
+    func `Clean command parses all-sessions flag`() throws {
         let command = try CleanCommand.parse(["--all-snapshots"])
         #expect(command.allSnapshots == true)
         #expect(command.olderThan == nil)
@@ -15,38 +15,38 @@ struct CleanCommandSimpleTests {
         #expect(command.jsonOutput == false)
     }
 
-    @Test("Clean command parses older-than option")
-    func parseOlderThan() throws {
+    @Test
+    func `Clean command parses older-than option`() throws {
         let command = try CleanCommand.parse(["--older-than", "24"])
         #expect(command.allSnapshots == false)
         #expect(command.olderThan == 24)
         #expect(command.snapshot == nil)
     }
 
-    @Test("Clean command parses snapshot option")
-    func parseSession() throws {
+    @Test
+    func `Clean command parses snapshot option`() throws {
         let command = try CleanCommand.parse(["--snapshot", "12345"])
         #expect(command.allSnapshots == false)
         #expect(command.olderThan == nil)
         #expect(command.snapshot == "12345")
     }
 
-    @Test("Clean command parses dry-run flag")
-    func parseDryRun() throws {
+    @Test
+    func `Clean command parses dry-run flag`() throws {
         let command = try CleanCommand.parse(["--all-snapshots", "--dry-run"])
         #expect(command.allSnapshots == true)
         #expect(command.dryRun == true)
     }
 
-    @Test("Clean command parses json-output flag")
-    func parseJsonOutput() throws {
+    @Test
+    func `Clean command parses json-output flag`() throws {
         let command = try CleanCommand.parse(["--all-snapshots", "--json"])
         #expect(command.allSnapshots == true)
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Clean command parses multiple options")
-    func parseMultipleOptions() throws {
+    @Test
+    func `Clean command parses multiple options`() throws {
         let command = try CleanCommand.parse([
             "--older-than", "48",
             "--dry-run",
@@ -57,8 +57,8 @@ struct CleanCommandSimpleTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Clean result structure")
-    func cleanResultStructure() {
+    @Test
+    func `Clean result structure`() {
         let snapshotDetails = [
             SnapshotDetail(snapshotId: "123", path: "/tmp/123", size: 1024, creationDate: Date()),
             SnapshotDetail(snapshotId: "456", path: "/tmp/456", size: 2048, creationDate: Date()),

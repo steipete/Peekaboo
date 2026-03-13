@@ -6,7 +6,7 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-// Import the necessary types from the menu command
+/// Import the necessary types from the menu command
 private struct MenuListData: Codable {
     let app: String
     let bundle_id: String?
@@ -26,17 +26,17 @@ private struct MenuItemData: Codable {
     let submenu: [MenuItemData]?
 }
 
-@Suite("Menu Command Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct MenuCommandTests {
-    @Test("Menu command exists")
-    func menuCommandExists() {
+    @Test
+    func `Menu command exists`() {
         let config = MenuCommand.commandDescription
         #expect(config.commandName == "menu")
         #expect(config.abstract.contains("menu bar"))
     }
 
-    @Test("Menu command has expected subcommands")
-    func menuSubcommands() {
+    @Test
+    func `Menu command has expected subcommands`() {
         let subcommands = MenuCommand.commandDescription.subcommands
         #expect(subcommands.count == 4)
 
@@ -52,8 +52,8 @@ struct MenuCommandTests {
         #expect(names.contains("list-all"))
     }
 
-    @Test("Menu click command help")
-    func menuClickHelp() async throws {
+    @Test
+    func `Menu click command help`() async throws {
         let result = try await self.runMenuCommand(["menu", "click", "--help"])
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
@@ -63,8 +63,8 @@ struct MenuCommandTests {
         #expect(output.contains("--item"))
     }
 
-    @Test("Menu click requires app and path/item")
-    func menuClickValidation() async throws {
+    @Test
+    func `Menu click requires app and path/item`() async throws {
         // Test missing app
         let missingApp = try await self.runMenuCommand(["menu", "click", "--path", "File > New"])
         #expect(missingApp.exitStatus != 0)
@@ -74,8 +74,8 @@ struct MenuCommandTests {
         #expect(missingPath.exitStatus != 0)
     }
 
-    @Test("Menu path parsing")
-    func menuPathParsing() {
+    @Test
+    func `Menu path parsing`() {
         // Test simple path
         let path1 = "File > New"
         let components1 = path1.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -87,8 +87,8 @@ struct MenuCommandTests {
         #expect(components2 == ["Window", "Bring All to Front"])
     }
 
-    @Test("Menu click-extra command help")
-    func menuSystemHelp() async throws {
+    @Test
+    func `Menu click-extra command help`() async throws {
         let result = try await self.runMenuCommand(["menu", "click-extra", "--help"])
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
@@ -97,8 +97,8 @@ struct MenuCommandTests {
         #expect(output.contains("--item"))
     }
 
-    @Test("Menu list command help")
-    func menuListHelp() async throws {
+    @Test
+    func `Menu list command help`() async throws {
         let result = try await self.runMenuCommand(["menu", "list", "--help"])
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
@@ -107,14 +107,14 @@ struct MenuCommandTests {
         #expect(output.contains("--include-disabled"))
     }
 
-    @Test("Menu error codes")
-    func menuErrorCodes() {
+    @Test
+    func `Menu error codes`() {
         #expect(ErrorCode.MENU_BAR_NOT_FOUND.rawValue == "MENU_BAR_NOT_FOUND")
         #expect(ErrorCode.MENU_ITEM_NOT_FOUND.rawValue == "MENU_ITEM_NOT_FOUND")
     }
 
-    @Test("Menu click executes menu service")
-    func menuClickExecution() async throws {
+    @Test
+    func `Menu click executes menu service`() async throws {
         let args = [
             "menu", "click",
             "--app", "Finder",
@@ -128,8 +128,8 @@ struct MenuCommandTests {
         #expect(calls.contains { $0.app == "Finder" && $0.item == "Open" })
     }
 
-    @Test("Menu click path executes menu service")
-    func menuClickPathExecution() async throws {
+    @Test
+    func `Menu click path executes menu service`() async throws {
         let args = [
             "menu", "click",
             "--app", "Finder",

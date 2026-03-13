@@ -9,7 +9,6 @@ import Testing
 @testable import PeekabooVisualizer
 
 @Suite(
-    "ScrollService Tests",
     .tags(.ui, .automation),
     .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
@@ -31,15 +30,15 @@ struct ScrollServiceTests {
             snapshotId: snapshotId)
     }
 
-    @Test("ScrollService initializes successfully with default configuration")
-    func initializeService() async throws {
+    @Test
+    func `ScrollService initializes successfully with default configuration`() {
         let service = ScrollService()
         // Service is initialized successfully
         _ = service
     }
 
-    @Test("Scroll executes in all four cardinal directions without errors")
-    func scrollInAllDirections() async throws {
+    @Test
+    func `Scroll executes in all four cardinal directions without errors`() async throws {
         let service = ScrollService()
 
         // Test scrolling in each direction
@@ -49,8 +48,8 @@ struct ScrollServiceTests {
         try await service.scroll(self.makeRequest(direction: .right, amount: 5))
     }
 
-    @Test("Scroll amounts")
-    func differentScrollAmounts() async throws {
+    @Test
+    func `Scroll amounts`() async throws {
         let service = ScrollService()
 
         // Test different scroll amounts
@@ -61,8 +60,8 @@ struct ScrollServiceTests {
         }
     }
 
-    @Test("Scroll at coordinates")
-    func scrollAtSpecificCoordinates() async throws {
+    @Test
+    func `Scroll at coordinates`() async throws {
         let service = ScrollService()
 
         // Note: ScrollService doesn't support coordinate-based targets directly
@@ -70,24 +69,24 @@ struct ScrollServiceTests {
         try await service.scroll(self.makeRequest(direction: .down, amount: 3))
     }
 
-    @Test("Scroll up large amount")
-    func scrollUpLargeAmount() async throws {
+    @Test
+    func `Scroll up large amount`() async throws {
         let service = ScrollService()
 
         // Simulate scroll to top by scrolling up a large amount
         try await service.scroll(self.makeRequest(direction: .up, amount: 50))
     }
 
-    @Test("Scroll down large amount")
-    func scrollDownLargeAmount() async throws {
+    @Test
+    func `Scroll down large amount`() async throws {
         let service = ScrollService()
 
         // Simulate scroll to bottom by scrolling down a large amount
         try await service.scroll(self.makeRequest(direction: .down, amount: 50))
     }
 
-    @Test("Page-like scrolling")
-    func pageLikeScrolling() async throws {
+    @Test
+    func `Page-like scrolling`() async throws {
         let service = ScrollService()
 
         // Simulate page up with larger scroll amount
@@ -97,8 +96,8 @@ struct ScrollServiceTests {
         try await service.scroll(self.makeRequest(direction: .down, amount: 10))
     }
 
-    @Test("Smooth scroll")
-    func smoothScrolling() async throws {
+    @Test
+    func `Smooth scroll`() async throws {
         let service = ScrollService()
 
         // Test smooth scrolling
@@ -106,8 +105,8 @@ struct ScrollServiceTests {
             self.makeRequest(direction: .down, amount: 10, smooth: true, delay: 50))
     }
 
-    @Test("Scroll with element target")
-    func scrollInElement() async throws {
+    @Test
+    func `Scroll with element target`() async throws {
         let service = ScrollService()
 
         // Test scrolling within a specific element
@@ -121,24 +120,24 @@ struct ScrollServiceTests {
         }
     }
 
-    @Test("Zero scroll amount")
-    func zeroScrollAmount() async throws {
+    @Test
+    func `Zero scroll amount`() async throws {
         let service = ScrollService()
 
         // Should handle zero amount gracefully
         try await service.scroll(self.makeRequest(direction: .down, amount: 0))
     }
 
-    @Test("Negative scroll amount")
-    func negativeScrollAmount() async throws {
+    @Test
+    func `Negative scroll amount`() async throws {
         let service = ScrollService()
 
         // Negative amounts should be treated as absolute values
         try await service.scroll(self.makeRequest(direction: .up, amount: -5))
     }
 
-    @Test("Scroll deltas remain bounded")
-    func scrollDeltasAreSmall() async throws {
+    @Test
+    func `Scroll deltas remain bounded`() {
         let service = ScrollService()
         #expect(service.deltasForTesting(direction: .up) == (0, 5))
         #expect(service.deltasForTesting(direction: .down) == (0, -5))

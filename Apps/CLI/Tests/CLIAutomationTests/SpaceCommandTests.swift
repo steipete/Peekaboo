@@ -10,21 +10,20 @@ import Testing
 // MARK: - Read-only scenarios
 
 @Suite(
-    "Space Command Read Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct SpaceCommandReadTests {
-    @Test("space command exists in help")
-    func spaceCommandInHelp() async throws {
+    @Test
+    func `space command exists in help`() async throws {
         let output = try await self.runPeekaboo(["--help"])
         #expect(output.contains("space"))
         #expect(output.contains("Manage macOS Spaces"))
     }
 
-    @Test("space command help shows subcommands")
-    func spaceCommandHelp() async throws {
+    @Test
+    func `space command help shows subcommands`() async throws {
         let output = try await self.runPeekaboo(["space", "--help"])
         #expect(output.contains("Manage macOS Spaces (virtual desktops)"))
         #expect(output.contains("list"))
@@ -32,34 +31,34 @@ struct SpaceCommandReadTests {
         #expect(output.contains("move-window"))
     }
 
-    @Test("space switch command help")
-    func spaceSwitchHelp() async throws {
+    @Test
+    func `space switch command help`() async throws {
         let output = try await self.runPeekaboo(["space", "switch", "--help"])
         #expect(output.contains("Switch to a different Space"))
         #expect(output.contains("--to"))
     }
 
-    @Test("space list command")
-    func spaceListCommand() async throws {
+    @Test
+    func `space list command`() async throws {
         let output = try await self.runPeekaboo(["space", "list"])
         #expect(!output.isEmpty)
     }
 
-    @Test("space list with JSON output")
-    func spaceListJSON() async throws {
+    @Test
+    func `space list with JSON output`() async throws {
         let output = try await self.runPeekaboo(["space", "list", "--json"])
         let response = try JSONDecoder().decode(CodableJSONResponse<SpaceListData>.self, from: Data(output.utf8))
         #expect(response.success)
     }
 
-    @Test("space list detailed flag")
-    func spaceListDetailed() async throws {
+    @Test
+    func `space list detailed flag`() async throws {
         let output = try await self.runPeekaboo(["space", "list", "--detailed"])
         #expect(output.contains("Space"))
     }
 
-    @Test("space switch requires --to parameter")
-    func spaceSwitchRequiresDestination() {
+    @Test
+    func `space switch requires --to parameter`() {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try SwitchSubcommand.parse([])
@@ -67,8 +66,8 @@ struct SpaceCommandReadTests {
         }
     }
 
-    @Test("space switch rejects non-numeric parameters")
-    func spaceSwitchRejectsNonNumeric() {
+    @Test
+    func `space switch rejects non-numeric parameters`() {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try SwitchSubcommand.parse(["--to", "abc"])
@@ -76,24 +75,24 @@ struct SpaceCommandReadTests {
         }
     }
 
-    @Test("space move-window requires app parameter")
-    func spaceMoveWindowRequiresApp() {
+    @Test
+    func `space move-window requires app parameter`() {
         #expect(throws: (any Error).self) {
             var command = try MoveWindowSubcommand.parse(["--to", "2"])
             try command.validate()
         }
     }
 
-    @Test("space move-window requires destination")
-    func spaceMoveWindowRequiresDestination() {
+    @Test
+    func `space move-window requires destination`() {
         #expect(throws: (any Error).self) {
             var command = try MoveWindowSubcommand.parse(["--app", "Finder"])
             try command.validate()
         }
     }
 
-    @Test("space move-window parses follow option")
-    func spaceMoveWindowParsesFollowOption() throws {
+    @Test
+    func `space move-window parses follow option`() throws {
         let command = try MoveWindowSubcommand.parse([
             "--app", "Finder",
             "--to", "3",
@@ -233,14 +232,13 @@ extension SpaceCommandReadTests {
 // MARK: - Actions that mutate Spaces
 
 @Suite(
-    "Space Command Action Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct SpaceCommandActionTests {
-    @Test("space switch with valid number")
-    func spaceSwitchValid() async throws {
+    @Test
+    func `space switch with valid number`() async throws {
         let context = await self.makeSpaceContext()
         let result = try await self.runSpaceCommand([
             "space", "switch",
@@ -257,8 +255,8 @@ struct SpaceCommandActionTests {
         #expect(switchCalls.contains(1))
     }
 
-    @Test("space move-window to current Space")
-    func spaceMoveWindowToCurrent() async throws {
+    @Test
+    func `space move-window to current Space`() async throws {
         let context = await self.makeSpaceContext()
         let result = try await self.runSpaceCommand([
             "space", "move-window",
@@ -276,8 +274,8 @@ struct SpaceCommandActionTests {
         #expect(!moveCalls.isEmpty)
     }
 
-    @Test("space move-window with follow option")
-    func spaceMoveWindowWithFollow() async throws {
+    @Test
+    func `space move-window with follow option`() async throws {
         let context = await self.makeSpaceContext()
         let result = try await self.runSpaceCommand([
             "space", "move-window",

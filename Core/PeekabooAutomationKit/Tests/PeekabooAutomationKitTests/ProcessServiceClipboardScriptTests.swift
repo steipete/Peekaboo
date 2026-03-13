@@ -2,7 +2,6 @@ import AppKit
 import PeekabooFoundation
 import UniformTypeIdentifiers
 import XCTest
-
 @testable import PeekabooAutomationKit
 
 @available(macOS 14.0, *)

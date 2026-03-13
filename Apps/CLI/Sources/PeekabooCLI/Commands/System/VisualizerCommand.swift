@@ -39,9 +39,17 @@ struct VisualizerCommand: RuntimeOptionsConfigurable, OutputFormattable, ErrorHa
         return self.runtimeOptions.makeConfiguration()
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.configuration.jsonOutput }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.configuration.jsonOutput
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -84,12 +92,12 @@ struct VisualizerCommand: RuntimeOptionsConfigurable, OutputFormattable, ErrorHa
 private struct VisualizerSmokeSequence {
     let logger: Logger
 
-    struct StepReport: Codable, Sendable {
+    struct StepReport: Codable {
         let name: String
         let dispatched: Bool
     }
 
-    struct Report: Codable, Sendable {
+    struct Report: Codable {
         let steps: [StepReport]
         let dispatchedCount: Int
         let totalSteps: Int

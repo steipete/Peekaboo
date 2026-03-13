@@ -18,7 +18,7 @@ final class SmartLabelPlacer {
     private let labelSpacing: CGFloat = 3
     private let cornerInset: CGFloat = 2
 
-    // Label placement debugging
+    /// Label placement debugging
     private let debugMode: Bool
 
     // MARK: - Initialization

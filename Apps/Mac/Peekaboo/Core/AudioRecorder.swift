@@ -22,7 +22,7 @@ final class AudioRecorder: NSObject {
     private var audioBuffer = [AVAudioPCMBuffer]()
     private var recordingURL: URL?
 
-    // AI transcription settings
+    /// AI transcription settings
     private let settings: PeekabooSettings
 
     init(settings: PeekabooSettings) {

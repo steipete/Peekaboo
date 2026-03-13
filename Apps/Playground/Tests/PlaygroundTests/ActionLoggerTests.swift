@@ -1,11 +1,10 @@
 import Testing
 @testable import Playground
 
-@Suite("Playground action logger tests")
 @MainActor
 struct ActionLoggerTests {
-    @Test("log records entries and updates derived state")
-    func logRecordsEntries() {
+    @Test
+    func `log records entries and updates derived state`() {
         let logger = ActionLogger.shared
         logger.clearLogs()
 
@@ -19,8 +18,8 @@ struct ActionLoggerTests {
         #expect(logger.categoryCounts[.click] == 1)
     }
 
-    @Test("clearLogs resets counters and appends status message")
-    func clearLogsResetsState() {
+    @Test
+    func `clearLogs resets counters and appends status message`() {
         let logger = ActionLogger.shared
         logger.clearLogs()
         logger.log(.text, "Typed name")
@@ -33,8 +32,8 @@ struct ActionLoggerTests {
         #expect(logger.categoryCounts.values.allSatisfy { $0 == 0 })
     }
 
-    @Test("exportLogs emits human readable lines")
-    func exportLogsIncludesEntries() {
+    @Test
+    func `exportLogs emits human readable lines`() {
         let logger = ActionLogger.shared
         logger.clearLogs()
 
@@ -48,8 +47,8 @@ struct ActionLoggerTests {
         #expect(exported.contains("Toggled switch"))
     }
 
-    @Test("log enforces bounded history")
-    func logKeepsBoundedHistory() {
+    @Test
+    func `log enforces bounded history`() {
         let logger = ActionLogger.shared
         logger.clearLogs()
 

@@ -3,11 +3,11 @@ import Testing
 @testable import Peekaboo
 @testable import PeekabooCore
 
-@Suite("MainView Logic Tests", .tags(.ui, .unit))
+@Suite(.tags(.ui, .unit))
 @MainActor
 struct MainViewLogicTests {
-    @Test("Input validation")
-    func inputValidation() {
+    @Test
+    func `Input validation`() {
         // Test various input strings
         let validInputs = [
             "Take a screenshot",
@@ -35,11 +35,11 @@ struct MainViewLogicTests {
     }
 }
 
-@Suite("SessionDetailView Logic Tests", .tags(.ui, .unit))
+@Suite(.tags(.ui, .unit))
 @MainActor
 struct SessionDetailViewLogicTests {
-    @Test("Session display formatting")
-    func sessionFormatting() {
+    @Test
+    func `Session display formatting`() {
         var session = ConversationSession(title: "Test Session")
 
         // Add various message types
@@ -69,8 +69,8 @@ struct SessionDetailViewLogicTests {
         #expect(session.messages[2].role == .system)
     }
 
-    @Test("Time formatting")
-    func timeFormatting() {
+    @Test
+    func `Time formatting`() {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
 

@@ -868,7 +868,9 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         let minPixels = 1 // Tiny blobs still count; caller can filter when drawing
         var collected: [CGRect] = []
 
-        func index(_ x: Int, _ y: Int) -> Int { y * width + x }
+        func index(_ x: Int, _ y: Int) -> Int {
+            y * width + x
+        }
 
         for y in 0..<height {
             for x in 0..<width {

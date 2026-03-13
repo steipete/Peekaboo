@@ -32,7 +32,9 @@ final class StubRunningApplication: RunningApplicationHandle {
         return self.readyCheckCount >= self.requiredReadyChecks
     }
 
-    var isActive: Bool { self.isActiveState }
+    var isActive: Bool {
+        self.isActiveState
+    }
 
     @discardableResult
     func activate(options: NSApplication.ActivationOptions) -> Bool {

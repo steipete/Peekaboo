@@ -1,7 +1,6 @@
 import AppKit
 import PeekabooFoundation
 import XCTest
-
 @testable import PeekabooAutomationKit
 
 @available(macOS 14.0, *)
@@ -41,7 +40,7 @@ final class ProcessServiceLoadScriptTests: XCTestCase {
           ]
         }
         """
-        try badScript.data(using: .utf8)!.write(to: url, options: .atomic)
+        try badScript.data(using: .utf8)?.write(to: url, options: .atomic)
         defer { try? FileManager.default.removeItem(at: url) }
 
         do {

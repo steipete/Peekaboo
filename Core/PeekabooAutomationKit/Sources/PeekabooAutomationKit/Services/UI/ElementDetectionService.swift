@@ -493,7 +493,7 @@ extension ElementDetectionService {
         return nil
     }
 
-    // Fallback #3: ask the window-management service (which already talks to CG+AX) for candidates
+    /// Fallback #3: ask the window-management service (which already talks to CG+AX) for candidates
     private func resolveWindowViaWindowServiceFallback(
         for app: NSRunningApplication,
         title: String?) async -> Element?
@@ -1071,5 +1071,7 @@ private struct ElementAttributeInput {
 }
 
 extension CGSize {
-    fileprivate var area: CGFloat { width * height }
+    fileprivate var area: CGFloat {
+        width * height
+    }
 }

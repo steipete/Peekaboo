@@ -10,17 +10,16 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("MCP Stdio Transport Tests")
 struct MCPStdioTransportTests {
-    @Test("Initialize transport")
-    func initialization() async throws {
+    @Test
+    func `Initialize transport`() async {
         let transport = await MCPStdioTransport()
         #expect(transport != nil)
         #expect(await !transport.isConnected())
     }
 
-    @Test("Connect to echo process")
-    func connectToEcho() async throws {
+    @Test
+    func `Connect to echo process`() async throws {
         let transport = await MCPStdioTransport()
 
         // Use echo command as a simple test process
@@ -37,8 +36,8 @@ struct MCPStdioTransportTests {
         #expect(await !transport.isConnected())
     }
 
-    @Test("Send and receive messages")
-    func messageExchange() async throws {
+    @Test
+    func `Send and receive messages`() async throws {
         let transport = await MCPStdioTransport()
 
         // Use cat command which echoes stdin to stdout
@@ -62,8 +61,8 @@ struct MCPStdioTransportTests {
         await transport.disconnect()
     }
 
-    @Test("Handle process termination")
-    func processTermination() async throws {
+    @Test
+    func `Handle process termination`() async throws {
         let transport = await MCPStdioTransport()
 
         // Connect to a process that exits immediately
@@ -80,8 +79,8 @@ struct MCPStdioTransportTests {
         #expect(await !transport.isConnected())
     }
 
-    @Test("JSON-RPC request helper")
-    func jSONRPCRequest() async throws {
+    @Test
+    func `JSON-RPC request helper`() async throws {
         let transport = await MCPStdioTransport()
 
         // Connect to cat for echo
@@ -118,8 +117,8 @@ struct MCPStdioTransportTests {
         await transport.disconnect()
     }
 
-    @Test("JSON-RPC notification helper")
-    func jSONRPCNotification() async throws {
+    @Test
+    func `JSON-RPC notification helper`() async throws {
         let transport = await MCPStdioTransport()
 
         // Connect to cat for echo
@@ -153,8 +152,8 @@ struct MCPStdioTransportTests {
         await transport.disconnect()
     }
 
-    @Test("Environment variables")
-    func environmentVariables() async throws {
+    @Test
+    func `Environment variables`() async throws {
         let transport = await MCPStdioTransport()
 
         // Use env command to print environment
@@ -172,8 +171,8 @@ struct MCPStdioTransportTests {
         #expect(await !transport.isConnected())
     }
 
-    @Test("Working directory")
-    func testWorkingDirectory() async throws {
+    @Test
+    func `Working directory`() async throws {
         let transport = await MCPStdioTransport()
         let tempDir = FileManager.default.temporaryDirectory.path
 
@@ -190,8 +189,8 @@ struct MCPStdioTransportTests {
         #expect(await !transport.isConnected())
     }
 
-    @Test("Message handler callback")
-    func messageHandler() async throws {
+    @Test
+    func `Message handler callback`() async throws {
         let transport = await MCPStdioTransport()
         let expectation = TestExpectation()
 
@@ -217,7 +216,7 @@ struct MCPStdioTransportTests {
     }
 }
 
-// Helper for async expectations in tests
+/// Helper for async expectations in tests
 actor TestExpectation {
     private var fulfilled = false
     private var waiters: [CheckedContinuation<Void, Error>] = []

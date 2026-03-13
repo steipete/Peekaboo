@@ -3,10 +3,9 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Menu bar popover selection")
 struct MenuBarPopoverSelectorTests {
-    @Test("prefers owner name match")
-    func prefersOwnerNameMatch() {
+    @Test
+    func `prefers owner name match`() {
         let candidates = [
             MenuBarPopoverCandidate(
                 windowId: 1,
@@ -35,8 +34,8 @@ struct MenuBarPopoverSelectorTests {
         #expect(selected?.windowId == 2)
     }
 
-    @Test("prefers nearest X when hint provided")
-    func prefersNearestXWhenHintProvided() {
+    @Test
+    func `prefers nearest X when hint provided`() {
         let candidates = [
             MenuBarPopoverCandidate(
                 windowId: 1,
@@ -62,8 +61,8 @@ struct MenuBarPopoverSelectorTests {
         #expect(selected?.windowId == 1)
     }
 
-    @Test("falls back to highest window when no hints")
-    func fallsBackToHighestWindowWhenNoHints() {
+    @Test
+    func `falls back to highest window when no hints`() {
         let candidates = [
             MenuBarPopoverCandidate(
                 windowId: 1,
@@ -89,8 +88,8 @@ struct MenuBarPopoverSelectorTests {
         #expect(selected?.windowId == 2)
     }
 
-    @Test("ranks owner match ahead of X distance")
-    func ranksOwnerMatchAheadOfXDistance() {
+    @Test
+    func `ranks owner match ahead of X distance`() {
         let candidates = [
             MenuBarPopoverCandidate(
                 windowId: 1,

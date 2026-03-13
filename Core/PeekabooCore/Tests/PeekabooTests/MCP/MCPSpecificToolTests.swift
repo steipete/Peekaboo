@@ -18,12 +18,11 @@ private func makeTestTool<T>(_ builder: () -> T) -> T {
 }
 
 @MainActor
-@Suite("MCP Specific Tool Tests")
 struct MCPSpecificToolTests {
     // MARK: - See Tool Tests
 
-    @Test("See tool schema includes annotation options")
-    func seeToolSchema() {
+    @Test
+    func `See tool schema includes annotation options`() {
         let tool = makeTestTool(SeeTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -52,8 +51,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Dialog Tool Tests
 
-    @Test("Dialog tool schema validation")
-    func dialogToolSchema() {
+    @Test
+    func `Dialog tool schema validation`() {
         let tool = makeTestTool(DialogTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -91,8 +90,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Menu Tool Tests
 
-    @Test("Menu tool schema includes path format")
-    func menuToolSchema() {
+    @Test
+    func `Menu tool schema includes path format`() {
         let tool = makeTestTool(MenuTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -119,8 +118,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Space Tool Tests
 
-    @Test("Space tool schema includes Mission Control actions")
-    func spaceToolSchema() {
+    @Test
+    func `Space tool schema includes Mission Control actions`() {
         let tool = makeTestTool(SpaceTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -154,8 +153,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Hotkey Tool Tests
 
-    @Test("Hotkey tool schema includes modifier combinations")
-    func hotkeyToolSchema() {
+    @Test
+    func `Hotkey tool schema includes modifier combinations`() {
         let tool = makeTestTool(HotkeyTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -179,8 +178,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Drag Tool Tests
 
-    @Test("Drag tool schema includes coordinate support")
-    func dragToolSchema() {
+    @Test
+    func `Drag tool schema includes coordinate support`() {
         let tool = makeTestTool(DragTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -207,8 +206,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Window Tool Tests
 
-    @Test("Window tool complex action schema")
-    func windowToolSchema() {
+    @Test
+    func `Window tool complex action schema`() {
         let tool = makeTestTool(WindowTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
@@ -242,8 +241,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Move Tool Tests
 
-    @Test("Move tool supports both coordinates and elements")
-    func moveToolSchema() {
+    @Test
+    func `Move tool supports both coordinates and elements`() {
         let tool = MoveTool()
 
         guard case let .object(schema) = tool.inputSchema,
@@ -269,8 +268,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Swipe Tool Tests
 
-    @Test("Swipe tool direction validation")
-    func swipeToolSchema() {
+    @Test
+    func `Swipe tool direction validation`() {
         let tool = SwipeTool()
 
         guard case let .object(schema) = tool.inputSchema,
@@ -297,8 +296,8 @@ struct MCPSpecificToolTests {
 
     // MARK: - Analyze Tool Tests
 
-    @Test("Analyze tool supports multiple input formats")
-    func analyzeToolSchema() {
+    @Test
+    func `Analyze tool supports multiple input formats`() {
         let tool = AnalyzeTool()
 
         guard case let .object(schema) = tool.inputSchema,
@@ -324,10 +323,9 @@ struct MCPSpecificToolTests {
 }
 
 @MainActor
-@Suite("MCP Tool Description Tests")
 struct MCPToolDescriptionTests {
-    @Test("Tool descriptions include version and capabilities")
-    func toolDescriptionsIncludeMetadata() {
+    @Test
+    func `Tool descriptions include version and capabilities`() {
         let tools: [any MCPTool] = [
             makeTestTool(ImageTool.init),
             makeTestTool(SeeTool.init),
@@ -355,8 +353,8 @@ struct MCPToolDescriptionTests {
         }
     }
 
-    @Test("Tool names follow conventions")
-    func toolNamingConventions() {
+    @Test
+    func `Tool names follow conventions`() {
         let tools: [any MCPTool] = [
             makeTestTool(ImageTool.init),
             makeTestTool(AnalyzeTool.init),

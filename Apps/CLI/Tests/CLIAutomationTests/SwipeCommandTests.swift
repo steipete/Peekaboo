@@ -7,14 +7,13 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "SwipeCommand Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct SwipeCommandTests {
-    @Test("swipe --help describes usage")
-    func swipeHelp() async throws {
+    @Test
+    func `swipe --help describes usage`() async throws {
         let context = await self.makeContext()
         let result = try await self.runSwipe(arguments: ["--help"], context: context)
 
@@ -22,8 +21,8 @@ struct SwipeCommandTests {
         #expect(self.output(from: result).contains("Perform swipe gestures"))
     }
 
-    @Test("Swipe command validates sources and destinations")
-    func requiresBothEndpoints() async throws {
+    @Test
+    func `Swipe command validates sources and destinations`() async throws {
         let context = await self.makeContext()
         let result = try await self.runSwipe(arguments: ["--from-coords", "10,10"], context: context)
 
@@ -32,8 +31,8 @@ struct SwipeCommandTests {
         #expect(swipeCalls.isEmpty)
     }
 
-    @Test("Swipe coordinates are forwarded to automation service")
-    func forwardsCoordinateSwipe() async throws {
+    @Test
+    func `Swipe coordinates are forwarded to automation service`() async throws {
         let context = await self.makeContext()
         let result = try await self.runSwipe(
             arguments: [
@@ -64,8 +63,8 @@ struct SwipeCommandTests {
         #expect(payload.data.profile == "linear")
     }
 
-    @Test("Element based swipe resolves using waitForElement")
-    func elementBasedSwipe() async throws {
+    @Test
+    func `Element based swipe resolves using waitForElement`() async throws {
         let context = await self.makeContext { automation, snapshots in
             snapshots.mostRecentSnapshotId = "snapshot-1"
             let element = DetectedElement(
@@ -107,8 +106,8 @@ struct SwipeCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Right button option is rejected")
-    func rejectsRightButton() async throws {
+    @Test
+    func `Right button option is rejected`() async throws {
         let context = await self.makeContext()
         let result = try await self.runSwipe(
             arguments: [
@@ -125,8 +124,8 @@ struct SwipeCommandTests {
         #expect(swipeCalls.isEmpty)
     }
 
-    @Test("Human profile swipe adjusts motion")
-    func swipeHumanProfile() async throws {
+    @Test
+    func `Human profile swipe adjusts motion`() async throws {
         let context = await self.makeContext()
         let result = try await self.runSwipe(
             arguments: [

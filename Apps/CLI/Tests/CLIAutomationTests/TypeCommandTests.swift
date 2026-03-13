@@ -3,10 +3,10 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("TypeCommand Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct TypeCommandTests {
-    @Test("Type command with text argument")
-    func typeWithText() throws {
+    @Test
+    func `Type command with text argument`() throws {
         let command = try TypeCommand.parse(["Hello World", "--json"])
 
         #expect(command.text == "Hello World")
@@ -16,16 +16,16 @@ struct TypeCommandTests {
         #expect(command.clear == false)
     }
 
-    @Test("Type command with --text option")
-    func typeWithTextOption() throws {
+    @Test
+    func `Type command with --text option`() throws {
         let command = try TypeCommand.parse(["--text", "Option Text", "--json"])
 
         #expect(command.text == nil)
         #expect(command.textOption == "Option Text")
     }
 
-    @Test("Type command with special keys")
-    func typeWithSpecialKeys() throws {
+    @Test
+    func `Type command with special keys`() throws {
         let command = try TypeCommand.parse(["--tab", "2", "--return", "--json"])
 
         #expect(command.text == nil)
@@ -35,8 +35,8 @@ struct TypeCommandTests {
         #expect(command.delete == false)
     }
 
-    @Test("Type command with clear flag")
-    func typeWithClear() throws {
+    @Test
+    func `Type command with clear flag`() throws {
         let command = try TypeCommand.parse(["New Text", "--clear", "--json"])
 
         #expect(command.text == "New Text")
@@ -44,16 +44,16 @@ struct TypeCommandTests {
         #expect(command.delay == 2) // default delay
     }
 
-    @Test("Type command with custom delay")
-    func typeWithCustomDelay() throws {
+    @Test
+    func `Type command with custom delay`() throws {
         let command = try TypeCommand.parse(["Fast", "--delay", "0", "--json"])
 
         #expect(command.text == "Fast")
         #expect(command.delay == 0)
     }
 
-    @Test("Type command with human typing speed")
-    func typeWithWPM() throws {
+    @Test
+    func `Type command with human typing speed`() throws {
         var command = try TypeCommand.parse(["Message", "--wpm", "140", "--json"])
         #expect(command.wordsPerMinute == 140)
         #expect(command.delay == 2)
@@ -61,8 +61,8 @@ struct TypeCommandTests {
         try command.validate()
     }
 
-    @Test("Type command with linear profile")
-    func typeWithLinearProfile() throws {
+    @Test
+    func `Type command with linear profile`() throws {
         var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--delay", "15"])
         #expect(command.profileOption?.lowercased() == "linear")
         #expect(command.delay == 15)
@@ -70,8 +70,8 @@ struct TypeCommandTests {
         try command.validate()
     }
 
-    @Test("Type command rejects invalid WPM")
-    func typeWithInvalidWPM() throws {
+    @Test
+    func `Type command rejects invalid WPM`() throws {
         var command = try TypeCommand.parse(["Hello", "--wpm", "20"])
         do {
             try command.validate()
@@ -82,8 +82,8 @@ struct TypeCommandTests {
         }
     }
 
-    @Test("Type command rejects WPM with linear profile")
-    func typeRejectsWPMWithLinearProfile() throws {
+    @Test
+    func `Type command rejects WPM with linear profile`() throws {
         var command = try TypeCommand.parse(["Hello", "--profile", "linear", "--wpm", "140"])
         do {
             try command.validate()
@@ -94,8 +94,8 @@ struct TypeCommandTests {
         }
     }
 
-    @Test("Type execution defaults to human cadence")
-    func runTypeCommandHumanProfile() async throws {
+    @Test
+    func `Type execution defaults to human cadence`() async throws {
         let context = await self.makeContext()
         let result = try await self.runType(arguments: ["Hello"], context: context)
 
@@ -108,8 +108,8 @@ struct TypeCommandTests {
         }
     }
 
-    @Test("Type execution honors linear profile and delay")
-    func runTypeCommandLinearProfile() async throws {
+    @Test
+    func `Type execution honors linear profile and delay`() async throws {
         let context = await self.makeContext()
         let result = try await self.runType(
             arguments: ["Hello", "--profile", "linear", "--delay", "15"],
@@ -125,8 +125,8 @@ struct TypeCommandTests {
         }
     }
 
-    @Test("Type command argument parsing")
-    func typeCommandArgumentParsing() throws {
+    @Test
+    func `Type command argument parsing`() throws {
         let command = try TypeCommand.parse(["Hello World", "--delay", "10", "--return"])
 
         #expect(command.text == "Hello World")
@@ -134,8 +134,8 @@ struct TypeCommandTests {
         #expect(command.pressReturn == true)
     }
 
-    @Test("Type command with all special keys")
-    func typeWithAllSpecialKeys() throws {
+    @Test
+    func `Type command with all special keys`() throws {
         let command = try TypeCommand.parse([
             "Test",
             "--clear",
@@ -155,8 +155,8 @@ struct TypeCommandTests {
         #expect(command.delete == true)
     }
 
-    @Test("Process text with escape sequences")
-    func processEscapeSequences() throws {
+    @Test
+    func `Process text with escape sequences`() {
         // Test newline escape
         let newlineActions = TypeCommand.processTextWithEscapes("Line 1\\nLine 2")
         #expect(newlineActions.count == 3)
@@ -193,8 +193,8 @@ struct TypeCommandTests {
         }
     }
 
-    @Test("Complex escape sequence combinations")
-    func complexEscapeSequences() throws {
+    @Test
+    func `Complex escape sequence combinations`() {
         // Test multiple escape sequences
         let complexActions = TypeCommand.processTextWithEscapes("Line 1\\nLine 2\\tTabbed\\bFixed\\eEsc\\\\Path")
         #expect(complexActions.count == 9)
@@ -211,8 +211,8 @@ struct TypeCommandTests {
         if case .text("Esc\\Path") = complexActions[8] { } else { Issue.record("Expected 'Esc\\Path'") }
     }
 
-    @Test("Empty and edge case escape sequences")
-    func edgeCaseEscapeSequences() throws {
+    @Test
+    func `Empty and edge case escape sequences`() {
         // Empty text
         let emptyActions = TypeCommand.processTextWithEscapes("")
         #expect(emptyActions.isEmpty)
@@ -236,8 +236,8 @@ struct TypeCommandTests {
         if case .key(.tab) = consecutiveEscapes[4] { } else { Issue.record("Expected tab") }
     }
 
-    @Test("Parse type command with escape sequences")
-    func parseWithEscapeSequences() throws {
+    @Test
+    func `Parse type command with escape sequences`() throws {
         // Test parsing text with escape sequences
         // Note: The escape sequences are processed at runtime, not during parsing
         let command = try TypeCommand.parse(["Line 1\\nLine 2", "--delay", "50"])

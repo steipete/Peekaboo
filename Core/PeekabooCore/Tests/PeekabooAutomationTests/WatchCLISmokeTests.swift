@@ -3,10 +3,9 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAutomation
 
-@Suite("Watch CLI output shape (smoke)")
 struct WatchCLISmokeTests {
-    @Test("Contact sheet sampling metadata is present")
-    func contactSheetMetadataPresent() throws {
+    @Test
+    func `Contact sheet sampling metadata is present`() {
         let sheet = WatchContactSheet(
             path: "/tmp/contact.png",
             file: "contact.png",
@@ -18,8 +17,8 @@ struct WatchCLISmokeTests {
         #expect(sheet.columns == 6)
     }
 
-    @Test("Diff metadata is carried through result")
-    func diffMetadata() throws {
+    @Test
+    func `Diff metadata is carried through result`() {
         let result = WatchCaptureResult(
             source: .live,
             videoIn: nil,

@@ -5,16 +5,15 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ElementIDGenerator Tests")
 @MainActor
 struct ElementIDGeneratorTests {
     let generator = ElementIDGenerator()
 
     // MARK: - ID Generation Tests
 
-    @Test("Generate IDs for different categories")
+    @Test
     @MainActor
-    func generateIDsForCategories() {
+    func `Generate IDs for different categories`() {
         // Reset to start fresh
         self.generator.resetCounters()
 
@@ -30,9 +29,9 @@ struct ElementIDGeneratorTests {
         #expect(linkID1 == "L1")
     }
 
-    @Test("Generate ID with specific index")
+    @Test
     @MainActor
-    func generateIDWithSpecificIndex() {
+    func `Generate ID with specific index`() {
         let buttonID = self.generator.generateID(for: .button, index: 42)
         let textID = self.generator.generateID(for: .textInput, index: 99)
 
@@ -40,9 +39,9 @@ struct ElementIDGeneratorTests {
         #expect(textID == "T99")
     }
 
-    @Test("ID prefixes for all categories")
+    @Test
     @MainActor
-    func idPrefixesForAllCategories() {
+    func `ID prefixes for all categories`() {
         let expectations: [(ElementCategory, String)] = [
             (.button, "B"),
             (.textInput, "T"),
@@ -66,9 +65,9 @@ struct ElementIDGeneratorTests {
 
     // MARK: - ID Parsing Tests
 
-    @Test("Parse valid IDs")
+    @Test
     @MainActor
-    func parseValidIDs() {
+    func `Parse valid IDs`() {
         let testCases: [(String, ElementCategory, Int)] = [
             ("B1", .button, 1),
             ("B42", .button, 42),
@@ -93,9 +92,9 @@ struct ElementIDGeneratorTests {
         }
     }
 
-    @Test("Parse invalid IDs")
+    @Test
     @MainActor
-    func parseInvalidIDs() {
+    func `Parse invalid IDs`() {
         let invalidIDs = [
             "",
             "B",
@@ -113,9 +112,9 @@ struct ElementIDGeneratorTests {
 
     // MARK: - Counter Management Tests
 
-    @Test("Reset counters for specific category")
+    @Test
     @MainActor
-    func resetSpecificCategory() {
+    func `Reset counters for specific category`() {
         self.generator.resetCounters()
 
         // Generate some IDs
@@ -138,9 +137,9 @@ struct ElementIDGeneratorTests {
         #expect(newButtonID == "B1")
     }
 
-    @Test("Reset all counters")
+    @Test
     @MainActor
-    func resetAllCounters() {
+    func `Reset all counters`() {
         // Generate some IDs
         _ = self.generator.generateID(for: .button)
         _ = self.generator.generateID(for: .textInput)
@@ -155,9 +154,9 @@ struct ElementIDGeneratorTests {
         #expect(self.generator.currentCount(for: .link) == 0)
     }
 
-    @Test("Current count for unused category")
+    @Test
     @MainActor
-    func currentCountForUnusedCategory() {
+    func `Current count for unused category`() {
         self.generator.resetCounters()
 
         // Check count for category that hasn't been used
@@ -166,9 +165,9 @@ struct ElementIDGeneratorTests {
 
     // MARK: - Thread Safety Tests
 
-    @Test("Concurrent ID generation")
+    @Test
     @MainActor
-    func concurrentIDGeneration() async {
+    func `Concurrent ID generation`() async {
         self.generator.resetCounters()
 
         // Generate IDs concurrently
@@ -198,23 +197,23 @@ struct ElementIDGeneratorTests {
 
     // MARK: - Edge Cases
 
-    @Test("Generate ID with zero index")
+    @Test
     @MainActor
-    func generateIDWithZeroIndex() {
+    func `Generate ID with zero index`() {
         let id = self.generator.generateID(for: .button, index: 0)
         #expect(id == "B0")
     }
 
-    @Test("Generate ID with large index")
+    @Test
     @MainActor
-    func generateIDWithLargeIndex() {
+    func `Generate ID with large index`() {
         let id = self.generator.generateID(for: .textInput, index: 999_999)
         #expect(id == "T999999")
     }
 
-    @Test("Custom category ID generation")
+    @Test
     @MainActor
-    func customCategoryIDGeneration() {
+    func `Custom category ID generation`() {
         self.generator.resetCounters()
 
         let customCategory = ElementCategory.custom("MyCustomType")

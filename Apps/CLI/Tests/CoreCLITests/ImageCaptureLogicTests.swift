@@ -4,12 +4,12 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Image Capture Logic Tests", .tags(.imageCapture, .unit))
+@Suite(.tags(.imageCapture, .unit))
 struct ImageCaptureLogicTests {
     // MARK: - File Name Generation Tests
 
-    @Test("File name generation for displays", .tags(.fast))
-    func fileNameGenerationDisplays() throws {
+    @Test(.tags(.fast))
+    func `File name generation for displays`() throws {
         // We can't directly test private methods, but we can test the logic
         // through public interfaces and verify the expected patterns
 
@@ -23,8 +23,8 @@ struct ImageCaptureLogicTests {
         #expect(command2.format == .png)
     }
 
-    @Test("File name generation for applications", .tags(.fast))
-    func fileNameGenerationApplications() throws {
+    @Test(.tags(.fast))
+    func `File name generation for applications`() throws {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Test App",
@@ -37,8 +37,8 @@ struct ImageCaptureLogicTests {
         #expect(command.format == .jpg)
     }
 
-    @Test("Output path generation", .tags(.fast))
-    func outputPathGeneration() throws {
+    @Test(.tags(.fast))
+    func `Output path generation`() throws {
         // Test default path behavior
         let defaultCommand = try ImageCommand.parse([])
         #expect(defaultCommand.path == nil)
@@ -54,8 +54,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Mode Determination Tests
 
-    @Test("Mode determination comprehensive", .tags(.fast))
-    func modeDeterminationComprehensive() throws {
+    @Test(.tags(.fast))
+    func `Mode determination comprehensive`() throws {
         // Screen mode (default when no app specified)
         let screenCmd = try ImageCommand.parse([])
         #expect(screenCmd.mode == nil)
@@ -80,8 +80,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Window Targeting Tests
 
-    @Test("Window targeting by title", .tags(.fast))
-    func windowTargetingByTitle() throws {
+    @Test(.tags(.fast))
+    func `Window targeting by title`() throws {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Safari",
@@ -94,8 +94,8 @@ struct ImageCaptureLogicTests {
         #expect(command.windowIndex == nil)
     }
 
-    @Test("Window targeting by index", .tags(.fast))
-    func windowTargetingByIndex() throws {
+    @Test(.tags(.fast))
+    func `Window targeting by index`() throws {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Terminal",
@@ -108,8 +108,8 @@ struct ImageCaptureLogicTests {
         #expect(command.windowTitle == nil)
     }
 
-    @Test("Window targeting priority - title vs index", .tags(.fast))
-    func windowTargetingPriority() throws {
+    @Test(.tags(.fast))
+    func `Window targeting priority - title vs index`() throws {
         // When both title and index are specified, both are preserved
         let command = try ImageCommand.parse([
             "--mode", "window",
@@ -125,8 +125,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Screen Targeting Tests
 
-    @Test("Screen targeting by index", .tags(.fast))
-    func screenTargetingByIndex() throws {
+    @Test(.tags(.fast))
+    func `Screen targeting by index`() throws {
         let command = try ImageCommand.parse([
             "--mode", "screen",
             "--screen-index", "1",
@@ -137,10 +137,9 @@ struct ImageCaptureLogicTests {
     }
 
     @Test(
-        "Screen index edge cases",
         arguments: [-1, 0, 1, 5, 99]
     )
-    func screenIndexEdgeCases(index: Int) throws {
+    func `Screen index edge cases`(index: Int) throws {
         do {
             let command = try ImageCommand.parse([
                 "--mode", "screen",
@@ -161,8 +160,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Capture Focus Tests
 
-    @Test("Capture focus modes", .tags(.fast))
-    func captureFocusModes() throws {
+    @Test(.tags(.fast))
+    func `Capture focus modes`() throws {
         // Default auto mode
         let defaultCmd = try ImageCommand.parse([])
         #expect(defaultCmd.captureFocus == .auto)
@@ -182,8 +181,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Image Format Tests
 
-    @Test("Image format handling", .tags(.fast))
-    func imageFormatHandling() throws {
+    @Test(.tags(.fast))
+    func `Image format handling`() throws {
         // Default PNG format
         let defaultCmd = try ImageCommand.parse([])
         #expect(defaultCmd.format == .png)
@@ -197,8 +196,8 @@ struct ImageCaptureLogicTests {
         #expect(jpgCmd.format == .jpg)
     }
 
-    @Test("MIME type mapping", .tags(.fast))
-    func mimeTypeMapping() {
+    @Test(.tags(.fast))
+    func `MIME type mapping`() {
         // Test MIME type logic (as used in SavedFile creation)
         let pngMime = ImageFormat.png == .png ? "image/png" : "image/jpeg"
         let jpgMime = ImageFormat.jpg == .jpg ? "image/jpeg" : "image/png"
@@ -209,8 +208,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Error Handling Tests
 
-    @Test("Error code mapping", .tags(.fast))
-    func errorCodeMapping() {
+    @Test(.tags(.fast))
+    func `Error code mapping`() {
         // Test error code mapping logic used in handleError
         let testCases: [(CaptureError, ErrorCode)] = [
             (.screenRecordingPermissionDenied, .PERMISSION_ERROR_SCREEN_RECORDING),
@@ -233,8 +232,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - SavedFile Creation Tests
 
-    @Test("SavedFile creation for screen capture", .tags(.fast))
-    func savedFileCreationScreenCapture() {
+    @Test(.tags(.fast))
+    func `SavedFile creation for screen capture`() {
         let savedFile = SavedFile(
             path: "/tmp/screen-0.png",
             item_label: "Display 1 (Index 0)",
@@ -252,8 +251,8 @@ struct ImageCaptureLogicTests {
         #expect(savedFile.mime_type == "image/png")
     }
 
-    @Test("SavedFile creation for window capture", .tags(.fast))
-    func savedFileCreationWindowCapture() {
+    @Test(.tags(.fast))
+    func `SavedFile creation for window capture`() {
         let savedFile = SavedFile(
             path: "/tmp/safari-main.jpg",
             item_label: "Safari",
@@ -273,8 +272,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Complex Configuration Tests
 
-    @Test("Complex multi-window capture configuration", .tags(.fast))
-    func complexMultiWindowConfiguration() throws {
+    @Test(.tags(.fast))
+    func `Complex multi-window capture configuration`() throws {
         let command = try ImageCommand.parse([
             "--mode", "multi",
             "--app", "Visual Studio Code",
@@ -292,8 +291,8 @@ struct ImageCaptureLogicTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Complex screen capture configuration", .tags(.fast))
-    func complexScreenCaptureConfiguration() throws {
+    @Test(.tags(.fast))
+    func `Complex screen capture configuration`() throws {
         let command = try ImageCommand.parse([
             "--mode", "screen",
             "--screen-index", "1",
@@ -311,8 +310,8 @@ struct ImageCaptureLogicTests {
 
     // MARK: - Integration Readiness Tests
 
-    @Test("Command readiness for screen capture", .tags(.fast))
-    func commandReadinessScreenCapture() throws {
+    @Test(.tags(.fast))
+    func `Command readiness for screen capture`() throws {
         let command = try ImageCommand.parse(["--mode", "screen"])
 
         // Verify command is properly configured for screen capture
@@ -321,8 +320,8 @@ struct ImageCaptureLogicTests {
         #expect(command.format == .png) // Has default format
     }
 
-    @Test("Command readiness for window capture", .tags(.fast))
-    func commandReadinessWindowCapture() throws {
+    @Test(.tags(.fast))
+    func `Command readiness for window capture`() throws {
         let command = try ImageCommand.parse([
             "--mode", "window",
             "--app", "Finder",
@@ -334,8 +333,8 @@ struct ImageCaptureLogicTests {
         #expect(command.format == .png) // Has default format
     }
 
-    @Test("Command validation for invalid configurations", .tags(.fast))
-    func commandValidationInvalidConfigurations() {
+    @Test(.tags(.fast))
+    func `Command validation for invalid configurations`() {
         // These should parse successfully but would fail during execution
 
         // Window mode without app (would fail during execution)
@@ -356,10 +355,10 @@ struct ImageCaptureLogicTests {
 
 // MARK: - Extended Capture Logic Tests
 
-@Suite("Advanced Image Capture Logic", .tags(.imageCapture, .integration))
+@Suite(.tags(.imageCapture, .integration))
 struct AdvancedImageCaptureLogicTests {
-    @Test("Multi-mode capture scenarios", .tags(.fast))
-    func multiModeCaptureScenarios() throws {
+    @Test(.tags(.fast))
+    func `Multi-mode capture scenarios`() throws {
         // Multi mode with app (should capture all windows)
         let multiWithApp = try ImageCommand.parse([
             "--mode", "multi",
@@ -374,8 +373,8 @@ struct AdvancedImageCaptureLogicTests {
         #expect(multiWithoutApp.app == nil)
     }
 
-    @Test("Focus mode implications", .tags(.fast))
-    func focusModeImplications() throws {
+    @Test(.tags(.fast))
+    func `Focus mode implications`() throws {
         // Foreground focus should work with any capture mode
         let foregroundScreen = try ImageCommand.parse([
             "--mode", "screen",
@@ -398,8 +397,8 @@ struct AdvancedImageCaptureLogicTests {
         #expect(autoCapture.captureFocus == .auto)
     }
 
-    @Test("Path handling edge cases", .tags(.fast))
-    func pathHandlingEdgeCases() throws {
+    @Test(.tags(.fast))
+    func `Path handling edge cases`() throws {
         // Relative paths
         let relativePath = try ImageCommand.parse(["--path", "./screenshots/test.png"])
         #expect(relativePath.path == "./screenshots/test.png")
@@ -421,8 +420,8 @@ struct AdvancedImageCaptureLogicTests {
         #expect(unicodePath.path == "/tmp/测试/スクリーン.png")
     }
 
-    @Test("Command execution readiness matrix", .tags(.fast))
-    func commandExecutionReadinessMatrix() {
+    @Test(.tags(.fast))
+    func `Command execution readiness matrix`() {
         let scenarios = self.createTestScenarios()
 
         for scenario in scenarios {
@@ -441,8 +440,8 @@ struct AdvancedImageCaptureLogicTests {
         }
     }
 
-    @Test("Error propagation scenarios", .tags(.fast))
-    func errorPropagationScenarios() {
+    @Test(.tags(.fast))
+    func `Error propagation scenarios`() {
         // Test that invalid arguments are properly handled
         let invalidArgs: [[String]] = [
             ["--mode", "invalid"],
@@ -459,8 +458,8 @@ struct AdvancedImageCaptureLogicTests {
         }
     }
 
-    @Test("Memory efficiency with complex configurations", .tags(.memory), .disabled("Disabling due to crash"))
-    func memoryEfficiencyComplexConfigurations() {
+    @Test(.tags(.memory), .disabled("Disabling due to crash"))
+    func `Memory efficiency with complex configurations`() {
         // Test that complex configurations don't cause excessive memory usage
         let complexConfigs: [[String]] = [
             ["--mode", "multi", "--app", String(repeating: "LongAppName", count: 100)],

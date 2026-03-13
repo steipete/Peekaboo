@@ -6,13 +6,12 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("ToolRegistry Tests")
 struct ToolRegistryTests {
     // MARK: - Tool Retrieval Tests
 
-    @Test("Registry contains expected tools")
+    @Test
     @MainActor
-    func registryContainsExpectedTools() {
+    func `Registry contains expected tools`() {
         let fixture = makeToolRegistryFixture()
         let allTools = fixture.tools
 
@@ -20,9 +19,9 @@ struct ToolRegistryTests {
         #expect(!allTools.isEmpty)
     }
 
-    @Test("Tool retrieval by name")
+    @Test
     @MainActor
-    func toolRetrievalByName() {
+    func `Tool retrieval by name`() {
         _ = makeToolRegistryFixture()
 
         // Test exact name match
@@ -39,9 +38,9 @@ struct ToolRegistryTests {
         #expect(nonExistentTool == nil)
     }
 
-    @Test("Tool retrieval by command name")
+    @Test
     @MainActor
-    func toolRetrievalByCommandName() {
+    func `Tool retrieval by command name`() {
         let fixture = makeToolRegistryFixture()
 
         // Find a tool with a different command name
@@ -56,9 +55,9 @@ struct ToolRegistryTests {
 
     // MARK: - Category Tests
 
-    @Test("Tools organized by category")
+    @Test
     @MainActor
-    func toolsOrganizedByCategory() {
+    func `Tools organized by category`() {
         _ = makeToolRegistryFixture()
         let toolsByCategory = ToolRegistry.toolsByCategory()
 
@@ -73,8 +72,8 @@ struct ToolRegistryTests {
         }
     }
 
-    @Test("Category icons")
-    func categoryIcons() {
+    @Test
+    func `Category icons`() {
         // Verify all categories have icons
         for category in ToolCategory.allCases {
             let icon = category.icon
@@ -93,9 +92,9 @@ struct ToolRegistryTests {
 
     // MARK: - Parameter Tests
 
-    @Test("Parameter retrieval")
+    @Test
     @MainActor
-    func parameterRetrieval() {
+    func `Parameter retrieval`() {
         let fixture = makeToolRegistryFixture()
 
         // Get a tool with parameters
@@ -120,8 +119,8 @@ struct ToolRegistryTests {
 
     // MARK: - Tool Definition Tests
 
-    @Test("Tool definition properties")
-    func toolDefinitionProperties() {
+    @Test
+    func `Tool definition properties`() {
         // Create a test tool definition
         let testTool = PeekabooToolDefinition(
             name: "test_tool",
@@ -165,8 +164,8 @@ struct ToolRegistryTests {
         #expect(agentDesc.contains("Special guidance for agents"))
     }
 
-    @Test("Tool definition without agent guidance")
-    func toolDefinitionWithoutAgentGuidance() {
+    @Test
+    func `Tool definition without agent guidance`() {
         let tool = PeekabooToolDefinition(
             name: "simple_tool",
             abstract: "Simple tool",
@@ -179,8 +178,8 @@ struct ToolRegistryTests {
 
     // MARK: - Parameter Definition Tests
 
-    @Test("Parameter types")
-    func parameterTypes() {
+    @Test
+    func `Parameter types`() {
         let params = [
             ParameterDefinition(name: "str", type: .string, description: "String param"),
             ParameterDefinition(name: "int", type: .integer, description: "Integer param"),
@@ -201,8 +200,8 @@ struct ToolRegistryTests {
         #expect(params[3].options == ["a", "b", "c"])
     }
 
-    @Test("CLI options")
-    func cliOptions() {
+    @Test
+    func `CLI options`() {
         let param = ParameterDefinition(
             name: "verbose",
             type: .boolean,
@@ -219,8 +218,8 @@ struct ToolRegistryTests {
 
     // MARK: - Agent Conversion Tests
 
-    @Test("Tool to agent parameters conversion")
-    func toolToAgentParameters() {
+    @Test
+    func `Tool to agent parameters conversion`() {
         let tool = PeekabooToolDefinition(
             name: "test_tool",
             abstract: "Test tool",
@@ -269,9 +268,9 @@ struct ToolRegistryTests {
 
     // MARK: - Registry Integrity Tests
 
-    @Test("All tools have valid categories")
+    @Test
     @MainActor
-    func allToolsHaveValidCategories() {
+    func `All tools have valid categories`() {
         let fixture = makeToolRegistryFixture()
         let allTools = fixture.tools
         let validCategories = Set(ToolCategory.allCases)
@@ -281,9 +280,9 @@ struct ToolRegistryTests {
         }
     }
 
-    @Test("No duplicate tool names")
+    @Test
     @MainActor
-    func noDuplicateToolNames() {
+    func `No duplicate tool names`() {
         let fixture = makeToolRegistryFixture()
         let allTools = fixture.tools
         let toolNames = allTools.map(\.name)
@@ -292,9 +291,9 @@ struct ToolRegistryTests {
         #expect(toolNames.count == uniqueToolNames.count, "Found duplicate tool names")
     }
 
-    @Test("All tools have abstracts and discussions")
+    @Test
     @MainActor
-    func allToolsHaveDescriptions() {
+    func `All tools have abstracts and discussions`() {
         let fixture = makeToolRegistryFixture()
         let allTools = fixture.tools
 

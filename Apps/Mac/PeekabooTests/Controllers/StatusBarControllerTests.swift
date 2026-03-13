@@ -2,11 +2,11 @@ import AppKit
 import Testing
 @testable import Peekaboo
 
-@Suite("StatusBarController Tests", .tags(.ui, .unit))
+@Suite(.tags(.ui, .unit))
 @MainActor
 struct StatusBarControllerTests {
-    @Test("Controller initializes with status item")
-    func initialization() {
+    @Test
+    func `Controller initializes with status item`() {
         let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
@@ -26,8 +26,8 @@ struct StatusBarControllerTests {
         // Controller initialized successfully
     }
 
-    @Test("Menu contains expected items")
-    func menuItems() {
+    @Test
+    func `Menu contains expected items`() {
         let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
@@ -49,8 +49,8 @@ struct StatusBarControllerTests {
         // Test passes - we verified controller initializes without crashing
     }
 
-    @Test("Icon animation states")
-    func iconStates() {
+    @Test
+    func `Icon animation states`() {
         let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
@@ -69,8 +69,8 @@ struct StatusBarControllerTests {
         // We can't access private statusItem property
     }
 
-    @Test("Popover presentation")
-    func popoverPresentation() {
+    @Test
+    func `Popover presentation`() {
         let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()

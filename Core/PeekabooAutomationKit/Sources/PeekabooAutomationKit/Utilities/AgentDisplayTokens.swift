@@ -72,11 +72,10 @@ public enum AgentDisplayTokens {
     /// Normalize a tool name for dictionary lookup
     private nonisolated static func normalizedToolKey(_ toolName: String) -> String {
         // Normalize a tool name for dictionary lookup
-        let key = toolName
+        toolName
             .lowercased()
             .replacingOccurrences(of: "-", with: "_")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return key
     }
 
     /// Resolve the glyph token for a tool name, falling back to a generic token.

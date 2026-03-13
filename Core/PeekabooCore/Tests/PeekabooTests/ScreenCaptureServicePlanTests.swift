@@ -14,35 +14,34 @@ private enum CaptureTestError: Error {
     case legacyFailure
 }
 
-@Suite("ScreenCaptureService planning helpers")
 @MainActor
 struct ScreenCaptureServicePlanTests {
-    @Test("Resolver defaults to modern first when flag is unset")
-    func resolverDefaultsToModern() {
+    @Test
+    func `Resolver defaults to modern first when flag is unset`() {
         let order = ScreenCaptureAPIResolver.resolve(environment: [:])
         #expect(order == [.modern, .legacy])
     }
 
-    @Test("Resolver prefers modern APIs when flag is true")
-    func resolverPrefersModern() {
+    @Test
+    func `Resolver prefers modern APIs when flag is true`() {
         let order = ScreenCaptureAPIResolver.resolve(environment: ["PEEKABOO_USE_MODERN_CAPTURE": "true"])
         #expect(order == [.modern, .legacy])
     }
 
-    @Test("Resolver forces modern only when explicitly requested")
-    func resolverModernOnly() {
+    @Test
+    func `Resolver forces modern only when explicitly requested`() {
         let order = ScreenCaptureAPIResolver.resolve(environment: ["PEEKABOO_USE_MODERN_CAPTURE": "modern-only"])
         #expect(order == [.modern])
     }
 
-    @Test("Resolver forces legacy when flag is false")
-    func resolverLegacyOnly() {
+    @Test
+    func `Resolver forces legacy when flag is false`() {
         let order = ScreenCaptureAPIResolver.resolve(environment: ["PEEKABOO_USE_MODERN_CAPTURE": "false"])
         #expect(order == [.legacy])
     }
 
-    @Test("Fallback runner retries on timeout errors")
-    func fallbackRetriesOnTimeout() async throws {
+    @Test
+    func `Fallback runner retries on timeout errors`() async throws {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
         let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
@@ -63,8 +62,8 @@ struct ScreenCaptureServicePlanTests {
         #expect(attempts == [.modern, .legacy])
     }
 
-    @Test("Fallback runner retries even on unknown errors")
-    func fallbackRetriesOnUnknownErrors() async throws {
+    @Test
+    func `Fallback runner retries even on unknown errors`() async throws {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
         let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
@@ -85,8 +84,8 @@ struct ScreenCaptureServicePlanTests {
         #expect(attempts == [.modern, .legacy])
     }
 
-    @Test("Fallback runner surfaces the final error when all APIs fail")
-    func fallbackSurfacesLastError() async {
+    @Test
+    func `Fallback runner surfaces the final error when all APIs fail`() async {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
         let logger = MockLoggingService().logger(category: "screenCapture")
         var attempts: [ScreenCaptureAPI] = []
@@ -111,8 +110,8 @@ struct ScreenCaptureServicePlanTests {
         }
     }
 
-    @Test("Frame source policy uses stream for screen/area and single-shot for windows")
-    func frameSourcePolicyUsesExpectedSource() {
+    @Test
+    func `Frame source policy uses stream for screen/area and single-shot for windows`() {
         #expect(ScreenCaptureService.frameSourcePolicy(for: .screen, windowID: nil) == .fastStream)
         #expect(ScreenCaptureService.frameSourcePolicy(for: .area, windowID: nil) == .fastStream)
         #expect(ScreenCaptureService.frameSourcePolicy(for: .multi, windowID: nil) == .fastStream)

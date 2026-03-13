@@ -2,10 +2,10 @@ import Darwin
 import Foundation
 import Testing
 
-@Suite("TTY Command Runner", .tags(.unit))
+@Suite(.tags(.unit))
 struct TTYCommandRunnerTests {
-    @Test("Kills process-group children on cleanup")
-    func killsProcessGroupChildren() throws {
+    @Test
+    func `Kills process-group children on cleanup`() throws {
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("tty-runner-tests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)

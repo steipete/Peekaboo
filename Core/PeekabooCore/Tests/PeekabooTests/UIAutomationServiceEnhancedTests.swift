@@ -8,10 +8,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("UIAutomationServiceEnhanced Tests", .serialized, .tags(.safe))
+@Suite(.serialized, .tags(.safe))
 struct UIAutomationServiceEnhancedTests {
-    @Test("Element coordinates are transformed to window-relative")
-    func windowRelativeTransformation() async throws {
+    @Test
+    func `Element coordinates are transformed to window-relative`() {
         // Given screen coordinates for elements
         let screenElements = [
             MockElement(frame: CGRect(x: 500, y: 300, width: 100, height: 50), role: "AXButton"),
@@ -43,8 +43,8 @@ struct UIAutomationServiceEnhancedTests {
         #expect(transformedFrames[2].origin.y == 150) // 400 - 250
     }
 
-    @Test("Elements without valid bounds are skipped")
-    func invalidBoundsSkipped() async throws {
+    @Test
+    func `Elements without valid bounds are skipped`() {
         // Elements with invalid bounds that should be skipped
         let invalidElements = [
             MockElement(frame: CGRect(x: 0, y: 0, width: 0, height: 50), role: "AXButton"), // Zero width
@@ -68,9 +68,9 @@ struct UIAutomationServiceEnhancedTests {
         #expect(processedCount == 1)
     }
 
-    @Test("Window context is passed through detection pipeline")
+    @Test
     @MainActor
-    func windowContextPropagation() async throws {
+    func `Window context is passed through detection pipeline`() async throws {
         let snapshotManager = MockSnapshotManager()
         let service = UIAutomationService(snapshotManager: snapshotManager)
 
@@ -91,8 +91,8 @@ struct UIAutomationServiceEnhancedTests {
         #expect(result.metadata.elementCount >= 0)
     }
 
-    @Test("Front window is selected when no window title specified")
-    func frontWindowSelection() async throws {
+    @Test
+    func `Front window is selected when no window title specified`() {
         // This tests the logic in buildUIMap
         let mockWindows = [
             MockElement(frame: CGRect(x: 0, y: 0, width: 800, height: 600), role: "AXWindow", title: "Front Window"),
@@ -116,8 +116,8 @@ struct UIAutomationServiceEnhancedTests {
         #expect(selectedWindows.first?.title == "Front Window")
     }
 
-    @Test("Specific window is selected when title is provided")
-    func specificWindowSelection() async throws {
+    @Test
+    func `Specific window is selected when title is provided`() {
         let mockWindows = [
             MockElement(frame: CGRect(x: 0, y: 0, width: 800, height: 600), role: "AXWindow", title: "Window A"),
             MockElement(frame: CGRect(x: 100, y: 100, width: 800, height: 600), role: "AXWindow", title: "Window B"),
@@ -132,8 +132,8 @@ struct UIAutomationServiceEnhancedTests {
         #expect(selectedWindows.first?.title == "Window B")
     }
 
-    @Test("Role-based ID prefixes are assigned correctly")
-    func roleBasedIDGeneration() {
+    @Test
+    func `Role-based ID prefixes are assigned correctly`() {
         // Test the ID prefix logic
         let testCases: [(ElementType, String)] = [
             (.button, "B"),
@@ -153,8 +153,8 @@ struct UIAutomationServiceEnhancedTests {
         }
     }
 
-    @Test("Element type is determined from role correctly")
-    func testElementTypeFromRole() {
+    @Test
+    func `Element type is determined from role correctly`() {
         let roleMappings: [(String, ElementType)] = [
             ("AXButton", .button),
             ("AXTextField", .textField),

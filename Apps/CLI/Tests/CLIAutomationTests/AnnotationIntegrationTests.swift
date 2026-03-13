@@ -5,7 +5,6 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "Annotation Drawing Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions
@@ -16,11 +15,10 @@ struct AnnotationIntegrationTests {
     // Opt-in with: RUN_ANNOTATION_INTEGRATION_TESTS=true RUN_LOCAL_TESTS=true swift test
 
     @Test(
-        "Annotated screenshot generation with window bounds",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true")
     )
     @MainActor
-    func annotatedScreenshotGeneration() async throws {
+    func `Annotated screenshot generation with window bounds`() async throws {
         // Create a test window at a known position
         let testWindow = self.createTestWindow(at: CGPoint(x: 200, y: 300))
         defer {
@@ -55,12 +53,11 @@ struct AnnotationIntegrationTests {
     }
 
     @Test(
-        "Coordinate transformation in real window",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_LOCAL_TESTS"] == "true"
             && ProcessInfo.processInfo.environment["RUN_WINDOW_COORDINATE_TESTS"] == "true")
     )
     @MainActor
-    func realWindowCoordinateTransformation() async throws {
+    func `Coordinate transformation in real window`() async throws {
         // Create window with button at known position
         let window = self.createTestWindowWithButton()
         defer {

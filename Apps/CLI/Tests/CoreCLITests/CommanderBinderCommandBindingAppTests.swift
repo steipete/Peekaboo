@@ -2,10 +2,9 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Command Binding (App + Config)")
 struct CommanderBinderAppConfigTests {
-    @Test("App launch binding")
-    func bindAppLaunch() throws {
+    @Test
+    func `App launch binding`() throws {
         let parsed = ParsedValues(
             positional: ["Visual Studio Code"],
             options: [
@@ -23,8 +22,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == false)
     }
 
-    @Test("App launch binding with --no-focus")
-    func bindAppLaunchNoFocus() throws {
+    @Test
+    func `App launch binding with --no-focus`() throws {
         let parsed = ParsedValues(
             positional: ["Calendar"],
             options: [:],
@@ -38,8 +37,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == true)
     }
 
-    @Test("App launch binding with open targets")
-    func bindAppLaunchWithOpenTargets() throws {
+    @Test
+    func `App launch binding with open targets`() throws {
         let parsed = ParsedValues(
             positional: ["Safari"],
             options: [
@@ -55,8 +54,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.openTargets == ["https://example.com", "~/Documents/report.pdf"])
     }
 
-    @Test("App launch binding with --bundle-id only")
-    func bindAppLaunchBundleIdOnly() throws {
+    @Test
+    func `App launch binding with --bundle-id only`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -75,8 +74,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == true)
     }
 
-    @Test("Open command binding with overrides")
-    func bindOpenCommandWithOverrides() throws {
+    @Test
+    func `Open command binding with overrides`() throws {
         let parsed = ParsedValues(
             positional: ["https://example.com"],
             options: [
@@ -94,8 +93,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == true)
     }
 
-    @Test("Open command binding minimal")
-    func bindOpenCommandMinimal() throws {
+    @Test
+    func `Open command binding minimal`() throws {
         let parsed = ParsedValues(
             positional: ["~/Desktop"],
             options: [:],
@@ -110,8 +109,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.noFocus == false)
     }
 
-    @Test("App quit binding")
-    func bindAppQuit() throws {
+    @Test
+    func `App quit binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -132,8 +131,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.force == true)
     }
 
-    @Test("App switch binding")
-    func bindAppSwitch() throws {
+    @Test
+    func `App switch binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: ["to": ["Slack"]],
@@ -147,8 +146,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.cycle == true)
     }
 
-    @Test("App list binding")
-    func bindAppList() throws {
+    @Test
+    func `App list binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [:],
@@ -162,8 +161,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.includeBackground == true)
     }
 
-    @Test("App relaunch binding")
-    func bindAppRelaunch() throws {
+    @Test
+    func `App relaunch binding`() throws {
         let parsed = ParsedValues(
             positional: ["Safari"],
             options: [
@@ -183,8 +182,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.waitUntilReady == true)
     }
 
-    @Test("Config init binding")
-    func bindConfigInit() throws {
+    @Test
+    func `Config init binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: ["force"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.InitCommand.self,
@@ -193,8 +192,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.force == true)
     }
 
-    @Test("Config show binding")
-    func bindConfigShow() throws {
+    @Test
+    func `Config show binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: ["effective"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.ShowCommand.self,
@@ -203,8 +202,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.effective == true)
     }
 
-    @Test("Config set credential binding")
-    func bindConfigSetCredential() throws {
+    @Test
+    func `Config set credential binding`() throws {
         let parsed = ParsedValues(positional: ["OPENAI_API_KEY", "sk-123"], options: [:], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.SetCredentialCommand.self,
@@ -214,8 +213,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.value == "sk-123")
     }
 
-    @Test("Config add provider binding")
-    func bindConfigAddProvider() throws {
+    @Test
+    func `Config add provider binding`() throws {
         let parsed = ParsedValues(
             positional: ["openrouter"],
             options: [
@@ -242,8 +241,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.force == true)
     }
 
-    @Test("Config remove provider binding")
-    func bindConfigRemoveProvider() throws {
+    @Test
+    func `Config remove provider binding`() throws {
         let parsed = ParsedValues(positional: ["openrouter"], options: [:], flags: ["force"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.RemoveProviderCommand.self,
@@ -253,8 +252,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.force == true)
     }
 
-    @Test("Config models provider binding")
-    func bindConfigModelsProvider() throws {
+    @Test
+    func `Config models provider binding`() throws {
         let parsed = ParsedValues(positional: ["openrouter"], options: [:], flags: ["discover"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.ModelsProviderCommand.self,
@@ -264,22 +263,22 @@ struct CommanderBinderAppConfigTests {
         #expect(command.discover == true)
     }
 
-    @Test("Space list binding")
-    func bindSpaceList() throws {
+    @Test
+    func `Space list binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: ["detailed"])
         let command = try CommanderCLIBinder.instantiateCommand(ofType: ListSubcommand.self, parsedValues: parsed)
         #expect(command.detailed == true)
     }
 
-    @Test("Space switch binding")
-    func bindSpaceSwitch() throws {
+    @Test
+    func `Space switch binding`() throws {
         let parsed = ParsedValues(positional: [], options: ["to": ["3"]], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(ofType: SwitchSubcommand.self, parsedValues: parsed)
         #expect(command.to == 3)
     }
 
-    @Test("Space move-window binding")
-    func bindSpaceMoveWindow() throws {
+    @Test
+    func `Space move-window binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -304,8 +303,8 @@ struct CommanderBinderAppConfigTests {
         #expect(command.follow == true)
     }
 
-    @Test("Agent command binding")
-    func bindAgentCommand() throws {
+    @Test
+    func `Agent command binding`() throws {
         let parsed = ParsedValues(
             positional: ["Open Notes and write summary"],
             options: [

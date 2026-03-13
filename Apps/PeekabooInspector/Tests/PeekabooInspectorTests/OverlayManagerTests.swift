@@ -2,11 +2,10 @@ import PeekabooUICore
 import Testing
 @testable import PeekabooInspector
 
-@Suite("Peekaboo Inspector smoke tests")
 struct OverlayManagerTests {
     @MainActor
-    @Test("OverlayManager defaults to inactive overlay state")
-    func overlayManagerDefaults() {
+    @Test
+    func `OverlayManager defaults to inactive overlay state`() {
         let manager = OverlayManager(enableMonitoring: false)
         defer { manager.cleanup() }
 
@@ -16,8 +15,8 @@ struct OverlayManagerTests {
     }
 
     @MainActor
-    @Test("Changing detail level and app mode updates manager state")
-    func overlayManagerConfigurationChangesPersist() {
+    @Test
+    func `Changing detail level and app mode updates manager state`() {
         let manager = OverlayManager(enableMonitoring: false)
         defer { manager.cleanup() }
 

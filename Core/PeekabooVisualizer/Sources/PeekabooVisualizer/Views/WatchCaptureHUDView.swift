@@ -13,7 +13,9 @@ struct WatchCaptureHUDView: View {
     let sequence: Int
     @State private var pulse = false
 
-    private var activeSegment: Int { self.sequence % Constants.timelineSegments }
+    private var activeSegment: Int {
+        self.sequence % Constants.timelineSegments
+    }
 
     var body: some View {
         ZStack(alignment: .leading) {

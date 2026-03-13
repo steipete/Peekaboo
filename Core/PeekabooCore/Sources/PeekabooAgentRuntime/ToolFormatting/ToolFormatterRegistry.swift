@@ -7,10 +7,10 @@ import Foundation
 
 /// Main registry for tool formatters with comprehensive result formatting
 public final class ToolFormatterRegistry: @unchecked Sendable {
-    // Singleton instance for global access
+    /// Singleton instance for global access
     public static let shared = ToolFormatterRegistry()
 
-    // Dictionary of formatters by tool type
+    /// Dictionary of formatters by tool type
     private var formatters: [ToolType: any ToolFormatter] = [:]
 
     // MARK: - Initialization

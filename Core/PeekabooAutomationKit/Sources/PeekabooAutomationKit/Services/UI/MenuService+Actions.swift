@@ -10,7 +10,7 @@ import PeekabooFoundation
 
 @MainActor
 extension MenuService {
-    // Temporary stubs: keep protocol conformance without full traversal
+    /// Temporary stubs: keep protocol conformance without full traversal
     func listMenusInternal(appIdentifier: String) async throws -> MenuStructure {
         throw PeekabooError.operationError(message: "Menu traversal not yet implemented")
     }

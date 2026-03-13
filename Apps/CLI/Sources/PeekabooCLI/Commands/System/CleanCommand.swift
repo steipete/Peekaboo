@@ -47,9 +47,18 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
     private var configuration: CommandRuntime.Configuration {
         if let runtime {
             return runtime.configuration
@@ -59,7 +68,9 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
         return self.runtimeOptions.makeConfiguration()
     }
 
-    var jsonOutput: Bool { self.configuration.jsonOutput }
+    var jsonOutput: Bool {
+        self.configuration.jsonOutput
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

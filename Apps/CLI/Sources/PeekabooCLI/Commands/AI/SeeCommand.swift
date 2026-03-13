@@ -123,12 +123,25 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return runtime
     }
 
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
-    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
 
-    var logger: Logger { self.resolvedRuntime.logger }
-    var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    var outputLogger: Logger { self.logger }
+    var verbose: Bool {
+        self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose
+    }
+
+    var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

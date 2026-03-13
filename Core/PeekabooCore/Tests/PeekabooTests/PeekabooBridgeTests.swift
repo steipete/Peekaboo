@@ -7,14 +7,13 @@ import PeekabooCore
 import PeekabooFoundation
 import Testing
 
-@Suite("Peekaboo Bridge")
 struct PeekabooBridgeTests {
     private func decode(_ data: Data) throws -> PeekabooBridgeResponse {
         try JSONDecoder.peekabooBridgeDecoder().decode(PeekabooBridgeResponse.self, from: data)
     }
 
-    @Test("handshake negotiates version")
-    func handshakeNegotiatesVersion() async throws {
+    @Test
+    func `handshake negotiates version`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -51,8 +50,8 @@ struct PeekabooBridgeTests {
         #expect(handshake.hostKind == PeekabooBridgeHostKind.gui)
     }
 
-    @Test("handshake rejects unauthorized team")
-    func handshakeRejectsUnauthorizedTeam() async throws {
+    @Test
+    func `handshake rejects unauthorized team`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -90,8 +89,8 @@ struct PeekabooBridgeTests {
         #expect(envelope.code == PeekabooBridgeErrorCode.unauthorizedClient)
     }
 
-    @Test("handshake rejects unauthorized bundle")
-    func handshakeRejectsUnauthorizedBundle() async throws {
+    @Test
+    func `handshake rejects unauthorized bundle`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -129,8 +128,8 @@ struct PeekabooBridgeTests {
         #expect(envelope.code == PeekabooBridgeErrorCode.unauthorizedClient)
     }
 
-    @Test("handshake rejects incompatible protocol version")
-    func handshakeRejectsIncompatibleProtocol() async throws {
+    @Test
+    func `handshake rejects incompatible protocol version`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -162,8 +161,8 @@ struct PeekabooBridgeTests {
         #expect(envelope.code == PeekabooBridgeErrorCode.versionMismatch)
     }
 
-    @Test("unsupported operations are rejected when not allowlisted")
-    func unsupportedOperationRejected() async throws {
+    @Test
+    func `unsupported operations are rejected when not allowlisted`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: StubServices(),
@@ -186,8 +185,8 @@ struct PeekabooBridgeTests {
         #expect(envelope.code == PeekabooBridgeErrorCode.operationNotSupported)
     }
 
-    @Test("permissions status round trips")
-    func permissionsStatusRoundTrips() async throws {
+    @Test
+    func `permissions status round trips`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -210,8 +209,8 @@ struct PeekabooBridgeTests {
         #expect(status.missingPermissions.count <= 3)
     }
 
-    @Test("daemon status not advertised without provider")
-    func daemonStatusNotAdvertised() async throws {
+    @Test
+    func `daemon status not advertised without provider`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
                 services: PeekabooServices(),
@@ -244,8 +243,8 @@ struct PeekabooBridgeTests {
         #expect(handshake.supportedOperations.contains(.daemonStatus) == false)
     }
 
-    @Test("daemon status round trips")
-    func daemonStatusRoundTrips() async throws {
+    @Test
+    func `daemon status round trips`() async throws {
         let daemon = StubDaemonControl()
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -271,8 +270,8 @@ struct PeekabooBridgeTests {
         #expect(status.bridge?.hostKind == .onDemand)
     }
 
-    @Test("capture round trips through bridge")
-    func captureRoundTrip() async throws {
+    @Test
+    func `capture round trips through bridge`() async throws {
         let stub = await MainActor.run { StubServices() }
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -299,8 +298,8 @@ struct PeekabooBridgeTests {
         #expect(result.metadata.mode == CaptureMode.frontmost)
     }
 
-    @Test("captureWindow forwards windowId when provided")
-    func captureWindowById() async throws {
+    @Test
+    func `captureWindow forwards windowId when provided`() async throws {
         let stub = await MainActor.run { StubServices() }
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -330,8 +329,8 @@ struct PeekabooBridgeTests {
         #expect(lastWindowId == CGWindowID(9001))
     }
 
-    @Test("automation click is forwarded")
-    func automationClick() async throws {
+    @Test
+    func `automation click is forwarded`() async throws {
         let stub = await MainActor.run { StubServices() }
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -435,7 +434,9 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         return self.makeResult(mode: .area)
     }
 
-    func hasScreenRecordingPermission() async -> Bool { true }
+    func hasScreenRecordingPermission() async -> Bool {
+        true
+    }
 
     private func makeResult(mode: CaptureMode) -> CaptureResult {
         CaptureResult(
@@ -491,7 +492,9 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
     func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async
     throws {}
 
-    func hasAccessibilityPermission() async -> Bool { true }
+    func hasAccessibilityPermission() async -> Bool {
+        true
+    }
 
     func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
         -> WaitForElementResult
@@ -512,7 +515,9 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
 
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 
-    func getFocusedElement() -> UIFocusInfo? { nil }
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.operationError(message: "stub")
@@ -532,8 +537,13 @@ private final class StubWindowService: WindowManagementServiceProtocol {
     func resizeWindow(target _: WindowTarget, to _: CGSize) async throws {}
     func setWindowBounds(target _: WindowTarget, bounds _: CGRect) async throws {}
     func focusWindow(target _: WindowTarget) async throws {}
-    func listWindows(target _: WindowTarget) async throws -> [ServiceWindowInfo] { self.windowsList }
-    func getFocusedWindow() async throws -> ServiceWindowInfo? { self.windowsList.first }
+    func listWindows(target _: WindowTarget) async throws -> [ServiceWindowInfo] {
+        self.windowsList
+    }
+
+    func getFocusedWindow() async throws -> ServiceWindowInfo? {
+        self.windowsList.first
+    }
 }
 
 @MainActor
@@ -554,7 +564,9 @@ private final class StubApplicationService: ApplicationServiceProtocol {
             metadata: .init(duration: 0))
     }
 
-    func findApplication(identifier _: String) async throws -> ServiceApplicationInfo { self.app }
+    func findApplication(identifier _: String) async throws -> ServiceApplicationInfo {
+        self.app
+    }
 
     func listWindows(for _: String, timeout _: Float?) async throws -> UnifiedToolOutput<ServiceWindowListData> {
         UnifiedToolOutput(
@@ -563,11 +575,23 @@ private final class StubApplicationService: ApplicationServiceProtocol {
             metadata: .init(duration: 0))
     }
 
-    func getFrontmostApplication() async throws -> ServiceApplicationInfo { self.app }
-    func isApplicationRunning(identifier _: String) async -> Bool { true }
-    func launchApplication(identifier _: String) async throws -> ServiceApplicationInfo { self.app }
+    func getFrontmostApplication() async throws -> ServiceApplicationInfo {
+        self.app
+    }
+
+    func isApplicationRunning(identifier _: String) async -> Bool {
+        true
+    }
+
+    func launchApplication(identifier _: String) async throws -> ServiceApplicationInfo {
+        self.app
+    }
+
     func activateApplication(identifier _: String) async throws {}
-    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool { true }
+    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool {
+        true
+    }
+
     func hideApplication(identifier _: String) async throws {}
     func unhideApplication(identifier _: String) async throws {}
     func hideOtherApplications(identifier _: String) async throws {}
@@ -576,33 +600,70 @@ private final class StubApplicationService: ApplicationServiceProtocol {
 
 @MainActor
 private final class UnimplementedMenuService: MenuServiceProtocol {
-    func listMenus(for _: String) async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
-    func listFrontmostMenus() async throws -> MenuStructure { throw PeekabooError.notImplemented("stub") }
-    func clickMenuItem(app _: String, itemPath _: String) async throws { throw PeekabooError.notImplemented("stub") }
+    func listMenus(for _: String) async throws -> MenuStructure {
+        throw PeekabooError.notImplemented("stub")
+    }
+
+    func listFrontmostMenus() async throws -> MenuStructure {
+        throw PeekabooError.notImplemented("stub")
+    }
+
+    func clickMenuItem(app _: String, itemPath _: String) async throws {
+        throw PeekabooError.notImplemented("stub")
+    }
+
     func clickMenuItemByName(app _: String, itemName _: String) async throws {
         throw PeekabooError.notImplemented("stub")
     }
 
-    func clickMenuExtra(title _: String) async throws { throw PeekabooError.notImplemented("stub") }
-    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool { false }
-    func menuExtraOpenMenuFrame(title _: String, ownerPID _: pid_t?) async throws -> CGRect? { nil }
-    func listMenuExtras() async throws -> [MenuExtraInfo] { [] }
-    func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] { [] }
-    func clickMenuBarItem(named _: String) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }
-    func clickMenuBarItem(at _: Int) async throws -> ClickResult { throw PeekabooError.notImplemented("stub") }
+    func clickMenuExtra(title _: String) async throws {
+        throw PeekabooError.notImplemented("stub")
+    }
+
+    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool {
+        false
+    }
+
+    func menuExtraOpenMenuFrame(title _: String, ownerPID _: pid_t?) async throws -> CGRect? {
+        nil
+    }
+
+    func listMenuExtras() async throws -> [MenuExtraInfo] {
+        []
+    }
+
+    func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] {
+        []
+    }
+
+    func clickMenuBarItem(named _: String) async throws -> ClickResult {
+        throw PeekabooError.notImplemented("stub")
+    }
+
+    func clickMenuBarItem(at _: Int) async throws -> ClickResult {
+        throw PeekabooError.notImplemented("stub")
+    }
 }
 
 @MainActor
 private final class UnimplementedDockService: DockServiceProtocol {
     func launchFromDock(appName _: String) async throws {}
-    func findDockItem(name _: String) async throws -> DockItem { throw PeekabooError.notImplemented("stub") }
+    func findDockItem(name _: String) async throws -> DockItem {
+        throw PeekabooError.notImplemented("stub")
+    }
+
     func rightClickDockItem(appName _: String, menuItem _: String?) async throws {}
     func hideDock() async throws {}
     func showDock() async throws {}
-    func listDockItems(includeAll _: Bool) async throws -> [DockItem] { [] }
+    func listDockItems(includeAll _: Bool) async throws -> [DockItem] {
+        []
+    }
+
     func addToDock(path _: String, persistent _: Bool) async throws {}
     func removeFromDock(appName _: String) async throws {}
-    func isDockAutoHidden() async -> Bool { false }
+    func isDockAutoHidden() async -> Bool {
+        false
+    }
 }
 
 @MainActor
@@ -613,7 +674,9 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
 
     func clickButton(buttonText _: String, windowTitle _: String?, appName _: String?) async throws
         -> DialogActionResult
-    { throw PeekabooError.notImplemented("stub") }
+    {
+        throw PeekabooError.notImplemented("stub")
+    }
 
     func enterText(
         text _: String,
@@ -621,7 +684,9 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
         clearExisting _: Bool,
         windowTitle _: String?,
         appName _: String?) async throws -> DialogActionResult
-    { throw PeekabooError.notImplemented("stub") }
+    {
+        throw PeekabooError.notImplemented("stub")
+    }
 
     func handleFileDialog(
         path _: String?,
@@ -630,7 +695,9 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
         ensureExpanded _: Bool,
         appName _: String?) async
         throws -> DialogActionResult
-    { throw PeekabooError.notImplemented("stub") }
+    {
+        throw PeekabooError.notImplemented("stub")
+    }
 
     func dismissDialog(force _: Bool, windowTitle _: String?, appName _: String?) async throws -> DialogActionResult {
         throw PeekabooError.notImplemented("stub")

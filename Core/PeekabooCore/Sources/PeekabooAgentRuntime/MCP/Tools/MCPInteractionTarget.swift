@@ -15,26 +15,12 @@ enum MCPInteractionTargetError: LocalizedError {
     }
 }
 
-struct MCPInteractionTarget: Sendable {
+struct MCPInteractionTarget {
     let app: String?
     let pid: Int?
     let windowTitle: String?
     let windowIndex: Int?
     let windowId: Int?
-
-    init(
-        app: String?,
-        pid: Int?,
-        windowTitle: String?,
-        windowIndex: Int?,
-        windowId: Int?)
-    {
-        self.app = app
-        self.pid = pid
-        self.windowTitle = windowTitle
-        self.windowIndex = windowIndex
-        self.windowId = windowId
-    }
 
     var appIdentifier: String? {
         if let pid {

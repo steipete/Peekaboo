@@ -4,13 +4,13 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
-private struct DialogTextFieldPayload: Codable, Sendable {
+private struct DialogTextFieldPayload: Codable {
     let title: String?
     let value: String?
     let placeholder: String?
 }
 
-private struct DialogListPayload: Codable, Sendable {
+private struct DialogListPayload: Codable {
     let title: String
     let role: String
     let buttons: [String]
@@ -20,21 +20,20 @@ private struct DialogListPayload: Codable, Sendable {
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "Dialog Command  Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct DialogCommandTests {
-    @Test("Dialog  command exists")
-    func dialogCommandExists() {
+    @Test
+    func `Dialog  command exists`() {
         let config = DialogCommand.commandDescription
         #expect(config.commandName == "dialog")
         #expect(config.abstract.contains("Interact with system dialogs and alerts"))
     }
 
-    @Test("Dialog  command has expected subcommands")
-    func dialogSubcommands() {
+    @Test
+    func `Dialog  command has expected subcommands`() {
         let subcommands = DialogCommand.commandDescription.subcommands
         #expect(subcommands.count == 5)
 
@@ -51,8 +50,8 @@ struct DialogCommandTests {
         #expect(subcommandNames.contains("list"))
     }
 
-    @Test("Dialog  click command help")
-    func dialogClickHelp() async throws {
+    @Test
+    func `Dialog  click command help`() async throws {
         let result = try await runCommand(["dialog", "click", "--help"])
         #expect(result.status == 0)
         let output = result.output
@@ -63,8 +62,8 @@ struct DialogCommandTests {
         #expect(output.contains("--json"))
     }
 
-    @Test("Dialog  input command help")
-    func dialogInputHelp() async throws {
+    @Test
+    func `Dialog  input command help`() async throws {
         let result = try await runCommand(["dialog", "input", "--help"])
         #expect(result.status == 0)
         let output = result.output
@@ -76,8 +75,8 @@ struct DialogCommandTests {
         #expect(output.contains("--clear"))
     }
 
-    @Test("Dialog  file command help")
-    func dialogFileHelp() async throws {
+    @Test
+    func `Dialog  file command help`() async throws {
         let result = try await runCommand(["dialog", "file", "--help"])
         #expect(result.status == 0)
         let output = result.output
@@ -88,8 +87,8 @@ struct DialogCommandTests {
         #expect(output.contains("--select"))
     }
 
-    @Test("Dialog  dismiss command help")
-    func dialogDismissHelp() async throws {
+    @Test
+    func `Dialog  dismiss command help`() async throws {
         let result = try await runCommand(["dialog", "dismiss", "--help"])
         #expect(result.status == 0)
         let output = result.output
@@ -99,8 +98,8 @@ struct DialogCommandTests {
         #expect(output.contains("--window-title"))
     }
 
-    @Test("dialog dismiss uses force flag")
-    func dialogDismissForce() async throws {
+    @Test
+    func `dialog dismiss uses force flag`() async throws {
         let dialogService = StubDialogService()
         dialogService.dialogElements = DialogElements(
             dialogInfo: DialogInfo(
@@ -140,8 +139,8 @@ struct DialogCommandTests {
         #expect(response.data.method == "escape")
     }
 
-    @Test("Dialog  list command help")
-    func dialogListHelp() async throws {
+    @Test
+    func `Dialog  list command help`() async throws {
         let result = try await runCommand(["dialog", "list", "--help"])
         #expect(result.status == 0)
         let output = result.output
@@ -150,8 +149,8 @@ struct DialogCommandTests {
         #expect(output.contains("--json"))
     }
 
-    @Test("Dialog  error handling")
-    func dialogErrorHandling() {
+    @Test
+    func `Dialog  error handling`() {
         // Test that DialogError enum values are properly mapped
         let errorCases: [(PeekabooError, StandardErrorCode, String)] = [
             (.elementNotFound("OK"), .elementNotFound, "Element not found: OK"),
@@ -169,16 +168,16 @@ struct DialogCommandTests {
         }
     }
 
-    @Test("Dialog  service integration")
+    @Test
     @MainActor
-    func dialogServiceIntegration() {
+    func `Dialog  service integration`() {
         // Verify that PeekabooServices includes the dialog service
         let services = self.makeTestServices()
         _ = services.dialogs // This should compile without errors
     }
 
-    @Test("dialog list surfaces stubbed elements in JSON")
-    func dialogListWithStubData() async throws {
+    @Test
+    func `dialog list surfaces stubbed elements in JSON`() async throws {
         let elements = DialogElements(
             dialogInfo: DialogInfo(
                 title: "Open",
@@ -212,8 +211,8 @@ struct DialogCommandTests {
         #expect(response.data.textFields.first?.placeholder == "File name")
     }
 
-    @Test("dialog click emits JSON success when stub succeeds")
-    func dialogClickJSON() async throws {
+    @Test
+    func `dialog click emits JSON success when stub succeeds`() async throws {
         let dialogService = await MainActor.run { StubDialogService() }
         dialogService.dialogElements = DialogElements(
             dialogInfo: DialogInfo(
@@ -256,8 +255,8 @@ struct DialogCommandTests {
         #expect(dialogService.recordedButtonClicks.first?.button == "New Document")
     }
 
-    @Test("dialog input maps noActiveDialog to NO_ACTIVE_DIALOG")
-    func dialogInputMapsNoActiveDialog() async throws {
+    @Test
+    func `dialog input maps noActiveDialog to NO_ACTIVE_DIALOG`() async throws {
         let services = self.makeTestServices(dialogs: StubDialogService(elements: nil))
         let result = try await InProcessCommandRunner.run(
             ["dialog", "input", "--text", "Hello", "--json"],
@@ -271,8 +270,8 @@ struct DialogCommandTests {
         #expect(response.error?.code == "NO_ACTIVE_DIALOG")
     }
 
-    @Test("dialog input maps fieldNotFound to ELEMENT_NOT_FOUND")
-    func dialogInputMapsFieldNotFound() async throws {
+    @Test
+    func `dialog input maps fieldNotFound to ELEMENT_NOT_FOUND`() async throws {
         let elements = DialogElements(
             dialogInfo: DialogInfo(
                 title: "Save",
@@ -300,8 +299,8 @@ struct DialogCommandTests {
         #expect(response.error?.code == "ELEMENT_NOT_FOUND")
     }
 
-    @Test("dialog file maps noFileDialog to ELEMENT_NOT_FOUND")
-    func dialogFileMapsNoFileDialog() async throws {
+    @Test
+    func `dialog file maps noFileDialog to ELEMENT_NOT_FOUND`() async throws {
         let elements = DialogElements(
             dialogInfo: DialogInfo(
                 title: "Preferences",
@@ -329,19 +328,25 @@ struct DialogCommandTests {
         #expect(response.error?.code == "ELEMENT_NOT_FOUND")
     }
 
-    @Test("dialog maps invalidFieldIndex to INVALID_INPUT")
-    func dialogMapsInvalidFieldIndex() async throws {
+    @Test
+    func `dialog maps invalidFieldIndex to INVALID_INPUT`() async throws {
         @MainActor
         struct InvalidIndexDialogService: DialogServiceProtocol {
             func findActiveDialog(
                 windowTitle: String?,
                 appName: String?
-            ) async throws -> DialogInfo { throw DialogError.noActiveDialog }
+            ) async throws -> DialogInfo {
+                throw DialogError.noActiveDialog
+            }
+
             func clickButton(
                 buttonText: String,
                 windowTitle: String?,
                 appName: String?
-            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            ) async throws -> DialogActionResult {
+                throw DialogError.noActiveDialog
+            }
+
             func enterText(
                 text: String,
                 fieldIdentifier: String?,
@@ -358,16 +363,24 @@ struct DialogCommandTests {
                 actionButton: String?,
                 ensureExpanded: Bool,
                 appName: String?
-            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            ) async throws -> DialogActionResult {
+                throw DialogError.noActiveDialog
+            }
+
             func dismissDialog(
                 force: Bool,
                 windowTitle: String?,
                 appName: String?
-            ) async throws -> DialogActionResult { throw DialogError.noActiveDialog }
+            ) async throws -> DialogActionResult {
+                throw DialogError.noActiveDialog
+            }
+
             func listDialogElements(
                 windowTitle: String?,
                 appName: String?
-            ) async throws -> DialogElements { throw DialogError.noActiveDialog }
+            ) async throws -> DialogElements {
+                throw DialogError.noActiveDialog
+            }
         }
 
         let services = self.makeTestServices(dialogs: InvalidIndexDialogService())
@@ -416,14 +429,13 @@ struct DialogCommandTests {
 // MARK: - Dialog Command  Integration Tests
 
 @Suite(
-    "Dialog Command  Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions)
 )
 struct DialogCommandIntegrationTests {
-    @Test("List active dialogs with ")
-    func listActiveDialogs() async throws {
+    @Test
+    func `List active dialogs with `() async throws {
         let output = try await runAutomationCommand([
             "dialog", "list",
             "--json",
@@ -459,8 +471,8 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog  click workflow")
-    func dialogClickWorkflow() async throws {
+    @Test
+    func `Dialog  click workflow`() async throws {
         // This would click a button if a dialog is present
         let output = try await runAutomationCommand([
             "dialog", "click",
@@ -475,8 +487,8 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog  input workflow")
-    func dialogInputWorkflow() async throws {
+    @Test
+    func `Dialog  input workflow`() async throws {
         let output = try await runAutomationCommand([
             "dialog", "input",
             "--text", "Test input",
@@ -491,8 +503,8 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("Dialog  dismiss with escape")
-    func dialogDismissEscape() async throws {
+    @Test
+    func `Dialog  dismiss with escape`() async throws {
         let output = try await runAutomationCommand([
             "dialog", "dismiss",
             "--force",
@@ -515,8 +527,8 @@ struct DialogCommandIntegrationTests {
         }
     }
 
-    @Test("File dialog  handling")
-    func fileDialogHandling() async throws {
+    @Test
+    func `File dialog  handling`() async throws {
         let output = try await runAutomationCommand([
             "dialog", "file",
             "--path", "/tmp",

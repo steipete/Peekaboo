@@ -2,7 +2,7 @@ import Commander
 import CoreGraphics
 import PeekabooCore
 
-enum FocusTargetRequest: Equatable, Sendable {
+enum FocusTargetRequest: Equatable {
     case windowId(CGWindowID)
     case bestWindow(applicationName: String, windowTitle: String?)
 }

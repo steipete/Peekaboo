@@ -2,11 +2,10 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Program Resolution")
 struct CommanderBinderProgramResolutionTests {
-    @Test("Commander program resolves image command options")
+    @Test
     @MainActor
-    func commanderResolvesImageOptions() throws {
+    func `Commander program resolves image command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -24,9 +23,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["path"] == ["/tmp/sample.png"])
     }
 
-    @Test("Commander program resolves see command flags")
+    @Test
     @MainActor
-    func commanderResolvesSeeCommand() throws {
+    func `Commander program resolves see command flags`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -44,9 +43,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("annotate"))
     }
 
-    @Test("Commander program resolves list windows options")
+    @Test
     @MainActor
-    func commanderResolvesListWindows() throws {
+    func `Commander program resolves list windows options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -61,9 +60,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["includeDetails"] == ["ids,bounds"])
     }
 
-    @Test("Commander program resolves click options and focus flags")
+    @Test
     @MainActor
-    func commanderResolvesClickCommand() throws {
+    func `Commander program resolves click options and focus flags`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -87,9 +86,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("spaceSwitch"))
     }
 
-    @Test("Commander program resolves type command options")
+    @Test
     @MainActor
-    func commanderResolvesTypeCommand() throws {
+    func `Commander program resolves type command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -121,9 +120,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("spaceSwitch"))
     }
 
-    @Test("Commander program resolves press command options")
+    @Test
     @MainActor
-    func commanderResolvesPressCommand() throws {
+    func `Commander program resolves press command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -146,9 +145,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("noAutoFocus"))
     }
 
-    @Test("Commander program resolves capture video input positional")
+    @Test
     @MainActor
-    func commanderResolvesCaptureVideoInput() throws {
+    func `Commander program resolves capture video input positional`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -163,9 +162,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.options["sampleFps"] == ["3"])
     }
 
-    @Test("Commander program resolves list default to apps")
+    @Test
     @MainActor
-    func commanderResolvesListDefaultApps() throws {
+    func `Commander program resolves list default to apps`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -177,9 +176,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(invocation.parsedValues.flags.contains("jsonOutput"))
     }
 
-    @Test("Commander program resolves list menubar")
+    @Test
     @MainActor
-    func commanderResolvesListMenubar() throws {
+    func `Commander program resolves list menubar`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -190,9 +189,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(invocation.path == ["list", "menubar"])
     }
 
-    @Test("Commander program resolves list screens")
+    @Test
     @MainActor
-    func commanderResolvesListScreens() throws {
+    func `Commander program resolves list screens`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -203,9 +202,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(invocation.path == ["list", "screens"])
     }
 
-    @Test("Commander program resolves scroll command options")
+    @Test
     @MainActor
-    func commanderResolvesScrollCommand() throws {
+    func `Commander program resolves scroll command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -231,9 +230,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("bringToCurrentSpace"))
     }
 
-    @Test("Commander program resolves hotkey command options")
+    @Test
     @MainActor
-    func commanderResolvesHotkeyCommand() throws {
+    func `Commander program resolves hotkey command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -251,9 +250,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("noAutoFocus"))
     }
 
-    @Test("Commander program resolves move command options")
+    @Test
     @MainActor
-    func commanderResolvesMoveCommand() throws {
+    func `Commander program resolves move command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -279,9 +278,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("smooth"))
     }
 
-    @Test("Commander program resolves drag command options")
+    @Test
     @MainActor
-    func commanderResolvesDragCommand() throws {
+    func `Commander program resolves drag command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [
@@ -305,9 +304,9 @@ struct CommanderBinderProgramResolutionTests {
         #expect(values.flags.contains("bringToCurrentSpace"))
     }
 
-    @Test("Commander program resolves swipe command options")
+    @Test
     @MainActor
-    func commanderResolvesSwipeCommand() throws {
+    func `Commander program resolves swipe command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
         let invocation = try program.resolve(argv: [

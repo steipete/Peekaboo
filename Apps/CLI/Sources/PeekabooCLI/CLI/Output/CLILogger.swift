@@ -42,7 +42,7 @@ final class Logger: @unchecked Sendable {
     private let queue = DispatchQueue(label: "logger.queue", attributes: .concurrent)
     private let iso8601Formatter: ISO8601DateFormatter
 
-    // Performance tracking
+    /// Performance tracking
     private nonisolated(unsafe) var performanceTimers: [String: Date] = [:]
 
     private init() {

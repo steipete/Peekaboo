@@ -38,7 +38,7 @@ public struct WindowTrackerConfiguration: Sendable {
 
 @MainActor
 public final class WindowTrackerService: WindowTrackingProviding {
-    private struct TrackedWindow: Sendable {
+    private struct TrackedWindow {
         let info: WindowIdentityInfo
         var lastEventAt: Date?
         var lastUpdatedAt: Date?

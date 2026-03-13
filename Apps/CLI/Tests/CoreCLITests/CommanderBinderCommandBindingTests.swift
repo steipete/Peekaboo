@@ -2,17 +2,16 @@ import Commander
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Commander Binder Command Binding")
 struct CommanderBinderCommandBindingTests {
-    @Test("Sleep command duration binding")
-    func bindSleepCommand() throws {
+    @Test
+    func `Sleep command duration binding`() throws {
         let parsed = ParsedValues(positional: ["2500"], options: [:], flags: [])
         let command = try CommanderCLIBinder.instantiateCommand(ofType: SleepCommand.self, parsedValues: parsed)
         #expect(command.duration == 2500)
     }
 
-    @Test("Sleep command binding errors")
-    func bindSleepCommandErrors() {
+    @Test
+    func `Sleep command binding errors`() {
         let missing = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "duration")) {
             _ = try CommanderCLIBinder.instantiateCommand(ofType: SleepCommand.self, parsedValues: missing)
@@ -28,8 +27,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Clean command option + flag binding")
-    func bindCleanCommand() throws {
+    @Test
+    func `Clean command option + flag binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: ["olderThan": ["48"], "snapshot": ["ignored"]],
@@ -45,8 +44,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.allSnapshots == true)
     }
 
-    @Test("Run command binding")
-    func bindRunCommand() throws {
+    @Test
+    func `Run command binding`() throws {
         let parsed = ParsedValues(
             positional: ["/tmp/demo.peekaboo.json"],
             options: ["output": ["/tmp/result.json"]],
@@ -58,16 +57,16 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.noFailFast == true)
     }
 
-    @Test("Run command requires script path")
-    func bindRunCommandErrors() {
+    @Test
+    func `Run command requires script path`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "scriptPath")) {
             _ = try CommanderCLIBinder.instantiateCommand(ofType: RunCommand.self, parsedValues: parsed)
         }
     }
 
-    @Test("Clipboard command binding with file-path and also-text")
-    func bindClipboardCommandSetFile() throws {
+    @Test
+    func `Clipboard command binding with file-path and also-text`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -88,8 +87,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.verify == true)
     }
 
-    @Test("Image command binding")
-    func bindImageCommand() throws {
+    @Test
+    func `Image command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -119,8 +118,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.analyze == "describe")
     }
 
-    @Test("Image command invalid mode")
-    func bindImageCommandErrors() {
+    @Test
+    func `Image command invalid mode`() {
         let parsed = ParsedValues(positional: [], options: ["mode": ["banana"]], flags: [])
         #expect(throws: CommanderBindingError.invalidArgument(
             label: "mode",
@@ -131,8 +130,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("See command binding")
-    func bindSeeCommand() throws {
+    @Test
+    func `See command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -157,8 +156,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.analyze == "describe")
     }
 
-    @Test("App switch command binding with verify")
-    func bindAppSwitchCommandVerify() throws {
+    @Test
+    func `App switch command binding with verify`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -175,8 +174,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.cycle == false)
     }
 
-    @Test("Window focus command binding with verify")
-    func bindWindowFocusCommandVerify() throws {
+    @Test
+    func `Window focus command binding with verify`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -191,8 +190,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.verify == true)
     }
 
-    @Test("Dock launch command binding with verify")
-    func bindDockLaunchCommandVerify() throws {
+    @Test
+    func `Dock launch command binding with verify`() throws {
         let parsed = ParsedValues(
             positional: ["Safari"],
             options: [:],
@@ -206,8 +205,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.verify == true)
     }
 
-    @Test("Tools command binding")
-    func bindToolsCommand() throws {
+    @Test
+    func `Tools command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [:],
@@ -217,14 +216,14 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.noSort == true)
     }
 
-    @Test("List menubar binding")
-    func bindListMenubarCommand() throws {
+    @Test
+    func `List menubar binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         _ = try CommanderCLIBinder.instantiateCommand(ofType: ListCommand.MenuBarSubcommand.self, parsedValues: parsed)
     }
 
-    @Test("List windows binding")
-    func bindListWindowsCommand() throws {
+    @Test
+    func `List windows binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -243,8 +242,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.includeDetails == "bounds,ids")
     }
 
-    @Test("List windows requires app")
-    func bindListWindowsCommandError() {
+    @Test
+    func `List windows requires app`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "app")) {
             _ = try CommanderCLIBinder.instantiateCommand(
@@ -254,8 +253,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Permissions status binding")
-    func bindPermissionsStatus() throws {
+    @Test
+    func `Permissions status binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         _ = try CommanderCLIBinder.instantiateCommand(
             ofType: PermissionsCommand.StatusSubcommand.self,
@@ -263,8 +262,8 @@ struct CommanderBinderCommandBindingTests {
         )
     }
 
-    @Test("Permissions grant binding")
-    func bindPermissionsGrant() throws {
+    @Test
+    func `Permissions grant binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         _ = try CommanderCLIBinder.instantiateCommand(
             ofType: PermissionsCommand.GrantSubcommand.self,
@@ -272,8 +271,8 @@ struct CommanderBinderCommandBindingTests {
         )
     }
 
-    @Test("Window close binding populates identification options")
-    func bindWindowClose() throws {
+    @Test
+    func `Window close binding populates identification options`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -294,8 +293,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.windowOptions.windowIndex == 2)
     }
 
-    @Test("Window move binding handles coordinates")
-    func bindWindowMove() throws {
+    @Test
+    func `Window move binding handles coordinates`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -314,8 +313,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.y == 340)
     }
 
-    @Test("Window move requires coordinates")
-    func bindWindowMoveMissingCoordinate() {
+    @Test
+    func `Window move requires coordinates`() {
         let parsed = ParsedValues(
             positional: [],
             options: ["app": ["Safari"], "x": ["50"]],
@@ -329,8 +328,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Window focus binding maps focus options")
-    func bindWindowFocus() throws {
+    @Test
+    func `Window focus binding maps focus options`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -352,8 +351,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.focusRetryCount == 3)
     }
 
-    @Test("Window list binding")
-    func bindWindowList() throws {
+    @Test
+    func `Window list binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -370,8 +369,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.pid == 999)
     }
 
-    @Test("Click command binding")
-    func bindClickCommand() throws {
+    @Test
+    func `Click command binding`() throws {
         let parsed = ParsedValues(
             positional: ["Submit"],
             options: [
@@ -392,8 +391,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.noAutoFocus == true)
     }
 
-    @Test("Type command binding")
-    func bindTypeCommand() throws {
+    @Test
+    func `Type command binding`() throws {
         let parsed = ParsedValues(
             positional: ["Hello"],
             options: [
@@ -424,8 +423,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.focusTimeoutSeconds == 3.5)
     }
 
-    @Test("Type command binding with text option")
-    func bindTypeCommandTextOption() throws {
+    @Test
+    func `Type command binding with text option`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -440,8 +439,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.snapshot == "abc")
     }
 
-    @Test("Press command binding")
-    func bindPressCommand() throws {
+    @Test
+    func `Press command binding`() throws {
         let parsed = ParsedValues(
             positional: ["cmd", "c"],
             options: [
@@ -461,8 +460,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.noAutoFocus == true)
     }
 
-    @Test("Capture video command binding")
-    func bindCaptureVideoCommand() throws {
+    @Test
+    func `Capture video command binding`() throws {
         let parsed = ParsedValues(
             positional: ["/tmp/demo.mov"],
             options: [
@@ -500,24 +499,24 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.videoOut == "/tmp/out.mp4")
     }
 
-    @Test("Capture video commander signature exposes required input")
-    func captureVideoCommanderSignatureHasInputArgument() {
+    @Test
+    func `Capture video commander signature exposes required input`() {
         let signature = CaptureVideoCommand.commanderSignature()
         let input = signature.arguments.first { $0.label == "input" }
         #expect(input?.isOptional == false)
         #expect(input?.help == "Input video file")
     }
 
-    @Test("Capture live commander signature includes capture-engine option")
-    func captureLiveCommanderSignatureHasCaptureEngineOption() {
+    @Test
+    func `Capture live commander signature includes capture-engine option`() {
         let signature = CaptureLiveCommand.commanderSignature()
         let captureEngineOption = signature.options.first { $0.label == "captureEngine" }
         #expect(captureEngineOption != nil)
         #expect(captureEngineOption?.names.contains(.long("capture-engine")) == true)
     }
 
-    @Test("Capture video command requires input")
-    func bindCaptureVideoCommandRequiresInput() {
+    @Test
+    func `Capture video command requires input`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "input")) {
             _ = try CommanderCLIBinder.instantiateCommand(
@@ -527,8 +526,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Hotkey command binding (positional wins)")
-    func bindHotkeyCommand() throws {
+    @Test
+    func `Hotkey command binding (positional wins)`() throws {
         let parsed = ParsedValues(
             positional: ["cmd,space"],
             options: ["keys": ["cmd,c"], "holdDuration": ["120"]],
@@ -539,16 +538,16 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.holdDuration == 120)
     }
 
-    @Test("Hotkey command requires keys")
-    func bindHotkeyCommandMissingKeys() {
+    @Test
+    func `Hotkey command requires keys`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: ValidationError.self) {
             _ = try CommanderCLIBinder.instantiateCommand(ofType: HotkeyCommand.self, parsedValues: parsed)
         }
     }
 
-    @Test("Paste command binding (text + target)")
-    func bindPasteCommand() throws {
+    @Test
+    func `Paste command binding (text + target)`() throws {
         let parsed = ParsedValues(
             positional: ["Hello"],
             options: [
@@ -568,8 +567,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.allowLarge == true)
     }
 
-    @Test("See command respects capture-engine option")
-    func bindSeeCommandCaptureEngine() throws {
+    @Test
+    func `See command respects capture-engine option`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: ["captureEngine": ["classic"]],
@@ -580,8 +579,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(runtimeOptions.captureEnginePreference == "classic")
     }
 
-    @Test("Move command binding with coordinates")
-    func bindMoveCommand() throws {
+    @Test
+    func `Move command binding with coordinates`() throws {
         let parsed = ParsedValues(
             positional: ["100,200"],
             options: [
@@ -601,8 +600,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.smooth == true)
     }
 
-    @Test("Move command binding with --coords")
-    func bindMoveCommandCoordsOption() throws {
+    @Test
+    func `Move command binding with --coords`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -624,8 +623,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.smooth == true)
     }
 
-    @Test("Move command requires a target (validation)")
-    func bindMoveCommandMissingTarget() throws {
+    @Test
+    func `Move command requires a target (validation)`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
         #expect(throws: ValidationError.self) {
@@ -633,8 +632,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Move command rejects conflicting targets")
-    func bindMoveCommandConflictingTargets() throws {
+    @Test
+    func `Move command rejects conflicting targets`() throws {
         let parsed = ParsedValues(positional: ["100,200"], options: [:], flags: ["center"])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
         #expect(throws: ValidationError.self) {
@@ -642,8 +641,8 @@ struct CommanderBinderCommandBindingTests {
         }
     }
 
-    @Test("Drag command binding")
-    func bindDragCommand() throws {
+    @Test
+    func `Drag command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -668,8 +667,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.focusOptions.spaceSwitch == true)
     }
 
-    @Test("Swipe command binding")
-    func bindSwipeCommand() throws {
+    @Test
+    func `Swipe command binding`() throws {
         let parsed = ParsedValues(
             positional: [],
             options: [
@@ -691,8 +690,8 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.snapshot == "sess-swipe")
     }
 
-    @Test("Swipe command requires from/to")
-    func bindSwipeCommandMissingEndpoints() async throws {
+    @Test
+    func `Swipe command requires from/to`() async throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: SwipeCommand.self, parsedValues: parsed)
         await #expect(throws: ExitCode.self) {

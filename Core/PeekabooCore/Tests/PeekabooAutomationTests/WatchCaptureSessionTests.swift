@@ -5,10 +5,9 @@ import Testing
 import UniformTypeIdentifiers
 @testable import PeekabooAutomationKit
 
-@Suite("WatchCaptureSession diffing")
 struct WatchCaptureSessionTests {
-    @Test("Fast diff detects change and bounding box")
-    func fastDiff() {
+    @Test
+    func `Fast diff detects change and bounding box`() {
         let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
         let result = WatchCaptureSession.computeChange(
@@ -25,8 +24,8 @@ struct WatchCaptureSessionTests {
         #expect(abs((firstBox?.origin.y ?? 0) - 0) < 0.1)
     }
 
-    @Test("Quality diff near-zero for identical frames")
-    func qualityNoChange() {
+    @Test
+    func `Quality diff near-zero for identical frames`() {
         let buffer = WatchCaptureSession.LumaBuffer(width: 4, height: 4, pixels: Array(repeating: 64, count: 16))
         let result = WatchCaptureSession.computeChange(
             using: .init(
@@ -40,8 +39,8 @@ struct WatchCaptureSessionTests {
         #expect(result.boundingBoxes.isEmpty)
     }
 
-    @Test("Quality diff caps at 100")
-    func qualityCaps() {
+    @Test
+    func `Quality diff caps at 100`() {
         let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [255, 255, 255, 255])
         let result = WatchCaptureSession.computeChange(
@@ -55,8 +54,8 @@ struct WatchCaptureSessionTests {
         #expect(result.changePercent <= 100)
     }
 
-    @Test("Bounding boxes always include overall motion bounds")
-    func boundingBoxesIncludeUnion() {
+    @Test
+    func `Bounding boxes always include overall motion bounds`() {
         // Two disjoint regions far apart should still report a union box that spans both.
         let width = 8
         let height = 8
@@ -65,7 +64,9 @@ struct WatchCaptureSessionTests {
             height: height,
             pixels: Array(repeating: 0, count: width * height))
         var pixels = Array(repeating: UInt8(0), count: width * height)
-        func index(_ x: Int, _ y: Int) -> Int { y * width + x }
+        func index(_ x: Int, _ y: Int) -> Int {
+            y * width + x
+        }
         // Activate a block in the top-left and another in the bottom-right.
         for y in 0..<2 {
             for x in 0..<2 {
@@ -97,9 +98,9 @@ struct WatchCaptureSessionTests {
         #expect(result.boundingBoxes.count <= 5)
     }
 
-    @Test("Stops at max-frames cap and keeps first frame")
+    @Test
     @MainActor
-    func respectsFrameCapDuringWatch() async throws {
+    func `Stops at max-frames cap and keeps first frame`() async throws {
         let png = Self.makePNG(size: CGSize(width: 20, height: 20))
         let capture = StubScreenCaptureService(result: png, size: CGSize(width: 20, height: 20))
         let screens = StubScreenService()
@@ -145,9 +146,9 @@ struct WatchCaptureSessionTests {
         #expect(result.warnings.contains { $0.code == .frameCap } || result.warnings.isEmpty == false)
     }
 
-    @Test("Stops at size cap and emits warning")
+    @Test
     @MainActor
-    func respectsSizeCapDuringWatch() async throws {
+    func `Stops at size cap and emits warning`() async throws {
         let png = Self.makePNG(size: CGSize(width: 50, height: 50))
         let capture = StubScreenCaptureService(result: png, size: CGSize(width: 50, height: 50))
         let screens = StubScreenService()
@@ -281,7 +282,9 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
         return CaptureResult(imageData: self.resultData, savedPath: nil, metadata: metadata, warning: nil)
     }
 
-    func hasScreenRecordingPermission() async -> Bool { true }
+    func hasScreenRecordingPermission() async -> Bool {
+        true
+    }
 
     private func makeResult(mode: CaptureMode) -> CaptureResult {
         CaptureResult(
@@ -321,11 +324,15 @@ private final class StubScreenService: ScreenServiceProtocol {
         ]
     }
 
-    func screenContainingWindow(bounds _: CGRect) -> ScreenInfo? { self.listScreens().first }
+    func screenContainingWindow(bounds _: CGRect) -> ScreenInfo? {
+        self.listScreens().first
+    }
 
     func screen(at index: Int) -> ScreenInfo? {
         self.listScreens().first(where: { $0.index == index })
     }
 
-    var primaryScreen: ScreenInfo? { self.listScreens().first }
+    var primaryScreen: ScreenInfo? {
+        self.listScreens().first
+    }
 }

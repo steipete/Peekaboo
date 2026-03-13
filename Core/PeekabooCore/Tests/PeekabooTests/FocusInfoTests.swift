@@ -5,10 +5,9 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("FocusInfo Tests")
 struct FocusInfoTests {
-    @Test("FocusInfo initialization")
-    func focusInfoInitialization() {
+    @Test
+    func `FocusInfo initialization`() {
         let elementInfo = ElementInfo(
             role: "AXTextField",
             title: "Email Address",
@@ -31,8 +30,8 @@ struct FocusInfoTests {
         #expect(focusInfo.element.role == "AXTextField")
     }
 
-    @Test("ElementInfo text input detection")
-    func elementInfoTextInputDetection() {
+    @Test
+    func `ElementInfo text input detection`() {
         // Text field should be detected as text input
         let textField = ElementInfo(
             role: "AXTextField",
@@ -82,8 +81,8 @@ struct FocusInfoTests {
         #expect(passwordField.canAcceptKeyboardInput == true)
     }
 
-    @Test("ElementInfo non-text input detection")
-    func elementInfoNonTextInputDetection() {
+    @Test
+    func `ElementInfo non-text input detection`() {
         // Button should not be text input but can accept keyboard input
         let button = ElementInfo(
             role: "AXButton",
@@ -121,8 +120,8 @@ struct FocusInfoTests {
         #expect(image.canAcceptKeyboardInput == false)
     }
 
-    @Test("ElementInfo disabled state")
-    func elementInfoDisabledState() {
+    @Test
+    func `ElementInfo disabled state`() {
         // Disabled text field should not accept keyboard input
         let disabledTextField = ElementInfo(
             role: "AXTextField",
@@ -147,8 +146,8 @@ struct FocusInfoTests {
         #expect(disabledButton.canAcceptKeyboardInput == false)
     }
 
-    @Test("ElementInfo web content detection")
-    func elementInfoWebContentDetection() {
+    @Test
+    func `ElementInfo web content detection`() {
         // Editable web content should be detected as text input
         let editableWebArea = ElementInfo(
             role: "AXWebArea",
@@ -176,8 +175,8 @@ struct FocusInfoTests {
             .canAcceptKeyboardInput == true) // Web areas can still accept keyboard input for navigation
     }
 
-    @Test("ElementInfo type descriptions")
-    func elementInfoTypeDescriptions() {
+    @Test
+    func `ElementInfo type descriptions`() {
         let textField = ElementInfo(
             role: "AXTextField",
             title: "Name",
@@ -215,8 +214,8 @@ struct FocusInfoTests {
         #expect(customRole.typeDescription == "customelement")
     }
 
-    @Test("FocusInfo convenience properties")
-    func focusInfoConvenienceProperties() {
+    @Test
+    func `FocusInfo convenience properties`() {
         let textFieldElement = ElementInfo(
             role: "AXTextField",
             title: "Email",
@@ -237,8 +236,8 @@ struct FocusInfoTests {
         #expect(focusInfo.humanDescription.contains("Safari"))
     }
 
-    @Test("FocusInfo dictionary conversion")
-    func focusInfoDictionaryConversion() {
+    @Test
+    func `FocusInfo dictionary conversion`() {
         let elementInfo = ElementInfo(
             role: "AXTextField",
             title: "Username",
@@ -280,8 +279,8 @@ struct FocusInfoTests {
         #expect(boundsDict?["height"] as? CGFloat == 30)
     }
 
-    @Test("ElementInfo dictionary conversion")
-    func elementInfoDictionaryConversion() {
+    @Test
+    func `ElementInfo dictionary conversion`() {
         let elementInfo = ElementInfo(
             role: "AXButton",
             title: "Cancel",

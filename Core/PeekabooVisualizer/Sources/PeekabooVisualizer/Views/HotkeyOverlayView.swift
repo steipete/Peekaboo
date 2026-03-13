@@ -265,7 +265,7 @@ struct ParticleView: View {
     }
 }
 
-// Safe array subscript extension
+/// Safe array subscript extension
 extension Array {
     subscript(safe index: Int) -> Element? {
         index >= 0 && index < count ? self[index] : nil

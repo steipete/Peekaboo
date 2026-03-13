@@ -4,10 +4,10 @@ import Testing
 @testable import PeekabooCore
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Permissions Command Tests", .serialized, .tags(.permissions))
+@Suite(.serialized, .tags(.permissions))
 struct PermissionCommandTests {
-    @Test("permissions command emits JSON with stub statuses")
-    func permissionsJSONOutput() async throws {
+    @Test
+    func `permissions command emits JSON with stub statuses`() async {
         let automation = StubAutomationService()
         automation.accessibilityPermissionGranted = false
         let screenCapture = StubScreenCaptureService(permissionGranted: false)
@@ -43,8 +43,8 @@ struct PermissionCommandTests {
         }
     }
 
-    @Test("permissions command prints grant instructions when missing")
-    func permissionsTextOutput() async throws {
+    @Test
+    func `permissions command prints grant instructions when missing`() async throws {
         let automation = StubAutomationService()
         automation.accessibilityPermissionGranted = false
         let screenCapture = StubScreenCaptureService(permissionGranted: true)

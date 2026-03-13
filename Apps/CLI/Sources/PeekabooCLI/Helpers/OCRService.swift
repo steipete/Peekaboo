@@ -3,13 +3,13 @@ import Foundation
 import ImageIO
 import Vision
 
-struct OCRTextObservation: Sendable {
+struct OCRTextObservation {
     let text: String
     let confidence: Float
     let boundingBox: CGRect
 }
 
-struct OCRTextResult: Sendable {
+struct OCRTextResult {
     let observations: [OCRTextObservation]
     let imageSize: CGSize
 }

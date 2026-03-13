@@ -6,11 +6,10 @@ import Testing
 @testable import PeekabooVisualizer
 
 /// Integration tests for model selection within PeekabooCore
-@Suite("Model Selection Core Integration Tests")
 struct ModelSelectionIntegrationTests {
-    @Test("Agent service model parameter handling")
+    @Test
     @MainActor
-    func agentServiceModelParameterHandling() async throws {
+    func `Agent service model parameter handling`() async throws {
         let testCases: [LanguageModel] = [
             .openai(.gpt51),
             .anthropic(.sonnet45),
@@ -38,9 +37,9 @@ struct ModelSelectionIntegrationTests {
         }
     }
 
-    @Test("Nil model handling in full pipeline")
+    @Test
     @MainActor
-    func nilModelHandlingInFullPipeline() async throws {
+    func `Nil model handling in full pipeline`() async throws {
         // When nil is passed to agent service, it should use default
         let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
@@ -64,9 +63,9 @@ struct ModelSelectionIntegrationTests {
         }
     }
 
-    @Test("Model descriptions are consistent")
+    @Test
     @MainActor
-    func modelDescriptionsAreConsistent() async throws {
+    func `Model descriptions are consistent`() async throws {
         let testModels: [LanguageModel] = [
             .openai(.gpt51),
             .anthropic(.sonnet45),
@@ -97,9 +96,9 @@ struct ModelSelectionIntegrationTests {
         }
     }
 
-    @Test("Model parameter precedence over default")
+    @Test
     @MainActor
-    func modelParameterPrecedenceOverDefault() async throws {
+    func `Model parameter precedence over default`() async throws {
         // Set up agent service with a specific default
         let mockServices = PeekabooServices()
         let defaultModel = LanguageModel.anthropic(.sonnet45)
@@ -129,9 +128,9 @@ struct ModelSelectionIntegrationTests {
         }
     }
 
-    @Test("Streaming vs non-streaming consistency")
+    @Test
     @MainActor
-    func streamingVsNonStreamingConsistency() async throws {
+    func `Streaming vs non-streaming consistency`() async throws {
         let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
@@ -179,11 +178,10 @@ private class MockEventDelegate: AgentEventDelegate {
 }
 
 /// Tests for specific bug fixes and regressions
-@Suite("Model Selection Regression Tests")
 struct ModelSelectionRegressionTests {
-    @Test("Bug fix: Extended executeTask method uses model parameter")
+    @Test
     @MainActor
-    func extendedExecuteTaskUsesModelParameter() async throws {
+    func `Bug fix: Extended executeTask method uses model parameter`() async throws {
         // This test specifically addresses the bug where the extended executeTask method
         // with sessionId and model parameters was ignoring the model parameter
 
@@ -214,9 +212,9 @@ struct ModelSelectionRegressionTests {
         }
     }
 
-    @Test("Bug fix: Streaming execution path respects model parameter")
+    @Test
     @MainActor
-    func streamingExecutionPathRespectsModelParameter() async throws {
+    func `Bug fix: Streaming execution path respects model parameter`() async throws {
         // This test addresses the specific bug where the streaming execution path
         // was using self.defaultLanguageModel instead of the passed model parameter
 
@@ -247,9 +245,9 @@ struct ModelSelectionRegressionTests {
         }
     }
 
-    @Test("Agent service nil handling in both execution paths")
+    @Test
     @MainActor
-    func agentServiceNilHandlingInExecutionPaths() async throws {
+    func `Agent service nil handling in both execution paths`() async throws {
         // Test that both streaming and non-streaming paths handle nil models correctly
 
         let mockServices = PeekabooServices()

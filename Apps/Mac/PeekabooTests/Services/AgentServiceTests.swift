@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import Peekaboo
 
-@Suite("PeekabooAgent Tests", .tags(.services, .unit))
+@Suite(.tags(.services, .unit))
 @MainActor
 struct PeekabooAgentTests {
     let agent: PeekabooAgent
@@ -19,8 +19,8 @@ struct PeekabooAgentTests {
         self.agent = PeekabooAgent(settings: self.mockPeekabooSettings, sessionStore: self.mockSessionStore)
     }
 
-    @Test("Service requires API key to execute")
-    func requiresAPIKey() async throws {
+    @Test
+    func `Service requires API key to execute`() async throws {
         // No API key set
         self.mockPeekabooSettings.openAIAPIKey = ""
 
@@ -29,8 +29,8 @@ struct PeekabooAgentTests {
         }
     }
 
-    @Test("Executing task creates a session")
-    func taskCreatesSession() async throws {
+    @Test
+    func `Executing task creates a session`() async {
         // Set up valid API key
         self.mockPeekabooSettings.openAIAPIKey = "sk-test-key"
 
@@ -49,8 +49,8 @@ struct PeekabooAgentTests {
         }
     }
 
-    @Test("Current session tracking")
-    func currentSessionTracking() async throws {
+    @Test
+    func `Current session tracking`() async {
         self.mockPeekabooSettings.openAIAPIKey = "sk-test-key"
 
         // Check the session store before task execution
@@ -70,11 +70,11 @@ struct PeekabooAgentTests {
     }
 }
 
-@Suite("AgentService Error Handling Tests", .tags(.services, .unit, .fast))
+@Suite(.tags(.services, .unit, .fast))
 @MainActor
 struct AgentServiceErrorTests {
-    @Test("Handles empty task gracefully")
-    func emptyTask() async throws {
+    @Test
+    func `Handles empty task gracefully`() async {
         let settings = PeekabooSettings()
         settings.openAIAPIKey = "sk-test-key"
         // Use isolated storage
@@ -90,12 +90,12 @@ struct AgentServiceErrorTests {
         #expect(true)
     }
 
-    @Test("Handles very long tasks gracefully", arguments: [
+    @Test(arguments: [
         String(repeating: "a", count: 1000),
         String(repeating: "word ", count: 500),
         String(repeating: "This is a very long task. ", count: 100),
     ])
-    func longTasks(longTask: String) async throws {
+    func `Handles very long tasks gracefully`(longTask: String) async {
         let settings = PeekabooSettings()
         settings.openAIAPIKey = "sk-test-key"
         // Use isolated storage

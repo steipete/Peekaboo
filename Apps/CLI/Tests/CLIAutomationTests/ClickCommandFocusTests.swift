@@ -4,7 +4,6 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "Click Command Focus Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationRead)
@@ -17,8 +16,8 @@ struct ClickCommandFocusTests {
         try await InProcessCommandRunner.runShared(arguments, allowedExitCodes: allowedExitStatuses)
     }
 
-    @Test("click help shows focus options")
-    func clickHelpShowsFocusOptions() async throws {
+    @Test
+    func `click help shows focus options`() async throws {
         let result = try await self.runPeekabooCommand(["click", "--help"])
         let output = result.combinedOutput
 

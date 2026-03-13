@@ -21,13 +21,13 @@ struct PeekabooApp: App {
 
     @State private var agent: PeekabooAgent?
 
-    // Control Inspector window creation
+    /// Control Inspector window creation
     @AppStorage("inspectorWindowRequested") private var inspectorRequested = false
 
-    // Logger
+    /// Logger
     private let logger = Logger(subsystem: "boo.peekaboo.app", category: "PeekabooApp")
 
-    // Configure Tachikoma with API keys from settings
+    /// Configure Tachikoma with API keys from settings
     private func configureTachikomaWithSettings() {
         // Use TachikomaConfiguration profile-based loading (env/credentials).
         // Only override when user explicitly enters values in settings.
@@ -42,7 +42,7 @@ struct PeekabooApp: App {
             for: .ollama) }
     }
 
-    // Load API keys from credentials file if settings are empty
+    /// Load API keys from credentials file if settings are empty
     private func loadAPIKeysFromCredentials() {
         // Don't load from environment/credentials into settings
         // This allows proper environment variable detection in the UI
@@ -393,11 +393,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func startBridgeHost(services: PeekabooServices) {
-        let allowlistedBundles: Set<String> = [
+        let allowlistedBundles: Set = [
             "boo.peekaboo.peekaboo", // CLI
             "boo.peekaboo.mac", // GUI
         ]
-        let allowlistedTeams: Set<String> = ["Y5PE65HELJ"]
+        let allowlistedTeams: Set = ["Y5PE65HELJ"]
 
         self.logger.info("Starting Peekaboo Bridge at \(PeekabooBridgeConstants.peekabooSocketPath, privacy: .public)")
         self.bridgeHost = PeekabooBridgeBootstrap.startHost(
@@ -411,7 +411,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Public Access
 
-    /// Returns the visualizer coordinator for preview functionality
+    // Returns the visualizer coordinator for preview functionality
 }
 
 // Test comment to trigger build - Wed Jul 30 02:14:41 CEST 2025

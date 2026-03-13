@@ -1,13 +1,11 @@
 import CoreGraphics
 import Testing
-
 @testable import PeekabooAutomationKit
 
-@Suite("TypeService target resolution")
 struct TypeServiceTargetResolutionTests {
-    @Test("resolveTargetElement matches identifier over other fields")
+    @Test
     @MainActor
-    func resolvesByIdentifier() async throws {
+    func `resolveTargetElement matches identifier over other fields`() {
         let basic = DetectedElement(
             id: "T1",
             type: .textField,
@@ -39,9 +37,9 @@ struct TypeServiceTargetResolutionTests {
         #expect(TypeService.resolveTargetElement(query: "Numbers only...", in: detectionResult)?.id == "T2")
     }
 
-    @Test("resolveTargetElement returns nil for unknown query")
+    @Test
     @MainActor
-    func returnsNilWhenNoMatch() async throws {
+    func `resolveTargetElement returns nil for unknown query`() {
         let element = DetectedElement(
             id: "T1",
             type: .textField,
@@ -61,9 +59,9 @@ struct TypeServiceTargetResolutionTests {
         #expect(TypeService.resolveTargetElement(query: "does-not-exist", in: detectionResult) == nil)
     }
 
-    @Test("resolveTargetElement breaks ties deterministically")
+    @Test
     @MainActor
-    func resolvesDeterministicTieBreak() async throws {
+    func `resolveTargetElement breaks ties deterministically`() {
         let higher = DetectedElement(
             id: "T_HIGH",
             type: .textField,

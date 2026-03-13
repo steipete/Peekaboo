@@ -8,8 +8,13 @@ import PeekabooFoundation
 // MARK: - Action Extensions
 
 extension Attribute where T == String {
-    static var hide: Attribute<String> { Attribute("AXHide") }
-    static var unhide: Attribute<String> { Attribute("AXUnhide") }
+    static var hide: Attribute<String> {
+        Attribute("AXHide")
+    }
+
+    static var unhide: Attribute<String> {
+        Attribute("AXUnhide")
+    }
 }
 
 // MARK: - Application Finding

@@ -157,13 +157,23 @@ public protocol ServiceObserver: AnyObject {
 // MARK: - Default Implementations
 
 extension ServiceState {
-    // Handle a service event
-    public var isLoading: Bool { false }
-    public var lastError: (any Error)? { nil }
-    public var lastUpdated: Date { Date() }
+    /// Handle a service event
+    public var isLoading: Bool {
+        false
+    }
+
+    public var lastError: (any Error)? {
+        nil
+    }
+
+    public var lastUpdated: Date {
+        Date()
+    }
 }
 
 @available(macOS 14.0, *)
 extension RefreshableService {
-    public var canRefresh: Bool { !isRefreshing }
+    public var canRefresh: Bool {
+        !isRefreshing
+    }
 }

@@ -3,7 +3,7 @@ import Testing
 @testable import Peekaboo
 @testable import PeekabooCore
 
-@Suite("SessionStore Tests", .tags(.services, .unit))
+@Suite(.tags(.services, .unit))
 @MainActor
 struct SessionStoreTests {
     var store: SessionStore!
@@ -25,8 +25,8 @@ struct SessionStoreTests {
         }
     }
 
-    @Test("Creating a new session assigns unique ID")
-    mutating func testCreateSession() async {
+    @Test
+    mutating func `Creating a new session assigns unique ID`() async {
         self.setup()
         defer { tearDown() }
         let session = await store.createSession(title: "Test Session", modelName: "test-model")
@@ -38,8 +38,8 @@ struct SessionStoreTests {
         #expect(session.summary.isEmpty)
     }
 
-    @Test("Adding messages to session updates the session")
-    mutating func testAddMessage() async {
+    @Test
+    mutating func `Adding messages to session updates the session`() async throws {
         self.setup()
         defer { tearDown() }
         var session = await store.createSession(title: "Test", modelName: "test-model")
@@ -48,7 +48,7 @@ struct SessionStoreTests {
             content: "Test message")
 
         await store.addMessage(message, to: session)
-        session = await self.store.sessions.first!
+        session = try await #require(self.store.sessions.first)
 
         // Verify the session was updated
         let sessions = await store.sessions
@@ -60,8 +60,8 @@ struct SessionStoreTests {
         }
     }
 
-    @Test("Multiple sessions can be managed independently")
-    mutating func multipleSessions() async {
+    @Test
+    mutating func `Multiple sessions can be managed independently`() async throws {
         self.setup()
         defer { tearDown() }
         var session1 = await store.createSession(title: "Session 1", modelName: "test-model")
@@ -74,7 +74,7 @@ struct SessionStoreTests {
         await self.store.addMessage(
             ConversationMessage(role: .user, content: "Message 1"),
             to: session1)
-        session1 = await self.store.sessions.first { $0.id == session1.id }!
+        session1 = try await #require(self.store.sessions.first { $0.id == session1.id })
 
         // Verify only first session has the message
         let sessions = await store.sessions
@@ -85,8 +85,8 @@ struct SessionStoreTests {
         #expect(updatedSession2?.messages.isEmpty == true)
     }
 
-    @Test("Sessions are sorted by start time (newest first)")
-    mutating func sessionSorting() async {
+    @Test
+    mutating func `Sessions are sorted by start time (newest first)`() async {
         self.setup()
         defer { tearDown() }
         // Create sessions with specific times
@@ -106,11 +106,11 @@ struct SessionStoreTests {
     }
 }
 
-@Suite("SessionStore Persistence Tests", .tags(.services, .integration))
+@Suite(.tags(.services, .integration))
 @MainActor
 struct SessionStorePersistenceTests {
-    @Test("Sessions persist across store instances")
-    func sessionPersistence() async throws {
+    @Test
+    func `Sessions persist across store instances`() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let storageURL = directory.appendingPathComponent("test_sessions.json")

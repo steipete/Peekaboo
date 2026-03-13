@@ -3,10 +3,9 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Focus target resolution")
 struct FocusTargetResolverTests {
-    @Test("explicit windowID always wins")
-    func explicitWindowIdWins() {
+    @Test
+    func `explicit windowID always wins`() {
         let snapshot = UIAutomationSnapshot(
             applicationBundleId: "com.example.app",
             windowTitle: "X",
@@ -22,8 +21,8 @@ struct FocusTargetResolverTests {
         #expect(result == .windowId(777))
     }
 
-    @Test("snapshot windowID wins when present")
-    func snapshotWindowIdWins() {
+    @Test
+    func `snapshot windowID wins when present`() {
         let snapshot = UIAutomationSnapshot(
             applicationBundleId: "com.example.app",
             windowTitle: "X",
@@ -39,8 +38,8 @@ struct FocusTargetResolverTests {
         #expect(result == .windowId(42))
     }
 
-    @Test("snapshot without windowID falls back to bundleId + title")
-    func snapshotWithoutWindowIdFallsBackToBestWindow() {
+    @Test
+    func `snapshot without windowID falls back to bundleId + title`() {
         let snapshot = UIAutomationSnapshot(
             applicationBundleId: "com.example.app",
             windowTitle: "My Window",
@@ -56,8 +55,8 @@ struct FocusTargetResolverTests {
         #expect(result == .bestWindow(applicationName: "com.example.app", windowTitle: "My Window"))
     }
 
-    @Test("explicit app/title override snapshot metadata when windowID missing")
-    func explicitAppTitleOverrideSnapshotWhenWindowIdMissing() {
+    @Test
+    func `explicit app/title override snapshot metadata when windowID missing`() {
         let snapshot = UIAutomationSnapshot(
             applicationBundleId: "com.example.app",
             windowTitle: "Old Title",
@@ -73,8 +72,8 @@ struct FocusTargetResolverTests {
         #expect(result == .bestWindow(applicationName: "Safari", windowTitle: "GitHub"))
     }
 
-    @Test("no snapshot, app resolves to best window")
-    func appWithoutSnapshotResolves() {
+    @Test
+    func `no snapshot, app resolves to best window`() {
         let result = FocusTargetResolver.resolve(
             windowID: nil,
             snapshot: nil,
@@ -85,8 +84,8 @@ struct FocusTargetResolverTests {
         #expect(result == .bestWindow(applicationName: "Safari", windowTitle: nil))
     }
 
-    @Test("no inputs returns nil")
-    func noInputsReturnsNil() {
+    @Test
+    func `no inputs returns nil`() {
         let result = FocusTargetResolver.resolve(
             windowID: nil,
             snapshot: nil,

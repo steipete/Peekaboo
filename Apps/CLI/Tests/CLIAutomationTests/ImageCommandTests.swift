@@ -5,7 +5,7 @@ import Testing
 @testable import PeekabooCLI
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("ImageCommand Tests", .serialized, .tags(.imageCapture, .unit))
+@Suite(.serialized, .tags(.imageCapture, .unit))
 @MainActor
 struct ImageCommandTests {
     // MARK: - Test Data & Helpers
@@ -20,8 +20,8 @@ struct ImageCommandTests {
 
     // MARK: - Command Parsing Tests
 
-    @Test("Basic command parsing with defaults", .tags(.fast))
-    func imageCommandParsing() throws {
+    @Test(.tags(.fast))
+    func `Basic command parsing with defaults`() throws {
         // Test basic command parsing
         let command = try ImageCommand.parse([])
 
@@ -35,16 +35,16 @@ struct ImageCommandTests {
         #expect(command.jsonOutput == false)
     }
 
-    @Test("Command with screen mode", .tags(.fast))
-    func imageCommandWithScreenMode() throws {
+    @Test(.tags(.fast))
+    func `Command with screen mode`() throws {
         // Test screen capture mode
         let command = try ImageCommand.parse(["--mode", "screen"])
 
         #expect(command.mode == .screen)
     }
 
-    @Test("Command with app specifier", .tags(.fast))
-    func imageCommandWithAppSpecifier() throws {
+    @Test(.tags(.fast))
+    func `Command with app specifier`() throws {
         // Test app-specific capture
         let command = try ImageCommand.parse([
             "--app", "Finder",
@@ -54,8 +54,8 @@ struct ImageCommandTests {
         #expect(command.app == "Finder")
     }
 
-    @Test("Command with PID specifier", .tags(.fast))
-    func imageCommandWithPIDSpecifier() throws {
+    @Test(.tags(.fast))
+    func `Command with PID specifier`() throws {
         // Test PID-specific capture
         let command = try ImageCommand.parse([
             "--app", "PID:1234",
@@ -65,8 +65,8 @@ struct ImageCommandTests {
         #expect(command.app == "PID:1234")
     }
 
-    @Test("Command with window title", .tags(.fast))
-    func imageCommandWithWindowTitle() throws {
+    @Test(.tags(.fast))
+    func `Command with window title`() throws {
         // Test window title capture
         let command = try ImageCommand.parse([
             "--window-title", "Documents",
@@ -75,8 +75,8 @@ struct ImageCommandTests {
         #expect(command.windowTitle == "Documents")
     }
 
-    @Test("Command with output path", .tags(.fast))
-    func imageCommandWithOutput() throws {
+    @Test(.tags(.fast))
+    func `Command with output path`() throws {
         // Test output path specification
         let outputPath = "/tmp/test-images"
         let command = try ImageCommand.parse([
@@ -86,8 +86,8 @@ struct ImageCommandTests {
         #expect(command.path == outputPath)
     }
 
-    @Test("Command infers format from output path extension", .tags(.fast))
-    func imageCommandInfersFormatFromOutputPathExtension() throws {
+    @Test(.tags(.fast))
+    func `Command infers format from output path extension`() throws {
         let command = try ImageCommand.parse([
             "--path", "/tmp/test.jpg",
         ])
@@ -104,8 +104,8 @@ struct ImageCommandTests {
         #expect(commandPNG.format == .png)
     }
 
-    @Test("Command rejects conflicting format and output path extension", .tags(.fast))
-    func imageCommandRejectsConflictingFormatAndOutputPathExtension() {
+    @Test(.tags(.fast))
+    func `Command rejects conflicting format and output path extension`() {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try ImageCommand.parse([
@@ -124,8 +124,8 @@ struct ImageCommandTests {
         }
     }
 
-    @Test("Command with format option", .tags(.fast))
-    func imageCommandWithFormat() throws {
+    @Test(.tags(.fast))
+    func `Command with format option`() throws {
         // Test format specification
         let command = try ImageCommand.parse([
             "--format", "jpg",
@@ -134,8 +134,8 @@ struct ImageCommandTests {
         #expect(command.format == .jpg)
     }
 
-    @Test("Command with focus option", .tags(.fast))
-    func imageCommandWithFocus() throws {
+    @Test(.tags(.fast))
+    func `Command with focus option`() throws {
         // Test focus option
         let command = try ImageCommand.parse([
             "--capture-focus", "foreground",
@@ -144,8 +144,8 @@ struct ImageCommandTests {
         #expect(command.captureFocus == .foreground)
     }
 
-    @Test("Command with JSON output", .tags(.fast))
-    func imageCommandWithJSONOutput() throws {
+    @Test(.tags(.fast))
+    func `Command with JSON output`() throws {
         // Test JSON output flag
         let command = try ImageCommand.parse([
             "--json",
@@ -154,8 +154,8 @@ struct ImageCommandTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Command with multi mode", .tags(.fast))
-    func imageCommandWithMultiMode() throws {
+    @Test(.tags(.fast))
+    func `Command with multi mode`() throws {
         // Test multi capture mode
         let command = try ImageCommand.parse([
             "--mode", "multi",
@@ -164,8 +164,8 @@ struct ImageCommandTests {
         #expect(command.mode == .multi)
     }
 
-    @Test("Command with screen index", .tags(.fast))
-    func imageCommandWithScreenIndex() throws {
+    @Test(.tags(.fast))
+    func `Command with screen index`() throws {
         // Test screen index specification
         let command = try ImageCommand.parse([
             "--screen-index", "1",
@@ -174,8 +174,8 @@ struct ImageCommandTests {
         #expect(command.screenIndex == 1)
     }
 
-    @Test("Command with analyze option", .tags(.fast))
-    func imageCommandWithAnalyze() throws {
+    @Test(.tags(.fast))
+    func `Command with analyze option`() throws {
         // Test analyze option parsing
         let command = try ImageCommand.parse([
             "--analyze", "What is shown in this image?",
@@ -184,8 +184,8 @@ struct ImageCommandTests {
         #expect(command.analyze == "What is shown in this image?")
     }
 
-    @Test("Command with analyze and app", .tags(.fast))
-    func imageCommandWithAnalyzeAndApp() throws {
+    @Test(.tags(.fast))
+    func `Command with analyze and app`() throws {
         // Test analyze with app specification
         let command = try ImageCommand.parse([
             "--app", "Safari",
@@ -196,8 +196,8 @@ struct ImageCommandTests {
         #expect(command.analyze == "Summarize this webpage")
     }
 
-    @Test("Command with analyze and mode", .tags(.fast))
-    func imageCommandWithAnalyzeAndMode() throws {
+    @Test(.tags(.fast))
+    func `Command with analyze and mode`() throws {
         // Test analyze with different capture modes
         let command = try ImageCommand.parse([
             "--mode", "frontmost",
@@ -208,8 +208,8 @@ struct ImageCommandTests {
         #expect(command.analyze == "What errors are shown?")
     }
 
-    @Test("Command with analyze and JSON output", .tags(.fast))
-    func imageCommandWithAnalyzeAndJSON() throws {
+    @Test(.tags(.fast))
+    func `Command with analyze and JSON output`() throws {
         // Test analyze with JSON output
         let command = try ImageCommand.parse([
             "--analyze", "Describe the UI",
@@ -220,8 +220,8 @@ struct ImageCommandTests {
         #expect(command.jsonOutput == true)
     }
 
-    @Test("Command with retina flag", .tags(.fast))
-    func imageCommandWithRetinaFlag() throws {
+    @Test(.tags(.fast))
+    func `Command with retina flag`() throws {
         let command = try ImageCommand.parse(["--retina"])
 
         #expect(command.retina == true)
@@ -230,21 +230,19 @@ struct ImageCommandTests {
     // MARK: - Parameterized Command Tests
 
     @Test(
-        "Various command combinations",
         arguments: [
             (args: ["--mode", "screen", "--format", "png"], mode: CaptureMode.screen, format: ImageFormat.png),
             (args: ["--mode", "window", "--format", "jpg"], mode: CaptureMode.window, format: ImageFormat.jpg),
             (args: ["--mode", "multi", "--json"], mode: CaptureMode.multi, format: ImageFormat.png),
         ]
     )
-    func commandCombinations(args: [String], mode: CaptureMode, format: ImageFormat) throws {
+    func `Various command combinations`(args: [String], mode: CaptureMode, format: ImageFormat) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
         #expect(command.format == format)
     }
 
     @Test(
-        "Analyze option with different modes",
         arguments: [
             (
                 args: ["--mode", "screen", "--analyze", "What is on screen?"],
@@ -268,14 +266,13 @@ struct ImageCommandTests {
             ),
         ]
     )
-    func analyzeWithDifferentModes(args: [String], mode: CaptureMode, prompt: String) throws {
+    func `Analyze option with different modes`(args: [String], mode: CaptureMode, prompt: String) throws {
         let command = try ImageCommand.parse(args)
         #expect(command.mode == mode)
         #expect(command.analyze == prompt)
     }
 
     @Test(
-        "Invalid arguments throw errors",
         arguments: [
             ["--mode", "invalid"],
             ["--format", "bmp"],
@@ -283,7 +280,7 @@ struct ImageCommandTests {
             ["--screen-index", "abc"],
         ]
     )
-    func invalidArguments(args: [String]) {
+    func `Invalid arguments throw errors`(args: [String]) {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try ImageCommand.parse(args)
@@ -293,8 +290,8 @@ struct ImageCommandTests {
 
     // MARK: - Model Tests
 
-    @Test("SavedFile model creation", .tags(.fast))
-    func savedFileModel() {
+    @Test(.tags(.fast))
+    func `SavedFile model creation`() {
         let savedFile = SavedFile(
             path: "/tmp/screenshot.png",
             item_label: "Screen 1",
@@ -309,8 +306,8 @@ struct ImageCommandTests {
         #expect(savedFile.mime_type == "image/png")
     }
 
-    @Test("ImageCaptureData encoding", .tags(.fast))
-    func imageCaptureDataEncoding() throws {
+    @Test(.tags(.fast))
+    func `ImageCaptureData encoding`() throws {
         let savedFile = SavedFile(
             path: "/tmp/test.png",
             item_label: "Test",
@@ -340,29 +337,29 @@ struct ImageCommandTests {
 
     // MARK: - Enum Raw Value Tests
 
-    @Test("CaptureMode raw values", .tags(.fast))
-    func captureModeRawValues() {
+    @Test(.tags(.fast))
+    func `CaptureMode raw values`() {
         #expect(CaptureMode.screen.rawValue == "screen")
         #expect(CaptureMode.window.rawValue == "window")
         #expect(CaptureMode.multi.rawValue == "multi")
     }
 
-    @Test("ImageFormat raw values", .tags(.fast))
-    func imageFormatRawValues() {
+    @Test(.tags(.fast))
+    func `ImageFormat raw values`() {
         #expect(ImageFormat.png.rawValue == "png")
         #expect(ImageFormat.jpg.rawValue == "jpg")
     }
 
-    @Test("CaptureFocus raw values", .tags(.fast))
-    func captureFocusRawValues() {
+    @Test(.tags(.fast))
+    func `CaptureFocus raw values`() {
         #expect(CaptureFocus.background.rawValue == "background")
         #expect(CaptureFocus.foreground.rawValue == "foreground")
     }
 
     // MARK: - Mode Determination & Logic Tests
 
-    @Test("Mode determination logic", .tags(.fast))
-    func modeDeterminationLogic() throws {
+    @Test(.tags(.fast))
+    func `Mode determination logic`() throws {
         // No mode, no app -> should default to screen
         let screenCommand = try ImageCommand.parse([])
         #expect(screenCommand.mode == nil)
@@ -378,8 +375,8 @@ struct ImageCommandTests {
         #expect(explicitCommand.mode == .multi)
     }
 
-    @Test("Default values verification", .tags(.fast))
-    func defaultValues() throws {
+    @Test(.tags(.fast))
+    func `Default values verification`() throws {
         let command = try ImageCommand.parse([])
 
         #expect(command.mode == nil)
@@ -395,25 +392,23 @@ struct ImageCommandTests {
     }
 
     @Test(
-        "Screen index boundary values",
         arguments: [0, 1, 99, 9999]
     )
-    func screenIndexBoundaries(index: Int) throws {
+    func `Screen index boundary values`(index: Int) throws {
         let command = try ImageCommand.parse(["--screen-index", String(index)])
         #expect(command.screenIndex == index)
     }
 
     @Test(
-        "Window index boundary values",
         arguments: [0, 1, 10, 9999]
     )
-    func windowIndexBoundaries(index: Int) throws {
+    func `Window index boundary values`(index: Int) throws {
         let command = try ImageCommand.parse(["--window-index", String(index)])
         #expect(command.windowIndex == index)
     }
 
-    @Test("Error handling for invalid combinations", .tags(.fast))
-    func invalidCombinations() {
+    @Test(.tags(.fast))
+    func `Error handling for invalid combinations`() {
         // Window capture without app should fail in execution
         // This tests the parsing, execution would fail later
         do {
@@ -427,8 +422,8 @@ struct ImageCommandTests {
 
     // MARK: - Window Selection Tests
 
-    @Test("Prefers the first renderable main window when overlays exist", .tags(.imageCapture))
-    func imageCommandPrefersRenderableWindow() async throws {
+    @Test(.tags(.imageCapture))
+    func `Prefers the first renderable main window when overlays exist`() async throws {
         let appName = "iTerm2"
         let overlay = ServiceWindowInfo(
             windowID: 10,
@@ -489,8 +484,8 @@ struct ImageCommandTests {
         try? FileManager.default.removeItem(atPath: outputPath)
     }
 
-    @Test("Honors --window-title when selecting a window", .tags(.imageCapture))
-    func imageCommandMatchesWindowTitle() async throws {
+    @Test(.tags(.imageCapture))
+    func `Honors --window-title when selecting a window`() async throws {
         let appName = "LogsApp"
         let inspector = ServiceWindowInfo(
             windowID: 20,
@@ -555,8 +550,8 @@ struct ImageCommandTests {
         try? FileManager.default.removeItem(atPath: outputPath)
     }
 
-    @Test("Throws when --window-title does not match any window", .tags(.imageCapture))
-    func imageCommandThrowsWhenWindowTitleMissing() async throws {
+    @Test(.tags(.imageCapture))
+    func `Throws when --window-title does not match any window`() async throws {
         let appName = "Notes"
         let notesWindow = ServiceWindowInfo(
             windowID: 31,
@@ -606,8 +601,8 @@ struct ImageCommandTests {
         #expect(response.error?.code == ErrorCode.WINDOW_NOT_FOUND.rawValue)
     }
 
-    @Test("Defaults to 1x logical scale", .tags(.imageCapture))
-    func imageCommandUsesLogicalScaleByDefault() async throws {
+    @Test(.tags(.imageCapture))
+    func `Defaults to 1x logical scale`() async throws {
         let screens = [Self.makeScreenInfo(scale: 2.0)]
         let captureResult = Self.makeScreenCaptureResult(size: CGSize(width: 1200, height: 800), scale: 1.0)
         let captureService = StubScreenCaptureService(permissionGranted: true)
@@ -638,8 +633,8 @@ struct ImageCommandTests {
         #expect(recordedScale == .logical1x)
     }
 
-    @Test("Retina flag opts into native scale", .tags(.imageCapture))
-    func imageCommandHonorsRetinaFlag() async throws {
+    @Test(.tags(.imageCapture))
+    func `Retina flag opts into native scale`() async throws {
         let screens = [Self.makeScreenInfo(scale: 2.0)]
         let captureResult = Self.makeScreenCaptureResult(size: CGSize(width: 2400, height: 1600), scale: 2.0)
         let captureService = StubScreenCaptureService(permissionGranted: true)
@@ -671,8 +666,8 @@ struct ImageCommandTests {
         #expect(recordedScale == .native)
     }
 
-    @Test("Skips windows marked non-shareable", .tags(.imageCapture))
-    func imageCommandSkipsNonShareableWindows() async throws {
+    @Test(.tags(.imageCapture))
+    func `Skips windows marked non-shareable`() async throws {
         let appName = "Console"
         let hidden = ServiceWindowInfo(
             windowID: 90,
@@ -725,8 +720,8 @@ struct ImageCommandTests {
         try? FileManager.default.removeItem(atPath: path)
     }
 
-    @Test("Errors when only hidden windows remain", .tags(.imageCapture))
-    func imageCommandFailsWhenAllWindowsHidden() async throws {
+    @Test(.tags(.imageCapture))
+    func `Errors when only hidden windows remain`() async throws {
         let appName = "OverlayApp"
         let hidden = ServiceWindowInfo(
             windowID: 101,

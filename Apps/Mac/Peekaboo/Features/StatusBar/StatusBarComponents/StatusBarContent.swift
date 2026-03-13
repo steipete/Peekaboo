@@ -23,7 +23,6 @@ struct StatusBarContentView: View {
         }
     }
 
-    @ViewBuilder
     private func currentSessionSection(session: ConversationSession) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             DisclosureGroup(isExpanded: self.$detailsExpanded) {

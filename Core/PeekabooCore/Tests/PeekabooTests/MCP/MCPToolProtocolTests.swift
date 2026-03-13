@@ -7,12 +7,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("MCP Tool Protocol Tests")
 struct MCPToolProtocolTests {
     // MARK: - ToolArguments Tests
 
-    @Test("ToolArguments initialization from dictionary")
-    func toolArgumentsFromDictionary() {
+    @Test
+    func `ToolArguments initialization from dictionary`() {
         let rawArgs: [String: Any] = [
             "path": "/tmp/test.png",
             "format": "png",
@@ -30,8 +29,8 @@ struct MCPToolProtocolTests {
         #expect(args.getStringArray("tags") == ["screenshot", "test"])
     }
 
-    @Test("ToolArguments initialization from Value")
-    func toolArgumentsFromValue() {
+    @Test
+    func `ToolArguments initialization from Value`() {
         let value = Value.object([
             "name": .string("test"),
             "count": .int(42),
@@ -49,8 +48,8 @@ struct MCPToolProtocolTests {
         #expect(args.getStringArray("items") == ["a", "b", "c"])
     }
 
-    @Test("ToolArguments type conversion")
-    func toolArgumentsTypeConversion() {
+    @Test
+    func `ToolArguments type conversion`() {
         let args = ToolArguments(raw: [
             "stringAsInt": "123",
             "intAsString": 456,
@@ -76,8 +75,8 @@ struct MCPToolProtocolTests {
         #expect(args.getBool("zeroAsBool") == false)
     }
 
-    @Test("ToolArguments empty and missing values")
-    func toolArgumentsEmptyAndMissing() {
+    @Test
+    func `ToolArguments empty and missing values`() {
         let emptyArgs = ToolArguments(raw: [:])
         #expect(emptyArgs.isEmpty == true)
         #expect(emptyArgs.getString("missing") == nil)
@@ -89,8 +88,8 @@ struct MCPToolProtocolTests {
         #expect(args.getValue(for: "missing") == nil)
     }
 
-    @Test("ToolArguments decode to Codable type")
-    func toolArgumentsDecode() throws {
+    @Test
+    func `ToolArguments decode to Codable type`() throws {
         struct TestInput: Codable, Equatable {
             let name: String
             let count: Int
@@ -114,8 +113,8 @@ struct MCPToolProtocolTests {
 
     // MARK: - ToolResponse Tests
 
-    @Test("ToolResponse text creation")
-    func toolResponseText() {
+    @Test
+    func `ToolResponse text creation`() {
         let response = ToolResponse.text("Operation completed successfully")
 
         #expect(response.content.count == 1)
@@ -129,8 +128,8 @@ struct MCPToolProtocolTests {
         }
     }
 
-    @Test("ToolResponse error creation")
-    func toolResponseError() {
+    @Test
+    func `ToolResponse error creation`() {
         let response = ToolResponse.error("Something went wrong")
 
         #expect(response.content.count == 1)
@@ -143,8 +142,8 @@ struct MCPToolProtocolTests {
         }
     }
 
-    @Test("ToolResponse image creation")
-    func toolResponseImage() {
+    @Test
+    func `ToolResponse image creation`() {
         let imageData = Data("fake image data".utf8)
         let response = ToolResponse.image(data: imageData, mimeType: "image/jpeg")
 
@@ -159,8 +158,8 @@ struct MCPToolProtocolTests {
         }
     }
 
-    @Test("ToolResponse with metadata")
-    func toolResponseWithMetadata() {
+    @Test
+    func `ToolResponse with metadata`() {
         let meta = Value.object([
             "duration": .double(1.5),
             "files": .array([.string("/tmp/file1.txt"), .string("/tmp/file2.txt")]),
@@ -180,8 +179,8 @@ struct MCPToolProtocolTests {
         }
     }
 
-    @Test("ToolResponse multi-content")
-    func toolResponseMultiContent() {
+    @Test
+    func `ToolResponse multi-content`() {
         let imageData = Data("imagedata".utf8)
         let contents: [MCP.Tool.Content] = [
             .text("Processing started"),
@@ -236,10 +235,9 @@ struct MockTool: MCPTool {
     }
 }
 
-@Suite("Mock Tool Tests")
 struct MockToolTests {
-    @Test("Mock tool successful execution")
-    func mockToolSuccess() async throws {
+    @Test
+    func `Mock tool successful execution`() async throws {
         let tool = MockTool(
             name: "test",
             description: "Test tool",
@@ -256,8 +254,8 @@ struct MockToolTests {
         }
     }
 
-    @Test("Mock tool failure")
-    func mockToolFailure() async throws {
+    @Test
+    func `Mock tool failure`() async throws {
         let tool = MockTool(
             name: "test",
             description: "Test tool",
@@ -272,8 +270,8 @@ struct MockToolTests {
         }
     }
 
-    @Test("Mock tool with delay")
-    func mockToolWithDelay() async throws {
+    @Test
+    func `Mock tool with delay`() async throws {
         let tool = MockTool(
             name: "slow",
             description: "Slow tool",

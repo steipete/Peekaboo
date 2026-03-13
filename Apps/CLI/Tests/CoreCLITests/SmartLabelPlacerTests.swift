@@ -3,11 +3,11 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
-@Suite("SmartLabelPlacer Tests", .serialized, .tags(.fast))
+@Suite(.serialized, .tags(.fast))
 @MainActor
 struct SmartLabelPlacerTests {
-    @Test("Scoring expands candidate rects with padding")
-    func scoringExpandsRectForCalmerPlacement() {
+    @Test
+    func `Scoring expands candidate rects with padding`() throws {
         let imageSize = NSSize(width: 200, height: 200)
         let image = Self.makeImage(size: imageSize)
         let detector = RecordingTextDetector()
@@ -34,17 +34,17 @@ struct SmartLabelPlacerTests {
 
         #expect(result != nil)
 
-        let expected = Self.expectedScoringRect(
-            from: result!.labelRect,
+        let expected = try Self.expectedScoringRect(
+            from: #require(result?.labelRect),
             imageSize: imageSize
         )
 
         #expect(detector.recordedRects.first != nil)
-        Self.expect(detector.recordedRects.first!, equals: expected)
+        Self.expect(try #require(detector.recordedRects.first), equals: expected)
     }
 
-    @Test("Scoring rects clamp to image bounds")
-    func scoringRectsClampWithinImage() {
+    @Test
+    func `Scoring rects clamp to image bounds`() throws {
         let imageSize = NSSize(width: 200, height: 200)
         let image = Self.makeImage(size: imageSize)
         let detector = RecordingTextDetector()
@@ -73,14 +73,14 @@ struct SmartLabelPlacerTests {
 
         #expect(result != nil)
 
-        let expected = Self.expectedScoringRect(
-            from: result!.labelRect,
+        let expected = try Self.expectedScoringRect(
+            from: #require(result?.labelRect),
             imageSize: imageSize
         )
 
         #expect(detector.recordedRects.first != nil)
-        Self.expect(detector.recordedRects.first!, equals: expected)
-        #expect(detector.recordedRects.first!.minY >= 0)
+        Self.expect(try #require(detector.recordedRects.first), equals: expected)
+        #expect(try #require(detector.recordedRects.first?.minY) >= 0)
     }
 }
 

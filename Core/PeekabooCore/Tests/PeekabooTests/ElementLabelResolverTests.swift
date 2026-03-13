@@ -4,10 +4,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Element Label Resolver", .tags(.fast))
+@Suite(.tags(.fast))
 struct ElementLabelResolverTests {
-    @Test("Uses existing non-generic label")
-    func usesExistingLabel() {
+    @Test
+    func `Uses existing non-generic label`() {
         let info = ElementLabelInfo(
             role: "AXButton",
             label: "Submit",
@@ -22,8 +22,8 @@ struct ElementLabelResolverTests {
         #expect(resolved == "Submit")
     }
 
-    @Test("Falls back to child text when label is generic")
-    func usesChildText() {
+    @Test
+    func `Falls back to child text when label is generic`() {
         let info = ElementLabelInfo(
             role: "AXButton",
             label: "button",
@@ -38,8 +38,8 @@ struct ElementLabelResolverTests {
         #expect(resolved == "Allow")
     }
 
-    @Test("Falls back to identifier cleaning when no text available")
-    func usesIdentifier() {
+    @Test
+    func `Falls back to identifier cleaning when no text available`() {
         let info = ElementLabelInfo(
             role: "AXButton",
             label: nil,

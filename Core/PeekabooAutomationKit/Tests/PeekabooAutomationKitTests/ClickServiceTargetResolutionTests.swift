@@ -1,13 +1,11 @@
 import CoreGraphics
 import Testing
-
 @testable import PeekabooAutomationKit
 
-@Suite("ClickService target resolution")
 struct ClickServiceTargetResolutionTests {
-    @Test("resolveTargetElement matches identifier and exact label")
+    @Test
     @MainActor
-    func resolvesButton() async throws {
+    func `resolveTargetElement matches identifier and exact label`() {
         let focusButton = DetectedElement(
             id: "B1",
             type: .button,
@@ -37,9 +35,9 @@ struct ClickServiceTargetResolutionTests {
         #expect(ClickService.resolveTargetElement(query: "Focus Basic Field", in: detectionResult)?.id == "B1")
     }
 
-    @Test("resolveTargetElement breaks ties deterministically")
+    @Test
     @MainActor
-    func resolvesDeterministicTieBreak() async throws {
+    func `resolveTargetElement breaks ties deterministically`() {
         let higher = DetectedElement(
             id: "T_HIGH",
             type: .textField,

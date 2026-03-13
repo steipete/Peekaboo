@@ -6,10 +6,9 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Capture Models Tests - Current API")
 struct CaptureModelsTests {
-    @Test("CaptureMode enum values and properties")
-    func captureMode() {
+    @Test
+    func `CaptureMode enum values and properties`() {
         // Test CaptureMode enum values
         #expect(CaptureMode.screen.rawValue == "screen")
         #expect(CaptureMode.window.rawValue == "window")
@@ -35,8 +34,8 @@ struct CaptureModelsTests {
         #expect(allModes.contains(.area))
     }
 
-    @Test("ImageFormat enum values and properties")
-    func imageFormat() {
+    @Test
+    func `ImageFormat enum values and properties`() {
         // Test ImageFormat enum values
         #expect(ImageFormat.png.rawValue == "png")
         #expect(ImageFormat.jpg.rawValue == "jpg")
@@ -53,8 +52,8 @@ struct CaptureModelsTests {
         #expect(allFormats.contains(.jpg))
     }
 
-    @Test("CaptureFocus enum values and properties")
-    func captureFocus() {
+    @Test
+    func `CaptureFocus enum values and properties`() {
         // Test CaptureFocus enum values
         #expect(CaptureFocus.background.rawValue == "background")
         #expect(CaptureFocus.auto.rawValue == "auto")
@@ -74,8 +73,8 @@ struct CaptureModelsTests {
         #expect(allFocus.contains(.foreground))
     }
 
-    @Test("SavedFile initialization and properties")
-    func savedFile() {
+    @Test
+    func `SavedFile initialization and properties`() {
         let testPath = "/tmp/test_screenshot.png"
         let testMimeType = "image/png"
 
@@ -108,8 +107,8 @@ struct CaptureModelsTests {
         #expect(minimalFile.mime_type == testMimeType)
     }
 
-    @Test("ImageCaptureData initialization and properties")
-    func imageCaptureData() {
+    @Test
+    func `ImageCaptureData initialization and properties`() {
         let file1 = SavedFile(path: "/tmp/file1.png", mime_type: "image/png")
         let file2 = SavedFile(path: "/tmp/file2.jpg", mime_type: "image/jpeg")
         let files = [file1, file2]
@@ -127,8 +126,8 @@ struct CaptureModelsTests {
         #expect(emptyCaptureData.saved_files.isEmpty)
     }
 
-    @Test("CaptureMetadata initialization and properties")
-    func captureMetadata() {
+    @Test
+    func `CaptureMetadata initialization and properties`() {
         let testSize = CGSize(width: 1920, height: 1080)
         let captureTime = Date()
 
@@ -160,8 +159,8 @@ struct CaptureModelsTests {
         #expect(metadataWithDisplay.displayInfo?.index == 1)
     }
 
-    @Test("DisplayInfo initialization and properties")
-    func displayInfo() {
+    @Test
+    func `DisplayInfo initialization and properties`() {
         let displayInfo = DisplayInfo(
             index: 2,
             name: "External Display",
@@ -189,8 +188,8 @@ struct CaptureModelsTests {
         #expect(maxDisplay.name == nil)
     }
 
-    @Test("Codable conformance for enums")
-    func enumCodableConformance() throws {
+    @Test
+    func `Codable conformance for enums`() throws {
         // Test CaptureMode encoding/decoding
         let originalMode = CaptureMode.window
         let encodedMode = try JSONEncoder().encode(originalMode)
@@ -210,8 +209,8 @@ struct CaptureModelsTests {
         #expect(decodedFocus == originalFocus)
     }
 
-    @Test("Codable conformance for data structures")
-    func structCodableConformance() throws {
+    @Test
+    func `Codable conformance for data structures`() throws {
         // Test SavedFile encoding/decoding
         let originalFile = SavedFile(
             path: "/tmp/test.png",
@@ -240,8 +239,8 @@ struct CaptureModelsTests {
         #expect(decodedCaptureData.saved_files[0].path == originalFile.path)
     }
 
-    @Test("Enum validation and edge cases")
-    func enumValidation() {
+    @Test
+    func `Enum validation and edge cases`() {
         // Test all CaptureMode cases can be created from their raw values
         for mode in CaptureMode.allCases {
             let recreated = CaptureMode(rawValue: mode.rawValue)
@@ -266,8 +265,8 @@ struct CaptureModelsTests {
         #expect(CaptureFocus(rawValue: "unknown") == nil)
     }
 
-    @Test("MIME type consistency")
-    func mimeTypeConsistency() {
+    @Test
+    func `MIME type consistency`() {
         // Test that MIME types match expected patterns
         let pngFile = SavedFile(path: "/tmp/test.png", mime_type: "image/png")
         let jpgFile = SavedFile(path: "/tmp/test.jpg", mime_type: "image/jpeg")

@@ -8,13 +8,11 @@
 import CoreGraphics
 import Foundation
 import Testing
-
 @testable import PeekabooAutomation
 
-@Suite("Smart Capture Result")
 struct SmartCaptureResultTests {
-    @Test("Fresh capture result indicates change")
-    func freshCaptureResult() {
+    @Test
+    func `Fresh capture result indicates change`() {
         let now = Date()
         let result = SmartCaptureResult(
             image: nil,
@@ -30,8 +28,8 @@ struct SmartCaptureResultTests {
         }
     }
 
-    @Test("Unchanged capture result indicates no change")
-    func unchangedCaptureResult() {
+    @Test
+    func `Unchanged capture result indicates no change`() {
         let since = Date()
         let result = SmartCaptureResult(
             image: nil,
@@ -48,8 +46,8 @@ struct SmartCaptureResultTests {
         }
     }
 
-    @Test("Region capture includes bounds")
-    func regionCaptureResult() {
+    @Test
+    func `Region capture includes bounds`() {
         let center = CGPoint(x: 500, y: 300)
         let radius: CGFloat = 200
         let bounds = CGRect(x: 300, y: 100, width: 400, height: 400)
@@ -71,10 +69,9 @@ struct SmartCaptureResultTests {
     }
 }
 
-@Suite("Change Area")
 struct ChangeAreaTests {
-    @Test("Change area stores all properties")
-    func changeAreaProperties() {
+    @Test
+    func `Change area stores all properties`() {
         let rect = CGRect(x: 10, y: 20, width: 100, height: 50)
         let area = ChangeArea(rect: rect, changeType: .contentAdded, confidence: 0.8)
 
@@ -83,8 +80,8 @@ struct ChangeAreaTests {
         #expect(area.confidence == 0.8)
     }
 
-    @Test("All change types are available")
-    func changeTypeEnumeration() {
+    @Test
+    func `All change types are available`() {
         let types: [ChangeType] = [
             .contentAdded,
             .contentRemoved,
@@ -97,13 +94,12 @@ struct ChangeAreaTests {
     }
 }
 
-@Suite("Smart Capture Error")
 struct SmartCaptureErrorTests {
-    @Test("Image conversion error has description")
-    func imageConversionErrorDescription() {
+    @Test
+    func `Image conversion error has description`() {
         let error = SmartCaptureError.imageConversionFailed
 
         #expect(error.errorDescription != nil)
-        #expect(error.errorDescription!.contains("CGImage") == true)
+        #expect(error.errorDescription?.contains("CGImage") == true)
     }
 }

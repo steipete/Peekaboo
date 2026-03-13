@@ -11,11 +11,10 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Agent Tools Tests")
 struct AgentToolsTests {
-    @Test("All agent tools are created")
+    @Test
     @MainActor
-    func allToolsCreated() async throws {
+    func `All agent tools are created`() {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 
@@ -71,9 +70,9 @@ struct AgentToolsTests {
         #expect(toolNames.contains("need_info"))
     }
 
-    @Test("Click tool has correct parameters")
+    @Test
     @MainActor
-    func clickToolParameters() async throws {
+    func `Click tool has correct parameters`() {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 
@@ -92,9 +91,9 @@ struct AgentToolsTests {
         #expect(paramNames.contains("right"))
     }
 
-    @Test("Type tool has correct parameters")
+    @Test
     @MainActor
-    func typeToolParameters() async throws {
+    func `Type tool has correct parameters`() {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 
@@ -113,9 +112,9 @@ struct AgentToolsTests {
         #expect(paramNames.contains("clear"))
     }
 
-    @Test("Shell tool has safety checks")
+    @Test
     @MainActor
-    func shellToolSafety() async throws {
+    func `Shell tool has safety checks`() async {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 
@@ -134,9 +133,9 @@ struct AgentToolsTests {
         }
     }
 
-    @Test("Dialog input tool supports field targeting")
+    @Test
     @MainActor
-    func dialogInputFieldTargeting() async throws {
+    func `Dialog input tool supports field targeting`() {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 
@@ -154,9 +153,9 @@ struct AgentToolsTests {
         }
     }
 
-    @Test("Completion tools work correctly")
+    @Test
     @MainActor
-    func completionTools() async throws {
+    func `Completion tools work correctly`() async {
         let agentService = PeekabooAgentService(
             services: PeekabooServiceProvider())
 

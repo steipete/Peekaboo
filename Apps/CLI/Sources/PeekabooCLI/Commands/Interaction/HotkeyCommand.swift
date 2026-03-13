@@ -31,10 +31,22 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
+
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.resolvedRuntime.configuration.jsonOutput
+    }
+
     /// Keys after resolving positional/option input and trimming whitespace. Nil when missing/empty.
     var resolvedKeys: String? {
         let raw = self.keysArgument ?? self.keysOption

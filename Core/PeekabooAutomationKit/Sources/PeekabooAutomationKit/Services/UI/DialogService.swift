@@ -231,7 +231,7 @@ extension DialogService {
         let staticTexts = self.dialogStaticTexts(from: dialog)
         let otherElements = self.dialogOtherElements(from: dialog)
 
-        let accessoryRoles: Set<String> = [
+        let accessoryRoles: Set = [
             "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXComboBox", "AXSlider", "AXDisclosureTriangle",
         ]
         let hasAccessoryElements = otherElements.contains { accessoryRoles.contains($0.role) }
@@ -1508,8 +1508,10 @@ extension DialogService {
 }
 #else
 extension DialogService {
-    fileprivate static var typeCharacterHandler: (String) throws -> Void { { text in try InputDriver.type(
-        text,
-        delayPerCharacter: 0) } }
+    fileprivate static var typeCharacterHandler: (String) throws -> Void {
+        { text in try InputDriver.type(
+            text,
+            delayPerCharacter: 0) }
+    }
 }
 #endif

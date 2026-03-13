@@ -1,7 +1,7 @@
 import Foundation
 import PeekabooCore
 
-// Re-use the Configuration type from PeekabooCore
+/// Re-use the Configuration type from PeekabooCore
 typealias Configuration = PeekabooCore.Configuration
 
 /// CLI-specific configuration manager that extends PeekabooCore's ConfigurationManager
@@ -10,7 +10,7 @@ typealias Configuration = PeekabooCore.Configuration
 final class ConfigurationManager: @unchecked Sendable {
     static let shared = ConfigurationManager()
 
-    // Use PeekabooCore's ConfigurationManager for core functionality
+    /// Use PeekabooCore's ConfigurationManager for core functionality
     private let coreManager = PeekabooCore.ConfigurationManager.shared
 
     private init() {}

@@ -3,7 +3,7 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite("End-to-End Integration Tests", .tags(.integration, .slow))
+@Suite(.tags(.integration, .slow))
 @MainActor
 struct EndToEndTests {
     var settings: PeekabooSettings!
@@ -18,8 +18,8 @@ struct EndToEndTests {
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
-    @Test("Full agent execution flow", .enabled(if: !Test.isCI))
-    mutating func fullAgentFlow() async throws {
+    @Test(.enabled(if: !Test.isCI))
+    mutating func `Full agent execution flow`() async throws {
         try self.setup()
         // This test requires a valid API key, so skip in CI
         guard !self.settings.openAIAPIKey.isEmpty else {
@@ -41,7 +41,7 @@ struct EndToEndTests {
     }
 }
 
-@Suite("Error Recovery Tests", .tags(.unit, .fast))
+@Suite(.tags(.unit, .fast))
 @MainActor
 struct ErrorRecoveryTests {
     var settings: PeekabooSettings!
@@ -56,8 +56,8 @@ struct ErrorRecoveryTests {
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
-    @Test("Agent handles invalid API key gracefully")
-    mutating func invalidAPIKeyHandling() async throws {
+    @Test
+    mutating func `Agent handles invalid API key gracefully`() async throws {
         try self.setup()
         self.settings.openAIAPIKey = "invalid-key"
 
@@ -66,8 +66,8 @@ struct ErrorRecoveryTests {
         }
     }
 
-    @Test("Session service handles corrupt data")
-    mutating func corruptDataHandling() async throws {
+    @Test
+    mutating func `Session service handles corrupt data`() async throws {
         try self.setup()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -96,7 +96,7 @@ struct ErrorRecoveryTests {
     }
 }
 
-@Suite("Concurrency Tests", .tags(.unit, .fast))
+@Suite(.tags(.unit, .fast))
 @MainActor
 struct ConcurrencyTests {
     var settings: PeekabooSettings!
@@ -111,8 +111,8 @@ struct ConcurrencyTests {
         self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
     }
 
-    @Test("Multiple simultaneous agent executions")
-    mutating func concurrentExecutions() async throws {
+    @Test
+    mutating func `Multiple simultaneous agent executions`() async throws {
         try self.setup()
         self.settings.openAIAPIKey = "test-key"
 
@@ -128,10 +128,10 @@ struct ConcurrencyTests {
         #expect(true)
     }
 
-    @Test("Session service thread safety")
-    mutating func sessionStoreThreadSafety() async throws {
+    @Test
+    mutating func `Session service thread safety`() async throws {
         try self.setup()
-        let store = self.sessionStore!
+        let store = try #require(self.sessionStore)
         // Create sessions from multiple tasks
         await withTaskGroup(of: Void.self) { group in
             for i in 0..<10 {

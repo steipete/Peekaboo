@@ -34,17 +34,33 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
+    private var services: any PeekabooServiceProviding {
+        self.resolvedRuntime.services
+    }
 
-    var description: String { Self.descriptionText }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
 
-    var verbose: Bool { self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose }
+    var outputLogger: Logger {
+        self.logger
+    }
 
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
+    var description: String {
+        Self.descriptionText
+    }
 
-    private var showDetailedInfo: Bool { self.verbose }
+    var verbose: Bool {
+        self.runtime?.configuration.verbose ?? self.runtimeOptions.verbose
+    }
+
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    private var showDetailedInfo: Bool {
+        self.verbose
+    }
 
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime

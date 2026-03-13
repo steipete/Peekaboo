@@ -9,7 +9,7 @@ import PeekabooFoundation
 typealias SavedFile = PeekabooCore.SavedFile
 typealias ImageCaptureData = PeekabooCore.ImageCaptureData
 
-// Extend PeekabooCore types to conform to Commander argument parsing for CLI usage
+/// Extend PeekabooCore types to conform to Commander argument parsing for CLI usage
 extension PeekabooCore.CaptureMode: @retroactive ExpressibleFromArgument {
     public init?(argument: String) {
         self.init(rawValue: argument.lowercased())
@@ -40,12 +40,12 @@ typealias WindowListData = PeekabooCore.WindowListData
 
 // MARK: - Window Specifier
 
-// Re-export WindowSpecifier from PeekabooCore
+/// Re-export WindowSpecifier from PeekabooCore
 typealias WindowSpecifier = PeekabooCore.WindowSpecifier
 
 // MARK: - Window Details Options
 
-// Re-export WindowDetailOption from PeekabooCore
+/// Re-export WindowDetailOption from PeekabooCore
 typealias WindowDetailOption = PeekabooCore.WindowDetailOption
 
 // MARK: - Window Management
@@ -55,7 +55,7 @@ typealias WindowDetailOption = PeekabooCore.WindowDetailOption
 /// Used internally for window operations, containing all available
 /// information about a window including its Core Graphics identifier and bounds.
 /// This is CLI-specific and not shared with PeekabooCore.
-struct WindowData: Sendable {
+struct WindowData {
     let windowId: UInt32
     let title: String
     let bounds: CGRect
@@ -65,5 +65,5 @@ struct WindowData: Sendable {
 
 // MARK: - Error Types
 
-// Re-export CaptureError from PeekabooFoundation
+/// Re-export CaptureError from PeekabooFoundation
 typealias CaptureError = PeekabooFoundation.CaptureError

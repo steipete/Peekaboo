@@ -18,11 +18,10 @@ private func makeNativeTool<T>(_ builder: @escaping () -> T) -> T {
     builder()
 }
 
-@Suite("MCPToolRegistry Tests")
 @MainActor
 struct MCPToolRegistryTests {
-    @Test("Registry initialization")
-    func registryInitialization() async {
+    @Test
+    func `Registry initialization`() {
         let registry = MCPToolRegistry()
         let tools = registry.allTools()
 
@@ -30,8 +29,8 @@ struct MCPToolRegistryTests {
         #expect(tools.isEmpty)
     }
 
-    @Test("Register single tool")
-    func registerSingleTool() async {
+    @Test
+    func `Register single tool`() {
         let registry = MCPToolRegistry()
         let mockTool = MockTool(
             name: "test-tool",
@@ -48,8 +47,8 @@ struct MCPToolRegistryTests {
         #expect(registeredTool?.name == "test-tool")
     }
 
-    @Test("Register multiple tools")
-    func registerMultipleTools() async {
+    @Test
+    func `Register multiple tools`() {
         let registry = MCPToolRegistry()
         let tools = [
             MockTool(name: "tool1", description: "Tool 1", inputSchema: .object([:])),
@@ -70,8 +69,8 @@ struct MCPToolRegistryTests {
         }
     }
 
-    @Test("Tool overwriting")
-    func toolOverwriting() async {
+    @Test
+    func `Tool overwriting`() {
         let registry = MCPToolRegistry()
 
         let tool1 = MockTool(
@@ -94,16 +93,16 @@ struct MCPToolRegistryTests {
         #expect(retrieved?.description == "Replacement tool")
     }
 
-    @Test("Tool not found")
-    func toolNotFound() async {
+    @Test
+    func `Tool not found`() {
         let registry = MCPToolRegistry()
 
         let tool = registry.tool(named: "nonexistent")
         #expect(tool == nil)
     }
 
-    @Test("Tool info conversion")
-    func toolInfoConversion() async {
+    @Test
+    func `Tool info conversion`() throws {
         let registry = MCPToolRegistry()
 
         let mockTool = MockTool(
@@ -121,7 +120,7 @@ struct MCPToolRegistryTests {
         let toolInfos = registry.toolInfos()
         #expect(toolInfos.count == 1)
 
-        let info = toolInfos.first!
+        let info = try #require(toolInfos.first)
         #expect(info.name == "info-test")
         #expect(info.description == "Tool for testing info conversion")
 
@@ -140,8 +139,8 @@ struct MCPToolRegistryTests {
         #expect(schemaDict["required"] != nil)
     }
 
-    @Test("Registry thread safety")
-    func registryThreadSafety() async {
+    @Test
+    func `Registry thread safety`() async {
         let registry = MCPToolRegistry()
 
         // Concurrently register many tools
@@ -167,8 +166,8 @@ struct MCPToolRegistryTests {
         }
     }
 
-    @Test("Empty registry tool infos")
-    func emptyRegistryToolInfos() async {
+    @Test
+    func `Empty registry tool infos`() {
         let registry = MCPToolRegistry()
         let infos = registry.toolInfos()
 
@@ -176,11 +175,11 @@ struct MCPToolRegistryTests {
     }
 }
 
-@Suite("MCPToolRegistry Integration Tests", .tags(.integration))
+@Suite(.tags(.integration))
 @MainActor
 struct MCPToolRegistryIntegrationTests {
-    @Test("Register all Peekaboo tools")
-    func registerAllPeekabooTools() async {
+    @Test
+    func `Register all Peekaboo tools`() {
         let registry = MCPToolRegistry()
 
         // Register the actual Peekaboo tools
@@ -220,9 +219,9 @@ struct MCPToolRegistryIntegrationTests {
         #expect(agentToolExists)
     }
 
-    @Test("Tool info schema validation")
+    @Test
     @MainActor
-    func toolInfoSchemaValidation() {
+    func `Tool info schema validation`() throws {
         let registry = MCPToolRegistry()
 
         // Register a complex tool with full schema
@@ -252,7 +251,7 @@ struct MCPToolRegistryIntegrationTests {
         let infos = registry.toolInfos()
         #expect(infos.count == 1)
 
-        let info = infos.first!
+        let info = try #require(infos.first)
 
         // Validate the schema structure is preserved
         guard case let .object(schema) = info.inputSchema,

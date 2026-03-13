@@ -20,7 +20,9 @@ extension ConfigCommand {
         var timeoutSeconds: Double = 30
         @RuntimeStorage var runtime: CommandRuntime?
 
-        private var io: ConfigCommandOutput { self.output }
+        private var io: ConfigCommandOutput {
+            self.output
+        }
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.prepare(using: runtime)

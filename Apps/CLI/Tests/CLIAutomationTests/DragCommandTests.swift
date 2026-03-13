@@ -16,17 +16,17 @@ private struct DragResult: Codable {
 }
 
 #if !PEEKABOO_SKIP_AUTOMATION
-@Suite("Drag Command Tests", .serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.serialized, .tags(.safe), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct DragCommandTests {
-    @Test("Drag command exists")
-    func dragCommandExists() {
+    @Test
+    func `Drag command exists`() {
         let config = DragCommand.commandDescription
         #expect(config.commandName == "drag")
         #expect(config.abstract.contains("drag and drop"))
     }
 
-    @Test("Drag command parameters")
-    func dragParameters() async throws {
+    @Test
+    func `Drag command parameters`() async throws {
         let result = try await self.runDragCommand(["drag", "--help"])
         #expect(result.exitStatus == 0)
         let output = self.output(from: result)
@@ -40,22 +40,22 @@ struct DragCommandTests {
         #expect(output.contains("--modifiers"))
     }
 
-    @Test("Drag command validation - from required")
-    func dragFromRequired() async throws {
+    @Test
+    func `Drag command validation - from required`() async throws {
         // Test missing from
         let result = try await self.runDragCommand(["drag", "--to", "B1"])
         #expect(result.exitStatus != 0)
     }
 
-    @Test("Drag command validation - to required")
-    func dragToRequired() async throws {
+    @Test
+    func `Drag command validation - to required`() async throws {
         // Test missing to
         let result = try await self.runDragCommand(["drag", "--from", "B1"])
         #expect(result.exitStatus != 0)
     }
 
-    @Test("Drag coordinate parsing")
-    func dragCoordinateParsing() {
+    @Test
+    func `Drag coordinate parsing`() {
         // Test valid coordinates
         let coords1 = "100,200"
         let parts1 = coords1.split(separator: ",")
@@ -70,23 +70,23 @@ struct DragCommandTests {
         #expect(Double(parts2[1]) == 200)
     }
 
-    @Test("Drag modifier parsing")
-    func dragModifierParsing() {
+    @Test
+    func `Drag modifier parsing`() {
         let modifiers = "cmd,shift"
         let parts = modifiers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         #expect(parts.contains("cmd"))
         #expect(parts.contains("shift"))
     }
 
-    @Test("Drag error codes")
-    func dragErrorCodes() {
+    @Test
+    func `Drag error codes`() {
         #expect(ErrorCode.NO_POINT_SPECIFIED.rawValue == "NO_POINT_SPECIFIED")
         #expect(ErrorCode.INVALID_COORDINATES.rawValue == "INVALID_COORDINATES")
         #expect(ErrorCode.SNAPSHOT_NOT_FOUND.rawValue == "SNAPSHOT_NOT_FOUND")
     }
 
-    @Test("Drag duration validation")
-    func dragDurationValidation() {
+    @Test
+    func `Drag duration validation`() {
         // Test that duration is positive
         let validDurations = [100, 500, 1000, 2000]
         for duration in validDurations {
@@ -95,8 +95,8 @@ struct DragCommandTests {
         }
     }
 
-    @Test("Drag executes automation service")
-    func dragExecutesAutomation() async throws {
+    @Test
+    func `Drag executes automation service`() async throws {
         let arguments = [
             "drag",
             "--from-coords", "10,20",
@@ -121,8 +121,8 @@ struct DragCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Drag between coordinates scenario")
-    func dragBetweenCoordinatesScenario() async throws {
+    @Test
+    func `Drag between coordinates scenario`() async throws {
         let arguments = [
             "drag",
             "--from-coords", "100,100",
@@ -148,8 +148,8 @@ struct DragCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Drag from element to coordinates scenario")
-    func dragElementToCoordsScenario() async throws {
+    @Test
+    func `Drag from element to coordinates scenario`() async throws {
         let element = DetectedElement(
             id: "B1",
             type: .button,
@@ -179,8 +179,8 @@ struct DragCommandTests {
         #expect(Int(call.to.y) == 500)
     }
 
-    @Test("Drag with modifiers scenario")
-    func dragWithModifiersScenario() async throws {
+    @Test
+    func `Drag with modifiers scenario`() async throws {
         let arguments = [
             "drag",
             "--from-coords", "200,200",
@@ -195,8 +195,8 @@ struct DragCommandTests {
         #expect(call.modifiers == "cmd,option")
     }
 
-    @Test("Drag to application scenario")
-    func dragToApplicationScenario() async throws {
+    @Test
+    func `Drag to application scenario`() async throws {
         let (applicationService, windowService) = await MainActor.run { () -> (
             StubApplicationService,
             StubWindowService
@@ -236,8 +236,8 @@ struct DragCommandTests {
         #expect(Int(call.to.y) == 300)
     }
 
-    @Test("Drag with custom duration scenario")
-    func dragCustomDurationScenario() async throws {
+    @Test
+    func `Drag with custom duration scenario`() async throws {
         let arguments = [
             "drag",
             "--from-coords", "50,50",
@@ -253,8 +253,8 @@ struct DragCommandTests {
         #expect(call.profile == .linear)
     }
 
-    @Test("Human profile enables natural drag")
-    func dragHumanProfileScenario() async throws {
+    @Test
+    func `Human profile enables natural drag`() async throws {
         let arguments = [
             "drag",
             "--from-coords", "0,0",

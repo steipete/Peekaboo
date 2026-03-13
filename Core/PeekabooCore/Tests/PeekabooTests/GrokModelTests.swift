@@ -6,10 +6,9 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Grok LanguageModel Tests - Tachikoma Integration")
 struct GrokLanguageModelTests {
-    @Test("Grok model selection and properties")
-    func modelSelectionAndProperties() {
+    @Test
+    func `Grok model selection and properties`() {
         let grok4 = LanguageModel.grok(.grok4)
         let grokFast = LanguageModel.grok(.grok4FastReasoning)
         let grok3 = LanguageModel.grok(.grok3)
@@ -28,8 +27,8 @@ struct GrokLanguageModelTests {
         #expect(grokFast.supportsVision == false)
     }
 
-    @Test("Grok default model selection")
-    func defaultLanguageModelSelection() {
+    @Test
+    func `Grok default model selection`() {
         let grokShortcut = LanguageModel.grok4
         let selectorDefault = LanguageModel.grok(.grok4FastReasoning)
 
@@ -38,8 +37,8 @@ struct GrokLanguageModelTests {
         #expect(selectorDefault.modelId.contains("grok-4-fast"))
     }
 
-    @Test("Grok model variations")
-    func modelVariations() {
+    @Test
+    func `Grok model variations`() {
         let catalog: [LanguageModel] = Model.Grok.allCases.map { .grok($0) }
 
         for model in catalog {
@@ -56,16 +55,16 @@ struct GrokLanguageModelTests {
         #expect(allVisionHaveIdentifier)
     }
 
-    @Test("Grok model context lengths")
-    func modelContextLengths() {
+    @Test
+    func `Grok model context lengths`() {
         for model in Model.Grok.allCases {
             let languageModel = LanguageModel.grok(model)
             #expect(languageModel.contextLength >= 8000)
         }
     }
 
-    @Test("Grok model generation integration", .enabled(if: false)) // Disabled - requires API key
-    func modelGenerationIntegration() async throws {
+    @Test(.enabled(if: false)) // Disabled - requires API key
+    func `Grok model generation integration`() async throws {
         // This test would require real API credentials from xAI
         // Testing the integration without actual API calls
 
@@ -89,8 +88,8 @@ struct GrokLanguageModelTests {
         }
     }
 
-    @Test("Grok API compatibility")
-    func apiCompatibility() {
+    @Test
+    func `Grok API compatibility`() {
         // Test that Grok models are compatible with OpenAI-style API
         let grokLanguageModels = Model.Grok.allCases.map { LanguageModel.grok($0) }
 
@@ -106,8 +105,8 @@ struct GrokLanguageModelTests {
         }
     }
 
-    @Test("Grok parameter filtering")
-    func parameterFiltering() {
+    @Test
+    func `Grok parameter filtering`() {
         // Test that Grok 4 models don't support certain OpenAI parameters
         let grok4 = LanguageModel.grok(.grok4FastReasoning)
 

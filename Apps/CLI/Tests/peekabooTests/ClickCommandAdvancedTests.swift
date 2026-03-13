@@ -4,10 +4,9 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("ClickCommand Advanced Tests")
 struct ClickCommandAdvancedTests {
-    @Test("Parse click command basic options")
-    func basicOptionsParsing() async throws {
+    @Test
+    func `Parse click command basic options`() throws {
         let command = try ClickCommand.parse(["--on", "B1"])
         #expect(command.on == "B1")
         #expect(command.coords == nil)
@@ -15,41 +14,41 @@ struct ClickCommandAdvancedTests {
         #expect(command.double == false)
     }
 
-    @Test("Parse click command with coordinates")
-    func coordinatesParsing() async throws {
+    @Test
+    func `Parse click command with coordinates`() throws {
         let command = try ClickCommand.parse(["--coords", "100,200"])
         #expect(command.coords == "100,200")
         #expect(command.on == nil)
     }
 
-    @Test("Parse double-click option")
-    func doubleClickParsing() async throws {
+    @Test
+    func `Parse double-click option`() throws {
         let command = try ClickCommand.parse(["--on", "B1", "--double"])
         #expect(command.double == true)
         #expect(command.right == false)
     }
 
-    @Test("Parse right-click option")
-    func rightClickParsing() async throws {
+    @Test
+    func `Parse right-click option`() throws {
         let command = try ClickCommand.parse(["--on", "T1", "--right"])
         #expect(command.right == true)
         #expect(command.double == false)
     }
 
-    @Test("Parse wait-for option")
-    func waitForParsing() async throws {
+    @Test
+    func `Parse wait-for option`() throws {
         let command = try ClickCommand.parse(["--on", "B1", "--wait-for", "3000"])
         #expect(command.waitFor == 3000)
     }
 
-    @Test("Parse snapshot option")
-    func snapshotParsing() async throws {
+    @Test
+    func `Parse snapshot option`() throws {
         let command = try ClickCommand.parse(["--on", "C1", "--snapshot", "12345"])
         #expect(command.snapshot == "12345")
     }
 
-    @Test("Coordinate string parsing")
-    func testParseCoordinates() {
+    @Test
+    func `Coordinate string parsing`() {
         // Valid coordinates
         if let coords = ClickCommand.parseCoordinates("100,200") {
             #expect(coords.x == 100)
@@ -66,8 +65,8 @@ struct ClickCommandAdvancedTests {
         #expect(ClickCommand.parseCoordinates("abc,def") == nil)
     }
 
-    @Test("Element locator creation from query")
-    func elementLocatorFromQuery() {
+    @Test
+    func `Element locator creation from query`() {
         // Text content search
         var locator = ClickCommand.createLocatorFromQuery("Bold")
         #expect(locator.type == "text")
@@ -89,8 +88,8 @@ struct ClickCommandAdvancedTests {
         #expect(locator.value == "checkbox")
     }
 
-    @Test("Click result JSON structure")
-    func clickResultJSON() throws {
+    @Test
+    func `Click result JSON structure`() throws {
         // Create a test result using the correct structure
         let clickLocation = CGPoint(x: 100, y: 200)
         let resultData = ClickResult(
@@ -129,15 +128,15 @@ struct ClickCommandAdvancedTests {
         }
     }
 
-    @Test("Command validation rejects both --on and --coords")
-    func validationRejectsBothOptions() {
+    @Test
+    func `Command validation rejects both --on and --coords`() {
         #expect(throws: (any Error).self) {
             _ = try ClickCommand.parse(["--on", "B1", "--coords", "100,200"])
         }
     }
 
-    @Test("Mutually exclusive options validation")
-    func mutuallyExclusiveOptions() throws {
+    @Test
+    func `Mutually exclusive options validation`() throws {
         // Can't have both --on and --coords
         do {
             _ = try ClickCommand.parse(["--on", "button", "--coords", "100,200"])
@@ -147,8 +146,8 @@ struct ClickCommandAdvancedTests {
         }
     }
 
-    @Test("Find element by text in session")
-    func findElementByText() throws {
+    @Test
+    func `Find element by text in session`() {
         // Create mock session data using the correct types
         let metadata = DetectionMetadata(
             detectionTime: 0.5,
@@ -193,8 +192,8 @@ struct ClickCommandAdvancedTests {
         #expect(element?.type == .button)
     }
 
-    @Test("Wait time calculations")
-    func waitTimeCalculations() {
+    @Test
+    func `Wait time calculations`() {
         // Default wait time
         let defaultWait = 5000
         #expect(defaultWait == 5000) // 5 seconds in milliseconds
@@ -204,8 +203,8 @@ struct ClickCommandAdvancedTests {
         #expect(customWait == 10000) // 10 seconds in milliseconds
     }
 
-    @Test("Click types are handled correctly")
-    func clickTypes() {
+    @Test
+    func `Click types are handled correctly`() {
         // Single click
         let singleClick = ClickType.single
         #expect(singleClick.rawValue == "single")

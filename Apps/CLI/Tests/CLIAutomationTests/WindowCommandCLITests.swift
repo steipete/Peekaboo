@@ -11,10 +11,10 @@ private enum WindowCommandIntegrationTestConfig {
     }
 }
 
-@Suite("Window Command CLI Tests", .serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
+@Suite(.serialized, .tags(.automation), .enabled(if: CLITestEnvironment.runAutomationRead))
 struct WindowCommandCLITests {
-    @Test("Window help output")
-    func windowHelpOutput() async throws {
+    @Test
+    func `Window help output`() async throws {
         let result = try await runCommand(["window", "--help"])
         #expect(result.status == 0)
 
@@ -29,8 +29,8 @@ struct WindowCommandCLITests {
         #expect(result.output.contains("list"))
     }
 
-    @Test("Window close help")
-    func windowCloseHelp() async throws {
+    @Test
+    func `Window close help`() async throws {
         let result = try await runCommand(["window", "close", "--help"])
         #expect(result.status == 0)
 
@@ -40,8 +40,8 @@ struct WindowCommandCLITests {
         #expect(result.output.contains("--window-index"))
     }
 
-    @Test("Window move help")
-    func windowMoveHelp() async throws {
+    @Test
+    func `Window move help`() async throws {
         let result = try await runCommand(["window", "move", "--help"])
         #expect(result.status == 0)
 
@@ -50,8 +50,8 @@ struct WindowCommandCLITests {
         #expect(result.output.contains("--y"))
     }
 
-    @Test("Window resize help")
-    func windowResizeHelp() async throws {
+    @Test
+    func `Window resize help`() async throws {
         let result = try await runCommand(["window", "resize", "--help"])
         #expect(result.status == 0)
 
@@ -60,8 +60,8 @@ struct WindowCommandCLITests {
         #expect(result.output.contains("--height"))
     }
 
-    @Test("Window list delegates to list windows")
-    func windowListDelegation() async throws {
+    @Test
+    func `Window list delegates to list windows`() async throws {
         let result = try await runCommand(["window", "list", "--app", "NonExistentApp", "--json"])
         #expect(result.status != 0)
 
@@ -77,14 +77,14 @@ struct WindowCommandCLITests {
         }
     }
 
-    @Test("Missing required app parameter")
-    func missingAppParameter() async throws {
+    @Test
+    func `Missing required app parameter`() async throws {
         let result = try await self.runCommand(["window", "close", "--json"])
         #expect(result.status != 0)
     }
 
-    @Test("Invalid window index")
-    func invalidWindowIndex() async throws {
+    @Test
+    func `Invalid window index`() async throws {
         let result = try await runCommand([
             "window",
             "close",
@@ -103,8 +103,8 @@ struct WindowCommandCLITests {
         }
     }
 
-    @Test("Window operation with non-existent app")
-    func nonExistentApp() async throws {
+    @Test
+    func `Window operation with non-existent app`() async throws {
         let operations = ["close", "minimize", "maximize", "focus"]
 
         for operation in operations {
@@ -119,7 +119,7 @@ struct WindowCommandCLITests {
         }
     }
 
-    // Helper to run commands
+    /// Helper to run commands
     private struct CommandResult {
         let output: String
         let status: Int32
@@ -183,13 +183,12 @@ struct WindowCommandCLITests {
 }
 
 @Suite(
-    "Window Command Integration Tests",
     .serialized,
     .enabled(if: CLITestEnvironment.runAutomationActions && WindowCommandIntegrationTestConfig.enabled())
 )
 struct WindowCommandLocalTests {
-    @Test("Window operations with TextEdit")
-    func textEditWindowOperations() async throws {
+    @Test
+    func `Window operations with TextEdit`() async throws {
         // Ensure TextEdit is running
         _ = try? await self.runBuiltCommand(["image", "--app", "TextEdit", "--json"])
 
@@ -224,7 +223,7 @@ struct WindowCommandLocalTests {
         }
     }
 
-    // Helper for local tests using built binary
+    /// Helper for local tests using built binary
     private func runBuiltCommand(
         _ arguments: [String],
         allowedExitStatuses: Set<Int32> = [0, 64]

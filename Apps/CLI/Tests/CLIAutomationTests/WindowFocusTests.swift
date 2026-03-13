@@ -11,13 +11,12 @@ private enum WindowFocusTestConfig {
 }
 
 @Suite(
-    "Window Focus Enhancement Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions && WindowFocusTestConfig.enabled())
 )
 struct WindowFocusTests {
-    // Helper function to run peekaboo commands
+    /// Helper function to run peekaboo commands
     private func runPeekabooCommand(
         _ arguments: [String],
         allowedExitStatuses: Set<Int32> = [0]
@@ -31,8 +30,8 @@ struct WindowFocusTests {
 
     // MARK: - Window Focus Command Tests
 
-    @Test("window focus command help includes Space options")
-    func windowFocusHelpSpaceOptions() async throws {
+    @Test
+    func `window focus command help includes Space options`() async throws {
         let output = try await runPeekabooCommand(["window", "focus", "--help"])
 
         #expect(output.contains("Focus a window"))
@@ -43,8 +42,8 @@ struct WindowFocusTests {
         #expect(output.contains("Move window to current Space instead of switching"))
     }
 
-    @Test("window focus with Space switch option")
-    func windowFocusWithSpaceSwitch() async throws {
+    @Test
+    func `window focus with Space switch option`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "Safari",
@@ -62,8 +61,8 @@ struct WindowFocusTests {
         }
     }
 
-    @Test("window focus with move-here option")
-    func windowFocusWithMoveHere() async throws {
+    @Test
+    func `window focus with move-here option`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "TextEdit",
@@ -76,8 +75,8 @@ struct WindowFocusTests {
         #expect(data.success == true || data.error != nil)
     }
 
-    @Test("window focus with disabled Space switch")
-    func windowFocusNoSpaceSwitch() async throws {
+    @Test
+    func `window focus with disabled Space switch`() async throws {
         let output = try await runPeekabooCommand([
             "window", "focus",
             "--app", "Finder",
@@ -94,8 +93,8 @@ struct WindowFocusTests {
 
     // MARK: - FocusOptions Integration Tests
 
-    @Test("click command has focus options")
-    func clickCommandFocusOptions() async throws {
+    @Test
+    func `click command has focus options`() async throws {
         let output = try await runPeekabooCommand(["click", "--help"])
 
         #expect(output.contains("--no-auto-focus"))
@@ -106,8 +105,8 @@ struct WindowFocusTests {
         #expect(output.contains("Disable automatic focus before interaction"))
     }
 
-    @Test("type command has focus options")
-    func typeCommandFocusOptions() async throws {
+    @Test
+    func `type command has focus options`() async throws {
         let output = try await runPeekabooCommand(["type", "--help"])
 
         #expect(output.contains("--no-auto-focus"))
@@ -117,8 +116,8 @@ struct WindowFocusTests {
         #expect(output.contains("--bring-to-current-space"))
     }
 
-    @Test("menu command has focus options")
-    func menuCommandFocusOptions() async throws {
+    @Test
+    func `menu command has focus options`() async throws {
         let output = try await runPeekabooCommand(["menu", "--help"])
 
         #expect(output.contains("--no-auto-focus"))
@@ -130,15 +129,15 @@ struct WindowFocusTests {
 
     // MARK: - Focus Options Behavior Tests
 
-    @Test("click with disabled auto-focus", .disabled("JSONResponse data field is Empty type, not dictionary"))
-    func clickNoAutoFocus() async throws {
+    @Test(.disabled("JSONResponse data field is Empty type, not dictionary"))
+    func `click with disabled auto-focus`() {
         // This test needs to be rewritten since JSONResponse.data is now of type Empty
         // and cannot contain snapshot_id data
         #expect(Bool(true)) // Placeholder to avoid test failure
     }
 
-    @Test("type with custom focus timeout")
-    func typeWithFocusTimeout() async throws {
+    @Test
+    func `type with custom focus timeout`() async throws {
         let output = try await runPeekabooCommand([
             "type", "test",
             "--focus-timeout", "2.5",
@@ -150,8 +149,8 @@ struct WindowFocusTests {
         #expect(data.success == true || data.error != nil)
     }
 
-    @Test("menu with focus retry count")
-    func menuWithFocusRetry() async throws {
+    @Test
+    func `menu with focus retry count`() async throws {
         let output = try await runPeekabooCommand([
             "menu", "File > New",
             "--app", "TextEdit",

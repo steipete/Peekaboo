@@ -62,7 +62,7 @@ private func listMenuBarWindowIDs() -> [UInt32] {
 // Initialize AppKit to get a GUI connection (LSUIElement).
 NSApplication.shared
 
-// Screen Recording prompt: CGS window metadata may require it.
+/// Screen Recording prompt: CGS window metadata may require it.
 let preflight = CGPreflightScreenCaptureAccess()
 if !preflight {
     let granted = CGRequestScreenCaptureAccess()

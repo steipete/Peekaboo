@@ -1,7 +1,6 @@
 import AppKit
 import UniformTypeIdentifiers
 import XCTest
-
 @testable import PeekabooAutomationKit
 
 @available(macOS 14.0, *)

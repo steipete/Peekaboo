@@ -54,10 +54,21 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Summarize the current permission state for the agent-centric workflow.
         @MainActor
@@ -132,10 +143,21 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Trigger the screen recording permission prompt using the best available mechanism.
         @MainActor
@@ -250,10 +272,21 @@ extension PermissionCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Prompt the user to grant accessibility permission and open the relevant System Settings pane.
         @MainActor

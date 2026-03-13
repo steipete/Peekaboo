@@ -3,12 +3,12 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Agent Resume CLI Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentResumeCLITests {
     // MARK: - Command Line Argument Tests
 
-    @Test("AgentCommand has resume option")
-    func agentCommandHasResumeOption() throws {
+    @Test
+    func `AgentCommand has resume option`() throws {
         // Verify that the AgentCommand struct has the resume property
         // This is a compile-time test to ensure the property exists
         let command = try AgentCommand.parse([])
@@ -17,8 +17,8 @@ struct AgentResumeCLITests {
         #expect(command.resume == false)
     }
 
-    @Test("AgentCommand task is optional for resume functionality")
-    func agentCommandTaskIsOptional() throws {
+    @Test
+    func `AgentCommand task is optional for resume functionality`() throws {
         // Verify that task is now optional to support resume without initial task
         let command = try AgentCommand.parse([])
 
@@ -28,15 +28,15 @@ struct AgentResumeCLITests {
 
     // MARK: - Resume Command Validation Tests
 
-    @Test("Resume validation handles empty session ID")
-    func resumeValidationHandlesEmptySessionID() {
+    @Test
+    func `Resume validation handles empty session ID`() {
         let resumeSessionId = ""
         let shouldShowRecentSessions = resumeSessionId.isEmpty
         #expect(shouldShowRecentSessions == true)
     }
 
-    @Test("Resume validation handles valid session ID")
-    func resumeValidationHandlesValidSessionID() {
+    @Test
+    func `Resume validation handles valid session ID`() {
         let resumeSessionId = "valid-session-123"
         let shouldShowRecentSessions = resumeSessionId.isEmpty
         #expect(shouldShowRecentSessions == false)
@@ -44,8 +44,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Error Message Tests
 
-    @Test("Error messages are properly formatted")
-    func errorMessagesAreProperlyFormatted() {
+    @Test
+    func `Error messages are properly formatted`() throws {
         // Test JSON error format
         let jsonError = ["success": false, "error": "Session not found"] as [String: Any]
         #expect(jsonError["success"] as? Bool == false)
@@ -56,7 +56,7 @@ struct AgentResumeCLITests {
             let jsonData = try JSONSerialization.data(withJSONObject: jsonError, options: .prettyPrinted)
             let jsonString = String(data: jsonData, encoding: .utf8)
             #expect(jsonString != nil)
-            #expect(jsonString!.contains("\"success\" : false"))
+            #expect(try #require(jsonString?.contains("\"success\" : false")))
         } catch {
             #expect(Bool(false), "JSON serialization should not fail")
         }
@@ -106,8 +106,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Time Formatting Tests
 
-    @Test("Time ago formatting works correctly")
-    func timeAgoFormattingWorksCorrectly() {
+    @Test
+    func `Time ago formatting works correctly`() {
         let now = Date()
 
         // Test recent time (less than 1 minute)
@@ -143,7 +143,7 @@ struct AgentResumeCLITests {
         #expect(multipleDaysFormatted == "2 days ago")
     }
 
-    // Helper function to test time formatting logic
+    /// Helper function to test time formatting logic
     private func formatTimeAgoForTest(_ date: Date, from now: Date = Date()) -> String {
         let interval = now.timeIntervalSince(date)
 
@@ -208,8 +208,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Resume Prompt Construction Tests
 
-    @Test("Resume prompt is constructed correctly")
-    func resumePromptIsConstructedCorrectly() {
+    @Test
+    func `Resume prompt is constructed correctly`() {
         _ = "Open TextEdit" // Original task
         let continuationTask = "Now save the document"
 
@@ -230,8 +230,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Configuration Integration Tests
 
-    @Test("Resume respects configuration settings")
-    func resumeRespectsConfigurationSettings() {
+    @Test
+    func `Resume respects configuration settings`() {
         // Test that resume functionality respects the same configuration as regular commands
         let defaultModel = "gpt-5.1"
         let defaultMaxSteps = 20
@@ -253,8 +253,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Edge Case Tests
 
-    @Test("Resume handles special characters in task")
-    func resumeHandlesSpecialCharactersInTask() {
+    @Test
+    func `Resume handles special characters in task`() {
         _ = "Task with \"quotes\" and 'apostrophes' and {brackets} and <tags>" // Special task
         let continuationTask = "Continue with émojis 👻 and unicode ∆∇∫"
 
@@ -264,8 +264,8 @@ struct AgentResumeCLITests {
         #expect(resumePrompt.contains("unicode ∆∇∫"))
     }
 
-    @Test("Resume handles very long tasks")
-    func resumeHandlesVeryLongTasks() {
+    @Test
+    func `Resume handles very long tasks`() {
         _ = String(repeating: "Very long task description. ", count: 100) // Long task
         let longContinuation = String(repeating: "Long continuation. ", count: 50)
 
@@ -277,8 +277,8 @@ struct AgentResumeCLITests {
 
     // MARK: - Session ID Validation Tests
 
-    @Test("Session ID validation works correctly")
-    func sessionIDValidationWorksCorrectly() {
+    @Test
+    func `Session ID validation works correctly`() {
         // Test valid UUID format
         let validUUID = UUID().uuidString
         #expect(validUUID.count == 36)

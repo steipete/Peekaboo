@@ -5,7 +5,7 @@ import PeekabooUICore
 import SwiftUI
 import Testing
 
-@Suite("OverlayManager Tests", .tags(.ui, .unit))
+@Suite(.tags(.ui, .unit))
 @MainActor
 final class OverlayManagerTests {
     var manager: OverlayManager!
@@ -20,8 +20,8 @@ final class OverlayManagerTests {
         }
     }
 
-    @Test("Manager initializes with default state")
-    func initialization() {
+    @Test
+    func `Manager initializes with default state`() {
         #expect(self.manager.hoveredElement == nil)
         #expect(self.manager.selectedElement == nil)
         #expect(self.manager.applications.isEmpty)
@@ -30,8 +30,8 @@ final class OverlayManagerTests {
         #expect(self.manager.detailLevel == .moderate)
     }
 
-    @Test("App selection mode can be changed")
-    func appSelectionMode() {
+    @Test
+    func `App selection mode can be changed`() {
         self.manager.setAppSelectionMode(.single, bundleID: "com.apple.finder")
         #expect(self.manager.selectedAppMode == .single)
         #expect(self.manager.selectedAppBundleID == "com.apple.finder")
@@ -41,8 +41,8 @@ final class OverlayManagerTests {
         #expect(self.manager.selectedAppBundleID == nil)
     }
 
-    @Test("Detail level can be changed")
-    func detailLevel() {
+    @Test
+    func `Detail level can be changed`() {
         self.manager.setDetailLevel(.essential)
         #expect(self.manager.detailLevel == .essential)
 

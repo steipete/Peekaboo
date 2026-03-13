@@ -18,7 +18,7 @@ public nonisolated struct GenericErrorResponse: APIErrorResponse {
     public let code: String?
     public let type: String?
 
-    // Support various field names
+    /// Support various field names
     private enum CodingKeys: String, CodingKey {
         case message
         case error

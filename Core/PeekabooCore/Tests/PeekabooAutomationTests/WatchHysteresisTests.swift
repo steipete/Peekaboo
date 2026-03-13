@@ -3,11 +3,10 @@ import Foundation
 import Testing
 @testable import PeekabooAutomationKit
 
-@Suite("Watch hysteresis and caps")
 @MainActor
 struct WatchHysteresisTests {
-    @Test("Exits active after quiet period")
-    func exitsActiveAfterQuiet() {
+    @Test
+    func `Exits active after quiet period`() {
         // Two frames: first with high delta, second identical.
         let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
         let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
@@ -22,8 +21,8 @@ struct WatchHysteresisTests {
         #expect(diff.changePercent == 0)
     }
 
-    @Test("Exit requires calm for quietMs window")
-    func exitActiveQuietElapsed() {
+    @Test
+    func `Exit requires calm for quietMs window`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-1.2)
         let shouldExit = WatchCaptureSession.shouldExitActive(
@@ -35,8 +34,8 @@ struct WatchHysteresisTests {
         #expect(shouldExit)
     }
 
-    @Test("Stays active when change stays above half-threshold")
-    func staysActiveWhenNoisy() {
+    @Test
+    func `Stays active when change stays above half-threshold`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-2)
         let shouldExit = WatchCaptureSession.shouldExitActive(
@@ -48,8 +47,8 @@ struct WatchHysteresisTests {
         #expect(!shouldExit)
     }
 
-    @Test("Stays active until quietMs elapses")
-    func staysActiveUntilQuietWindowPasses() {
+    @Test
+    func `Stays active until quietMs elapses`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-0.3)
         let shouldExit = WatchCaptureSession.shouldExitActive(
@@ -61,8 +60,8 @@ struct WatchHysteresisTests {
         #expect(!shouldExit)
     }
 
-    @Test("Idle → active → idle timeline honors quiet window")
-    func timelineTransitions() {
+    @Test
+    func `Idle → active → idle timeline honors quiet window`() {
         let start = Date()
         var lastActivity = start
         var active = false

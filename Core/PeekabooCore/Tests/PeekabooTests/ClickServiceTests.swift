@@ -7,27 +7,24 @@ import Testing
 @testable import PeekabooVisualizer
 
 @Suite(
-    "ClickService Tests",
     .tags(.ui, .automation),
     .enabled(if: TestEnvironment.runInputAutomationScenarios))
 @MainActor
 struct ClickServiceTests {
-    @Suite("Initialization")
     @MainActor
     struct InitializationTests {
-        @Test("ClickService initializes with snapshot manager dependency")
-        func initializeService() async throws {
+        @Test
+        func `ClickService initializes with snapshot manager dependency`() {
             let snapshotManager = MockSnapshotManager()
             let service: ClickService? = ClickService(snapshotManager: snapshotManager)
             #expect(service != nil)
         }
     }
 
-    @Suite("Coordinate Clicking")
     @MainActor
     struct CoordinateClickingTests {
-        @Test("Click performs at specified screen coordinates without errors")
-        func clickAtCoordinates() async throws {
+        @Test
+        func `Click performs at specified screen coordinates without errors`() async throws {
             let snapshotManager = MockSnapshotManager()
             let service = ClickService(snapshotManager: snapshotManager)
 
@@ -43,11 +40,10 @@ struct ClickServiceTests {
         }
     }
 
-    @Suite("Element Clicking")
     @MainActor
     struct ElementClickingTests {
-        @Test("Click finds and clicks element by ID using snapshot detection results")
-        func clickElementById() async throws {
+        @Test
+        func `Click finds and clicks element by ID using snapshot detection results`() async throws {
             let snapshotManager = MockSnapshotManager()
 
             // Create mock detection result
@@ -84,8 +80,8 @@ struct ClickServiceTests {
                 snapshotId: "test-snapshot")
         }
 
-        @Test("Click element by ID not found throws specific error")
-        func clickElementByIdNotFound() async throws {
+        @Test
+        func `Click element by ID not found throws specific error`() async throws {
             let snapshotManager = MockSnapshotManager()
             let service = ClickService(snapshotManager: snapshotManager)
             let nonExistentId = "non-existent-button"
@@ -100,11 +96,10 @@ struct ClickServiceTests {
         }
     }
 
-    @Suite("Click Types")
     @MainActor
     struct ClickTypeTests {
-        @Test("Click supports single, double, and right-click types")
-        func differentClickTypes() async throws {
+        @Test
+        func `Click supports single, double, and right-click types`() async throws {
             let snapshotManager = MockSnapshotManager()
             let service = ClickService(snapshotManager: snapshotManager)
 
@@ -130,8 +125,8 @@ struct ClickServiceTests {
         }
     }
 
-    @Test("Click element by query matches partial text")
-    func clickElementByQuery() async throws {
+    @Test
+    func `Click element by query matches partial text`() async throws {
         let snapshotManager = MockSnapshotManager()
 
         // Create mock detection result with searchable element

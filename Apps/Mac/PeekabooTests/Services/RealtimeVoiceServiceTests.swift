@@ -9,7 +9,7 @@ import Tachikoma
 import Testing
 @testable import Peekaboo
 
-@Suite("RealtimeVoiceService Tests", .tags(.unit, .ai), .disabled("Uses full PeekabooServices which may hang"))
+@Suite(.tags(.unit, .ai), .disabled("Uses full PeekabooServices which may hang"))
 @MainActor
 struct RealtimeVoiceServiceTests {
     // MARK: - Test Helpers
@@ -25,8 +25,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Initialization Tests
 
-    @Test("Service initializes with correct dependencies")
-    func serviceInitialization() throws {
+    @Test
+    func `Service initializes with correct dependencies`() throws {
         let (agentService, sessionStore, settings) = try try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -45,8 +45,8 @@ struct RealtimeVoiceServiceTests {
         #expect(service.selectedVoice == .alloy)
     }
 
-    @Test("Service loads voice preference from settings")
-    func voicePreferenceLoading() throws {
+    @Test
+    func `Service loads voice preference from settings`() throws {
         let (agentService, sessionStore, settings) = try try self.createMockDependencies()
 
         // Set a voice preference in settings
@@ -62,8 +62,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Session Management Tests
 
-    @Test("Starting session without API key fails", .tags(.integration))
-    func startSessionWithoutAPIKey() async throws {
+    @Test(.tags(.integration))
+    func `Starting session without API key fails`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         // Ensure no API key is set
@@ -83,8 +83,8 @@ struct RealtimeVoiceServiceTests {
         #expect(service.error != nil)
     }
 
-    @Test("Ending session cleans up properly")
-    func endSessionCleanup() async throws {
+    @Test
+    func `Ending session cleans up properly`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -105,8 +105,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Recording Tests
 
-    @Test("Toggle recording requires active connection")
-    func toggleRecordingWithoutConnection() async throws {
+    @Test
+    func `Toggle recording requires active connection`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -121,8 +121,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Message Sending Tests
 
-    @Test("Sending message requires active connection")
-    func sendMessageWithoutConnection() async throws {
+    @Test
+    func `Sending message requires active connection`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -135,8 +135,8 @@ struct RealtimeVoiceServiceTests {
         }
     }
 
-    @Test("Sending message updates conversation history")
-    func sendMessageUpdatesHistory() async throws {
+    @Test
+    func `Sending message updates conversation history`() throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -151,8 +151,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Voice Settings Tests
 
-    @Test("Update voice setting persists to settings")
-    func updateVoicePersistence() throws {
+    @Test
+    func `Update voice setting persists to settings`() throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -168,8 +168,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Interrupt Tests
 
-    @Test("Interrupt requires active connection")
-    func interruptWithoutConnection() async throws {
+    @Test
+    func `Interrupt requires active connection`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
@@ -184,8 +184,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - Error Handling Tests
 
-    @Test("Service handles connection failures gracefully")
-    func connectionFailureHandling() async throws {
+    @Test
+    func `Service handles connection failures gracefully`() async throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         // Set an invalid API key to trigger failure
@@ -208,8 +208,8 @@ struct RealtimeVoiceServiceTests {
 
     // MARK: - State Management Tests
 
-    @Test("Connection states transition correctly")
-    func connectionStateTransitions() throws {
+    @Test
+    func `Connection states transition correctly`() throws {
         let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(

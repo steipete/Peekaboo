@@ -139,12 +139,11 @@ public struct SwipeTool: MCPTool {
             profile: movement.profile)
 
         let executionTime = Date().timeIntervalSince(startTime)
-        let response = self.buildResponse(
+        return self.buildResponse(
             from: fromPoint,
             to: toPoint,
             movement: movement,
             executionTime: executionTime)
-        return response
     }
 
     private func buildResponse(

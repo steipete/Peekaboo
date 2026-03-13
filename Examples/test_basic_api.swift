@@ -2,7 +2,7 @@
 
 import Foundation
 
-// Quick test to verify Tachikoma basic functionality
+/// Quick test to verify Tachikoma basic functionality
 let testCode = """
 import Tachikoma
 

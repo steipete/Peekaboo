@@ -2,13 +2,11 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 import Testing
-
 @testable import PeekabooCLI
 
-@Suite("Capture live behavior (logic only)")
 struct CaptureLiveBehaviorTests {
-    @Test("resolveMode defaults to window when targeting app/pid/title")
-    func resolveModeWindow() async throws {
+    @Test
+    func `resolveMode defaults to window when targeting app/pid/title`() {
         var cmd = CaptureLiveCommand()
         cmd.app = "Safari"
         #expect(cmd.resolveMode() == .window)
@@ -17,8 +15,8 @@ struct CaptureLiveBehaviorTests {
         #expect(cmd.resolveMode() == .window)
     }
 
-    @Test("resolveMode defaults to frontmost when no targeting")
-    func resolveModeDefault() async throws {
+    @Test
+    func `resolveMode defaults to frontmost when no targeting`() {
         let cmd = CaptureLiveCommand()
         #expect(cmd.resolveMode() == .frontmost)
     }

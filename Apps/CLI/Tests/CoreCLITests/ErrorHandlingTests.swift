@@ -7,28 +7,28 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
-@Suite("Focus Error Mapping", .tags(.safe))
+@Suite(.tags(.safe))
 struct FocusErrorMappingTests {
-    @Test("application not running maps to APP_NOT_FOUND")
-    func applicationNotRunning() {
+    @Test
+    func `application not running maps to APP_NOT_FOUND`() {
         let code = errorCode(for: .applicationNotRunning("Finder"))
         #expect(code == .APP_NOT_FOUND)
     }
 
-    @Test("AX element missing maps to WINDOW_NOT_FOUND")
-    func axElementMissing() {
+    @Test
+    func `AX element missing maps to WINDOW_NOT_FOUND`() {
         let code = errorCode(for: .axElementNotFound(42))
         #expect(code == .WINDOW_NOT_FOUND)
     }
 
-    @Test("focus verification timeout maps to TIMEOUT")
-    func focusVerificationTimeout() {
+    @Test
+    func `focus verification timeout maps to TIMEOUT`() {
         let code = errorCode(for: .focusVerificationTimeout(100))
         #expect(code == .TIMEOUT)
     }
 
-    @Test("timeout waiting for condition maps to TIMEOUT")
-    func waitForConditionTimeout() {
+    @Test
+    func `timeout waiting for condition maps to TIMEOUT`() {
         let code = errorCode(for: .timeoutWaitingForCondition)
         #expect(code == .TIMEOUT)
     }

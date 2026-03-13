@@ -5,14 +5,13 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "RunCommand CLI Harness Tests",
     .serialized,
     .tags(.safe),
     .enabled(if: CLITestEnvironment.runAutomationRead)
 )
 struct RunCommandCLIHarnessTests {
-    @Test("run command executes scripts via process service")
-    func runCommandOutputsJSON() async throws {
+    @Test
+    func `run command executes scripts via process service`() async throws {
         let scriptPath = "/tmp/test-script.peekaboo.json"
         let script = PeekabooScript(
             description: "Sample script",
@@ -63,8 +62,8 @@ struct RunCommandCLIHarnessTests {
         #expect(process.executeScriptCalls.count == 1)
     }
 
-    @Test("run command writes output file")
-    func runCommandWritesOutputFile() async throws {
+    @Test
+    func `run command writes output file`() async throws {
         let scriptPath = "/tmp/output-script.peekaboo.json"
         let script = PeekabooScript(description: "Write output", steps: [])
         let process = StubProcessService()
@@ -91,8 +90,8 @@ struct RunCommandCLIHarnessTests {
         #expect(payload.scriptPath == scriptPath)
     }
 
-    @Test("run command exits with failure when a step fails")
-    func runCommandFailure() async throws {
+    @Test
+    func `run command exits with failure when a step fails`() async throws {
         let scriptPath = "/tmp/failing-script.peekaboo.json"
         let script = PeekabooScript(description: "Failing script", steps: [
             ScriptStep(stepId: "fail", comment: nil, command: "click", params: nil),
@@ -126,18 +125,18 @@ struct RunCommandCLIHarnessTests {
 }
 #endif
 
-@Suite("RunCommand Data Tests", .serialized, .tags(.unit))
+@Suite(.serialized, .tags(.unit))
 struct RunCommandDataTests {
-    @Test("Run command parses script path")
-    func parseScriptPath() throws {
+    @Test
+    func `Run command parses script path`() throws {
         let command = try RunCommand.parse(["/path/to/script.peekaboo.json"])
         #expect(command.scriptPath == "/path/to/script.peekaboo.json")
         #expect(command.output == nil)
         #expect(command.noFailFast == false)
     }
 
-    @Test("Run command parses all options")
-    func parseAllOptions() throws {
+    @Test
+    func `Run command parses all options`() throws {
         let command = try RunCommand.parse([
             "/tmp/automation.peekaboo.json",
             "--output", "results.json",
@@ -148,8 +147,8 @@ struct RunCommandDataTests {
         #expect(command.noFailFast == true)
     }
 
-    @Test("Run command requires script path")
-    func requiresScriptPath() {
+    @Test
+    func `Run command requires script path`() {
         #expect(throws: (any Error).self) {
             try CLIOutputCapture.suppressStderr {
                 _ = try RunCommand.parse([])
@@ -157,8 +156,8 @@ struct RunCommandDataTests {
         }
     }
 
-    @Test("Script structure validation")
-    func scriptStructure() {
+    @Test
+    func `Script structure validation`() {
         let steps = [
             TestScriptStep(
                 stepId: "step1",
@@ -192,8 +191,8 @@ struct RunCommandDataTests {
         #expect(script.steps[2].comment == nil)
     }
 
-    @Test("Run result structure")
-    func runResultStructure() {
+    @Test
+    func `Run result structure`() {
         let stepResults = [
             StepResult(
                 stepId: "step1",
@@ -236,8 +235,8 @@ struct RunCommandDataTests {
         #expect(result.steps[1].error == "Element not found")
     }
 
-    @Test("Script JSON parsing")
-    func scriptJSONParsing() throws {
+    @Test
+    func `Script JSON parsing`() throws {
         let jsonString = """
         {
             "description": "A test automation script",

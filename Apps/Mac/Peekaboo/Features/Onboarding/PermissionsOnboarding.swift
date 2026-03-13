@@ -45,7 +45,9 @@ struct PermissionsOnboardingView: View {
 
     private let pageWidth: CGFloat = 680
     private let contentHeight: CGFloat = 520
-    private var buttonTitle: String { "Done" }
+    private var buttonTitle: String {
+        "Done"
+    }
 
     var body: some View {
         VStack(spacing: 0) {

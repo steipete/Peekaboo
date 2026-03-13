@@ -166,7 +166,7 @@ struct ContentView: View {
     }
 }
 
-// Test helper view for creating specific test scenarios
+/// Test helper view for creating specific test scenarios
 struct TestPatternView: View {
     let pattern: TestPattern
 

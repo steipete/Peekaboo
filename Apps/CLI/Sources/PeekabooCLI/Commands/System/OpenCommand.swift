@@ -61,10 +61,21 @@ struct OpenCommand: ParsableCommand, OutputFormattable, ErrorHandlingCommand, Ru
         return runtime
     }
 
-    private var logger: Logger { self.resolvedRuntime.logger }
-    var outputLogger: Logger { self.logger }
-    var jsonOutput: Bool { self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput }
-    private var shouldFocus: Bool { !self.noFocus }
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
+
+    private var shouldFocus: Bool {
+        !self.noFocus
+    }
 
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {

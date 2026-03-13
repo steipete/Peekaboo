@@ -1,10 +1,10 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Agent audio task composition", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentAudioCompositionTests {
-    @Test("Prepends provided task with transcript")
-    func combinesTaskAndTranscript() {
+    @Test
+    func `Prepends provided task with transcript`() {
         let combined = AgentCommand.composeExecutionTask(
             providedTask: "Ship the release",
             transcript: "transcribed text"
@@ -13,8 +13,8 @@ struct AgentAudioCompositionTests {
         #expect(combined.contains("Audio transcript"))
     }
 
-    @Test("Falls back to transcript when task missing")
-    func usesTranscriptOnly() {
+    @Test
+    func `Falls back to transcript when task missing`() {
         let combined = AgentCommand.composeExecutionTask(providedTask: nil, transcript: "hello world")
         #expect(combined == "hello world")
     }

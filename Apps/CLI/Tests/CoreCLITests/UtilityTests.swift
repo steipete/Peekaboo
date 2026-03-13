@@ -2,12 +2,12 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Utility Tests", .tags(.safe), .serialized)
+@Suite(.tags(.safe), .serialized)
 struct UtilityTests {
-    @Suite("Logger Tests", .tags(.safe), .serialized)
+    @Suite(.tags(.safe), .serialized)
     struct LoggerTests {
-        @Test("Logger captures messages in JSON mode")
-        func loggerJSONMode() {
+        @Test
+        func `Logger captures messages in JSON mode`() {
             CLIInstrumentation.LoggerControl.clearDebugLogs()
             CLIInstrumentation.LoggerControl.setJsonOutputMode(true)
             CLIInstrumentation.LoggerControl.setMinimumLogLevel(.debug)
@@ -29,8 +29,8 @@ struct UtilityTests {
             #expect(logs.contains { $0.contains("ERROR: Error message") })
         }
 
-        @Test("Logger clears debug logs")
-        func loggerClearLogs() {
+        @Test
+        func `Logger clears debug logs`() {
             CLIInstrumentation.LoggerControl.setJsonOutputMode(true)
             CLIInstrumentation.LoggerControl.setMinimumLogLevel(.debug)
             defer { CLIInstrumentation.LoggerControl.resetMinimumLogLevel() }
@@ -50,8 +50,8 @@ struct UtilityTests {
             #expect(logsAfter.isEmpty)
         }
 
-        @Test("Logger outputs to stderr in normal mode")
-        func loggerStderrMode() {
+        @Test
+        func `Logger outputs to stderr in normal mode`() {
             // Ensure clean state
             CLIInstrumentation.LoggerControl.clearDebugLogs()
             Thread.sleep(forTimeInterval: 0.05)
@@ -70,10 +70,10 @@ struct UtilityTests {
         }
     }
 
-    @Suite("Version Tests", .tags(.safe))
+    @Suite(.tags(.safe))
     struct VersionTests {
-        @Test("Version has correct format")
-        func versionFormat() {
+        @Test
+        func `Version has correct format`() {
             let version = Version.current
 
             // Should be in format "Peekaboo X.Y.Z" or "Peekaboo X.Y.Z-prerelease"
@@ -95,16 +95,16 @@ struct UtilityTests {
             }
         }
 
-        @Test("Version is not empty")
-        func versionNotEmpty() {
+        @Test
+        func `Version is not empty`() {
             #expect(!Version.current.isEmpty)
         }
     }
 
-    @Suite("Helper Function Tests", .tags(.safe))
+    @Suite(.tags(.safe))
     struct HelperFunctionTests {
-        @Test("Date formatting for filenames")
-        func dateFormattingForFilenames() {
+        @Test
+        func `Date formatting for filenames`() {
             let date = Date(timeIntervalSince1970: 1_234_567_890) // 2009-02-13 23:31:30 UTC
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [
@@ -122,8 +122,8 @@ struct UtilityTests {
             #expect(formatted.contains("23:31:30"))
         }
 
-        @Test("Path expansion handles tilde")
-        func pathExpansionHandlesTilde() {
+        @Test
+        func `Path expansion handles tilde`() {
             let homePath = FileManager.default.homeDirectoryForCurrentUser.path
             let tildeDesktop = "~/Desktop"
             let expanded = NSString(string: tildeDesktop).expandingTildeInPath
@@ -131,8 +131,8 @@ struct UtilityTests {
             #expect(expanded == "\(homePath)/Desktop")
         }
 
-        @Test("File URL creation")
-        func fileURLCreation() {
+        @Test
+        func `File URL creation`() {
             let path = "/tmp/test.png"
             let url = URL(fileURLWithPath: path)
 

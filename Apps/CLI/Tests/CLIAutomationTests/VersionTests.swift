@@ -2,10 +2,10 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Version Tests", .tags(.safe))
+@Suite(.tags(.safe))
 struct VersionTests {
-    @Test("Version follows semantic versioning format")
-    func semanticVersioningFormat() throws {
+    @Test
+    func `Version follows semantic versioning format`() throws {
         let version = Version.current
 
         // Version should be in format "Peekaboo X.Y.Z" or "Peekaboo X.Y.Z-prerelease"
@@ -16,8 +16,8 @@ struct VersionTests {
         #expect(!matches.isEmpty, "Version '\(version)' should follow semantic versioning format")
     }
 
-    @Test("Version components are valid numbers")
-    func versionComponentsAreNumbers() throws {
+    @Test
+    func `Version components are valid numbers`() throws {
         let version = Version.current
 
         // Remove "Peekaboo " prefix
@@ -40,22 +40,22 @@ struct VersionTests {
         #expect(patch >= 0)
     }
 
-    @Test("Version is consistent across calls")
-    func versionConsistency() {
+    @Test
+    func `Version is consistent across calls`() {
         let version1 = Version.current
         let version2 = Version.current
 
         #expect(version1 == version2)
     }
 
-    @Test("Version string is not empty")
-    func versionNotEmpty() {
+    @Test
+    func `Version string is not empty`() {
         #expect(!Version.current.isEmpty)
         #expect(Version.current.count >= 14) // Minimum: "Peekaboo 0.0.0"
     }
 
-    @Test("Version can be used in user agent strings")
-    func versionInUserAgent() {
+    @Test
+    func `Version can be used in user agent strings`() {
         let userAgent = "Peekaboo/\(Version.current)"
 
         #expect(userAgent.hasPrefix("Peekaboo/"))

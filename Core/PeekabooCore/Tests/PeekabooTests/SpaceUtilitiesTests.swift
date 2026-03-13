@@ -7,12 +7,12 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Space Utilities Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
+@Suite(.enabled(if: TestEnvironment.runAutomationScenarios))
 struct SpaceUtilitiesTests {
     // MARK: - SpaceInfo Tests
 
-    @Test("SpaceInfo initialization")
-    func spaceInfoInit() {
+    @Test
+    func `SpaceInfo initialization`() {
         let spaceInfo = SpaceInfo(
             id: 12345,
             type: .user,
@@ -29,8 +29,8 @@ struct SpaceUtilitiesTests {
         #expect(spaceInfo.ownerPIDs == [1234, 5678])
     }
 
-    @Test("SpaceInfo.SpaceType values")
-    func spaceTypeValues() {
+    @Test
+    func `SpaceInfo.SpaceType values`() {
         let types: [SpaceInfo.SpaceType] = [.user, .fullscreen, .system, .tiled, .unknown]
         let expectedRawValues = ["user", "fullscreen", "system", "tiled", "unknown"]
 
@@ -41,17 +41,17 @@ struct SpaceUtilitiesTests {
 
     // MARK: - SpaceManagementService Tests
 
-    @Test("SpaceManagementService initialization")
+    @Test
     @MainActor
-    func spaceServiceInit() {
+    func `SpaceManagementService initialization`() {
         _ = SpaceManagementService()
         // Should initialize without crashing
         // Service is non-optional, so it will always be created
     }
 
-    @Test("getAllSpaces returns at least one Space")
+    @Test
     @MainActor
-    func getAllSpacesNotEmpty() {
+    func `getAllSpaces returns at least one Space`() {
         let service = SpaceManagementService()
         let spaces = service.getAllSpaces()
 
@@ -72,9 +72,9 @@ struct SpaceUtilitiesTests {
         }
     }
 
-    @Test("getCurrentSpace returns valid Space")
+    @Test
     @MainActor
-    func getCurrentSpaceValid() {
+    func `getCurrentSpace returns valid Space`() {
         let service = SpaceManagementService()
         let currentSpace = service.getCurrentSpace()
 
@@ -90,9 +90,9 @@ struct SpaceUtilitiesTests {
         }
     }
 
-    @Test("getSpacesForWindow with invalid window ID")
+    @Test
     @MainActor
-    func getSpacesForInvalidWindow() {
+    func `getSpacesForWindow with invalid window ID`() {
         let service = SpaceManagementService()
         let spaces = service.getSpacesForWindow(windowID: 0)
 
@@ -100,9 +100,9 @@ struct SpaceUtilitiesTests {
         #expect(spaces.isEmpty)
     }
 
-    @Test("getSpacesForWindow with Finder window")
+    @Test
     @MainActor
-    func getSpacesForFinderWindow() async throws {
+    func `getSpacesForWindow with Finder window`() async throws {
         let service = SpaceManagementService()
 
         // Try to find a Finder window
@@ -118,16 +118,16 @@ struct SpaceUtilitiesTests {
             // If we found a window, it should be in at least one Space
             if !spaces.isEmpty {
                 #expect(spaces.count >= 1)
-                #expect(spaces.first!.id > 0)
+                #expect(try #require(spaces.first?.id) > 0)
             }
         }
     }
 
     // MARK: - Space Movement Tests
 
-    @Test("moveWindowToCurrentSpace with invalid window")
+    @Test
     @MainActor
-    func moveInvalidWindowToCurrentSpace() throws {
+    func `moveWindowToCurrentSpace with invalid window`() throws {
         let service = SpaceManagementService()
 
         // Moving invalid window should not crash
@@ -140,9 +140,9 @@ struct SpaceUtilitiesTests {
         }
     }
 
-    @Test("switchToSpace with invalid Space ID")
+    @Test
     @MainActor
-    func switchToInvalidSpace() async throws {
+    func `switchToSpace with invalid Space ID`() async throws {
         let service = SpaceManagementService()
 
         do {
@@ -156,8 +156,8 @@ struct SpaceUtilitiesTests {
 
     // MARK: - SpaceError Tests
 
-    @Test("SpaceError descriptions")
-    func spaceErrorDescriptions() {
+    @Test
+    func `SpaceError descriptions`() throws {
         let errors: [SpaceError] = [
             .spaceNotFound(12345),
             .windowNotInAnySpace(67890),
@@ -168,14 +168,14 @@ struct SpaceUtilitiesTests {
         for error in errors {
             let description = error.errorDescription
             #expect(description != nil)
-            #expect(!description!.isEmpty)
+            #expect(try !(#require(description?.isEmpty)))
         }
     }
 
     // MARK: - Private API Safety Tests
 
-    @Test("CGSSpace type safety")
-    func cgsSpaceTypeSafety() {
+    @Test
+    func `CGSSpace type safety`() {
         // Verify our typealiases are correct size
         #expect(MemoryLayout<CGSConnectionID>.size == 4) // UInt32
         #expect(MemoryLayout<CGSSpaceID>.size == 8) // UInt64
@@ -185,11 +185,11 @@ struct SpaceUtilitiesTests {
 
 // MARK: - Integration Tests
 
-@Suite("Space Management Integration Tests", .enabled(if: TestEnvironment.runAutomationScenarios))
+@Suite(.enabled(if: TestEnvironment.runAutomationScenarios))
 struct SpaceManagementIntegrationTests {
-    @Test("Space list matches current Space")
+    @Test
     @MainActor
-    func spaceListContainsCurrentSpace() {
+    func `Space list matches current Space`() {
         let service = SpaceManagementService()
         let allSpaces = service.getAllSpaces()
         let currentSpace = service.getCurrentSpace()
@@ -202,9 +202,9 @@ struct SpaceManagementIntegrationTests {
         }
     }
 
-    @Test("Active Space count")
+    @Test
     @MainActor
-    func activeSpaceCount() {
+    func `Active Space count`() {
         let service = SpaceManagementService()
         let allSpaces = service.getAllSpaces()
 
@@ -212,9 +212,9 @@ struct SpaceManagementIntegrationTests {
         #expect(activeSpaces.count >= 1)
     }
 
-    @Test("getAllSpacesByDisplay returns organized spaces")
+    @Test
     @MainActor
-    func getAllSpacesByDisplay() {
+    func `getAllSpacesByDisplay returns organized spaces`() {
         let service = SpaceManagementService()
         let spacesByDisplay = service.getAllSpacesByDisplay()
 
@@ -238,9 +238,9 @@ struct SpaceManagementIntegrationTests {
         }
     }
 
-    @Test("getWindowLevel returns valid level for window")
+    @Test
     @MainActor
-    func getWindowLevel() {
+    func `getWindowLevel returns valid level for window`() {
         let service = SpaceManagementService()
 
         // Try to find any window for testing

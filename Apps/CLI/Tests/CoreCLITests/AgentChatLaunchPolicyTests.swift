@@ -1,7 +1,7 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Agent Chat Launch Policy", .tags(.safe))
+@Suite(.tags(.safe))
 struct AgentChatLaunchPolicyTests {
     private let policy = AgentChatLaunchPolicy()
 
@@ -22,8 +22,8 @@ struct AgentChatLaunchPolicyTests {
         )
     }
 
-    @Test("Chat flag forces interactive with initial prompt")
-    func chatFlagOverrides() {
+    @Test
+    func `Chat flag forces interactive with initial prompt`() {
         let strategy = self.policy.strategy(
             for: AgentChatLaunchContext(
                 chatFlag: true,
@@ -41,8 +41,8 @@ struct AgentChatLaunchPolicyTests {
         }
     }
 
-    @Test("Task input skips auto chat")
-    func taskInputDisablesChat() {
+    @Test
+    func `Task input skips auto chat`() {
         let strategy = self.policy.strategy(
             for: AgentChatLaunchContext(
                 chatFlag: false,
@@ -56,8 +56,8 @@ struct AgentChatLaunchPolicyTests {
         #expect(strategy == .none)
     }
 
-    @Test("Interactive terminal defaults to chat")
-    func interactiveDefaultsToChat() {
+    @Test
+    func `Interactive terminal defaults to chat`() {
         let strategy = self.policy.strategy(
             for: AgentChatLaunchContext(
                 chatFlag: false,
@@ -71,8 +71,8 @@ struct AgentChatLaunchPolicyTests {
         #expect(strategy == .interactive(initialPrompt: nil))
     }
 
-    @Test("CI or piped output shows help only")
-    func nonInteractiveShowsHelp() {
+    @Test
+    func `CI or piped output shows help only`() {
         let piped = self.policy.strategy(
             for: AgentChatLaunchContext(
                 chatFlag: false,

@@ -523,7 +523,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         await self.permissionEvaluator.hasPermission(logger: self.logger)
     }
 
-    // Helper function for timeout handling
+    /// Helper function for timeout handling
     @MainActor
 
     // MARK: - Private Helpers

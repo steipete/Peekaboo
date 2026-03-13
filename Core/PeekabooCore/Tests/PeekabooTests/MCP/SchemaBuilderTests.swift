@@ -7,12 +7,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("SchemaBuilder Tests")
 struct SchemaBuilderTests {
     // MARK: - Object Schema Tests
 
-    @Test("Create simple object schema")
-    func simpleObjectSchema() {
+    @Test
+    func `Create simple object schema`() {
         let schema = SchemaBuilder.object(
             properties: [
                 "name": SchemaBuilder.string(description: "User name"),
@@ -50,8 +49,8 @@ struct SchemaBuilderTests {
         }
     }
 
-    @Test("Create complex object schema with multiple properties")
-    func complexObjectSchema() {
+    @Test
+    func `Create complex object schema with multiple properties`() {
         let schema = SchemaBuilder.object(
             properties: [
                 "path": SchemaBuilder.string(description: "File path"),
@@ -89,8 +88,8 @@ struct SchemaBuilderTests {
 
     // MARK: - String Schema Tests
 
-    @Test("Create string schema with description")
-    func stringSchemaWithDescription() {
+    @Test
+    func `Create string schema with description`() {
         let schema = SchemaBuilder.string(description: "A test string")
 
         guard case let .object(dict) = schema else {
@@ -102,8 +101,8 @@ struct SchemaBuilderTests {
         #expect(dict["description"] == .string("A test string"))
     }
 
-    @Test("Create string schema with enum values")
-    func stringSchemaWithEnum() {
+    @Test
+    func `Create string schema with enum values`() {
         let schema = SchemaBuilder.string(
             description: "Color choice",
             enum: ["red", "green", "blue"])
@@ -127,8 +126,8 @@ struct SchemaBuilderTests {
         }
     }
 
-    @Test("Create string schema with default value")
-    func stringSchemaWithDefault() {
+    @Test
+    func `Create string schema with default value`() {
         let schema = SchemaBuilder.string(
             description: "Format type",
             enum: ["png", "jpg"],
@@ -144,8 +143,8 @@ struct SchemaBuilderTests {
 
     // MARK: - Boolean Schema Tests
 
-    @Test("Create boolean schema")
-    func booleanSchema() {
+    @Test
+    func `Create boolean schema`() {
         let schema = SchemaBuilder.boolean(description: "Enable feature")
 
         guard case let .object(dict) = schema else {
@@ -157,8 +156,8 @@ struct SchemaBuilderTests {
         #expect(dict["description"] == .string("Enable feature"))
     }
 
-    @Test("Create boolean schema without description")
-    func booleanSchemaNoDescription() {
+    @Test
+    func `Create boolean schema without description`() {
         let schema = SchemaBuilder.boolean()
 
         guard case let .object(dict) = schema else {
@@ -172,8 +171,8 @@ struct SchemaBuilderTests {
 
     // MARK: - Number Schema Tests
 
-    @Test("Create number schema")
-    func numberSchema() {
+    @Test
+    func `Create number schema`() {
         let schema = SchemaBuilder.number(description: "Timeout in seconds")
 
         guard case let .object(dict) = schema else {
@@ -187,8 +186,8 @@ struct SchemaBuilderTests {
 
     // MARK: - Complex Nested Schema Tests
 
-    @Test("Create nested object schema")
-    func nestedObjectSchema() {
+    @Test
+    func `Create nested object schema`() {
         let schema = SchemaBuilder.object(
             properties: [
                 "user": SchemaBuilder.object(
@@ -231,8 +230,8 @@ struct SchemaBuilderTests {
 
     // MARK: - Edge Cases
 
-    @Test("Empty object schema")
-    func emptyObjectSchema() {
+    @Test
+    func `Empty object schema`() {
         let schema = SchemaBuilder.object(properties: [:])
 
         guard case let .object(dict) = schema else {
@@ -256,8 +255,8 @@ struct SchemaBuilderTests {
         }
     }
 
-    @Test("Schema with special characters in descriptions")
-    func specialCharactersInDescriptions() {
+    @Test
+    func `Schema with special characters in descriptions`() {
         let schema = SchemaBuilder.string(
             description: "Path with \"quotes\" and \nnewlines\tand tabs")
 

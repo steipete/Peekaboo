@@ -3,10 +3,10 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("Snapshot Not Found Regression Tests", .tags(.safe, .regression))
+@Suite(.tags(.safe, .regression))
 struct SnapshotNotFoundRegressionTests {
-    @Test("click --snapshot errors when snapshot was cleaned")
-    func clickSnapshotNotFound() async throws {
+    @Test
+    func `click --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -23,8 +23,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("move --id --snapshot errors when snapshot was cleaned")
-    func moveSnapshotNotFound() async throws {
+    @Test
+    func `move --id --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -41,8 +41,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("scroll --on --snapshot errors when snapshot was cleaned")
-    func scrollSnapshotNotFound() async throws {
+    @Test
+    func `scroll --on --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -59,8 +59,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("drag --from/--to --snapshot errors when snapshot was cleaned")
-    func dragSnapshotNotFound() async throws {
+    @Test
+    func `drag --from/--to --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -77,8 +77,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("swipe --from/--to --snapshot errors when snapshot was cleaned")
-    func swipeSnapshotNotFound() async throws {
+    @Test
+    func `swipe --from/--to --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -95,8 +95,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("type --snapshot errors when snapshot was cleaned")
-    func typeSnapshotNotFound() async throws {
+    @Test
+    func `type --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -113,8 +113,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("hotkey --snapshot errors when snapshot was cleaned")
-    func hotkeySnapshotNotFound() async throws {
+    @Test
+    func `hotkey --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
@@ -131,8 +131,8 @@ struct SnapshotNotFoundRegressionTests {
         #expect(response.error?.code == ErrorCode.SNAPSHOT_NOT_FOUND.rawValue)
     }
 
-    @Test("press --snapshot errors when snapshot was cleaned")
-    func pressSnapshotNotFound() async throws {
+    @Test
+    func `press --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)

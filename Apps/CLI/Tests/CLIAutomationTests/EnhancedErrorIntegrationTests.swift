@@ -5,7 +5,6 @@ import Testing
 
 #if !PEEKABOO_SKIP_AUTOMATION
 @Suite(
-    "Enhanced Error Integration Tests",
     .serialized,
     .tags(.automation),
     .enabled(if: CLITestEnvironment.runAutomationActions)
@@ -15,10 +14,9 @@ struct EnhancedErrorIntegrationTests {
     // They are marked with a condition to only run when explicitly enabled
 
     @Test(
-        "Shell command errors show detailed output",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualShellErrors() async throws {
+    func `Shell command errors show detailed output`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available - set OPENAI_API_KEY")
@@ -49,10 +47,9 @@ struct EnhancedErrorIntegrationTests {
     }
 
     @Test(
-        "App launch with typo shows suggestions",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualAppLaunchSuggestions() async throws {
+    func `App launch with typo shows suggestions`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
@@ -81,10 +78,9 @@ struct EnhancedErrorIntegrationTests {
     }
 
     @Test(
-        "Click without snapshot shows helpful message",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualClickWithoutSnapshot() async throws {
+    func `Click without snapshot shows helpful message`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
@@ -113,10 +109,9 @@ struct EnhancedErrorIntegrationTests {
     }
 
     @Test(
-        "Type without focus shows available fields",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualTypeWithoutFocus() async throws {
+    func `Type without focus shows available fields`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
@@ -147,10 +142,9 @@ struct EnhancedErrorIntegrationTests {
     }
 
     @Test(
-        "Invalid hotkey format shows examples",
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func actualInvalidHotkey() async throws {
+    func `Invalid hotkey format shows examples`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
@@ -183,7 +177,7 @@ struct EnhancedErrorIntegrationTests {
 
 // MARK: - Test Event Delegate
 
-// @available not needed for test helpers
+/// @available not needed for test helpers
 @MainActor
 final class TestEventDelegate: AgentEventDelegate {
     private var events: [AgentEvent] = []

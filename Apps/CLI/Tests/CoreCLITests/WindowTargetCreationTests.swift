@@ -2,10 +2,9 @@ import PeekabooCore
 import Testing
 @testable import PeekabooCLI
 
-@Suite("WindowTarget creation")
 struct WindowTargetCreationTests {
-    @Test("app + windowTitle creates .applicationAndTitle")
-    func appTitleCreatesApplicationAndTitle() {
+    @Test
+    func `app + windowTitle creates .applicationAndTitle`() {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
         options.windowTitle = "GitHub"
@@ -19,8 +18,8 @@ struct WindowTargetCreationTests {
         }
     }
 
-    @Test("app + windowIndex creates .index")
-    func appIndexCreatesIndex() {
+    @Test
+    func `app + windowIndex creates .index`() {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
         options.windowIndex = 0
@@ -34,8 +33,8 @@ struct WindowTargetCreationTests {
         }
     }
 
-    @Test("app only creates .application")
-    func appOnlyCreatesApplication() {
+    @Test
+    func `app only creates .application`() {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
 
@@ -47,8 +46,8 @@ struct WindowTargetCreationTests {
         }
     }
 
-    @Test("windowId creates .windowId")
-    func windowIdCreatesWindowId() {
+    @Test
+    func `windowId creates .windowId`() {
         var options = WindowIdentificationOptions()
         options.windowId = 12345
 
@@ -60,8 +59,8 @@ struct WindowTargetCreationTests {
         }
     }
 
-    @Test("toWindowTarget prefers windowId without app")
-    func toWindowTargetPrefersWindowId() throws {
+    @Test
+    func `toWindowTarget prefers windowId without app`() throws {
         var options = WindowIdentificationOptions()
         options.windowId = 12345
         let target = try options.toWindowTarget()

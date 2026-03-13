@@ -221,10 +221,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Resolve the target window, close it, and surface the outcome in JSON or text form.
         @MainActor
@@ -287,10 +298,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Resolve the target window, minimize it to the Dock, and report the action.
         @MainActor
@@ -352,10 +374,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Expand the resolved window to fill the available screen real estate and share the updated frame.
         @MainActor
@@ -422,10 +455,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Focus the targeted window, handling Space switches or relocation according to the provided options.
         @MainActor
@@ -574,10 +618,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Move the window to the absolute screen coordinates provided by the user.
         @MainActor
@@ -672,10 +727,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Resize the window to the supplied dimensions, preserving its origin.
         @MainActor
@@ -760,10 +826,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         /// Set both position and size for the window in a single operation, then confirm the new bounds.
         @MainActor
@@ -845,10 +922,21 @@ extension WindowCommand {
             return runtime
         }
 
-        private var services: any PeekabooServiceProviding { self.resolvedRuntime.services }
-        private var logger: Logger { self.resolvedRuntime.logger }
-        var outputLogger: Logger { self.logger }
-        var jsonOutput: Bool { self.resolvedRuntime.configuration.jsonOutput }
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
 
         @Flag(name: .long, help: "Group windows by Space (virtual desktop)")
         var groupBySpace = false

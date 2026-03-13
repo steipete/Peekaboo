@@ -10,7 +10,7 @@ import PeekabooFoundation
 import PeekabooProtocols
 
 /// Shared options that control logging and output behavior.
-struct CommandRuntimeOptions: Sendable {
+struct CommandRuntimeOptions {
     var verbose = false
     var jsonOutput = false
     var logLevel: LogLevel?
@@ -203,7 +203,7 @@ extension RuntimeOptionsConfigurable {
 }
 
 @propertyWrapper
-struct RuntimeStorage<Value> where Value: ExpressibleByNilLiteral {
+struct RuntimeStorage<Value: ExpressibleByNilLiteral> {
     private var storage: Value
 
     init() {

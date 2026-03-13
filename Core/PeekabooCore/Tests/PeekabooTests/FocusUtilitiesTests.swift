@@ -7,12 +7,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@Suite("Focus Utilities Tests")
 struct FocusUtilitiesTests {
     // MARK: - FocusOptions Tests
 
-    @Test("FocusOptions default values")
-    func focusOptionsDefaults() {
+    @Test
+    func `FocusOptions default values`() {
         let options = FocusOptions()
 
         #expect(options.autoFocus == true)
@@ -22,8 +21,8 @@ struct FocusUtilitiesTests {
         #expect(options.bringToCurrentSpace == false)
     }
 
-    @Test("FocusOptions protocol conformance")
-    func focusOptionsProtocolConformance() {
+    @Test
+    func `FocusOptions protocol conformance`() {
         let options = FocusOptions(
             autoFocus: false,
             focusTimeout: 10.0,
@@ -39,8 +38,8 @@ struct FocusUtilitiesTests {
         #expect(protocolOptions.bringToCurrentSpace == true)
     }
 
-    @Test("DefaultFocusOptions values")
-    func defaultFocusOptionsValues() {
+    @Test
+    func `DefaultFocusOptions values`() {
         let options = DefaultFocusOptions()
 
         #expect(options.autoFocus == true)
@@ -52,16 +51,16 @@ struct FocusUtilitiesTests {
 
     // MARK: - FocusManagementService Tests
 
-    @Test("FocusManagementService initialization")
+    @Test
     @MainActor
-    func focusServiceInit() {
+    func `FocusManagementService initialization`() {
         _ = FocusManagementService()
         // Should initialize without crashing
         // Service is non-optional, so it will always be created
     }
 
-    @Test("FocusOptions struct initialization")
-    func focusServiceOptionsInit() {
+    @Test
+    func `FocusOptions struct initialization`() {
         let options = FocusManagementService.FocusOptions()
 
         #expect(options.timeout == 5.0)
@@ -81,9 +80,9 @@ struct FocusUtilitiesTests {
         #expect(customOptions.bringToCurrentSpace == true)
     }
 
-    @Test("findBestWindow with non-existent app")
+    @Test
     @MainActor
-    func findBestWindowNonExistent() async throws {
+    func `findBestWindow with non-existent app`() async throws {
         let service = FocusManagementService()
 
         do {
@@ -103,9 +102,9 @@ struct FocusUtilitiesTests {
         }
     }
 
-    @Test("findBestWindow with Finder")
+    @Test
     @MainActor
-    func findBestWindowFinder() async throws {
+    func `findBestWindow with Finder`() async throws {
         let service = FocusManagementService()
 
         guard !NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.finder").isEmpty else {
@@ -135,8 +134,8 @@ struct FocusUtilitiesTests {
         }
     }
 
-    @Test("WindowIdentityInfo renderable heuristic")
-    func windowRenderableHeuristic() {
+    @Test
+    func `WindowIdentityInfo renderable heuristic`() {
         let renderable = WindowIdentityInfo(
             windowID: 42,
             title: "Document",
@@ -179,8 +178,8 @@ struct FocusUtilitiesTests {
 
     // MARK: - FocusError Tests
 
-    @Test("FocusError descriptions")
-    func focusErrorDescriptions() {
+    @Test
+    func `FocusError descriptions`() throws {
         let errors: [FocusError] = [
             .applicationNotRunning("TestApp"),
             .noWindowsFound("TestApp"),
@@ -194,7 +193,7 @@ struct FocusUtilitiesTests {
         for error in errors {
             let description = error.errorDescription
             #expect(description != nil)
-            #expect(!description!.isEmpty)
+            #expect(try !(#require(description?.isEmpty)))
         }
     }
 }
