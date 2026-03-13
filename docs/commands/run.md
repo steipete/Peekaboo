@@ -27,10 +27,10 @@ read_when:
 ## Examples
 ```bash
 # Run a script and view the JSON summary inline
-polter peekaboo -- run scripts/safari-login.peekaboo.json --json
+peekaboo run scripts/safari-login.peekaboo.json --json
 
 # Capture results for later inspection but keep executing even if a step flakes
-polter peekaboo -- run ./flows/regression.peekaboo.json --no-fail-fast --output /tmp/regression-results.json
+peekaboo run ./flows/regression.peekaboo.json --no-fail-fast --output /tmp/regression-results.json
 ```
 
 ## Troubleshooting

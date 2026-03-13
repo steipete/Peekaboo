@@ -23,13 +23,13 @@ read_when:
 ## Examples
 ```bash
 # Quick sanity check before running UI automation
-polter peekaboo -- permissions
+peekaboo permissions
 
 # Feed the status into an agent to ensure entitlements are set
-polter peekaboo -- permissions --json | jq '.data[] | select(.status != "granted")'
+peekaboo permissions --json | jq '.data[] | select(.status != "granted")'
 
 # Hand someone clear remediation steps
-polter peekaboo -- permissions grant
+peekaboo permissions grant
 ```
 
 ## Troubleshooting

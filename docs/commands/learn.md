@@ -24,10 +24,10 @@ read_when:
 ## Examples
 ```bash
 # Save the full guide for another agent runtime
-polter peekaboo -- learn > /tmp/peekaboo-guide.md
+peekaboo learn > /tmp/peekaboo-guide.md
 
 # Extract just the Commander signatures
-polter peekaboo -- learn | awk '/^## Commander/,0'
+peekaboo learn | awk '/^## Commander/,0'
 ```
 
 ## Troubleshooting

@@ -31,13 +31,13 @@ read_when:
 ## Examples
 ```bash
 # Click the "Send" button (ID from a previous `see` run)
-polter peekaboo -- click --on B12
+peekaboo click --on B12
 
 # Fuzzy search + extra wait for a slow dialog
-polter peekaboo -- click "Allow" --wait-for 8000 --space-switch
+peekaboo click "Allow" --wait-for 8000 --space-switch
 
 # Issue a right-click at raw coordinates
-polter peekaboo -- click --coords 1024,88 --right --no-auto-focus
+peekaboo click --coords 1024,88 --right --no-auto-focus
 ```
 
 ## Troubleshooting

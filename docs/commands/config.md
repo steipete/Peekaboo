@@ -37,26 +37,26 @@ read_when:
 ## Examples
 ```bash
 # Create a clean config + show the merged view
-polter peekaboo -- config init --force
-polter peekaboo -- config show --effective
+peekaboo config init --force
+peekaboo config show --effective
 
 # Register OpenRouter as a provider and immediately test it
-polter peekaboo -- config add-provider openrouter \
+peekaboo config add-provider openrouter \
   --type openai \
   --name "OpenRouter" \
   --base-url https://openrouter.ai/api/v1 \
   --api-key "{env:OPENROUTER_API_KEY}" --force
-polter peekaboo -- config test-provider --provider-id openrouter
+peekaboo config test-provider --provider-id openrouter
 
 # Add and validate keys (stores even if validation fails; warns on failure)
-polter peekaboo -- config add openai sk-live-...
-polter peekaboo -- config add anthropic sk-ant-...
-polter peekaboo -- config add grok xai-...
-polter peekaboo -- config add gemini ya29...
+peekaboo config add openai sk-live-...
+peekaboo config add anthropic sk-ant-...
+peekaboo config add grok xai-...
+peekaboo config add gemini ya29...
 
 # OAuth logins (no API key stored)
-polter peekaboo -- config login openai
-polter peekaboo -- config login anthropic
+peekaboo config login openai
+peekaboo config login anthropic
 ```
 
 ## Troubleshooting

@@ -29,19 +29,19 @@ read_when:
 ## Examples
 ```bash
 # Move Finder’s 2nd window to (100,100)
-polter peekaboo -- window move --app Finder --window-index 1 -x 100 -y 100
+peekaboo window move --app Finder --window-index 1 -x 100 -y 100
 
 # Close a specific window deterministically (window_id from `peekaboo window list --json`)
-polter peekaboo -- window close --window-id 12345
+peekaboo window close --window-id 12345
 
 # Resize Safari’s frontmost window to 1200x800
-polter peekaboo -- window resize --app Safari -w 1200 --height 800
+peekaboo window resize --app Safari -w 1200 --height 800
 
 # Focus Terminal even if it lives on another Space
-polter peekaboo -- window focus --app Terminal --space-switch
+peekaboo window focus --app Terminal --space-switch
 
 # Focus and verify the frontmost window
-polter peekaboo -- window focus --app Terminal --verify
+peekaboo window focus --app Terminal --verify
 ```
 
 ## Troubleshooting

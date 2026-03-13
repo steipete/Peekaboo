@@ -11,10 +11,10 @@ read_when:
 
 ```bash
 # Capture frontmost window, print JSON, and save an annotated PNG
-polter peekaboo -- see --json --annotate --path /tmp/see.png
+peekaboo see --json --annotate --path /tmp/see.png
 
 # Target a specific app or window title
-polter peekaboo -- see --app "Google Chrome" --window-title "Login"
+peekaboo see --app "Google Chrome" --window-title "Login"
 ```
 
 ## When to use
@@ -61,11 +61,11 @@ When `--json` is supplied, the CLI prints:
 Use `jq` or any JSON parser to find elements:
 
 ```bash
-polter peekaboo -- see --app "Safari" --json \
+peekaboo see --app "Safari" --json \
   | jq '.data.ui_elements[] | select(.label | test("Sign in"; "i"))'
 
 # Toolbar buttons that only expose AXDescription:
-polter peekaboo -- see --app "Google Chrome" --json \
+peekaboo see --app "Google Chrome" --json \
   | jq '.data.ui_elements[] | select((.description // "") | test("Wingman"; "i"))'
 ```
 
@@ -81,4 +81,4 @@ polter peekaboo -- see --app "Google Chrome" --json \
 - Edge-aware scoring samples a padded rectangle (6 px halo, clamped to the image) so the chosen region stays clean once text is drawn; above/below placements get slight bonuses to reduce sideways clutter.
 - Preferred orientations nudge horizontally tight elements toward vertical labels when scores tie.
 - Tests: `Apps/CLI/Tests/CoreCLITests/SmartLabelPlacerTests.swift` (run with `swift test --package-path Apps/CLI --filter SmartLabelPlacerTests`).
-- Manual validation: `polter peekaboo -- see --app Playground --annotate --path /tmp/see.png --json` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.
+- Manual validation: `peekaboo see --app Playground --annotate --path /tmp/see.png --json` then inspect the annotated PNG; if labels cover dense UI, capture the repro and adjust padding/scoring before committing.

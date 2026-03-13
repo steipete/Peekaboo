@@ -30,13 +30,13 @@ read_when:
 ## Examples
 ```bash
 # Equivalent to hitting Return once
-polter peekaboo -- press return
+peekaboo press return
 
 # Tab through a menu twice, then confirm
-polter peekaboo -- press tab tab return
+peekaboo press tab tab return
 
 # Walk a dialog down three rows with headroom between repetitions
-polter peekaboo -- press down --count 3 --delay 200
+peekaboo press down --count 3 --delay 200
 ```
 
 ## Troubleshooting
