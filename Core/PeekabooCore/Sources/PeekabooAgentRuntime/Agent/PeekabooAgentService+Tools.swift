@@ -580,9 +580,12 @@ func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentT
         case let .image(data, mimeType, _):
             // For images, return a descriptive string
             return AnyAgentToolValue(string: "[Image: \(mimeType), size: \(data.count) bytes]")
-        case let .resource(uri, _, text):
+        case let .resource(resource, _, _):
             // For resources, return the text content if available
-            return AnyAgentToolValue(string: text ?? "[Resource: \(uri)]")
+            return AnyAgentToolValue(string: resource.text ?? "[Resource: \(resource.uri)]")
+        case let .resourceLink(uri, name, _, _, mimeType, _):
+            let mimeTypeDescription = mimeType.map { ", mimeType: \($0)" } ?? ""
+            return AnyAgentToolValue(string: "[Resource Link: \(name), uri: \(uri)\(mimeTypeDescription)]")
         case let .audio(data, mimeType):
             return AnyAgentToolValue(string: "[Audio: \(mimeType), size: \(data.count) bytes]")
         }
