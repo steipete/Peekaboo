@@ -5,6 +5,35 @@ import MCP
 import PeekabooAutomation
 import TachikomaMCP
 
+enum RunningApplicationTextFormatter {
+    static func format(_ app: ServiceApplicationInfo, index: Int) -> String {
+        var entry = "\(index + 1). \(app.name)"
+        if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
+            entry += " (\(bundleID))"
+        }
+        if let bundlePath = app.bundlePath, !bundlePath.isEmpty {
+            entry += " [\(bundlePath)]"
+        }
+        entry += " - PID: \(app.processIdentifier)"
+        if app.isActive {
+            entry += " [ACTIVE]"
+        }
+        if app.isHidden {
+            entry += " [HIDDEN]"
+        }
+        entry += " - Windows: \(app.windowCount)"
+        return entry
+    }
+
+    static func activeLine(_ app: ServiceApplicationInfo) -> String {
+        var activeLine = "\nActive application: \(app.name)"
+        if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
+            activeLine += " (\(bundleID))"
+        }
+        return activeLine
+    }
+}
+
 /// MCP tool for listing various system items
 public struct ListTool: MCPTool {
     private let context: MCPToolContext
@@ -90,30 +119,11 @@ public struct ListTool: MCPTool {
             lines.append("")
 
             for (index, app) in apps.indexed() {
-                var entry = "\(index + 1). \(app.name)"
-                if let bundleID = app.bundleIdentifier, !bundleID.isEmpty {
-                    entry += " (\(bundleID))"
-                }
-                if let bundlePath = app.bundlePath, !bundlePath.isEmpty {
-                    entry += " [\(bundlePath)]"
-                }
-                entry += " - PID: \(app.processIdentifier)"
-                if app.isActive {
-                    entry += " [ACTIVE]"
-                }
-                if app.isHidden {
-                    entry += " [HIDDEN]"
-                }
-                entry += " - Windows: \(app.windowCount)"
-                lines.append(entry)
+                lines.append(RunningApplicationTextFormatter.format(app, index: index))
             }
 
             if let activeApp = apps.first(where: { $0.isActive }) {
-                var activeLine = "\nActive application: \(activeApp.name)"
-                if let bundleID = activeApp.bundleIdentifier {
-                    activeLine += " (\(bundleID))"
-                }
-                lines.append(activeLine)
+                lines.append(RunningApplicationTextFormatter.activeLine(activeApp))
             }
 
             let summary = ToolEventSummary(
