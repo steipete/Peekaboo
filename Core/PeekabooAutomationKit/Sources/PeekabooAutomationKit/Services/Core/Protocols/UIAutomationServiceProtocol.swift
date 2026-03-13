@@ -119,6 +119,17 @@ public protocol UIAutomationServiceProtocol: Sendable {
     func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
 }
 
+/// Optional capability for automation services that can override the transport timeout used for element detection.
+@MainActor
+public protocol DetectElementsRequestTimeoutAdjusting: UIAutomationServiceProtocol {
+    func detectElements(
+        in imageData: Data,
+        snapshotId: String?,
+        windowContext: WindowContext?,
+        requestTimeoutSec: TimeInterval
+    ) async throws -> ElementDetectionResult
+}
+
 /// Profiles controlling how mouse paths are generated.
 public enum MouseMovementProfile: Sendable, Equatable, Codable {
     /// Linear interpolation between the current and target coordinate.
