@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Test runs now stay hermetic after MCP Swift SDK 0.11 updates by pinning the latest Tachikoma bridge/resource conversions and preventing provider test helpers from consuming live API keys.
 - macOS settings now surface Google/Gemini and Grok providers with canonical provider hydration and manual key overrides.
 - MCP `list` / `see` text output now surfaces hidden apps, bundle paths, and richer element metadata; thanks @metahacker for [#93](https://github.com/steipete/Peekaboo/pull/93).
 - MCP tool descriptions and server-status output now share centralized version/banner metadata; thanks @0xble for [#85](https://github.com/steipete/Peekaboo/pull/85).
