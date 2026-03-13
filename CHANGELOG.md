@@ -7,6 +7,7 @@
 - Remote `peekaboo see` element detection now uses the command timeout instead of the bridge client's shorter socket default; thanks @0xble for [#89](https://github.com/steipete/Peekaboo/pull/89).
 - Screen recording permission checks are more reliable, and MCP Swift SDK compatibility is restored; thanks @romanr for [#94](https://github.com/steipete/Peekaboo/pull/94).
 - Coordinate clicks now fail fast when the requested target app is not actually frontmost after focus; thanks @shawny011717 for [#91](https://github.com/steipete/Peekaboo/pull/91).
+- Permissions docs now point to the real `peekaboo permissions status|grant` commands; thanks @Undertone0809 for [#68](https://github.com/steipete/Peekaboo/pull/68).
 
 ## [3.0.0-beta4] (unreleased)
 
