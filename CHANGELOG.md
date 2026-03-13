@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
+- Agent tool responses now handle current MCP resource/resource-link content shapes; thanks @huntharo for [#95](https://github.com/steipete/Peekaboo/pull/95).
 - CLI credential writes now honor Peekaboo’s config/profile directory consistently; thanks @0xble for [#82](https://github.com/steipete/Peekaboo/pull/82).
 - macOS settings hydration no longer persists config-backed values while loading; thanks @0xble for [#86](https://github.com/steipete/Peekaboo/pull/86).
 - CLI agent runtime now prefers local execution by default; thanks @0xble for [#83](https://github.com/steipete/Peekaboo/pull/83).
