@@ -119,13 +119,15 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 rawValue: (self.profile ?? "linear").lowercased()
             ) ?? .linear
             let movement = CursorMovementResolver.resolve(
-                selection: profileSelection,
-                durationOverride: self.duration,
-                stepsOverride: self.steps,
-                baseSmooth: true,
-                distance: distance,
-                defaultDuration: 500,
-                defaultSteps: 20
+                CursorMovementResolutionRequest(
+                    selection: profileSelection,
+                    durationOverride: self.duration,
+                    stepsOverride: self.steps,
+                    baseSmooth: true,
+                    distance: distance,
+                    defaultDuration: 500,
+                    defaultSteps: 20
+                )
             )
 
             let dragRequest = DragRequest(

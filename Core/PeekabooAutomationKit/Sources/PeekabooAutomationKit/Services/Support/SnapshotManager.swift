@@ -243,31 +243,22 @@ public final class SnapshotManager: SnapshotManagerProtocol {
 
     // MARK: - Additional Public Methods
 
-    // swiftlint:disable function_parameter_count
     /// Store raw screenshot and build UI map
-    public func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
+    public func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
         // Store raw screenshot and build UI map
-        let snapshotPath = self.getSnapshotPath(for: snapshotId)
+        let snapshotPath = self.getSnapshotPath(for: request.snapshotId)
         try FileManager.default.createDirectory(at: snapshotPath, withIntermediateDirectories: true)
 
         // Load or create snapshot data
         var snapshotData = await self.snapshotActor
-            .loadSnapshot(snapshotId: snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+            .loadSnapshot(snapshotId: request.snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
         if snapshotData.creatorProcessId == nil {
             snapshotData.creatorProcessId = getpid()
         }
 
         // Copy screenshot to snapshot directory
         let rawPath = snapshotPath.appendingPathComponent("raw.png")
-        let sourceURL = URL(fileURLWithPath: screenshotPath).standardizedFileURL
+        let sourceURL = URL(fileURLWithPath: request.screenshotPath).standardizedFileURL
         guard FileManager.default.fileExists(atPath: sourceURL.path) else {
             throw CaptureError.fileIOError("Screenshot missing at \(sourceURL.path)")
         }
@@ -282,17 +273,15 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         }
 
         snapshotData.screenshotPath = rawPath.path
-        snapshotData.applicationName = applicationName
-        snapshotData.applicationBundleId = applicationBundleId
-        snapshotData.applicationProcessId = applicationProcessId
-        snapshotData.windowTitle = windowTitle
-        snapshotData.windowBounds = windowBounds
+        snapshotData.applicationName = request.applicationName
+        snapshotData.applicationBundleId = request.applicationBundleId
+        snapshotData.applicationProcessId = request.applicationProcessId
+        snapshotData.windowTitle = request.windowTitle
+        snapshotData.windowBounds = request.windowBounds
         snapshotData.lastUpdateTime = Date()
 
-        try await self.snapshotActor.saveSnapshot(snapshotId: snapshotId, data: snapshotData, at: snapshotPath)
+        try await self.snapshotActor.saveSnapshot(snapshotId: request.snapshotId, data: snapshotData, at: snapshotPath)
     }
-
-    // swiftlint:enable function_parameter_count
 
     public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
         let snapshotPath = self.getSnapshotPath(for: snapshotId)

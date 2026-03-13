@@ -145,25 +145,9 @@ public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
         try await self.client.waitForElement(target: target, timeout: timeout, snapshotId: snapshotId)
     }
 
-    // swiftlint:disable function_parameter_count
-    public func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    {
-        try await self.client.drag(
-            from: from,
-            to: to,
-            duration: duration,
-            steps: steps,
-            modifiers: modifiers,
-            profile: profile)
+    public func drag(_ request: DragOperationRequest) async throws {
+        try await self.client.drag(PeekabooBridgeDragRequest(request))
     }
-
-    // swiftlint:enable function_parameter_count
 
     public func moveMouse(to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws {
         try await self.client.moveMouse(to: to, duration: duration, steps: steps, profile: profile)
@@ -436,24 +420,8 @@ public final class RemoteSnapshotManager: SnapshotManagerProtocol {
         SnapshotManager().getSnapshotStoragePath()
     }
 
-    // swiftlint:disable:next function_parameter_count
-    public func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
-        try await self.client.storeScreenshot(
-            snapshotId: snapshotId,
-            screenshotPath: screenshotPath,
-            applicationBundleId: applicationBundleId,
-            applicationProcessId: applicationProcessId,
-            applicationName: applicationName,
-            windowTitle: windowTitle,
-            windowBounds: windowBounds)
+    public func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
+        try await self.client.storeScreenshot(PeekabooBridgeStoreScreenshotRequest(request))
     }
 
     public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {

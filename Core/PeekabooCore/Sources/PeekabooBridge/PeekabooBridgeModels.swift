@@ -433,6 +433,25 @@ public struct PeekabooBridgeDragRequest: Codable, Sendable {
     public let steps: Int
     public let modifiers: String?
     public let profile: MouseMovementProfile
+
+    public init(_ request: DragOperationRequest) {
+        self.from = request.from
+        self.to = request.to
+        self.duration = request.duration
+        self.steps = request.steps
+        self.modifiers = request.modifiers
+        self.profile = request.profile
+    }
+
+    public var automationRequest: DragOperationRequest {
+        DragOperationRequest(
+            from: self.from,
+            to: self.to,
+            duration: self.duration,
+            steps: self.steps,
+            modifiers: self.modifiers,
+            profile: self.profile)
+    }
 }
 
 public struct PeekabooBridgeMoveMouseRequest: Codable, Sendable {
@@ -576,6 +595,27 @@ public struct PeekabooBridgeStoreScreenshotRequest: Codable, Sendable {
     public let applicationName: String?
     public let windowTitle: String?
     public let windowBounds: CGRect?
+
+    public init(_ request: SnapshotScreenshotRequest) {
+        self.snapshotId = request.snapshotId
+        self.screenshotPath = request.screenshotPath
+        self.applicationBundleId = request.applicationBundleId
+        self.applicationProcessId = request.applicationProcessId
+        self.applicationName = request.applicationName
+        self.windowTitle = request.windowTitle
+        self.windowBounds = request.windowBounds
+    }
+
+    public var snapshotRequest: SnapshotScreenshotRequest {
+        SnapshotScreenshotRequest(
+            snapshotId: self.snapshotId,
+            screenshotPath: self.screenshotPath,
+            applicationBundleId: self.applicationBundleId,
+            applicationProcessId: self.applicationProcessId,
+            applicationName: self.applicationName,
+            windowTitle: self.windowTitle,
+            windowBounds: self.windowBounds)
+    }
 }
 
 public struct PeekabooBridgeStoreAnnotatedScreenshotRequest: Codable, Sendable {

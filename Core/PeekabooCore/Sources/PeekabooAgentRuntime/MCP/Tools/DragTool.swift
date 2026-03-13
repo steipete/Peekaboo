@@ -101,12 +101,13 @@ public struct DragTool: MCPTool {
                 distance: distance)
 
             try await self.context.automation.drag(
-                from: fromPoint.point,
-                to: toPoint.point,
-                duration: movement.duration,
-                steps: movement.steps,
-                modifiers: request.modifiers,
-                profile: movement.profile)
+                DragOperationRequest(
+                    from: fromPoint.point,
+                    to: toPoint.point,
+                    duration: movement.duration,
+                    steps: movement.steps,
+                    modifiers: request.modifiers,
+                    profile: movement.profile))
 
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(

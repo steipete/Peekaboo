@@ -344,17 +344,18 @@ enum AutomationServiceBridge {
         }.value
     }
 
-    // swiftlint:disable:next function_parameter_count
     static func swipe(
         automation: any UIAutomationServiceProtocol,
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        profile: MouseMovementProfile
+        request: SwipeRequest
     ) async throws {
         try await Task { @MainActor in
-            try await automation.swipe(from: from, to: to, duration: duration, steps: steps, profile: profile)
+            try await automation.swipe(
+                from: request.from,
+                to: request.to,
+                duration: request.duration,
+                steps: request.steps,
+                profile: request.profile
+            )
         }.value
     }
 
@@ -364,12 +365,14 @@ enum AutomationServiceBridge {
     ) async throws {
         try await Task { @MainActor in
             try await automation.drag(
-                from: request.from,
-                to: request.to,
-                duration: request.duration,
-                steps: request.steps,
-                modifiers: request.modifiers,
-                profile: request.profile
+                DragOperationRequest(
+                    from: request.from,
+                    to: request.to,
+                    duration: request.duration,
+                    steps: request.steps,
+                    modifiers: request.modifiers,
+                    profile: request.profile
+                )
             )
         }.value
     }
@@ -414,6 +417,14 @@ struct TypeActionsRequest {
     let snapshotId: String?
 }
 
+struct SwipeRequest {
+    let from: CGPoint
+    let to: CGPoint
+    let duration: Int
+    let steps: Int
+    let profile: MouseMovementProfile
+}
+
 struct DragRequest {
     let from: CGPoint
     let to: CGPoint
@@ -436,37 +447,38 @@ struct CursorMovementParameters {
     let profileName: String
 }
 
+struct CursorMovementResolutionRequest {
+    let selection: CursorMovementProfileSelection
+    let durationOverride: Int?
+    let stepsOverride: Int?
+    let baseSmooth: Bool
+    let distance: CGFloat
+    let defaultDuration: Int
+    let defaultSteps: Int
+}
+
 enum CursorMovementResolver {
-    // swiftlint:disable:next function_parameter_count
-    static func resolve(
-        selection: CursorMovementProfileSelection,
-        durationOverride: Int?,
-        stepsOverride: Int?,
-        baseSmooth: Bool,
-        distance: CGFloat,
-        defaultDuration: Int,
-        defaultSteps: Int
-    ) -> CursorMovementParameters {
-        switch selection {
+    static func resolve(_ request: CursorMovementResolutionRequest) -> CursorMovementParameters {
+        switch request.selection {
         case .linear:
-            let resolvedDuration = durationOverride ?? (baseSmooth ? defaultDuration : 0)
-            let resolvedSteps = baseSmooth ? max(stepsOverride ?? defaultSteps, 1) : 1
+            let resolvedDuration = request.durationOverride ?? (request.baseSmooth ? request.defaultDuration : 0)
+            let resolvedSteps = request.baseSmooth ? max(request.stepsOverride ?? request.defaultSteps, 1) : 1
             return CursorMovementParameters(
                 profile: .linear,
                 duration: resolvedDuration,
                 steps: resolvedSteps,
-                smooth: baseSmooth,
-                profileName: selection.rawValue
+                smooth: request.baseSmooth,
+                profileName: request.selection.rawValue
             )
         case .human:
-            let resolvedDuration = durationOverride ?? Self.humanDuration(for: distance)
-            let resolvedSteps = max(stepsOverride ?? Self.humanSteps(for: distance), 30)
+            let resolvedDuration = request.durationOverride ?? Self.humanDuration(for: request.distance)
+            let resolvedSteps = max(request.stepsOverride ?? Self.humanSteps(for: request.distance), 30)
             return CursorMovementParameters(
                 profile: .human(),
                 duration: resolvedDuration,
                 steps: resolvedSteps,
                 smooth: true,
-                profileName: selection.rawValue
+                profileName: request.selection.rawValue
             )
         }
     }

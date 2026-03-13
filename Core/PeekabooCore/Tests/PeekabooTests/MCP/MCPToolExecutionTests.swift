@@ -238,14 +238,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
-    // swiftlint:disable:next function_parameter_count
-    func drag(
-        from _: CGPoint,
-        to _: CGPoint,
-        duration _: Int,
-        steps _: Int,
-        modifiers _: String?,
-        profile _: MouseMovementProfile) async throws {}
+    func drag(_: DragOperationRequest) async throws {}
 
     func moveMouse(
         to _: CGPoint,

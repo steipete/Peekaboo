@@ -131,12 +131,13 @@ public struct SwipeTool: MCPTool {
 
         let automation = self.context.automation
         try await automation.drag(
-            from: fromPoint,
-            to: toPoint,
-            duration: movement.duration,
-            steps: movement.steps,
-            modifiers: nil,
-            profile: movement.profile)
+            DragOperationRequest(
+                from: fromPoint,
+                to: toPoint,
+                duration: movement.duration,
+                steps: movement.steps,
+                modifiers: nil,
+                profile: movement.profile))
 
         let executionTime = Date().timeIntervalSince(startTime)
         return self.buildResponse(

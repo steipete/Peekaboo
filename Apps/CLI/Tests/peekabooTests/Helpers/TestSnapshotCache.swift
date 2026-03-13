@@ -26,13 +26,15 @@ final class SnapshotCache {
     func save(_ data: UIAutomationSnapshot) async throws {
         if let screenshotPath = data.screenshotPath {
             try await self.snapshotManager.storeScreenshot(
-                snapshotId: self.snapshotId,
-                screenshotPath: screenshotPath,
-                applicationBundleId: data.applicationBundleId,
-                applicationProcessId: data.applicationProcessId,
-                applicationName: data.applicationName,
-                windowTitle: data.windowTitle,
-                windowBounds: data.windowBounds
+                SnapshotScreenshotRequest(
+                    snapshotId: self.snapshotId,
+                    screenshotPath: screenshotPath,
+                    applicationBundleId: data.applicationBundleId,
+                    applicationProcessId: data.applicationProcessId,
+                    applicationName: data.applicationName,
+                    windowTitle: data.windowTitle,
+                    windowBounds: data.windowBounds
+                )
             )
         }
     }

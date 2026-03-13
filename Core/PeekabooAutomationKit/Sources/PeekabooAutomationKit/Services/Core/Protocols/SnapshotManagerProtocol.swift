@@ -1,4 +1,33 @@
+import CoreGraphics
 import Foundation
+
+public struct SnapshotScreenshotRequest: Sendable, Equatable {
+    public let snapshotId: String
+    public let screenshotPath: String
+    public let applicationBundleId: String?
+    public let applicationProcessId: Int32?
+    public let applicationName: String?
+    public let windowTitle: String?
+    public let windowBounds: CGRect?
+
+    public init(
+        snapshotId: String,
+        screenshotPath: String,
+        applicationBundleId: String?,
+        applicationProcessId: Int32?,
+        applicationName: String?,
+        windowTitle: String?,
+        windowBounds: CGRect?)
+    {
+        self.snapshotId = snapshotId
+        self.screenshotPath = screenshotPath
+        self.applicationBundleId = applicationBundleId
+        self.applicationProcessId = applicationProcessId
+        self.applicationName = applicationName
+        self.windowTitle = windowTitle
+        self.windowBounds = windowBounds
+    }
+}
 
 /// Protocol defining UI automation snapshot management operations.
 @MainActor
@@ -48,23 +77,9 @@ public protocol SnapshotManagerProtocol: Sendable {
     /// - Returns: Path to snapshot storage directory
     func getSnapshotStoragePath() -> String
 
-    // swiftlint:disable function_parameter_count
     /// Store raw screenshot and build UI map
-    /// - Parameters:
-    ///   - snapshotId: Snapshot identifier
-    ///   - screenshotPath: Path to the screenshot file
-    ///   - applicationName: Name of the application
-    ///   - windowTitle: Title of the window
-    ///   - windowBounds: Window bounds
-    func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    // swiftlint:enable function_parameter_count
+    /// - Parameter request: Screenshot metadata and storage location for the snapshot.
+    func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws
 
     /// Store an annotated screenshot for a snapshot (optional companion to `raw.png`).
     /// - Parameters:

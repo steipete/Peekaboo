@@ -502,16 +502,7 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
         WaitForElementResult(found: true, element: nil, waitTime: 0)
     }
 
-    // swiftlint:disable function_parameter_count
-    func drag(
-        from _: CGPoint,
-        to _: CGPoint,
-        duration _: Int,
-        steps _: Int,
-        modifiers _: String?,
-        profile _: MouseMovementProfile)
-    async throws {}
-    // swiftlint:enable function_parameter_count
+    func drag(_: DragOperationRequest) async throws {}
 
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
 

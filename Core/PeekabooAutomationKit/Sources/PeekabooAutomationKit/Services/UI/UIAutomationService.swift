@@ -560,23 +560,9 @@ extension UIAutomationService {
         _ = await self.feedbackClient.showSwipeGesture(from: from, to: to, duration: TimeInterval(duration) / 1000.0)
     }
 
-    // swiftlint:disable:next function_parameter_count
-    public func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    {
+    public func drag(_ request: DragOperationRequest) async throws {
         self.logger.debug("Delegating drag to GestureService")
-        try await self.gestureService.drag(
-            from: from,
-            to: to,
-            duration: duration,
-            steps: steps,
-            modifiers: modifiers,
-            profile: profile)
+        try await self.gestureService.drag(request)
     }
 
     public func moveMouse(

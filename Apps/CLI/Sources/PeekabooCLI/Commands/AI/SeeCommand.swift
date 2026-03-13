@@ -357,13 +357,15 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         )
 
         try await self.services.snapshots.storeScreenshot(
-            snapshotId: detectionResult.snapshotId,
-            screenshotPath: outputPath,
-            applicationBundleId: captureResult.metadata.applicationInfo?.bundleIdentifier,
-            applicationProcessId: captureResult.metadata.applicationInfo.map { Int32($0.processIdentifier) },
-            applicationName: windowContext.applicationName,
-            windowTitle: windowContext.windowTitle,
-            windowBounds: windowContext.windowBounds
+            SnapshotScreenshotRequest(
+                snapshotId: detectionResult.snapshotId,
+                screenshotPath: outputPath,
+                applicationBundleId: captureResult.metadata.applicationInfo?.bundleIdentifier,
+                applicationProcessId: captureResult.metadata.applicationInfo.map { Int32($0.processIdentifier) },
+                applicationName: windowContext.applicationName,
+                windowTitle: windowContext.windowTitle,
+                windowBounds: windowContext.windowBounds
+            )
         )
 
         // Store the result in snapshot

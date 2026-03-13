@@ -2,6 +2,31 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
+public struct DragOperationRequest: Sendable, Equatable {
+    public let from: CGPoint
+    public let to: CGPoint
+    public let duration: Int
+    public let steps: Int
+    public let modifiers: String?
+    public let profile: MouseMovementProfile
+
+    public init(
+        from: CGPoint,
+        to: CGPoint,
+        duration: Int,
+        steps: Int,
+        modifiers: String?,
+        profile: MouseMovementProfile)
+    {
+        self.from = from
+        self.to = to
+        self.duration = duration
+        self.steps = steps
+        self.modifiers = modifiers
+        self.profile = profile
+    }
+}
+
 /// Protocol defining UI automation operations
 @MainActor
 public protocol UIAutomationServiceProtocol: Sendable {
@@ -69,23 +94,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     func waitForElement(target: ClickTarget, timeout: TimeInterval, snapshotId: String?) async throws
         -> WaitForElementResult
 
-    // swiftlint:disable function_parameter_count
     /// Perform a drag operation between two points
-    /// - Parameters:
-    ///   - from: Starting point for the drag
-    ///   - to: Ending point for the drag
-    ///   - duration: Duration of the drag in milliseconds
-    ///   - steps: Number of intermediate steps
-    ///   - modifiers: Modifier keys to hold during drag (comma-separated: cmd,shift,option,ctrl)
-    ///   - profile: Movement profile for the drag path
-    func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    // swiftlint:enable function_parameter_count
+    /// - Parameter request: Drag configuration including coordinates, timing, modifiers, and profile.
+    func drag(_ request: DragOperationRequest) async throws
 
     /// Move the mouse cursor to a specific location
     /// - Parameters:

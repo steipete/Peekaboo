@@ -294,17 +294,16 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         return WaitForElementResult(found: false, element: nil, waitTime: 0)
     }
 
-    // swiftlint:disable:next function_parameter_count
-    func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile
-    ) async throws {
+    func drag(_ request: DragOperationRequest) async throws {
         self.dragCalls.append(
-            DragCall(from: from, to: to, duration: duration, steps: steps, modifiers: modifiers, profile: profile)
+            DragCall(
+                from: request.from,
+                to: request.to,
+                duration: request.duration,
+                steps: request.steps,
+                modifiers: request.modifiers,
+                profile: request.profile
+            )
         )
     }
 
@@ -572,21 +571,12 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
         "/tmp/peekaboo-snapshots"
     }
 
-    // swiftlint:disable:next function_parameter_count
-    func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?
-    ) async throws {
-        let existingInfo = self.snapshotInfos[snapshotId]
+    func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
+        let existingInfo = self.snapshotInfos[request.snapshotId]
         let createdAt = existingInfo?.createdAt ?? Date()
         let screenshotCount = (existingInfo?.screenshotCount ?? 0) + 1
-        self.snapshotInfos[snapshotId] = SnapshotInfo(
-            id: snapshotId,
+        self.snapshotInfos[request.snapshotId] = SnapshotInfo(
+            id: request.snapshotId,
             processId: existingInfo?.processId ?? 0,
             createdAt: createdAt,
             lastAccessedAt: Date(),
@@ -594,18 +584,18 @@ final class StubSnapshotManager: SnapshotManagerProtocol, @unchecked Sendable {
             screenshotCount: screenshotCount,
             isActive: existingInfo?.isActive ?? true
         )
-        var records = self.storedScreenshots[snapshotId] ?? []
+        var records = self.storedScreenshots[request.snapshotId] ?? []
         records.append(
             ScreenshotRecord(
-                path: screenshotPath,
-                applicationBundleId: applicationBundleId,
-                applicationProcessId: applicationProcessId,
-                applicationName: applicationName,
-                windowTitle: windowTitle,
-                windowBounds: windowBounds
+                path: request.screenshotPath,
+                applicationBundleId: request.applicationBundleId,
+                applicationProcessId: request.applicationProcessId,
+                applicationName: request.applicationName,
+                windowTitle: request.windowTitle,
+                windowBounds: request.windowBounds
             )
         )
-        self.storedScreenshots[snapshotId] = records
+        self.storedScreenshots[request.snapshotId] = records
     }
 
     func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {

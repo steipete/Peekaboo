@@ -177,19 +177,10 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
 
     // MARK: - Screenshot + UI map helpers
 
-    // swiftlint:disable:next function_parameter_count
-    public func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
+    public func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
         self.pruneIfNeeded()
 
-        var entry = self.entries[snapshotId] ?? Entry(
+        var entry = self.entries[request.snapshotId] ?? Entry(
             createdAt: Date(),
             lastAccessedAt: Date(),
             processId: getpid(),
@@ -197,14 +188,14 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             snapshotData: UIAutomationSnapshot(creatorProcessId: getpid()))
 
         entry.lastAccessedAt = Date()
-        entry.snapshotData.screenshotPath = screenshotPath
-        entry.snapshotData.applicationName = applicationName
-        entry.snapshotData.applicationBundleId = applicationBundleId
-        entry.snapshotData.applicationProcessId = applicationProcessId
-        entry.snapshotData.windowTitle = windowTitle
-        entry.snapshotData.windowBounds = windowBounds
+        entry.snapshotData.screenshotPath = request.screenshotPath
+        entry.snapshotData.applicationName = request.applicationName
+        entry.snapshotData.applicationBundleId = request.applicationBundleId
+        entry.snapshotData.applicationProcessId = request.applicationProcessId
+        entry.snapshotData.windowTitle = request.windowTitle
+        entry.snapshotData.windowBounds = request.windowBounds
         entry.snapshotData.lastUpdateTime = Date()
-        self.entries[snapshotId] = entry
+        self.entries[request.snapshotId] = entry
     }
 
     public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {

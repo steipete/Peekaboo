@@ -44,42 +44,32 @@ public final class GestureService {
         self.logger.debug("Swipe completed")
     }
 
-    // swiftlint:disable function_parameter_count
     /// Perform a drag operation with optional modifiers
-    public func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    {
+    public func drag(_ request: DragOperationRequest) async throws {
         // Perform a drag operation with optional modifiers
         let gestureDescription = self.describeGesture(
             name: "Drag requested",
             details: [
-                "from: (\(from.x), \(from.y))",
-                "to: (\(to.x), \(to.y))",
-                "duration: \(duration)ms",
-                "modifiers: \(modifiers ?? "none")",
-                "profile: \(profile.logDescription)",
+                "from: (\(request.from.x), \(request.from.y))",
+                "to: (\(request.to.x), \(request.to.y))",
+                "duration: \(request.duration)ms",
+                "modifiers: \(request.modifiers ?? "none")",
+                "profile: \(request.profile.logDescription)",
             ])
         self.logger.debug("\(gestureDescription)")
 
-        try self.ensurePositiveSteps(steps, action: "Drag")
+        try self.ensurePositiveSteps(request.steps, action: "Drag")
 
         let path = self.buildGesturePath(
-            from: from,
-            to: to,
-            duration: duration,
-            steps: steps,
-            profile: profile)
-        try await self.performDrag(path: path, start: from)
+            from: request.from,
+            to: request.to,
+            duration: request.duration,
+            steps: request.steps,
+            profile: request.profile)
+        try await self.performDrag(path: path, start: request.from)
 
         self.logger.debug("Drag completed")
     }
-
-    // swiftlint:enable function_parameter_count
 
     /// Move mouse to a specific point
     public func moveMouse(

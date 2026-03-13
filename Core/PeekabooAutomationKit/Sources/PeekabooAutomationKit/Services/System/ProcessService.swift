@@ -409,12 +409,13 @@ extension ProcessService {
         let modifierString = modifiers.map(\.rawValue).joined(separator: ",")
 
         try await self.uiAutomationService.drag(
-            from: CGPoint(x: dragParams.fromX, y: dragParams.fromY),
-            to: CGPoint(x: dragParams.toX, y: dragParams.toY),
-            duration: Int(duration * 1000), // Convert to milliseconds
-            steps: 30,
-            modifiers: modifierString.isEmpty ? nil : modifierString,
-            profile: .linear)
+            DragOperationRequest(
+                from: CGPoint(x: dragParams.fromX, y: dragParams.fromY),
+                to: CGPoint(x: dragParams.toX, y: dragParams.toY),
+                duration: Int(duration * 1000), // Convert to milliseconds
+                steps: 30,
+                modifiers: modifierString.isEmpty ? nil : modifierString,
+                profile: .linear))
 
         return StepExecutionResult(
             output: .data([
@@ -1021,13 +1022,14 @@ extension ProcessService {
         let appInfo = captureResult.metadata.applicationInfo
         let windowInfo = captureResult.metadata.windowInfo
         try await self.snapshotManager.storeScreenshot(
-            snapshotId: snapshotId,
-            screenshotPath: path,
-            applicationBundleId: appInfo?.bundleIdentifier,
-            applicationProcessId: appInfo.map { Int32($0.processIdentifier) },
-            applicationName: appInfo?.name,
-            windowTitle: windowInfo?.title,
-            windowBounds: windowInfo?.bounds)
+            SnapshotScreenshotRequest(
+                snapshotId: snapshotId,
+                screenshotPath: path,
+                applicationBundleId: appInfo?.bundleIdentifier,
+                applicationProcessId: appInfo.map { Int32($0.processIdentifier) },
+                applicationName: appInfo?.name,
+                windowTitle: windowInfo?.title,
+                windowBounds: windowInfo?.bounds))
     }
 
     private func annotateIfNeeded(

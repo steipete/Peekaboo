@@ -156,20 +156,9 @@ final class UnusedSnapshotManager: SnapshotManagerProtocol {
         fatalError("unused")
     }
 
-    // swiftlint:disable function_parameter_count
-    func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
+    func storeScreenshot(_: SnapshotScreenshotRequest) async throws {
         fatalError("unused")
     }
-
-    // swiftlint:enable function_parameter_count
 
     func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
         fatalError("unused")
@@ -233,19 +222,9 @@ final class UnusedUIAutomationService: UIAutomationServiceProtocol {
         fatalError("unused")
     }
 
-    // swiftlint:disable function_parameter_count
-    func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    {
+    func drag(_: DragOperationRequest) async throws {
         fatalError("unused")
     }
-
-    // swiftlint:enable function_parameter_count
 
     func moveMouse(to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws {
         fatalError("unused")

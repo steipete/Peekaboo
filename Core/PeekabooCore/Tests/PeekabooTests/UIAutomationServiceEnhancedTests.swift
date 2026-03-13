@@ -276,17 +276,9 @@ private final class MockSnapshotManager: SnapshotManagerProtocol {
         "/tmp/test-snapshots"
     }
 
-    // swiftlint:disable:next function_parameter_count
-    func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId _: String?,
-        applicationProcessId _: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
+    func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
         // No-op for tests
+        _ = request
     }
 
     func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {

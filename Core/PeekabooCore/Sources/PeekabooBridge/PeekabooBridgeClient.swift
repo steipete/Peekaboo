@@ -5,7 +5,6 @@ import os.log
 import PeekabooAutomationKit
 import PeekabooFoundation
 
-// swiftlint:disable type_body_length
 public actor PeekabooBridgeClient {
     private let socketPath: String
     private let maxResponseBytes: Int
@@ -227,26 +226,9 @@ public actor PeekabooBridgeClient {
         try await self.sendExpectOK(.swipe(payload))
     }
 
-    // swiftlint:disable function_parameter_count
-    public func drag(
-        from: CGPoint,
-        to: CGPoint,
-        duration: Int,
-        steps: Int,
-        modifiers: String?,
-        profile: MouseMovementProfile) async throws
-    {
-        let payload = PeekabooBridgeDragRequest(
-            from: from,
-            to: to,
-            duration: duration,
-            steps: steps,
-            modifiers: modifiers,
-            profile: profile)
-        try await self.sendExpectOK(.drag(payload))
+    public func drag(_ request: PeekabooBridgeDragRequest) async throws {
+        try await self.sendExpectOK(.drag(request))
     }
-
-    // swiftlint:enable function_parameter_count
 
     public func moveMouse(
         to point: CGPoint,
@@ -423,7 +405,9 @@ public actor PeekabooBridgeClient {
     public func showAllApplications() async throws {
         try await self.sendExpectOK(.showAllApplications)
     }
+}
 
+extension PeekabooBridgeClient {
     // MARK: - Menus
 
     public func listMenus(appIdentifier: String) async throws -> MenuStructure {
@@ -675,26 +659,8 @@ public actor PeekabooBridgeClient {
         }
     }
 
-    // swiftlint:disable:next function_parameter_count
-    public func storeScreenshot(
-        snapshotId: String,
-        screenshotPath: String,
-        applicationBundleId: String?,
-        applicationProcessId: Int32?,
-        applicationName: String?,
-        windowTitle: String?,
-        windowBounds: CGRect?) async throws
-    {
-        try await self.sendExpectOK(
-            .storeScreenshot(
-                .init(
-                    snapshotId: snapshotId,
-                    screenshotPath: screenshotPath,
-                    applicationBundleId: applicationBundleId,
-                    applicationProcessId: applicationProcessId,
-                    applicationName: applicationName,
-                    windowTitle: windowTitle,
-                    windowBounds: windowBounds)))
+    public func storeScreenshot(_ request: PeekabooBridgeStoreScreenshotRequest) async throws {
+        try await self.sendExpectOK(.storeScreenshot(request))
     }
 
     public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
@@ -755,7 +721,9 @@ public actor PeekabooBridgeClient {
     public func appleScriptProbe() async throws {
         try await self.sendExpectOK(.appleScriptProbe)
     }
+}
 
+extension PeekabooBridgeClient {
     // MARK: - Private
 
     private func send(_ request: PeekabooBridgeRequest) async throws -> PeekabooBridgeResponse {
@@ -922,4 +890,3 @@ public actor PeekabooBridgeClient {
         }
     }
 }
-// swiftlint:enable type_body_length
