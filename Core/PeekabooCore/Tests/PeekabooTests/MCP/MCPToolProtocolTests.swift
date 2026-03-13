@@ -204,6 +204,7 @@ struct MCPToolProtocolTests {
             case .image: imageCount += 1
             case .audio: break // Not used in this test
             case .resource: break // Not used in this test
+            case .resourceLink: break // Not used in this test
             }
         }
 
