@@ -96,6 +96,36 @@ struct MCPToolExecutionTests {
     }
 
     @Test
+    func `List tool for apps includes bundle path and hidden state`() async throws {
+        let mockApplications = await MainActor.run {
+            MockApplicationService(
+                applications: [
+                    ServiceApplicationInfo(
+                        processIdentifier: 1,
+                        bundleIdentifier: "com.apple.finder",
+                        name: "Finder",
+                        bundlePath: "/System/Library/CoreServices/Finder.app",
+                        isActive: true,
+                        isHidden: true,
+                        windowCount: 1),
+                ])
+        }
+        let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
+        let tool = ListTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["type": "apps"]))
+        #expect(response.isError == false)
+
+        guard case let .text(output) = response.content.first else {
+            Issue.record("Expected text response for apps listing")
+            return
+        }
+
+        #expect(output.contains("[/System/Library/CoreServices/Finder.app]"))
+        #expect(output.contains("[HIDDEN]"))
+    }
+
+    @Test
     func `List tool with invalid type`() async throws {
         let mockApplications = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
@@ -133,6 +163,58 @@ struct MCPToolExecutionTests {
         }
 
         #expect(output.contains("Version: \(PeekabooMCPVersion.current)"))
+    }
+
+    @Test
+    func `See tool summary surfaces enriched element metadata`() async throws {
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot-1",
+            screenshotPath: "/tmp/peekaboo-see-test.png",
+            elements: DetectedElements(
+                buttons: [
+                    DetectedElement(
+                        id: "B1",
+                        type: .button,
+                        label: "OK",
+                        value: "Confirm",
+                        bounds: CGRect(x: 540, y: 320, width: 80, height: 32),
+                        isEnabled: true,
+                        attributes: [
+                            "description": "Confirms the dialog",
+                            "help": "Press to continue",
+                            "identifier": "confirm-button",
+                            "keyboardShortcut": "Return",
+                        ]),
+                ]),
+            metadata: DetectionMetadata(
+                detectionTime: 0.02,
+                elementCount: 1,
+                method: "mock"))
+        let automation = await MainActor.run {
+            MockAutomationService(
+                accessibilityGranted: true,
+                detectionResult: detectionResult)
+        }
+        let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(
+            automation: automation,
+            screenCapture: screenCapture)
+        let tool = SeeTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [:]))
+        #expect(response.isError == false)
+
+        guard case let .text(output) = response.content.first else {
+            Issue.record("Expected text response for see output")
+            return
+        }
+
+        #expect(output.contains("size 80×32"))
+        #expect(output.contains("value: \"Confirm\""))
+        #expect(output.contains("desc: \"Confirms the dialog\""))
+        #expect(output.contains("help: \"Press to continue\""))
+        #expect(output.contains("shortcut: Return"))
+        #expect(output.contains("identifier: confirm-button"))
     }
 
     // MARK: - App Tool Tests
@@ -217,15 +299,20 @@ private enum MCPToolTestHelpers {
 @MainActor
 private final class MockAutomationService: UIAutomationServiceProtocol {
     private let accessibilityGranted: Bool
+    private let detectionResult: ElementDetectionResult?
     var lastCadence: TypingCadence?
 
-    init(accessibilityGranted: Bool) {
+    init(accessibilityGranted: Bool, detectionResult: ElementDetectionResult? = nil) {
         self.accessibilityGranted = accessibilityGranted
+        self.detectionResult = detectionResult
     }
 
     func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
         -> ElementDetectionResult
     {
+        if let detectionResult = self.detectionResult {
+            return detectionResult
+        }
         throw PeekabooError.notImplemented("mock detectElements")
     }
 

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Fixed
+- MCP `list` / `see` text output now surfaces hidden apps, bundle paths, and richer element metadata; thanks @metahacker for [#93](https://github.com/steipete/Peekaboo/pull/93).
 - MCP tool descriptions and server-status output now share centralized version/banner metadata; thanks @0xble for [#85](https://github.com/steipete/Peekaboo/pull/85).
 - Agent tool responses now handle current MCP resource/resource-link content shapes; thanks @huntharo for [#95](https://github.com/steipete/Peekaboo/pull/95).
 - CLI credential writes now honor Peekaboo’s config/profile directory consistently; thanks @0xble for [#82](https://github.com/steipete/Peekaboo/pull/82).
