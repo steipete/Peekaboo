@@ -5,6 +5,7 @@ import os.log
 import PeekabooAutomationKit
 import PeekabooFoundation
 
+// swiftlint:disable type_body_length
 public actor PeekabooBridgeClient {
     private let socketPath: String
     private let maxResponseBytes: Int
@@ -527,8 +528,14 @@ public actor PeekabooBridgeClient {
             menuItem: menuItem)))
     }
 
-    public func hideDock() async throws { try await self.sendExpectOK(.hideDock) }
-    public func showDock() async throws { try await self.sendExpectOK(.showDock) }
+    public func hideDock() async throws {
+        try await self.sendExpectOK(.hideDock)
+    }
+
+    public func showDock() async throws {
+        try await self.sendExpectOK(.showDock)
+    }
+
     public func isDockHidden() async throws -> Bool {
         let response = try await self.send(.isDockHidden)
         switch response {
@@ -915,3 +922,4 @@ public actor PeekabooBridgeClient {
         }
     }
 }
+// swiftlint:enable type_body_length
