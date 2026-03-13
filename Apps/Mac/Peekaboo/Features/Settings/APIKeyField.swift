@@ -9,33 +9,55 @@ import SwiftUI
 struct ProviderInfo {
     let name: String
     let displayName: String
-    let environmentVariable: String
+    let environmentVariables: [String]
     let requiresAPIKey: Bool
+    let environmentValueLabel: String
+
+    var primaryEnvironmentVariable: String {
+        self.environmentVariables.first ?? ""
+    }
 
     static let openai = ProviderInfo(
         name: "openai",
         displayName: "OpenAI",
-        environmentVariable: "OPENAI_API_KEY",
-        requiresAPIKey: true)
+        environmentVariables: ["OPENAI_API_KEY"],
+        requiresAPIKey: true,
+        environmentValueLabel: "API key")
 
     static let anthropic = ProviderInfo(
         name: "anthropic",
         displayName: "Anthropic",
-        environmentVariable: "ANTHROPIC_API_KEY",
-        requiresAPIKey: true)
+        environmentVariables: ["ANTHROPIC_API_KEY"],
+        requiresAPIKey: true,
+        environmentValueLabel: "API key")
+
+    static let grok = ProviderInfo(
+        name: "grok",
+        displayName: "Grok",
+        environmentVariables: ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"],
+        requiresAPIKey: true,
+        environmentValueLabel: "API key")
+
+    static let google = ProviderInfo(
+        name: "google",
+        displayName: "Gemini",
+        environmentVariables: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+        requiresAPIKey: true,
+        environmentValueLabel: "API key")
 
     static let ollama = ProviderInfo(
         name: "ollama",
         displayName: "Ollama",
-        environmentVariable: "OLLAMA_API_KEY",
-        requiresAPIKey: false)
+        environmentVariables: ["OLLAMA_API_KEY"],
+        requiresAPIKey: false,
+        environmentValueLabel: "API key")
 }
 
 /// Reusable API key field that shows environment variable status and allows override
 struct APIKeyField: View {
     let provider: ProviderInfo
     @Binding var apiKey: String
-    @State private var hasEnvironmentKey: Bool = false
+    @State private var detectedEnvironmentVariable: String?
     @State private var showEnvironmentStatus: Bool = false
 
     var body: some View {
@@ -58,7 +80,8 @@ struct APIKeyField: View {
                         .foregroundColor(.green)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Using key from \(self.provider.environmentVariable)")
+                        Text(
+                            "Using \(self.provider.environmentValueLabel) from \(self.displayEnvironmentVariable)")
                             .font(.callout)
                             .foregroundColor(.secondary)
 
@@ -95,7 +118,7 @@ struct APIKeyField: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.orange)
 
-                        Text("Overriding environment variable \(self.provider.environmentVariable)")
+                        Text("Overriding environment variable \(self.displayEnvironmentVariable)")
                             .font(.caption)
                             .foregroundColor(.orange)
 
@@ -118,9 +141,17 @@ struct APIKeyField: View {
         }
     }
 
+    private var hasEnvironmentKey: Bool {
+        self.detectedEnvironmentVariable != nil
+    }
+
+    private var displayEnvironmentVariable: String {
+        self.detectedEnvironmentVariable ?? self.provider.primaryEnvironmentVariable
+    }
+
     private var environmentPlaceholder: String {
         if self.hasEnvironmentKey {
-            "Override \(self.provider.environmentVariable) or leave empty"
+            "Override \(self.displayEnvironmentVariable) or leave empty"
         } else if self.provider.requiresAPIKey {
             "Enter your \(self.provider.displayName) API key"
         } else {
@@ -130,6 +161,8 @@ struct APIKeyField: View {
 
     private func checkEnvironmentVariable() {
         let environment = ProcessInfo.processInfo.environment
-        self.hasEnvironmentKey = environment[self.provider.environmentVariable]?.isEmpty == false
+        self.detectedEnvironmentVariable = self.provider.environmentVariables.first { key in
+            environment[key]?.isEmpty == false
+        }
     }
 }

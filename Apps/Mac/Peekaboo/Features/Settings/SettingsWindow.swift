@@ -166,6 +166,12 @@ struct AISettingsView: View {
                 ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
                 ("claude-haiku-4.5", "Claude Haiku 4.5"),
             ]),
+            ("grok", [
+                ("grok-4", "Grok 4"),
+            ]),
+            ("google", [
+                ("gemini-3-flash", "Gemini 3 Flash"),
+            ]),
             ("ollama", self.ollamaModelOptions),
         ]
 
@@ -198,6 +204,8 @@ struct AISettingsView: View {
                 "tuned for long-running automation tasks.",
             "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with " +
                 "the updated reasoning stack.",
+            "grok-4": "xAI's latest Grok model for reasoning-heavy automation and visual tasks.",
+            "gemini-3-flash": "Google Gemini Flash tuned for fast, lower-latency multimodal agent runs.",
             // Ollama models
             "llava:latest": "Open-source multimodal model that runs locally. Good for " +
                 "privacy-conscious users and offline usage.",
@@ -276,6 +284,22 @@ struct AISettingsView: View {
                     apiKey: Binding(
                         get: { self.settings.anthropicAPIKey },
                         set: { self.settings.anthropicAPIKey = $0 }))
+            }
+
+            Section("Grok Configuration") {
+                APIKeyField(
+                    provider: .grok,
+                    apiKey: Binding(
+                        get: { self.settings.grokAPIKey },
+                        set: { self.settings.grokAPIKey = $0 }))
+            }
+
+            Section("Gemini Configuration") {
+                APIKeyField(
+                    provider: .google,
+                    apiKey: Binding(
+                        get: { self.settings.googleAPIKey },
+                        set: { self.settings.googleAPIKey = $0 }))
             }
 
             Section("Ollama Configuration") {
