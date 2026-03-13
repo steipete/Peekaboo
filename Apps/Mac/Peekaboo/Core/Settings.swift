@@ -22,6 +22,15 @@ final class PeekabooSettings {
     /// API Configuration - Now synced with config.json
     var selectedProvider: String = "anthropic" {
         didSet {
+            let canonicalProvider = Self.canonicalProviderIdentifier(self.selectedProvider)
+            if canonicalProvider != self.selectedProvider {
+                let wasLoading = self.isLoading
+                self.isLoading = true
+                self.selectedProvider = canonicalProvider
+                self.isLoading = wasLoading
+                return
+            }
+
             self.save()
             self.updateConfigFile()
         }
@@ -38,6 +47,20 @@ final class PeekabooSettings {
         didSet {
             self.save()
             self.saveAPIKeyToCredentials("ANTHROPIC_API_KEY", self.anthropicAPIKey)
+        }
+    }
+
+    var grokAPIKey: String = "" {
+        didSet {
+            self.save()
+            self.saveAPIKeyToCredentials("X_AI_API_KEY", self.grokAPIKey)
+        }
+    }
+
+    var googleAPIKey: String = "" {
+        didSet {
+            self.save()
+            self.saveAPIKeyToCredentials("GEMINI_API_KEY", self.googleAPIKey)
         }
     }
 
@@ -337,14 +360,22 @@ final class PeekabooSettings {
     var hasValidAPIKey: Bool {
         switch self.selectedProvider {
         case "openai":
-            return !self.openAIAPIKey.isEmpty || self.isUsingOpenAIEnvironment
+            return !self.openAIAPIKey.isEmpty || self.isUsingOpenAIEnvironment ||
+                self.hasCredentialValue(forAny: ["OPENAI_ACCESS_TOKEN", "OPENAI_API_KEY"])
         case "anthropic":
-            return !self.anthropicAPIKey.isEmpty || self.isUsingAnthropicEnvironment
+            return !self.anthropicAPIKey.isEmpty || self.isUsingAnthropicEnvironment ||
+                self.hasCredentialValue(forAny: ["ANTHROPIC_ACCESS_TOKEN", "ANTHROPIC_API_KEY"])
+        case "grok":
+            return !self.grokAPIKey.isEmpty || self.isUsingGrokEnvironment ||
+                self.hasCredentialValue(forAny: ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"])
+        case "google":
+            return !self.googleAPIKey.isEmpty || self.isUsingGoogleEnvironment ||
+                self.hasCredentialValue(forAny: ["GEMINI_API_KEY", "GOOGLE_API_KEY"])
         case "ollama":
             return true // Ollama doesn't require API key
         default:
             // Check if it's a custom provider
-            if let customProvider = customProviders[selectedProvider] {
+            if let customProvider = self.customProviders[self.selectedProvider] {
                 return !customProvider.options.apiKey.isEmpty
             }
             return false
@@ -353,17 +384,25 @@ final class PeekabooSettings {
 
     /// Check if we're using environment variables
     var isUsingOpenAIEnvironment: Bool {
-        // If settings are empty and environment has the key
-        self.openAIAPIKey.isEmpty && ProcessInfo.processInfo.environment["OPENAI_API_KEY"] != nil
+        self.openAIAPIKey.isEmpty && self.detectedEnvironmentVariable(for: ["OPENAI_API_KEY"]) != nil
     }
 
     var isUsingAnthropicEnvironment: Bool {
-        // If settings are empty and environment has the key
-        self.anthropicAPIKey.isEmpty && ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] != nil
+        self.anthropicAPIKey.isEmpty && self.detectedEnvironmentVariable(for: ["ANTHROPIC_API_KEY"]) != nil
+    }
+
+    var isUsingGrokEnvironment: Bool {
+        self.grokAPIKey.isEmpty && self.detectedEnvironmentVariable(
+            for: ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"]) != nil
+    }
+
+    var isUsingGoogleEnvironment: Bool {
+        self.googleAPIKey.isEmpty && self.detectedEnvironmentVariable(
+            for: ["GEMINI_API_KEY", "GOOGLE_API_KEY"]) != nil
     }
 
     var allAvailableProviders: [String] {
-        let builtIn = ["openai", "anthropic", "ollama"]
+        let builtIn = ["openai", "anthropic", "grok", "google", "ollama"]
         let custom = Array(customProviders.keys)
         return builtIn + custom.sorted()
     }
@@ -392,9 +431,12 @@ extension PeekabooSettings {
     }
 
     private func loadProviderSettings() {
-        self.selectedProvider = self.userDefaults.string(forKey: self.namespaced("selectedProvider")) ?? "anthropic"
+        self.selectedProvider = Self.canonicalProviderIdentifier(
+            self.userDefaults.string(forKey: self.namespaced("selectedProvider")) ?? "anthropic")
         self.openAIAPIKey = self.userDefaults.string(forKey: self.namespaced("openAIAPIKey")) ?? ""
         self.anthropicAPIKey = self.userDefaults.string(forKey: self.namespaced("anthropicAPIKey")) ?? ""
+        self.grokAPIKey = self.userDefaults.string(forKey: self.namespaced("grokAPIKey")) ?? ""
+        self.googleAPIKey = self.userDefaults.string(forKey: self.namespaced("googleAPIKey")) ?? ""
         self.ollamaBaseURL = self.userDefaults.string(forKey: self.namespaced(
             "ollamaBaseURL")) ?? "http://localhost:11434"
 
@@ -479,6 +521,8 @@ extension PeekabooSettings {
         self.userDefaults.set(self.selectedProvider, forKey: "\(self.keyPrefix)selectedProvider")
         self.userDefaults.set(self.openAIAPIKey, forKey: "\(self.keyPrefix)openAIAPIKey")
         self.userDefaults.set(self.anthropicAPIKey, forKey: "\(self.keyPrefix)anthropicAPIKey")
+        self.userDefaults.set(self.grokAPIKey, forKey: "\(self.keyPrefix)grokAPIKey")
+        self.userDefaults.set(self.googleAPIKey, forKey: "\(self.keyPrefix)googleAPIKey")
         self.userDefaults.set(self.ollamaBaseURL, forKey: "\(self.keyPrefix)ollamaBaseURL")
         self.userDefaults.set(self.selectedModel, forKey: "\(self.keyPrefix)selectedModel")
         self.userDefaults.set(self.useCustomVisionModel, forKey: "\(self.keyPrefix)useCustomVisionModel")
@@ -547,7 +591,7 @@ extension PeekabooSettings {
         // This allows proper environment variable detection in the UI
 
         // Load provider and model from config
-        let selectedProvider = self.configManager.getSelectedProvider()
+        let selectedProvider = Self.canonicalProviderIdentifier(self.configManager.getSelectedProvider())
         if !selectedProvider.isEmpty {
             self.selectedProvider = selectedProvider
         }
@@ -608,6 +652,10 @@ extension PeekabooSettings {
                     "openai/\(self.selectedModel)"
                 case "anthropic":
                     "anthropic/\(self.selectedModel)"
+                case "grok":
+                    "grok/\(self.selectedModel)"
+                case "google":
+                    "google/\(self.selectedModel)"
                 case "ollama":
                     "ollama/\(self.selectedModel)"
                 default:
@@ -658,6 +706,10 @@ extension PeekabooSettings {
                     "openai/\(self.selectedModel)"
                 case "anthropic":
                     "anthropic/\(self.selectedModel)"
+                case "grok":
+                    "grok/\(self.selectedModel)"
+                case "google":
+                    "google/\(self.selectedModel)"
                 case "ollama":
                     "ollama/\(self.selectedModel)"
                 default:
@@ -679,7 +731,7 @@ extension PeekabooSettings {
                     // Add other providers that aren't the same type
                     for provider in providers.dropFirst() {
                         let providerType = provider.split(separator: "/").first.map(String.init) ?? ""
-                        if providerType != self.selectedProvider {
+                        if Self.canonicalProviderIdentifier(providerType) != self.selectedProvider {
                             newProviders.append(provider)
                         }
                     }
@@ -709,18 +761,25 @@ extension PeekabooSettings {
         guard !self.isLoading else { return }
 
         do {
+            guard let provider = self.provider(forCredentialKey: key) else { return }
+
             if value.isEmpty {
-                // Don't save empty keys
+                for credentialKey in self.credentialKeys(for: provider) {
+                    try self.configManager.removeCredential(key: credentialKey)
+                }
+                if let environmentValue = self.environmentCredentialValue(for: provider) {
+                    TachikomaConfiguration.current.setAPIKey(environmentValue, for: provider)
+                } else {
+                    TachikomaConfiguration.current.removeAPIKey(for: provider)
+                }
+                self.services?.refreshAgentService()
                 return
             }
-            try self.configManager.setCredential(key: key, value: value)
-
-            // Configure Tachikoma with the new API key
-            if key == "OPENAI_API_KEY" {
-                TachikomaConfiguration.current.setAPIKey(value, for: .openai)
-            } else if key == "ANTHROPIC_API_KEY" {
-                TachikomaConfiguration.current.setAPIKey(value, for: .anthropic)
+            for credentialKey in self.credentialKeys(for: provider) where credentialKey != key {
+                try self.configManager.removeCredential(key: credentialKey)
             }
+            try self.configManager.setCredential(key: key, value: value)
+            TachikomaConfiguration.current.setAPIKey(value, for: provider)
 
             // Refresh the agent service to pick up new API keys
             self.services?.refreshAgentService()
@@ -792,14 +851,77 @@ extension PeekabooSettings {
         }
     }
 
+    private func detectedEnvironmentVariable(for keys: [String]) -> String? {
+        let environment = ProcessInfo.processInfo.environment
+        return keys.first { key in
+            guard let value = environment[key] else { return false }
+            return !value.isEmpty
+        }
+    }
+
+    private func hasCredentialValue(forAny keys: [String]) -> Bool {
+        keys.contains { key in
+            guard let value = self.configManager.credentialValue(for: key) else { return false }
+            return !value.isEmpty
+        }
+    }
+
+    private func environmentCredentialValue(for provider: Provider) -> String? {
+        let keys = self.credentialKeys(for: provider)
+        return self.detectedEnvironmentVariable(for: keys).flatMap { ProcessInfo.processInfo.environment[$0] }
+    }
+
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
             "gpt-5.1"
         case "anthropic":
             "claude-sonnet-4-5-20250929"
+        case "grok":
+            "grok-4"
+        case "google":
+            "gemini-3-flash"
         default:
             "llava:latest"
+        }
+    }
+
+    private func provider(forCredentialKey key: String) -> Provider? {
+        switch key {
+        case "OPENAI_API_KEY":
+            .openai
+        case "ANTHROPIC_API_KEY":
+            .anthropic
+        case "X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY":
+            .grok
+        case "GEMINI_API_KEY", "GOOGLE_API_KEY":
+            .google
+        default:
+            nil
+        }
+    }
+
+    private func credentialKeys(for provider: Provider) -> [String] {
+        switch provider {
+        case .openai:
+            ["OPENAI_API_KEY"]
+        case .anthropic:
+            ["ANTHROPIC_API_KEY"]
+        case .grok:
+            ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"]
+        case .google:
+            ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
+        default:
+            []
+        }
+    }
+
+    private static func canonicalProviderIdentifier(_ provider: String) -> String {
+        switch provider.lowercased() {
+        case "gemini", "google":
+            "google"
+        default:
+            provider
         }
     }
 

@@ -188,6 +188,34 @@ struct PeekabooSettingsConfigHydrationTests {
             #expect(defaults.bool(forKey: "peekaboo.showInDock") == false)
         }
     }
+
+    @Test("Configuration-backed provider aliases hydrate to Google and built-ins include Grok")
+    func configurationBackedProviderAliasesHydrateToGoogle() throws {
+        try withIsolatedSettingsEnvironment { configDir in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let configJSON = """
+            {
+              "aiProviders": {
+                "providers": "gemini/gemini-3-flash,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "gemini-3-flash"
+              }
+            }
+            """
+            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
+
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings()
+
+            #expect(settings.selectedProvider == "google")
+            #expect(settings.selectedModel == "gemini-3-flash")
+            #expect(settings.allAvailableProviders.contains("google"))
+            #expect(settings.allAvailableProviders.contains("grok"))
+        }
+    }
 }
 
 @MainActor
