@@ -37,4 +37,18 @@ struct CommanderBinderTests {
             _ = try CommanderCLIBinder.makeRuntimeOptions(from: parsed)
         }
     }
+
+    @Test("Agent runtime defaults to local host mode")
+    func runtimeOptionAgentDefaultsLocal() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: AgentCommand.self)
+        #expect(options.preferRemote == false)
+    }
+
+    @Test("Non-agent runtime keeps remote host mode by default")
+    func runtimeOptionNonAgentKeepsRemoteDefault() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SleepCommand.self)
+        #expect(options.preferRemote == true)
+    }
 }

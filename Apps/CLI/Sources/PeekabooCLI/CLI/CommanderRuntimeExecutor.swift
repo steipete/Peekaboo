@@ -20,7 +20,10 @@ enum CommanderRuntimeExecutor {
         )
 
         if var runtimeCommand = command as? any AsyncRuntimeCommand {
-            let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(from: resolved.parsedValues)
+            let runtimeOptions = try CommanderCLIBinder.makeRuntimeOptions(
+                from: resolved.parsedValues,
+                commandType: resolved.type
+            )
             if let capturePreference = runtimeOptions.captureEnginePreference,
                !capturePreference.isEmpty {
                 // Respect explicit engine choice; also allow disabling CG globally.

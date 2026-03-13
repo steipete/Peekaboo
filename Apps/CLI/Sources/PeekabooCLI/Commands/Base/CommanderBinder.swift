@@ -9,7 +9,7 @@ enum CommanderCLIBinder {
         parsedValues: ParsedValues
     ) throws -> any ParsableCommand {
         var command = type.init()
-        let runtimeOptions = try self.makeRuntimeOptions(from: parsedValues)
+        let runtimeOptions = try self.makeRuntimeOptions(from: parsedValues, commandType: type)
         if var bindable = command as? any CommanderBindableCommand {
             try bindable.applyCommanderValues(.init(parsedValues: parsedValues))
             guard let rebound = bindable as? any ParsableCommand else {
@@ -37,7 +37,10 @@ enum CommanderCLIBinder {
         return command
     }
 
-    static func makeRuntimeOptions(from parsedValues: ParsedValues) throws -> CommandRuntimeOptions {
+    static func makeRuntimeOptions(
+        from parsedValues: ParsedValues,
+        commandType: (any ParsableCommand.Type)? = nil
+    ) throws -> CommandRuntimeOptions {
         var options = CommandRuntimeOptions()
         options.verbose = parsedValues.flags.contains("verbose")
         options.jsonOutput = parsedValues.flags.contains("jsonOutput")
@@ -51,6 +54,10 @@ enum CommanderCLIBinder {
             options.captureEnginePreference = captureEngine
         }
         if values.flag("no-remote") {
+            options.preferRemote = false
+        }
+        if commandType == AgentCommand.self && !values.flag("no-remote") {
+            // Agent execution should stay local by default unless explicitly overridden.
             options.preferRemote = false
         }
         if let socketPath = values.singleOption("bridge-socket")?.trimmingCharacters(in: .whitespacesAndNewlines),
