@@ -28,13 +28,13 @@ read_when:
 ## Examples
 ```bash
 # Default invocation: list every app currently visible to AX
-polter peekaboo -- list
+peekaboo list
 
 # Inspect all Chrome windows including their bounds + element IDs
-polter peekaboo -- list windows --app "Google Chrome" --include-details bounds,ids
+peekaboo list windows --app "Google Chrome" --include-details bounds,ids
 
 # Pipe the current display layout into jq for scripting
-polter peekaboo -- list screens --json | jq '.data.screens[] | {name, size: .frame}'
+peekaboo list screens --json | jq '.data.screens[] | {name, size: .frame}'
 ```
 
 ## Troubleshooting

@@ -46,13 +46,13 @@ For automation flows that cannot attach to a TTY, pass both `--chat` and standar
 ## Examples
 ```bash
 # Let the agent sign into Slack using GPT-5.1 with verbose tracing
-polter peekaboo -- agent "Check Slack mentions" --model gpt-5.1 --verbose
+peekaboo agent "Check Slack mentions" --model gpt-5.1 --verbose
 
 # Dry-run the same task without executing any tools
-polter peekaboo -- agent "Install the nightly build" --dry-run
+peekaboo agent "Install the nightly build" --dry-run
 
 # Resume the last session and quiet the spinner output
-polter peekaboo -- agent --resume --quiet
+peekaboo agent --resume --quiet
 ```
 
 ## Troubleshooting

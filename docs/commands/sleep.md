@@ -22,12 +22,12 @@ read_when:
 ## Examples
 ```bash
 # Sleep 1.5 seconds
-polter peekaboo -- sleep 1500
+peekaboo sleep 1500
 
 # Guard a flaky UI transition inside a script
-polter peekaboo -- run flow.peekaboo.json --no-fail-fast \
-  && polter peekaboo -- sleep 750 \
-  && polter peekaboo -- click "Open"
+peekaboo run flow.peekaboo.json --no-fail-fast \
+  && peekaboo sleep 750 \
+  && peekaboo click "Open"
 ```
 
 ## Troubleshooting

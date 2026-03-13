@@ -32,19 +32,19 @@ read_when:
 ## Examples
 ```bash
 # Click "Don't Save" on a TextEdit sheet
-polter peekaboo -- dialog click --button "Don't Save" --app TextEdit
+peekaboo dialog click --button "Don't Save" --app TextEdit
 
 # Enter credentials into a password prompt
-polter peekaboo -- dialog input --text hunter2 --field "Password" --clear --app Safari
+peekaboo dialog input --text hunter2 --field "Password" --clear --app Safari
 
 # Choose a file in an open panel and confirm
-polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --select Open
+peekaboo dialog file --path ~/Downloads --name report.pdf --select Open
 
 # Save a file and verify the resulting path exists
-polter peekaboo -- dialog file --path /tmp --name poem.rtf --select Save --app TextEdit --json
+peekaboo dialog file --path /tmp --name poem.rtf --select Save --app TextEdit --json
 
 # Click the default action (OKButton) and include dialog provenance in JSON output
-polter peekaboo -- dialog file --path ~/Downloads --name report.pdf --ensure-expanded --app TextEdit --json
+peekaboo dialog file --path ~/Downloads --name report.pdf --ensure-expanded --app TextEdit --json
 ```
 
 ## Troubleshooting

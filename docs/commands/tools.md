@@ -23,7 +23,7 @@ read_when:
 ## Examples
 ```bash
 # Produce a JSON blob for an agent integration test
-polter peekaboo -- tools --json > /tmp/tools.json
+peekaboo tools --json > /tmp/tools.json
 ```
 
 ## Troubleshooting

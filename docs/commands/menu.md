@@ -28,13 +28,13 @@ read_when:
 ## Examples
 ```bash
 # Click File > New Window in Safari
-polter peekaboo -- menu click --app Safari --path "File > New Window"
+peekaboo menu click --app Safari --path "File > New Window"
 
 # Inspect the Finder menu tree, including disabled actions
-polter peekaboo -- menu list --app Finder --include-disabled
+peekaboo menu list --app Finder --include-disabled
 
 # Capture the current menu + menu extras as JSON (with coordinates)
-polter peekaboo -- menu list-all --include-frames --json > /tmp/menu.json
+peekaboo menu list-all --include-frames --json > /tmp/menu.json
 ```
 
 ## Troubleshooting

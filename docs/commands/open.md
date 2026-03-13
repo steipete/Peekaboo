@@ -29,13 +29,13 @@ read_when:
 ## Examples
 ```bash
 # Open a PDF in the default viewer but avoid stealing focus
-polter peekaboo -- open ~/Docs/spec.pdf --no-focus
+peekaboo open ~/Docs/spec.pdf --no-focus
 
 # Force TextEdit to open a scratch file and wait for it to become ready
-polter peekaboo -- open /tmp/notes.txt --bundle-id com.apple.TextEdit --wait-until-ready
+peekaboo open /tmp/notes.txt --bundle-id com.apple.TextEdit --wait-until-ready
 
 # Launch Safari with a URL and report the resulting PID as JSON
-polter peekaboo -- open https://example.com --json
+peekaboo open https://example.com --json
 ```
 
 ## Design notes

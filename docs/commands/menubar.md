@@ -33,16 +33,16 @@ read_when:
 ## Examples
 ```bash
 # List every status item with indices
-polter peekaboo -- menubar list
+peekaboo menubar list
 
 # Click the Wi-Fi icon by name
-polter peekaboo -- menubar click "Wi-Fi"
+peekaboo menubar click "Wi-Fi"
 
 # Click and verify the popover opened
-polter peekaboo -- menubar click "Wi-Fi" --verify
+peekaboo menubar click "Wi-Fi" --verify
 
 # Click the third item regardless of name and capture JSON output
-polter peekaboo -- menubar click --index 3 --json
+peekaboo menubar click --index 3 --json
 ```
 
 ## Troubleshooting

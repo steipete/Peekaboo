@@ -25,19 +25,19 @@ read_when:
 ## Examples
 ```bash
 # Human-readable status (selected host only)
-polter peekaboo -- bridge status
+peekaboo bridge status
 
 # Full probe results + structured output for agents
-polter peekaboo -- bridge status --verbose --json | jq '.data'
+peekaboo bridge status --verbose --json | jq '.data'
 
 # Probe a specific host socket path
-polter peekaboo -- bridge status --bridge-socket \
+peekaboo bridge status --bridge-socket \
   ~/Library/Application\ Support/clawdbot/bridge.sock
 
 # Probe Claude Desktop host socket path (if Claude.app hosts PeekabooBridge)
-polter peekaboo -- bridge status --bridge-socket \
+peekaboo bridge status --bridge-socket \
   ~/Library/Application\ Support/Claude/bridge.sock
 
 # Force local (skip Peekaboo.app / Clawdbot.app hosts)
-polter peekaboo -- bridge status --no-remote
+peekaboo bridge status --no-remote
 ```

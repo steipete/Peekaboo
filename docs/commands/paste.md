@@ -25,13 +25,13 @@ This reduces drift by collapsing multiple CLI steps into one command.
 ## Examples
 ```bash
 # Paste plain text into TextEdit
-polter peekaboo -- paste "Hello, world" --app TextEdit
+peekaboo paste "Hello, world" --app TextEdit
 
 # Paste rich text (RTF) into a specific window title
-polter peekaboo -- paste --data-base64 "$RTF_B64" --uti public.rtf --also-text "fallback" --app TextEdit --window-title "Untitled"
+peekaboo paste --data-base64 "$RTF_B64" --uti public.rtf --also-text "fallback" --app TextEdit --window-title "Untitled"
 
 # Paste a PNG into Notes
-polter peekaboo -- paste --file-path /tmp/snippet.png --app Notes
+peekaboo paste --file-path /tmp/snippet.png --app Notes
 ```
 
 ## Troubleshooting

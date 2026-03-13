@@ -33,16 +33,16 @@ read_when:
 ## Examples
 ```bash
 # Swipe between two element IDs captured by `see`
-polter peekaboo -- swipe --from card_1 --to card_2 --duration 650 --steps 30
+peekaboo swipe --from card_1 --to card_2 --duration 650 --steps 30
 
 # Drag from coordinates (x1,y1) to (x2,y2)
-polter peekaboo -- swipe --from-coords 120,880 --to-coords 120,200
+peekaboo swipe --from-coords 120,880 --to-coords 120,200
 
 # Human-style swipe with adaptive easing
-polter peekaboo -- swipe --from-coords 80,640 --to-coords 820,320 --profile human
+peekaboo swipe --from-coords 80,640 --to-coords 820,320 --profile human
 
 # Mix coordinate → element drag using the most recent snapshot
-polter peekaboo -- swipe --from-coords 400,400 --to drawer_toggle
+peekaboo swipe --from-coords 400,400 --to drawer_toggle
 ```
 
 ## Troubleshooting

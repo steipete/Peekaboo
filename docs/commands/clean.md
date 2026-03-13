@@ -27,11 +27,11 @@ Only one of the three selection flags may be supplied at a time; the command val
 ## Examples
 ```bash
 # Preview what would be deleted without actually removing files
-polter peekaboo -- clean --older-than 12 --dry-run
+peekaboo clean --older-than 12 --dry-run
 
 # Remove the snapshot returned from the last `see` run
-SNAPSHOT=$(polter peekaboo -- see --json | jq -r '.data.snapshot_id')
-polter peekaboo -- clean --snapshot "$SNAPSHOT"
+SNAPSHOT=$(peekaboo see --json | jq -r '.data.snapshot_id')
+peekaboo clean --snapshot "$SNAPSHOT"
 ```
 
 ## Troubleshooting

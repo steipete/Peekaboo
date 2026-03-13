@@ -21,10 +21,10 @@ read_when:
 ## Examples
 ```bash
 # Start the Peekaboo MCP server (defaults to stdio)
-polter peekaboo -- mcp
+peekaboo mcp
 
 # Explicit transport selection
-polter peekaboo -- mcp serve --transport stdio
+peekaboo mcp serve --transport stdio
 ```
 
 ## Troubleshooting

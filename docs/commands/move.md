@@ -34,17 +34,17 @@ read_when:
 ## Examples
 ```bash
 # Instantly move to a coordinate
-polter peekaboo -- move 1024,88
-polter peekaboo -- move --coords 1024,88
+peekaboo move 1024,88
+peekaboo move --coords 1024,88
 
 # Human-style movement with one flag
-polter peekaboo -- move 520,360 --profile human
+peekaboo move 520,360 --profile human
 
 # Hover the element with ID `menu_gear` using the latest snapshot
-polter peekaboo -- move --id menu_gear --smooth
+peekaboo move --id menu_gear --smooth
 
 # Center the cursor on the main display before taking a screenshot
-polter peekaboo -- move --center --duration 250 --steps 15
+peekaboo move --center --duration 250 --steps 15
 ```
 
 ## Troubleshooting

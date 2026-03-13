@@ -27,16 +27,16 @@ read_when:
 ## Examples
 ```bash
 # Launch Safari directly from the Dock
-polter peekaboo -- dock launch Safari
+peekaboo dock launch Safari
 
 # Launch and verify the app is running
-polter peekaboo -- dock launch Safari --verify
+peekaboo dock launch Safari --verify
 
 # Right-click Finder and choose "New Window"
-polter peekaboo -- dock right-click --app Finder --select "New Window"
+peekaboo dock right-click --app Finder --select "New Window"
 
 # Hide the Dock before recording a video
-polter peekaboo -- dock hide
+peekaboo dock hide
 ```
 
 ## Troubleshooting
