@@ -68,7 +68,7 @@ public final class RemoteScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-public final class RemoteUIAutomationService: UIAutomationServiceProtocol {
+public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting {
     private let client: PeekabooBridgeClient
 
     public init(client: PeekabooBridgeClient) {
