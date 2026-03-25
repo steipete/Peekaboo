@@ -164,7 +164,26 @@ public final class PeekabooAIService {
             case "lmstudio":
                 return .lmstudio(.custom(modelString))
             default:
-                return nil
+                CustomProviderRegistry.shared.loadFromProfile()
+                guard let custom = CustomProviderRegistry.shared.get(provider) else {
+                    return nil
+                }
+                let modelId = custom.models[modelString] ?? modelString
+                switch custom.kind {
+                case .openai:
+                    return .custom(provider: OpenAICompatibleProvider(
+                        modelId: modelId,
+                        baseURL: custom.baseURL,
+                        apiKey: custom.apiKey,
+                        headers: custom.headers
+                    ))
+                case .anthropic:
+                    return .custom(provider: AnthropicCompatibleProvider(
+                        modelId: modelId,
+                        baseURL: custom.baseURL,
+                        apiKey: custom.apiKey
+                    ))
+                }
             }
         }
 

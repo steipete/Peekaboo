@@ -173,6 +173,68 @@ struct PeekabooAIServiceTests {
         #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
     }
 
+    @Test("Resolves custom OpenAI-compatible providers from config")
+    @MainActor
+    func resolvesCustomOpenAICompatibleProvider() async throws {
+        let tempHome = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-home-\(UUID().uuidString)", isDirectory: true)
+        let configDir = tempHome.appendingPathComponent(".peekaboo", isDirectory: true)
+        try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
+        let configPath = configDir.appendingPathComponent("config.json")
+        try """
+        {
+          "aiProviders": { "providers": "local-proxy/gpt-5.4-mini" },
+          "customProviders": {
+            "local-proxy": {
+              "name": "Local Proxy",
+              "type": "openai",
+              "options": {
+                "baseURL": "http://localhost:8317/v1",
+                "apiKey": "dummy-not-used"
+              }
+            }
+          }
+        }
+        """.write(to: configPath, atomically: true, encoding: .utf8)
+
+        let previousHome = ProcessInfo.processInfo.environment["HOME"]
+        let previousConfigDir = ProcessInfo.processInfo.environment["PEEKABOO_CONFIG_DIR"]
+        setenv("HOME", tempHome.path, 1)
+        unsetenv("PEEKABOO_CONFIG_DIR")
+        defer {
+            if let previousHome {
+                setenv("HOME", previousHome, 1)
+            } else {
+                unsetenv("HOME")
+            }
+            if let previousConfigDir {
+                setenv("PEEKABOO_CONFIG_DIR", previousConfigDir, 1)
+            } else {
+                unsetenv("PEEKABOO_CONFIG_DIR")
+            }
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempHome)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.availableModels().count == 1)
+
+        let imagePath = try self.createTestImageFile()
+        defer { self.cleanupTestFile(imagePath) }
+
+        let result = try await service.analyzeImageFileDetailed(
+            at: imagePath,
+            question: "Is there an image? Answer briefly."
+        )
+
+        #expect(result.provider == "custom")
+        #expect(result.model == "gpt-5.4-mini")
+        #expect(!result.text.isEmpty)
+    }
+
     @Test("Falls back to Anthropic when only Anthropic key is present")
     @MainActor
     func fallbackAnthropicWithKey() async throws {

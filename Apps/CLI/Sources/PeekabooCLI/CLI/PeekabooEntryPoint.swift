@@ -3,6 +3,7 @@ import CoreGraphics
 import Darwin
 import Foundation
 import PeekabooCore
+import Tachikoma
 
 /// Shared entry point used by the executable target.
 @MainActor
@@ -20,6 +21,9 @@ func executePeekabooCLI(arguments: [String]) async -> Int32 {
 
     // Initialize CoreGraphics silently to prevent CGS_REQUIRE_INIT error
     _ = CGMainDisplayID()
+
+    // Keep Tachikoma's profile dir aligned with Peekaboo's config dir.
+    TachikomaConfiguration.profileDirectoryName = ".peekaboo"
 
     // Load configuration at startup
     _ = ConfigurationManager.shared.loadConfiguration()
