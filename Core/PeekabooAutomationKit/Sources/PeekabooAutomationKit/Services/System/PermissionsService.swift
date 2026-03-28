@@ -233,7 +233,7 @@ public final class PermissionsService {
 }
 
 /// Status of system permissions
-public struct PermissionsStatus: Sendable {
+public struct PermissionsStatus: Sendable, Codable {
     public let screenRecording: Bool
     public let accessibility: Bool
     public let appleScript: Bool

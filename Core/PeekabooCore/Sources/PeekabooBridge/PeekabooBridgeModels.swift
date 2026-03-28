@@ -848,26 +848,3 @@ public struct PeekabooBridgeErrorEnvelope: Codable, Sendable, Error {
         self.details = details
     }
 }
-
-extension PermissionsStatus: @retroactive Codable {
-    private enum CodingKeys: String, CodingKey {
-        case screenRecording
-        case accessibility
-        case appleScript
-    }
-
-    public init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        let screenRecording = try container.decode(Bool.self, forKey: .screenRecording)
-        let accessibility = try container.decode(Bool.self, forKey: .accessibility)
-        let appleScript = try container.decodeIfPresent(Bool.self, forKey: .appleScript) ?? false
-        self.init(screenRecording: screenRecording, accessibility: accessibility, appleScript: appleScript)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(self.screenRecording, forKey: .screenRecording)
-        try container.encode(self.accessibility, forKey: .accessibility)
-        try container.encode(self.appleScript, forKey: .appleScript)
-    }
-}
