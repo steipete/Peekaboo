@@ -148,7 +148,7 @@ public struct TypeTool: MCPTool {
         let mergedMeta = ToolEventSummary.merge(summary: summary, into: baseMeta)
 
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: mergedMeta)
     }
 

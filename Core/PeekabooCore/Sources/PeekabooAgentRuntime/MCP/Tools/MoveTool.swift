@@ -302,7 +302,7 @@ public struct MoveTool: MCPTool {
         let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaDict))
 
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: metaValue)
     }
 

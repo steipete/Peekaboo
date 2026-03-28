@@ -212,7 +212,7 @@ public struct DialogTool: MCPTool {
                 notes: savedPath ?? clicked)
 
             return ToolResponse(
-                content: [.text(message)],
+                content: [.text(text: message, annotations: nil, _meta: nil)],
                 meta: ToolEventSummary.merge(summary: summary, into: meta))
 
         case .dismiss:
@@ -262,7 +262,7 @@ public struct DialogTool: MCPTool {
             notes: context.notes)
 
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: meta))
     }
 
@@ -303,7 +303,7 @@ public struct DialogTool: MCPTool {
             notes: dialogTitle)
 
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: meta))
     }
 

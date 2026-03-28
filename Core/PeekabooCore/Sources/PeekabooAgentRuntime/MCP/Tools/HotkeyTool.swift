@@ -98,7 +98,7 @@ public struct HotkeyTool: MCPTool {
                 notes: formattedKeys)
 
             return ToolResponse(
-                content: [.text(message)],
+                content: [.text(text: message, annotations: nil, _meta: nil)],
                 meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
 
         } catch {

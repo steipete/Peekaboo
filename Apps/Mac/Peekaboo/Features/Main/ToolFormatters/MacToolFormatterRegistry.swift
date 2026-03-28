@@ -11,12 +11,12 @@ import PeekabooCore
 final class MacToolFormatterRegistry {
     static let shared = MacToolFormatterRegistry()
 
-    private let formatters: [MacToolFormatterProtocol]
-    private let toolToFormatterMap: [String: MacToolFormatterProtocol]
+    private let formatters: [any MacToolFormatterProtocol]
+    private let toolToFormatterMap: [String: any MacToolFormatterProtocol]
 
     private init() {
         // Initialize all formatters
-        let allFormatters: [MacToolFormatterProtocol] = [
+        let allFormatters: [any MacToolFormatterProtocol] = [
             VisionToolFormatter(),
             UIAutomationToolFormatter(),
             ApplicationToolFormatter(),
@@ -28,7 +28,7 @@ final class MacToolFormatterRegistry {
         self.formatters = allFormatters
 
         // Build tool name to formatter mapping
-        var map: [String: MacToolFormatterProtocol] = [:]
+        var map: [String: any MacToolFormatterProtocol] = [:]
         for formatter in allFormatters {
             for tool in formatter.handledTools {
                 map[tool] = formatter
@@ -38,7 +38,7 @@ final class MacToolFormatterRegistry {
     }
 
     /// Get the formatter for a specific tool
-    func formatter(for toolName: String) -> MacToolFormatterProtocol? {
+    func formatter(for toolName: String) -> (any MacToolFormatterProtocol)? {
         self.toolToFormatterMap[toolName]
     }
 

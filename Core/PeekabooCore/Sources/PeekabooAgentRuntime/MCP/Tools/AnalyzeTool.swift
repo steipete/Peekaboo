@@ -124,8 +124,8 @@ public struct AnalyzeTool: MCPTool {
 
             return ToolResponse(
                 content: [
-                    .text(analysisText),
-                    .text(timingMessage),
+                    .text(text: analysisText, annotations: nil, _meta: nil),
+                    .text(text: timingMessage, annotations: nil, _meta: nil),
                 ],
                 meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
 

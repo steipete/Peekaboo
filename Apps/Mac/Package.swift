@@ -39,7 +39,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Peekaboo",
-            exclude: ["PeekabooApp.swift", "Info.plist", "Features/StatusBar/README.md", "AppIcon.icon-source"],
+            exclude: ["PeekabooApp.swift", "Info.plist", "Features/StatusBar/README.md"],
             resources: [
                 .process("Assets.xcassets"),
             ],

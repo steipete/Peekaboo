@@ -563,7 +563,7 @@ func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentT
     // If there's an error, return error message
     if response.isError {
         let errorMessage = response.content.compactMap { content -> String? in
-            if case let .text(text) = content {
+            if case let .text(text, _, _) = content {
                 return text
             }
             return nil
@@ -575,9 +575,9 @@ func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentT
     // Convert the first content item to a result
     if let firstContent = response.content.first {
         switch firstContent {
-        case let .text(text):
+        case let .text(text, _, _):
             return AnyAgentToolValue(string: text)
-        case let .image(data, mimeType, _):
+        case let .image(data, mimeType, _, _):
             // For images, return a descriptive string
             return AnyAgentToolValue(string: "[Image: \(mimeType), size: \(data.count) bytes]")
         case let .resource(resource, _, _):
@@ -586,7 +586,7 @@ func convertToolResponseToAgentToolResult(_ response: ToolResponse) -> AnyAgentT
         case let .resourceLink(uri, name, _, _, mimeType, _):
             let mimeTypeDescription = mimeType.map { ", mimeType: \($0)" } ?? ""
             return AnyAgentToolValue(string: "[Resource Link: \(name), uri: \(uri)\(mimeTypeDescription)]")
-        case let .audio(data, mimeType):
+        case let .audio(data, mimeType, _, _):
             return AnyAgentToolValue(string: "[Audio: \(mimeType), size: \(data.count) bytes]")
         }
     }

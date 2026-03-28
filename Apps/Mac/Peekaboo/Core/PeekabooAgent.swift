@@ -41,7 +41,7 @@ final class PeekabooAgent {
 
     /// Track current processing state
     @ObservationIgnored
-    private var processingTask: Task<Void, Error>?
+    private var processingTask: Task<Void, any Error>?
 
     /// Current session ID for continuity
     private(set) var currentSessionId: String?
@@ -182,7 +182,7 @@ final class PeekabooAgent {
         }
 
         // Create a cancellable task
-        let task = Task<Void, Error> {
+        let task = Task<Void, any Error> {
             try await self.executeTaskInternal(content: content, agentService: agentService)
         }
 
@@ -195,7 +195,7 @@ final class PeekabooAgent {
     @MainActor
     private func executeTaskInternal(
         content: ModelMessage.ContentPart,
-        agentService: AgentServiceProtocol) async throws
+        agentService: any AgentServiceProtocol) async throws
     {
         let taskDescription = self.taskDescription(for: content)
         self.prepareForTask(description: taskDescription)
@@ -290,7 +290,7 @@ extension PeekabooAgent {
     }
 
     @MainActor
-    private func peekabooAgent(from service: AgentServiceProtocol) throws -> PeekabooAgentService {
+    private func peekabooAgent(from service: any AgentServiceProtocol) throws -> PeekabooAgentService {
         guard let agent = service as? PeekabooAgentService else {
             throw AgentError.invalidConfiguration("Agent service not properly initialized")
         }
@@ -424,7 +424,7 @@ extension PeekabooAgent {
     }
 
     @MainActor
-    private func handleTaskError(_ error: Error, taskDescription: String) throws {
+    private func handleTaskError(_ error: any Error, taskDescription: String) throws {
         if error is CancellationError {
             self.lastError = "Task was cancelled"
             if let session = self.sessionStore.currentSession {

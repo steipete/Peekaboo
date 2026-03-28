@@ -15,7 +15,7 @@ final class AudioRecorder: NSObject {
     var isRecording = false
     var transcript = ""
     var isAvailable = true
-    var error: Error?
+    var error: (any Error)?
 
     private var audioEngine = AVAudioEngine()
     private var audioFile: AVAudioFile?

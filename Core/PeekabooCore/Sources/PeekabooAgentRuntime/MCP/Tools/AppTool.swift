@@ -237,7 +237,10 @@ private struct AppToolActions {
         case .appSwitch where request.cycle:
             self.cycleApplications()
             return ToolResponse(
-                content: [.text("\(AgentDisplayTokens.Status.success) Switched to next application")],
+                content: [.text(
+                    text: "\(AgentDisplayTokens.Status.success) Switched to next application",
+                    annotations: nil,
+                    _meta: nil)],
                 meta: self.executionMeta(from: request.startTime))
 
         case .appSwitch:
@@ -321,8 +324,8 @@ private struct AppToolActions {
         let summaryMeta = self.makeSummary(for: nil, action: "List Applications", notes: "Found \(apps.count) apps")
         return ToolResponse(
             content: [
-                .text(summary),
-                .text(countLine),
+                .text(text: summary, annotations: nil, _meta: nil),
+                .text(text: countLine, annotations: nil, _meta: nil),
             ],
             meta: ToolEventSummary.merge(summary: summaryMeta, into: .object(baseMeta)))
     }
@@ -382,7 +385,7 @@ private struct AppToolActions {
         ]
         let summary = self.makeSummary(for: nil, action: "Quit Applications", notes: "Quit \(quitCount) apps")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -402,7 +405,7 @@ private struct AppToolActions {
 
         let summary = self.makeSummary(for: app, action: self.actionDescription(from: message), notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(meta)))
     }
 
@@ -415,7 +418,7 @@ private struct AppToolActions {
         ]
         let summary = self.makeSummary(for: app, action: verb, notes: nil)
         return ToolResponse(
-            content: [.text(statusLine)],
+            content: [.text(text: statusLine, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 

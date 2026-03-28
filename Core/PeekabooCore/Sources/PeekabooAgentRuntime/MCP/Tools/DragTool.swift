@@ -289,7 +289,7 @@ public struct DragTool: MCPTool {
 
         let metaValue = ToolEventSummary.merge(summary: summary, into: .object(metaData))
 
-        return ToolResponse(content: [.text(message)], meta: metaValue)
+        return ToolResponse(content: [.text(text: message, annotations: nil, _meta: nil)], meta: metaValue)
     }
 
     private struct CoordinateParseError: Swift.Error {

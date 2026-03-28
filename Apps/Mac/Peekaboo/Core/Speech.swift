@@ -78,7 +78,7 @@ final class SpeechRecognizer: NSObject, SFSpeechRecognizerDelegate {
     var isListening = false
     var transcript = ""
     var isAvailable = false
-    var error: Error?
+    var error: (any Error)?
 
     /// Recognition mode
     var recognitionMode: RecognitionMode = .native

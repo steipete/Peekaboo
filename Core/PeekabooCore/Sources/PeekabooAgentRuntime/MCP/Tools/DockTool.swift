@@ -126,7 +126,7 @@ public struct DockTool: MCPTool {
             actionDescription: "Dock Launch",
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -160,7 +160,7 @@ public struct DockTool: MCPTool {
             actionDescription: "Dock Menu",
             notes: menuItem ?? "Context menu")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -181,7 +181,7 @@ public struct DockTool: MCPTool {
         ]
         let summary = ToolEventSummary(actionDescription: "Dock Hide", notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -202,7 +202,7 @@ public struct DockTool: MCPTool {
         ]
         let summary = ToolEventSummary(actionDescription: "Dock Show", notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -261,7 +261,7 @@ public struct DockTool: MCPTool {
             actionDescription: "Dock List",
             notes: "\(dockItems.count) items")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 

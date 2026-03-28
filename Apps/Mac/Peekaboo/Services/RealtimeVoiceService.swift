@@ -34,7 +34,7 @@ final class RealtimeVoiceService {
     private(set) var conversationHistory: [String] = []
 
     /// Current error if any
-    private(set) var error: Error?
+    private(set) var error: (any Error)?
 
     /// Whether audio is currently being recorded
     private(set) var isRecording = false

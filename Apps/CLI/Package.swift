@@ -39,8 +39,8 @@ var targets: [Target] = [
             .product(name: "Swiftdansi", package: "Swiftdansi"),
             ],
             path: "Sources/PeekabooCLI",
-        swiftSettings: cliConcurrencySettings),
-    .executableTarget(
+            swiftSettings: cliConcurrencySettings),
+        .executableTarget(
         name: "peekaboo",
         dependencies: [
             "PeekabooCLI",
@@ -113,7 +113,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Commander"),
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", "0.11.0" ..< "0.12.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", "0.12.0" ..< "0.13.0"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.1.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "0.2.1"),
         .package(path: "../../TauTUI"),

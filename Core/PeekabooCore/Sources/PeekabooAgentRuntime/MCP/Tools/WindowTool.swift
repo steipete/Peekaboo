@@ -214,7 +214,7 @@ public struct WindowTool: MCPTool {
             actionDescription: "Window Close",
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -246,7 +246,7 @@ public struct WindowTool: MCPTool {
             actionDescription: "Window Minimize",
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -278,7 +278,7 @@ public struct WindowTool: MCPTool {
             actionDescription: "Window Maximize",
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -315,7 +315,7 @@ public struct WindowTool: MCPTool {
             coordinates: ToolEventSummary.Coordinates(x: Double(position.x), y: Double(position.y)),
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -351,7 +351,7 @@ public struct WindowTool: MCPTool {
             actionDescription: "Window Resize",
             notes: "\(Int(size.width))×\(Int(size.height))")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -393,7 +393,7 @@ public struct WindowTool: MCPTool {
                 y: Double(bounds.origin.y)),
             notes: "\(Int(bounds.width))×\(Int(bounds.height))")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -425,7 +425,7 @@ public struct WindowTool: MCPTool {
             actionDescription: "Window Focus",
             notes: nil)
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 

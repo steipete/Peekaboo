@@ -134,7 +134,7 @@ public struct PasteTool: MCPTool {
                 notes: setResult.utiIdentifier)
 
             return ToolResponse(
-                content: [.text(message)],
+                content: [.text(text: message, annotations: nil, _meta: nil)],
                 meta: ToolEventSummary.merge(summary: summary, into: meta))
         } catch let error as MCPInteractionTargetError {
             return ToolResponse.error(error.localizedDescription)

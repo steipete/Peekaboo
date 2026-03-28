@@ -47,7 +47,7 @@ public struct ShellTool: MCPTool {
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         guard let command = arguments.getString("command") else {
             return ToolResponse(
-                content: [.text("Command is required")],
+                content: [.text(text: "Command is required", annotations: nil, _meta: nil)],
                 isError: true)
         }
 
@@ -77,7 +77,10 @@ public struct ShellTool: MCPTool {
                 let message = error.isEmpty ? output : error
                 self.logger.error("Command failed with exit code \(process.terminationStatus): \(message)")
                 return ToolResponse(
-                    content: [.text("Command failed (exit code \(process.terminationStatus)): \(message)")],
+                    content: [.text(
+                        text: "Command failed (exit code \(process.terminationStatus)): \(message)",
+                        annotations: nil,
+                        _meta: nil)],
                     isError: true)
             }
 
@@ -88,13 +91,16 @@ public struct ShellTool: MCPTool {
                 notes: nil)
             let meta = ToolEventSummary.merge(summary: summary, into: nil)
             return ToolResponse(
-                content: [.text(output)],
+                content: [.text(text: output, annotations: nil, _meta: nil)],
                 isError: false,
                 meta: meta)
         } catch {
             self.logger.error("Failed to execute command: \(error.localizedDescription)")
             return ToolResponse(
-                content: [.text("Failed to execute command: \(error.localizedDescription)")],
+                content: [.text(
+                    text: "Failed to execute command: \(error.localizedDescription)",
+                    annotations: nil,
+                    _meta: nil)],
                 isError: true)
         }
     }

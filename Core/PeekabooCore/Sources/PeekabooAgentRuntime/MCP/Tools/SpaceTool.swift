@@ -123,7 +123,7 @@ public struct SpaceTool: MCPTool {
 
         if spaces.isEmpty {
             return ToolResponse(
-                content: [.text("No Spaces found")],
+                content: [.text(text: "No Spaces found", annotations: nil, _meta: nil)],
                 meta: .object([
                     "count": .double(0),
                     "execution_time": .double(executionTime),
@@ -168,7 +168,7 @@ public struct SpaceTool: MCPTool {
             actionDescription: "List Spaces",
             notes: "\(spaces.count) spaces")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -190,7 +190,7 @@ public struct SpaceTool: MCPTool {
         if targetSpace.isActive {
             let executionTime = Date().timeIntervalSince(startTime)
             return ToolResponse(
-                content: [.text("Already on Space \(spaceNumber)")],
+                content: [.text(text: "Already on Space \(spaceNumber)", annotations: nil, _meta: nil)],
                 meta: .object([
                     "space_number": .double(Double(spaceNumber)),
                     "space_id": .double(Double(targetSpace.id)),
@@ -213,7 +213,7 @@ public struct SpaceTool: MCPTool {
             actionDescription: "Switch Space",
             notes: "Space \(spaceNumber)")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -405,7 +405,7 @@ extension SpaceTool {
             actionDescription: "Space Move",
             notes: "current")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 
@@ -451,7 +451,7 @@ extension SpaceTool {
             actionDescription: "Space Move",
             notes: "space \(targetSpaceNumber)")
         return ToolResponse(
-            content: [.text(message)],
+            content: [.text(text: message, annotations: nil, _meta: nil)],
             meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
     }
 }

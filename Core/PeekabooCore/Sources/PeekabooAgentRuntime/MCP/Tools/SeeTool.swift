@@ -406,10 +406,14 @@ public struct SeeTool: MCPTool {
             screenshotPath: finalScreenshot,
             target: target)
 
-        var content: [MCP.Tool.Content] = [.text(summaryText)]
+        var content: [MCP.Tool.Content] = [.text(text: summaryText, annotations: nil, _meta: nil)]
         if output.annotate, let annotatedPath = output.annotatedPath {
             let imageData = try Data(contentsOf: URL(fileURLWithPath: annotatedPath))
-            content.append(.image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil))
+            content.append(.image(
+                data: imageData.base64EncodedString(),
+                mimeType: "image/png",
+                annotations: nil,
+                _meta: nil))
         }
 
         let baseMeta = self.makeMetadata(snapshot: snapshot, elements: elements)
