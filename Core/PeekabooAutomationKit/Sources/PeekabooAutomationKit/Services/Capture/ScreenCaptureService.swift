@@ -1256,7 +1256,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             let image: CGImage
             if self.shouldUseLegacyCGCapture() {
                 do {
-                    image = try self.captureWindowWithCGWindowList(windowID: windowID)
+                    image = try await self.captureWindowWithCGWindowList(
+                        windowID: windowID,
+                        correlationId: correlationId)
                     self.logger.debug(
                         "Captured window via CGWindowList",
                         metadata: ["windowID": String(windowID)],
@@ -1377,7 +1379,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             let image: CGImage
             if self.shouldUseLegacyCGCapture() {
                 do {
-                    image = try self.captureWindowWithCGWindowList(windowID: windowID)
+                    image = try await self.captureWindowWithCGWindowList(
+                        windowID: windowID,
+                        correlationId: correlationId)
                 } catch {
                     self.logger.warning(
                         "CGWindowList capture failed, falling back to SCScreenshotManager",
@@ -1576,45 +1580,62 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             windowID: CGWindowID,
             correlationId: String) async throws -> CGImage
         {
-            let content = try await SCShareableContent.current
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
             guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
                 throw OperationError.captureFailed(
                     reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
             }
+            guard let display = content.displays.first(where: { $0.frame.intersects(scWindow.frame) }) else {
+                throw OperationError.captureFailed(
+                    reason: "Window \(windowID) is not on any available display")
+            }
 
-            let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+            let nativeScale: CGFloat = {
+                let width = CGFloat(display.width)
+                let frameWidth = display.frame.width
+                guard frameWidth > 0 else { return 1.0 }
+                let scale = width / frameWidth
+                return scale > 0 ? scale : 1.0
+            }()
+
+            let filter = SCContentFilter(display: display, including: [scWindow])
+            let config = self.makeScreenshotConfiguration()
+            // Display-bound filters expect display-local geometry. This mirrors the reliable modern path and keeps
+            // single-shot captures crisp without relying on the obsolete CoreGraphics window API.
+            config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+                globalRect: scWindow.frame,
+                displayFrame: display.frame)
+            config.width = max(Int(scWindow.frame.width * nativeScale), 1)
+            config.height = max(Int(scWindow.frame.height * nativeScale), 1)
+            config.captureResolution = .best
+            config.ignoreShadowsSingleWindow = true
+            if #available(macOS 14.2, *) {
+                config.includeChildWindows = false
+            }
+
             self.logger.debug(
-                "Capturing window via SCScreenshotManager",
-                metadata: ["windowID": windowID],
+                "Capturing window via display-bound SCScreenshotManager",
+                metadata: [
+                    "windowID": windowID,
+                    "displayID": display.displayID,
+                ],
                 correlationId: correlationId)
 
             return try await SCScreenshotManager.captureImage(
                 contentFilter: filter,
-                configuration: self.makeScreenshotConfiguration())
+                configuration: config)
         }
 
-        @available(macOS, obsoleted: 15.0)
         @MainActor
-        private func captureWindowWithCGWindowList(windowID: CGWindowID) throws -> CGImage {
-            if #unavailable(macOS 14.0) {
-                let imageOptions: CGWindowImageOption = [
-                    .boundsIgnoreFraming,
-                    .bestResolution,
-                ]
-                guard
-                    let image = CGWindowListCreateImage(
-                        .infinite,
-                        [.optionIncludingWindow],
-                        windowID,
-                        imageOptions)
-                else {
-                    throw OperationError.captureFailed(reason: "CGWindowListCreateImage returned nil")
-                }
-                return image
-            }
-
-            throw OperationError.captureFailed(
-                reason: "CGWindowListCreateImage is deprecated; use ScreenCaptureKit instead")
+        private func captureWindowWithCGWindowList(
+            windowID: CGWindowID,
+            correlationId: String) async throws -> CGImage
+        {
+            // PeekabooAutomationKit targets macOS 14+, where ScreenCaptureKit is always available. Current SDKs
+            // obsolete CGWindowListCreateImage, so the legacy selector funnels into the SCKit path instead.
+            try await self.captureWindowWithScreenshotManager(
+                windowID: windowID,
+                correlationId: correlationId)
         }
 
         private nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
