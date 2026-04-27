@@ -25,7 +25,7 @@ struct MCPToolExecutionTests {
             #expect(response.isError == false)
             #expect(elapsed >= 0)
 
-            if case let .text(message) = response.content.first {
+            if case let .text(text: message, annotations: _, _meta: _) = response.content.first {
                 #expect(message.contains("Paused") || message.contains("Sleep"))
             }
         }
@@ -40,7 +40,7 @@ struct MCPToolExecutionTests {
             let response = try await tool.execute(arguments: args)
             #expect(response.isError == true)
 
-            if case let .text(error) = response.content.first {
+            if case let .text(text: error, annotations: _, _meta: _) = response.content.first {
                 #expect(error.contains("duration"))
             }
         }
@@ -61,7 +61,7 @@ struct MCPToolExecutionTests {
         let response = try await tool.execute(arguments: args)
         #expect(response.isError == false)
 
-        if case let .text(output) = response.content.first {
+        if case let .text(text: output, annotations: _, _meta: _) = response.content.first {
             // Should contain information about permissions
             #expect(output.contains("Accessibility") || output.contains("Screen Recording"))
         }
@@ -89,7 +89,7 @@ struct MCPToolExecutionTests {
         let response = try await tool.execute(arguments: args)
         #expect(response.isError == false)
 
-        if case let .text(output) = response.content.first {
+        if case let .text(text: output, annotations: _, _meta: _) = response.content.first {
             // Should contain at least Finder
             #expect(output.contains("Finder") || output.contains("com.apple.finder"))
         }
@@ -116,7 +116,7 @@ struct MCPToolExecutionTests {
         let response = try await tool.execute(arguments: ToolArguments(raw: ["type": "apps"]))
         #expect(response.isError == false)
 
-        guard case let .text(output) = response.content.first else {
+        guard case let .text(text: output, annotations: _, _meta: _) = response.content.first else {
             Issue.record("Expected text response for apps listing")
             return
         }
@@ -157,7 +157,7 @@ struct MCPToolExecutionTests {
         let response = try await tool.execute(arguments: args)
         #expect(response.isError == false)
 
-        guard case let .text(output) = response.content.first else {
+        guard case let .text(text: output, annotations: _, _meta: _) = response.content.first else {
             Issue.record("Expected text response for server_status")
             return
         }
@@ -204,7 +204,7 @@ struct MCPToolExecutionTests {
         let response = try await tool.execute(arguments: ToolArguments(raw: [:]))
         #expect(response.isError == false)
 
-        guard case let .text(output) = response.content.first else {
+        guard case let .text(text: output, annotations: _, _meta: _) = response.content.first else {
             Issue.record("Expected text response for see output")
             return
         }
@@ -234,7 +234,7 @@ struct MCPToolExecutionTests {
         // We can't guarantee TextEdit exists on all test systems
         // but we can verify the response format
         if !response.isError {
-            if case let .text(output) = response.content.first {
+            if case let .text(text: output, annotations: _, _meta: _) = response.content.first {
                 #expect(output.contains("Launch") || output.contains("already running"))
             }
         }
@@ -517,7 +517,7 @@ struct MCPToolErrorHandlingTests {
             let response = try await tool.execute(arguments: args)
             #expect(response.isError == true)
 
-            if case let .text(error) = response.content.first {
+            if case let .text(text: error, annotations: _, _meta: _) = response.content.first {
                 // Should mention that it needs some input like query, on, or coords
                 #expect(error.lowercased().contains("specify") || error.lowercased().contains("provide") || error
                     .lowercased().contains("must"))
@@ -534,7 +534,7 @@ struct MCPToolErrorHandlingTests {
 
             #expect(response.isError == true)
 
-            if case let .text(error) = response.content.first {
+            if case let .text(text: error, annotations: _, _meta: _) = response.content.first {
                 #expect(error.contains("Invalid coordinates format") || error.contains("coordinates"))
             }
         }
@@ -639,7 +639,7 @@ struct MCPToolIntegrationTests {
 
             // Can't guarantee Safari is running, but we can verify the tool handles arguments
             if response.isError {
-                if case let .text(error) = response.content.first {
+                if case let .text(text: error, annotations: _, _meta: _) = response.content.first {
                     #expect(!error.isEmpty)
                 }
             }

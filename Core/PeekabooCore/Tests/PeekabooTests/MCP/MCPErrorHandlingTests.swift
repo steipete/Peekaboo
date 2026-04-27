@@ -153,7 +153,7 @@ struct MCPErrorHandlingTests {
             let response = try await tool.execute(arguments: args)
 
             #expect(response.isError == true)
-            if case let .text(error) = response.content.first {
+            if case let .text(text: error, annotations: _, _meta: _) = response.content.first {
                 #expect(!error.isEmpty)
             }
         }
@@ -259,7 +259,7 @@ struct MCPErrorHandlingTests {
         let response3 = try await tool.execute(arguments: ToolArguments(raw: [:]))
         #expect(response3.isError == false)
 
-        if case let .text(message) = response3.content.first {
+        if case let .text(text: message, annotations: _, _meta: _) = response3.content.first {
             #expect(message.contains("Success"))
             #expect(message.contains("3 attempts"))
         }

@@ -121,7 +121,7 @@ struct MCPToolProtocolTests {
         #expect(response.isError == false)
         #expect(response.meta == nil)
 
-        if case let .text(text) = response.content.first {
+        if case let .text(text: text, annotations: _, _meta: _) = response.content.first {
             #expect(text == "Operation completed successfully")
         } else {
             Issue.record("Expected text content")
@@ -135,7 +135,7 @@ struct MCPToolProtocolTests {
         #expect(response.content.count == 1)
         #expect(response.isError == true)
 
-        if case let .text(text) = response.content.first {
+        if case let .text(text: text, annotations: _, _meta: _) = response.content.first {
             #expect(text == "Something went wrong")
         } else {
             Issue.record("Expected text content")
@@ -150,7 +150,7 @@ struct MCPToolProtocolTests {
         #expect(response.content.count == 1)
         #expect(response.isError == false)
 
-        if case let .image(data, mimeType, _) = response.content.first {
+        if case let .image(data: data, mimeType: mimeType, annotations: _, _meta: _) = response.content.first {
             #expect(data == imageData.base64EncodedString())
             #expect(mimeType == "image/jpeg")
         } else {
@@ -183,10 +183,10 @@ struct MCPToolProtocolTests {
     func `ToolResponse multi-content`() {
         let imageData = Data("imagedata".utf8)
         let contents: [MCP.Tool.Content] = [
-            .text("Processing started"),
-            .text("Step 1 complete"),
-            .image(data: imageData.base64EncodedString(), mimeType: "image/png", metadata: nil),
-            .text("Processing complete"),
+            .text(text: "Processing started", annotations: nil, _meta: nil),
+            .text(text: "Step 1 complete", annotations: nil, _meta: nil),
+            .image(data: imageData.base64EncodedString(), mimeType: "image/png", annotations: nil, _meta: nil),
+            .text(text: "Processing complete", annotations: nil, _meta: nil),
         ]
 
         let response = ToolResponse.multiContent(contents)
@@ -250,7 +250,7 @@ struct MockToolTests {
         let response = try await tool.execute(arguments: args)
 
         #expect(response.isError == false)
-        if case let .text(text) = response.content.first {
+        if case let .text(text: text, annotations: _, _meta: _) = response.content.first {
             #expect(text == "Hello")
         }
     }
@@ -266,7 +266,7 @@ struct MockToolTests {
         let response = try await tool.execute(arguments: ToolArguments(raw: [:]))
 
         #expect(response.isError == true)
-        if case let .text(text) = response.content.first {
+        if case let .text(text: text, annotations: _, _meta: _) = response.content.first {
             #expect(text == "Mock tool execution failed")
         }
     }
