@@ -50,6 +50,14 @@ public struct ImageTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
+        // Check screen recording permission before attempting capture
+        let hasPermission = await self.context.screenCapture.hasScreenRecordingPermission()
+        if !hasPermission {
+            let responseText = "Screen Recording permission is required. Grant via: System Settings > Privacy & Security > Screen Recording"
+            let summary = ToolEventSummary(actionDescription: "Image Capture", notes: "Screen Recording missing")
+            return ToolResponse.error(responseText, meta: ToolEventSummary.merge(summary: summary, into: nil))
+        }
+
         let request = try ImageRequest(arguments: arguments)
         let captureResults = try await self.captureImages(for: request)
         let savedFiles = try self.saveCaptures(captureResults, request: request)
