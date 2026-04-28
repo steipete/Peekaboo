@@ -8,8 +8,8 @@ import Testing
 @MainActor
 @Suite("SeeCommand remote detection timeout")
 struct SeeCommandRemoteDetectionTimeoutTests {
-    @Test("Timeout-aware automation receives a wall-clock cushion")
-    func timeoutAwareAutomationReceivesWallClockCushion() async throws {
+    @Test
+    func `Timeout-aware automation receives a wall-clock cushion`() async throws {
         let automation = MockTimeoutAwareAutomationService(minimumRequestTimeoutSec: 16)
 
         let result = try await SeeCommand.detectElements(
@@ -25,8 +25,8 @@ struct SeeCommandRemoteDetectionTimeoutTests {
         #expect(automation.timeoutAwareCalls == 1)
     }
 
-    @Test("Non-timeout-aware automation falls back to the shared bridge helper")
-    func nonTimeoutAwareAutomationFallsBackToSharedBridgeHelper() async throws {
+    @Test
+    func `Non-timeout-aware automation falls back to the shared bridge helper`() async throws {
         let automation = MockPlainAutomationService()
 
         let result = try await SeeCommand.detectElements(
@@ -80,7 +80,7 @@ private final class MockTimeoutAwareAutomationService: DetectElementsRequestTime
 
     func click(target _: ClickTarget, clickType _: ClickType, snapshotId _: String?) async throws {}
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?)
-        async throws {}
+    async throws {}
 
     func typeActions(
         _: [TypeAction],
@@ -93,19 +93,22 @@ private final class MockTimeoutAwareAutomationService: DetectElementsRequestTime
     func scroll(_: ScrollRequest) async throws {}
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
     func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile)
-        async throws {}
+    async throws {}
 
-    func hasAccessibilityPermission() async -> Bool { true }
+    func hasAccessibilityPermission() async -> Bool {
+        true
+    }
 
     func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
-        -> WaitForElementResult
-    {
+    -> WaitForElementResult {
         .init(found: false, element: nil, waitTime: 0)
     }
 
     func drag(_: DragOperationRequest) async throws {}
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
-    func getFocusedElement() -> UIFocusInfo? { nil }
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("not implemented")
@@ -127,7 +130,7 @@ private final class MockPlainAutomationService: UIAutomationServiceProtocol {
 
     func click(target _: ClickTarget, clickType _: ClickType, snapshotId _: String?) async throws {}
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?)
-        async throws {}
+    async throws {}
 
     func typeActions(
         _: [TypeAction],
@@ -140,19 +143,22 @@ private final class MockPlainAutomationService: UIAutomationServiceProtocol {
     func scroll(_: ScrollRequest) async throws {}
     func hotkey(keys _: String, holdDuration _: Int) async throws {}
     func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile)
-        async throws {}
+    async throws {}
 
-    func hasAccessibilityPermission() async -> Bool { true }
+    func hasAccessibilityPermission() async -> Bool {
+        true
+    }
 
     func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
-        -> WaitForElementResult
-    {
+    -> WaitForElementResult {
         .init(found: false, element: nil, waitTime: 0)
     }
 
     func drag(_: DragOperationRequest) async throws {}
     func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
-    func getFocusedElement() -> UIFocusInfo? { nil }
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("not implemented")

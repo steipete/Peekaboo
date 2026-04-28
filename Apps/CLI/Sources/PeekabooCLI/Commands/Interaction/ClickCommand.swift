@@ -5,7 +5,7 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
-struct FrontmostApplicationIdentity: Equatable, Sendable {
+struct FrontmostApplicationIdentity: Equatable {
     let name: String?
     let bundleIdentifier: String?
     let processIdentifier: Int32?
@@ -99,14 +99,12 @@ enum CoordinateClickFocusVerifier {
         }
 
         if let bundleIdentifier = frontmost.bundleIdentifier,
-           bundleIdentifier.caseInsensitiveCompare(trimmedTarget) == .orderedSame
-        {
+           bundleIdentifier.caseInsensitiveCompare(trimmedTarget) == .orderedSame {
             return true
         }
 
         if let name = frontmost.name,
-           name.caseInsensitiveCompare(trimmedTarget) == .orderedSame
-        {
+           name.caseInsensitiveCompare(trimmedTarget) == .orderedSame {
             return true
         }
 
@@ -121,8 +119,8 @@ enum CoordinateClickFocusVerifier {
     }
 }
 
-private extension String {
-    var nilIfEmpty: String? {
+extension String {
+    fileprivate var nilIfEmpty: String? {
         self.isEmpty ? nil : self
     }
 }

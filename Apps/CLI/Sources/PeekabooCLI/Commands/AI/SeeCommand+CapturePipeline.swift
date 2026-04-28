@@ -51,7 +51,7 @@ extension SeeCommand {
         windowContext: WindowContext?,
         timeoutSeconds: TimeInterval
     ) async throws -> ElementDetectionResult {
-        try await Self.withWallClockTimeout(seconds: timeoutSeconds) {
+        try await withWallClockTimeout(seconds: timeoutSeconds) {
             if let timeoutAdjustingAutomation = automation as? any DetectElementsRequestTimeoutAdjusting {
                 return try await timeoutAdjustingAutomation.detectElements(
                     in: imageData,

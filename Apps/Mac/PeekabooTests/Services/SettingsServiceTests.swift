@@ -144,12 +144,11 @@ struct PeekabooSettingsPersistenceTests {
     }
 }
 
-
 @Suite("PeekabooSettings Config Hydration Tests", .tags(.services, .integration))
 @MainActor
 struct PeekabooSettingsConfigHydrationTests {
-    @Test("Configuration-backed state survives init")
-    func configurationBackedStateSurvivesInit() throws {
+    @Test
+    func `Configuration-backed state survives init`() throws {
         try withIsolatedSettingsEnvironment { configDir in
             let configPath = configDir.appendingPathComponent("config.json")
             let configJSON = """
@@ -189,8 +188,8 @@ struct PeekabooSettingsConfigHydrationTests {
         }
     }
 
-    @Test("Configuration-backed provider aliases hydrate to Google and built-ins include Grok")
-    func configurationBackedProviderAliasesHydrateToGoogle() throws {
+    @Test
+    func `Configuration-backed provider aliases hydrate to Google and built-ins include Grok`() throws {
         try withIsolatedSettingsEnvironment { configDir in
             let configPath = configDir.appendingPathComponent("config.json")
             let configJSON = """

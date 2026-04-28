@@ -3,8 +3,8 @@ import Testing
 
 @Suite("ClickCommand focus verification")
 struct ClickCommandFocusVerificationTests {
-    @Test("Exact app name match passes")
-    func exactAppNameMatchPasses() {
+    @Test
+    func `Exact app name match passes`() {
         let frontmost = FrontmostApplicationIdentity(
             name: "Claude",
             bundleIdentifier: "com.anthropic.claudedesktop",
@@ -20,8 +20,8 @@ struct ClickCommandFocusVerificationTests {
         #expect(message == nil)
     }
 
-    @Test("Exact bundle identifier match passes")
-    func exactBundleIdentifierMatchPasses() {
+    @Test
+    func `Exact bundle identifier match passes`() {
         let frontmost = FrontmostApplicationIdentity(
             name: "Claude",
             bundleIdentifier: "com.anthropic.claudedesktop",
@@ -37,8 +37,8 @@ struct ClickCommandFocusVerificationTests {
         #expect(message == nil)
     }
 
-    @Test("PID targets pass when the frontmost PID matches")
-    func pidTargetPasses() {
+    @Test
+    func `PID targets pass when the frontmost PID matches`() {
         let frontmost = FrontmostApplicationIdentity(
             name: "Claude",
             bundleIdentifier: "com.anthropic.claudedesktop",
@@ -60,8 +60,8 @@ struct ClickCommandFocusVerificationTests {
         #expect(pidStringMessage == nil)
     }
 
-    @Test("Partial app-name matches still fail")
-    func partialAppNameMatchesStillFail() {
+    @Test
+    func `Partial app-name matches still fail`() {
         let frontmost = FrontmostApplicationIdentity(
             name: "Xcode",
             bundleIdentifier: "com.apple.dt.Xcode",
@@ -78,8 +78,8 @@ struct ClickCommandFocusVerificationTests {
         #expect(message?.contains("'Xcode'") == true)
     }
 
-    @Test("Mismatch includes the frontmost application details")
-    func mismatchIncludesFrontmostDetails() {
+    @Test
+    func `Mismatch includes the frontmost application details`() {
         let frontmost = FrontmostApplicationIdentity(
             name: "Google Chrome",
             bundleIdentifier: "com.google.Chrome",

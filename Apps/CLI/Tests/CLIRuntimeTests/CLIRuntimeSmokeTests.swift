@@ -37,8 +37,7 @@ struct CLIRuntimeSmokeTests {
               let success = json["success"] as? Bool,
               success == false,
               let error = json["error"] as? [String: Any],
-              let code = error["code"] as? String else
-        {
+              let code = error["code"] as? String else {
             Issue.record("Expected successful app list JSON or structured permission error JSON.")
             return
         }

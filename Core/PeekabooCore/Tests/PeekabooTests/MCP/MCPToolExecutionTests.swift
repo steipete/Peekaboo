@@ -139,16 +139,16 @@ struct MCPToolExecutionTests {
         #expect(!response.content.isEmpty)
     }
 
-    @Test("List tool description includes centralized MCP version banner")
-    func listToolDescriptionIncludesCentralizedVersionBanner() async {
+    @Test
+    func `List tool description includes centralized MCP version banner`() async {
         let mockApplications = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
         let tool = ListTool(context: context)
         #expect(tool.description.contains(PeekabooMCPVersion.banner))
     }
 
-    @Test("Server status output uses centralized MCP version")
-    func listToolServerStatusUsesCentralizedVersion() async throws {
+    @Test
+    func `Server status output uses centralized MCP version`() async throws {
         let mockApplications = await MainActor.run { MockApplicationService() }
         let context = await MCPToolTestHelpers.makeContext(applications: mockApplications)
         let tool = ListTool(context: context)

@@ -126,8 +126,7 @@ public protocol DetectElementsRequestTimeoutAdjusting: UIAutomationServiceProtoc
         in imageData: Data,
         snapshotId: String?,
         windowContext: WindowContext?,
-        requestTimeoutSec: TimeInterval
-    ) async throws -> ElementDetectionResult
+        requestTimeoutSec: TimeInterval) async throws -> ElementDetectionResult
 }
 
 /// Profiles controlling how mouse paths are generated.

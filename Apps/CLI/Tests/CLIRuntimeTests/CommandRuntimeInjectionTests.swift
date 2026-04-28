@@ -33,9 +33,9 @@ struct CommandRuntimeInjectionTests {
         #expect(!tools.isEmpty)
     }
 
-    @Test("aligns Tachikoma profile directory with Peekaboo")
+    @Test
     @MainActor
-    func alignsTachikomaProfileDirectory() {
+    func `aligns Tachikoma profile directory with Peekaboo`() {
         let previousProfile = TachikomaConfiguration.profileDirectoryName
         defer { TachikomaConfiguration.profileDirectoryName = previousProfile }
 
