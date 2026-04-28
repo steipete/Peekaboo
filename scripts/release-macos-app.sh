@@ -21,8 +21,12 @@ VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
 TAG="v${VERSION}"
 UPDATE_APPCAST=true
 UPLOAD=false
+UPLOAD_CHECKSUMS=false
 NOTARIZE=true
 KEEP_DERIVED_DATA=false
+DRY_RUN=false
+SKIP_BUILD=false
+VERIFY_ONLY_ZIP=""
 
 usage() {
   cat <<EOF
@@ -34,9 +38,13 @@ Options:
   --sparkle-key <path>           Sparkle EdDSA private key file.
   --sign-identity <identity>     Developer ID signing identity.
   --notary-profile <profile>     notarytool keychain profile.
+  --dry-run                      Build/sign/zip/verify in /tmp; no notarization, appcast, or upload.
+  --skip-build                   Reuse the app already in DerivedData.
+  --verify-only <zip>            Verify an existing zip's extracted app, then exit.
   --no-notarize                  Build/sign/zip without Apple notarization.
   --no-appcast                   Do not update appcast.xml.
-  --upload                       Upload zip + checksums.txt to the GitHub release.
+  --upload                       Upload the app zip to the GitHub release.
+  --upload-checksums             Also upload checksums.txt; requires an existing checksum file.
   --keep-derived-data            Keep Xcode DerivedData after completion.
   --help                         Show this help.
 
@@ -71,6 +79,25 @@ while [[ $# -gt 0 ]]; do
       NOTARYTOOL_PROFILE="$2"
       shift 2
       ;;
+    --dry-run)
+      DRY_RUN=true
+      NOTARIZE=false
+      UPDATE_APPCAST=false
+      UPLOAD=false
+      shift
+      ;;
+    --skip-build)
+      SKIP_BUILD=true
+      shift
+      ;;
+    --verify-only)
+      VERIFY_ONLY_ZIP="$2"
+      SKIP_BUILD=true
+      NOTARIZE=false
+      UPDATE_APPCAST=false
+      UPLOAD=false
+      shift 2
+      ;;
     --no-notarize)
       NOTARIZE=false
       shift
@@ -81,6 +108,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --upload)
       UPLOAD=true
+      shift
+      ;;
+    --upload-checksums)
+      UPLOAD_CHECKSUMS=true
       shift
       ;;
     --keep-derived-data)
@@ -99,6 +130,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$DRY_RUN" == true ]]; then
+  NOTARIZE=false
+  UPDATE_APPCAST=false
+  UPLOAD=false
+  UPLOAD_CHECKSUMS=false
+  RELEASE_DIR="$(mktemp -d /tmp/peekaboo-macos-app-dry-run.XXXXXX)"
+fi
+
+if [[ "$UPLOAD_CHECKSUMS" == true && "$UPLOAD" != true ]]; then
+  echo "ERROR: --upload-checksums requires --upload" >&2
+  exit 1
+fi
+
 APP_BUNDLE="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME.app"
 ZIP_NAME="$APP_NAME-${VERSION}.app.zip"
 ZIP_PATH="$RELEASE_DIR/$ZIP_NAME"
@@ -109,6 +153,9 @@ VERIFY_DIR="$(mktemp -d /tmp/peekaboo-zip-verify.XXXXXX)"
 
 cleanup() {
   rm -rf "$NOTARY_DIR" "$VERIFY_DIR"
+  if [[ "$DRY_RUN" == true ]]; then
+    rm -rf "$RELEASE_DIR"
+  fi
   if [[ "$KEEP_DERIVED_DATA" != true ]]; then
     rm -rf "$DERIVED_DATA_PATH"
   fi
@@ -119,30 +166,62 @@ log() { printf '==> %s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 require_command() { command -v "$1" >/dev/null 2>&1 || fail "$1 not found"; }
 
-require_command node
-require_command xcodebuild
 require_command codesign
 require_command ditto
-require_command shasum
-require_command sign_update
-require_command xcrun
+if [[ -z "$VERIFY_ONLY_ZIP" ]]; then
+  require_command node
+  require_command xcodebuild
+  require_command shasum
+  require_command sign_update
+fi
 if [[ "$NOTARIZE" == true ]]; then
+  require_command xcrun
   require_command spctl
 fi
 
-[[ -d "$WORKSPACE" ]] || fail "Workspace not found: $WORKSPACE"
-[[ -f "$SPARKLE_PRIVATE_KEY_FILE" ]] || fail "Sparkle private key not found: $SPARKLE_PRIVATE_KEY_FILE"
-mkdir -p "$RELEASE_DIR"
+if [[ -z "$VERIFY_ONLY_ZIP" ]]; then
+  [[ -d "$WORKSPACE" ]] || fail "Workspace not found: $WORKSPACE"
+  [[ -f "$SPARKLE_PRIVATE_KEY_FILE" ]] || fail "Sparkle private key not found: $SPARKLE_PRIVATE_KEY_FILE"
+  mkdir -p "$RELEASE_DIR"
+fi
 
-log "Building $APP_NAME.app $VERSION"
-xcodebuild \
-  -workspace "$WORKSPACE" \
-  -scheme "$SCHEME" \
-  -configuration "$CONFIGURATION" \
-  -destination "$DESTINATION" \
-  -derivedDataPath "$DERIVED_DATA_PATH" \
-  -quiet \
-  build
+verify_zip() {
+  local zip_path="$1"
+  local verify_dir="$2"
+
+  [[ -f "$zip_path" ]] || fail "Zip not found: $zip_path"
+  rm -rf "$verify_dir"
+  mkdir -p "$verify_dir"
+  ditto -x -k "$zip_path" "$verify_dir"
+  local extracted_app="$verify_dir/$APP_NAME.app"
+  [[ -d "$extracted_app" ]] || fail "Extracted app not found: $extracted_app"
+  codesign --verify --deep --strict --verbose=2 "$extracted_app"
+  if [[ "$NOTARIZE" == true ]]; then
+    xcrun stapler validate "$extracted_app"
+    spctl --assess --type execute --verbose=4 "$extracted_app"
+  fi
+}
+
+if [[ -n "$VERIFY_ONLY_ZIP" ]]; then
+  log "Verifying existing zip"
+  verify_zip "$VERIFY_ONLY_ZIP" "$VERIFY_DIR"
+  log "Done"
+  exit 0
+fi
+
+if [[ "$SKIP_BUILD" == true ]]; then
+  log "Skipping build; reusing $APP_BUNDLE"
+else
+  log "Building $APP_NAME.app $VERSION"
+  xcodebuild \
+    -workspace "$WORKSPACE" \
+    -scheme "$SCHEME" \
+    -configuration "$CONFIGURATION" \
+    -destination "$DESTINATION" \
+    -derivedDataPath "$DERIVED_DATA_PATH" \
+    -quiet \
+    build
+fi
 
 [[ -d "$APP_BUNDLE" ]] || fail "App bundle not found: $APP_BUNDLE"
 
@@ -192,17 +271,12 @@ ED_SIGNATURE="$(printf '%s\n' "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="
 [[ -n "$ED_SIGNATURE" ]] || fail "Could not parse sparkle:edSignature from sign_update output"
 
 log "Verifying zipped app"
-ditto -x -k "$ZIP_PATH" "$VERIFY_DIR"
-EXTRACTED_APP="$VERIFY_DIR/$APP_NAME.app"
-[[ -d "$EXTRACTED_APP" ]] || fail "Extracted app not found: $EXTRACTED_APP"
-codesign --verify --deep --strict --verbose=2 "$EXTRACTED_APP"
-if [[ "$NOTARIZE" == true ]]; then
-  xcrun stapler validate "$EXTRACTED_APP"
-  spctl --assess --type execute --verbose=4 "$EXTRACTED_APP"
-fi
+verify_zip "$ZIP_PATH" "$VERIFY_DIR"
 
 CHECKSUMS_PATH="$RELEASE_DIR/checksums.txt"
+HAD_CHECKSUMS=false
 if [[ -f "$CHECKSUMS_PATH" ]]; then
+  HAD_CHECKSUMS=true
   grep -F -v "  $ZIP_NAME" "$CHECKSUMS_PATH" > "$CHECKSUMS_PATH.tmp" || true
   mv "$CHECKSUMS_PATH.tmp" "$CHECKSUMS_PATH"
 fi
@@ -260,10 +334,17 @@ fi
 if [[ "$UPLOAD" == true ]]; then
   require_command gh
   log "Uploading release assets"
-  gh release upload "$TAG" "$ZIP_PATH" "$CHECKSUMS_PATH" --clobber
+  gh release upload "$TAG" "$ZIP_PATH" --clobber
+  if [[ "$UPLOAD_CHECKSUMS" == true ]]; then
+    [[ "$HAD_CHECKSUMS" == true ]] || fail "--upload-checksums requires an existing $CHECKSUMS_PATH from release-binaries.sh"
+    gh release upload "$TAG" "$CHECKSUMS_PATH" --clobber
+  fi
 fi
 
 log "Done"
+if [[ "$DRY_RUN" == true ]]; then
+  printf 'Dry run: no notarization, appcast update, or upload performed.\n'
+fi
 printf 'Zip: %s\n' "$ZIP_PATH"
 printf 'SHA256: %s\n' "$ZIP_SHA256"
 printf 'Length: %s\n' "$ZIP_LENGTH"
