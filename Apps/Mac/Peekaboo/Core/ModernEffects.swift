@@ -90,29 +90,6 @@ enum ModernEffectStyle {
 
 private let nativeGlassHostingViewIdentifier = NSUserInterfaceItemIdentifier("Peekaboo.NativeGlassHostingView")
 
-private func pinNativeGlassHostingView(_ child: NSView, to parent: NSView) {
-    NSLayoutConstraint.activate([
-        child.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-        child.trailingAnchor.constraint(equalTo: parent.trailingAnchor),
-        child.topAnchor.constraint(equalTo: parent.topAnchor),
-        child.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-    ])
-}
-
-private func nativeGlassHostingView<Content: View>(
-    in contentView: NSView?,
-    fallbackView: NSView) -> NSHostingView<Content>?
-{
-    if let hostingView = contentView?.subviews
-        .first(where: { $0.identifier == nativeGlassHostingViewIdentifier }) as? NSHostingView<Content>
-    {
-        return hostingView
-    }
-
-    return fallbackView.subviews
-        .first(where: { $0.identifier == nativeGlassHostingViewIdentifier }) as? NSHostingView<Content>
-}
-
 @available(macOS 26.0, *)
 struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     let style: ModernEffectStyle
@@ -124,16 +101,14 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
         glassView.cornerRadius = self.cornerRadius
         glassView.style = self.style.glassStyle
 
-        let hostingView = NSHostingView(rootView: content)
-        hostingView.identifier = nativeGlassHostingViewIdentifier
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        let hostingView = makeHostedContentView(content, identifier: nativeGlassHostingViewIdentifier)
 
         if let contentView = glassView.contentView {
             contentView.addSubview(hostingView)
-            pinNativeGlassHostingView(hostingView, to: contentView)
+            pinHostedContentView(hostingView, to: contentView)
         } else {
             glassView.addSubview(hostingView)
-            pinNativeGlassHostingView(hostingView, to: glassView)
+            pinHostedContentView(hostingView, to: glassView)
         }
 
         return glassView
@@ -142,7 +117,10 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     func updateNSView(_ nsView: NSGlassEffectView, context: Context) {
         nsView.cornerRadius = self.cornerRadius
         nsView.style = self.style.glassStyle
-        nativeGlassHostingView(in: nsView.contentView, fallbackView: nsView)?.rootView = self.content
+        hostedContentView(
+            identifiedBy: nativeGlassHostingViewIdentifier,
+            in: nsView.contentView,
+            fallbackView: nsView)?.rootView = self.content
     }
 }
 

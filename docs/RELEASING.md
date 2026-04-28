@@ -44,13 +44,13 @@ read_when:
 Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates are **disabled** unless the app is a bundled `.app` and **Developer ID signed** (see `Apps/Mac/Peekaboo/Core/Updater.swift`).
 
 - [ ] Ensure `Apps/Mac/Peekaboo/Info.plist` has `SUFeedURL`, `SUPublicEDKey`, and `SUEnableAutomaticChecks` set (defaults are already wired to the repo appcast).
-- [ ] Build and **Developer ID sign** the Release `.app` (Xcode Archive + Export is fine).
-- [ ] Zip for Sparkle distribution (keeps resource forks, needed for delta support):
-  - `ditto -c -k --sequesterRsrc --keepParent "Peekaboo.app" "Peekaboo-<version>.zip"`
-- [ ] Generate the Sparkle signature and capture the **exact** length + `sparkle:edSignature`:
-  - `sign_update --ed-key-file "$SPARKLE_PRIVATE_KEY_FILE" "Peekaboo-<version>.zip"`
-- [ ] Upload the zip to the GitHub Release assets.
-- [ ] Update `appcast.xml` (repo root) with a new `<item>` pointing at the GitHub Release asset URL, using the **exact** `length` and `sparkle:edSignature` from `sign_update`.
+- [ ] Ensure release credentials are available:
+  - Developer ID Application certificate in the login keychain.
+  - Sparkle EdDSA private key at `~/Library/CloudStorage/Dropbox/Backup/Sparkle/sparkle-private-key-KEEP-SECURE.txt` or `SPARKLE_PRIVATE_KEY_FILE`.
+  - Notarization credentials via `NOTARYTOOL_PROFILE` or `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and `APP_STORE_CONNECT_API_KEY_P8`.
+- [ ] Build, **Developer ID sign**, notarize, staple, zip, Sparkle-sign, verify, update `appcast.xml`, and upload:
+  - `pnpm run release:mac-app -- --upload`
+- [ ] Confirm the script prints the expected GitHub asset URL, SHA256, zip length, and Sparkle signature. The script also validates `codesign`, `stapler`, `spctl`, extracted zip contents, and `xmllint` when available.
 - [ ] Verify with an installed previous build: Settings → About → “Check for Updates…” installs the new build.
 
 ## 3c) App bundles for GitHub release (Peekaboo + Playground only)

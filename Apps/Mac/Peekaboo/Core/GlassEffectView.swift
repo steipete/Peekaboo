@@ -10,29 +10,6 @@ import SwiftUI
 
 private let glassHostingViewIdentifier = NSUserInterfaceItemIdentifier("Peekaboo.GlassHostingView")
 
-private func pinToEdges(_ child: NSView, of parent: NSView) {
-    NSLayoutConstraint.activate([
-        child.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-        child.trailingAnchor.constraint(equalTo: parent.trailingAnchor),
-        child.topAnchor.constraint(equalTo: parent.topAnchor),
-        child.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-    ])
-}
-
-private func glassHostingView<Content: View>(
-    in contentView: NSView?,
-    fallbackView: NSView) -> NSHostingView<Content>?
-{
-    if let hostingView = contentView?.subviews
-        .first(where: { $0.identifier == glassHostingViewIdentifier }) as? NSHostingView<Content>
-    {
-        return hostingView
-    }
-
-    return fallbackView.subviews
-        .first(where: { $0.identifier == glassHostingViewIdentifier }) as? NSHostingView<Content>
-}
-
 /// Liquid Glass effects are only available on macOS 26+
 /// For older versions, use ModernEffects.swift which provides platform-native styling
 @available(macOS 26.0, *)
@@ -66,16 +43,14 @@ struct GlassEffectView<Content: View>: NSViewRepresentable {
             glassView.style = style
         }
 
-        let hostingView = NSHostingView(rootView: content)
-        hostingView.identifier = glassHostingViewIdentifier
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        let hostingView = makeHostedContentView(content, identifier: glassHostingViewIdentifier)
 
         if let contentView = glassView.contentView {
             contentView.addSubview(hostingView)
-            pinToEdges(hostingView, of: contentView)
+            pinHostedContentView(hostingView, to: contentView)
         } else {
             glassView.addSubview(hostingView)
-            pinToEdges(hostingView, of: glassView)
+            pinHostedContentView(hostingView, to: glassView)
         }
 
         return glassView
@@ -89,7 +64,10 @@ struct GlassEffectView<Content: View>: NSViewRepresentable {
             nsView.style = style
         }
 
-        glassHostingView(in: nsView.contentView, fallbackView: nsView)?.rootView = self.content
+        hostedContentView(
+            identifiedBy: glassHostingViewIdentifier,
+            in: nsView.contentView,
+            fallbackView: nsView)?.rootView = self.content
     }
 }
 
@@ -112,16 +90,14 @@ struct GlassEffectContainer<Content: View>: NSViewRepresentable {
         let container = NSGlassEffectContainerView()
         container.spacing = self.spacing
 
-        let hostingView = NSHostingView(rootView: content)
-        hostingView.identifier = glassHostingViewIdentifier
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        let hostingView = makeHostedContentView(content, identifier: glassHostingViewIdentifier)
 
         if let contentView = container.contentView {
             contentView.addSubview(hostingView)
-            pinToEdges(hostingView, of: contentView)
+            pinHostedContentView(hostingView, to: contentView)
         } else {
             container.addSubview(hostingView)
-            pinToEdges(hostingView, of: container)
+            pinHostedContentView(hostingView, to: container)
         }
 
         return container
@@ -130,7 +106,10 @@ struct GlassEffectContainer<Content: View>: NSViewRepresentable {
     func updateNSView(_ nsView: NSGlassEffectContainerView, context: Context) {
         nsView.spacing = self.spacing
 
-        glassHostingView(in: nsView.contentView, fallbackView: nsView)?.rootView = self.content
+        hostedContentView(
+            identifiedBy: glassHostingViewIdentifier,
+            in: nsView.contentView,
+            fallbackView: nsView)?.rootView = self.content
     }
 }
 
