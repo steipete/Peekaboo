@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [3.0.0-beta4] - 2026-04-28
+
+### Added
+- Root SwiftPM package to expose PeekabooBridge and automation modules for host apps.
+
+### Changed
+- Bumped submodule dependencies to tagged releases (AXorcist v0.1.2, Commander v0.2.2, Swiftdansi 0.2.1, Tachikoma v0.2.0, TauTUI v0.1.6).
+- Version metadata updated to 3.0.0-beta4 for CLI/macOS app artifacts.
+
 ### Fixed
 - Test runs now stay hermetic after MCP Swift SDK 0.11 updates by pinning the latest Tachikoma bridge/resource conversions and preventing provider test helpers from consuming live API keys.
 - macOS settings now surface Google/Gemini and Grok providers with canonical provider hydration and manual key overrides.
@@ -15,15 +24,6 @@
 - Screen recording permission checks are more reliable, and MCP Swift SDK compatibility is restored; thanks @romanr for [#94](https://github.com/steipete/Peekaboo/pull/94).
 - Coordinate clicks now fail fast when the requested target app is not actually frontmost after focus; thanks @shawny011717 for [#91](https://github.com/steipete/Peekaboo/pull/91).
 - Permissions docs now point to the real `peekaboo permissions status|grant` commands; thanks @Undertone0809 for [#68](https://github.com/steipete/Peekaboo/pull/68).
-
-## [3.0.0-beta4] (unreleased)
-
-### Added
-- Root SwiftPM package to expose PeekabooBridge and automation modules for host apps.
-
-### Changed
-- Bumped submodule dependencies to tagged releases (AXorcist v0.1.0, Commander v0.2.1, Swiftdansi 0.2.0, Tachikoma v0.1.0, TauTUI v0.1.5).
-- Version metadata updated to 3.0.0-beta4 for CLI/macOS app artifacts.
 
 ## [3.0.0-beta3] - 2025-12-29
 
