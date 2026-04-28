@@ -88,19 +88,36 @@ enum ModernEffectStyle {
 
 // MARK: - Native Glass Wrapper for macOS 26+
 
+private let nativeGlassHostingViewIdentifier = NSUserInterfaceItemIdentifier("Peekaboo.NativeGlassHostingView")
+
+private func pinNativeGlassHostingView(_ child: NSView, to parent: NSView) {
+    NSLayoutConstraint.activate([
+        child.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+        child.trailingAnchor.constraint(equalTo: parent.trailingAnchor),
+        child.topAnchor.constraint(equalTo: parent.topAnchor),
+        child.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+    ])
+}
+
+private func nativeGlassHostingView<Content: View>(
+    in contentView: NSView?,
+    fallbackView: NSView) -> NSHostingView<Content>?
+{
+    if let hostingView = contentView?.subviews
+        .first(where: { $0.identifier == nativeGlassHostingViewIdentifier }) as? NSHostingView<Content>
+    {
+        return hostingView
+    }
+
+    return fallbackView.subviews
+        .first(where: { $0.identifier == nativeGlassHostingViewIdentifier }) as? NSHostingView<Content>
+}
+
 @available(macOS 26.0, *)
 struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     let style: ModernEffectStyle
     let cornerRadius: CGFloat
     let content: Content
-
-    final class Coordinator {
-        var hostingView: NSHostingView<Content>?
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
 
     func makeNSView(context: Context) -> NSGlassEffectView {
         let glassView = NSGlassEffectView()
@@ -108,25 +125,15 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
         glassView.style = self.style.glassStyle
 
         let hostingView = NSHostingView(rootView: content)
+        hostingView.identifier = nativeGlassHostingViewIdentifier
         hostingView.translatesAutoresizingMaskIntoConstraints = false
-        context.coordinator.hostingView = hostingView
 
         if let contentView = glassView.contentView {
             contentView.addSubview(hostingView)
-            NSLayoutConstraint.activate([
-                hostingView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-                hostingView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-                hostingView.topAnchor.constraint(equalTo: contentView.topAnchor),
-                hostingView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
-            ])
+            pinNativeGlassHostingView(hostingView, to: contentView)
         } else {
             glassView.addSubview(hostingView)
-            NSLayoutConstraint.activate([
-                hostingView.leadingAnchor.constraint(equalTo: glassView.leadingAnchor),
-                hostingView.trailingAnchor.constraint(equalTo: glassView.trailingAnchor),
-                hostingView.topAnchor.constraint(equalTo: glassView.topAnchor),
-                hostingView.bottomAnchor.constraint(equalTo: glassView.bottomAnchor),
-            ])
+            pinNativeGlassHostingView(hostingView, to: glassView)
         }
 
         return glassView
@@ -135,7 +142,7 @@ struct NativeGlassWrapper<Content: View>: NSViewRepresentable {
     func updateNSView(_ nsView: NSGlassEffectView, context: Context) {
         nsView.cornerRadius = self.cornerRadius
         nsView.style = self.style.glassStyle
-        context.coordinator.hostingView?.rootView = self.content
+        nativeGlassHostingView(in: nsView.contentView, fallbackView: nsView)?.rootView = self.content
     }
 }
 

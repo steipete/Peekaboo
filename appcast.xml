@@ -8,7 +8,19 @@
     <description>Peekaboo macOS app updates (Sparkle)</description>
     <language>en</language>
 
-    <!-- Release items live here. See docs/RELEASING.md (macOS app / Sparkle). -->
+    <item>
+      <title>Peekaboo 3.0.0-beta4</title>
+      <link>https://github.com/steipete/Peekaboo/releases/tag/v3.0.0-beta4</link>
+      <sparkle:releaseNotesLink>https://github.com/steipete/Peekaboo/releases/tag/v3.0.0-beta4</sparkle:releaseNotesLink>
+      <pubDate>Tue, 28 Apr 2026 01:07:46 +0000</pubDate>
+      <enclosure
+        url="https://github.com/steipete/Peekaboo/releases/download/v3.0.0-beta4/Peekaboo-3.0.0-beta4.app.zip"
+        sparkle:version="1"
+        sparkle:shortVersionString="3.0.0-beta4"
+        sparkle:minimumSystemVersion="15.0"
+        length="14616053"
+        type="application/octet-stream"
+        sparkle:edSignature="IFy+LXma6xmpN7dFkUUIiZm4fqBQ5bGrmoeH4m++zPiwFXbOVwP5r9mjA2F8Ja9lT5PyBdPywGe1j2qcYUmtBA==" />
+    </item>
   </channel>
 </rss>
-
