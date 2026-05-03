@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
@@ -178,10 +179,20 @@ extension CommandRuntime {
             do {
                 let handshake = try await client.handshake(client: identity, requestedHost: nil)
                 if handshake.supportedOperations.contains(.captureScreen) {
+                    let targetedHotkeyAvailability = self.targetedHotkeyAvailability(for: handshake)
                     let hostDescription = "remote \(handshake.hostKind.rawValue) via \(socketPath)" +
                         (handshake.build.map { " (build \($0))" } ?? "")
                     return (
-                        services: RemotePeekabooServices(client: client),
+                        services: RemotePeekabooServices(
+                            client: client,
+                            supportsTargetedHotkeys: targetedHotkeyAvailability.isEnabled,
+                            targetedHotkeyUnavailableReason: targetedHotkeyAvailability.unavailableReason,
+                            targetedHotkeyRequiresEventSynthesizingPermission:
+                            targetedHotkeyAvailability.missingPermissions.contains(.postEvent),
+                            supportsPostEventPermissionRequest: self.supportsPostEventPermissionRequest(
+                                for: handshake
+                            )
+                        ),
                         hostDescription: hostDescription
                     )
                 }
@@ -191,6 +202,95 @@ extension CommandRuntime {
         }
 
         return (services: PeekabooServices(), hostDescription: "local (in-process)")
+    }
+
+    static func supportsTargetedHotkeys(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        self.targetedHotkeyAvailability(for: handshake).isEnabled
+    }
+
+    static func supportsPostEventPermissionRequest(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 2) &&
+            handshake.supportedOperations.contains(.requestPostEventPermission)
+    }
+
+    static func targetedHotkeyAvailability(for handshake: PeekabooBridgeHandshakeResponse)
+    -> (isEnabled: Bool, unavailableReason: String?, missingPermissions: Set<PeekabooBridgePermissionKind>) {
+        guard
+            handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 1),
+            handshake.supportedOperations.contains(.targetedHotkey)
+        else {
+            return (false, nil, [])
+        }
+
+        let enabledOperations = handshake.enabledOperations ?? handshake.supportedOperations
+        if enabledOperations.contains(.targetedHotkey) {
+            return (true, nil, [])
+        }
+
+        let missingPermissions = self.missingPermissions(for: .targetedHotkey, handshake: handshake)
+        guard !missingPermissions.isEmpty else {
+            return (
+                false,
+                "Remote bridge host supports background hotkeys, but they are disabled by current permissions",
+                []
+            )
+        }
+
+        return (
+            false,
+            "Remote bridge host supports background hotkeys, but current permissions are missing: " +
+                self.missingPermissionNames(missingPermissions).joined(separator: ", "),
+            missingPermissions
+        )
+    }
+
+    private static func missingPermissions(
+        for operation: PeekabooBridgeOperation,
+        handshake: PeekabooBridgeHandshakeResponse
+    ) -> Set<PeekabooBridgePermissionKind> {
+        let requiredPermissions = Set(
+            handshake.permissionTags[operation.rawValue] ?? Array(operation.requiredPermissions)
+        )
+        let grantedPermissions = self.grantedPermissions(from: handshake.permissions)
+        return requiredPermissions.subtracting(grantedPermissions)
+    }
+
+    private static func missingPermissionNames(_ permissions: Set<PeekabooBridgePermissionKind>) -> [String] {
+        permissions.map(\.displayName).sorted()
+    }
+
+    private static func grantedPermissions(from status: PermissionsStatus?) -> Set<PeekabooBridgePermissionKind> {
+        guard let status else { return [] }
+
+        var granted: Set<PeekabooBridgePermissionKind> = []
+        if status.screenRecording {
+            granted.insert(.screenRecording)
+        }
+        if status.accessibility {
+            granted.insert(.accessibility)
+        }
+        if status.appleScript {
+            granted.insert(.appleScript)
+        }
+        if status.postEvent {
+            granted.insert(.postEvent)
+        }
+        return granted
+    }
+}
+
+extension PeekabooBridgePermissionKind {
+    fileprivate var displayName: String {
+        switch self {
+        case .screenRecording:
+            "Screen Recording"
+        case .accessibility:
+            "Accessibility"
+        case .postEvent:
+            "Event Synthesizing"
+        case .appleScript:
+            "AppleScript"
+        }
     }
 }
 

@@ -59,6 +59,10 @@ extension PeekabooAgentService {
             suggestion = "Grant Accessibility permission in System Settings → Privacy & Security → Accessibility"
             metadata["required_permission"] = "Accessibility"
 
+        case .permissionDeniedEventSynthesizing:
+            suggestion = "Grant event-synthesizing access in System Settings → Privacy & Security → Accessibility"
+            metadata["required_permission"] = "Event Synthesizing"
+
         case let .appNotFound(appName):
             message = "Application '\(appName)' not found"
             suggestion = "Check the app name spelling or use 'list_apps' to see available applications"

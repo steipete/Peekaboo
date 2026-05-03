@@ -11,6 +11,7 @@ struct PermissionsCommand: ParsableCommand {
         subcommands: [
             StatusSubcommand.self,
             GrantSubcommand.self,
+            RequestEventSynthesizingSubcommand.self,
         ],
         defaultSubcommand: StatusSubcommand.self
     )
@@ -105,6 +106,58 @@ extension PermissionsCommand {
             }
         }
     }
+
+    @MainActor
+    struct RequestEventSynthesizingSubcommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
+        @RuntimeStorage private var runtime: CommandRuntime?
+        var runtimeOptions = CommandRuntimeOptions()
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        var outputLogger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var jsonOutput: Bool {
+            self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+        }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            do {
+                let result = try await PermissionHelpers.requestEventSynthesizingPermission(services: runtime.services)
+                self.render(result)
+            } catch {
+                self.handleError(error)
+                throw ExitCode.failure
+            }
+        }
+
+        private func render(_ result: PermissionHelpers.EventSynthesizingPermissionRequestResult) {
+            if self.jsonOutput {
+                outputSuccessCodable(data: result, logger: self.outputLogger)
+                return
+            }
+
+            guard !result.already_granted else {
+                print("Event Synthesizing permission is already granted.")
+                return
+            }
+
+            if result.granted == true {
+                print("Event Synthesizing permission granted.")
+            } else {
+                print("Event Synthesizing permission was not granted.")
+                print("Grant it manually in System Settings > Privacy & Security > Accessibility.")
+            }
+        }
+    }
 }
 
 // MARK: - Subcommand Conformances
@@ -147,6 +200,27 @@ extension PermissionsCommand.GrantSubcommand: AsyncRuntimeCommand {}
 
 @MainActor
 extension PermissionsCommand.GrantSubcommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        _ = values
+    }
+}
+
+@MainActor
+extension PermissionsCommand.RequestEventSynthesizingSubcommand: ParsableCommand {
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
+                commandName: "request-event-synthesizing",
+                abstract: "Request Event Synthesizing permission for background hotkeys"
+            )
+        }
+    }
+}
+
+extension PermissionsCommand.RequestEventSynthesizingSubcommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension PermissionsCommand.RequestEventSynthesizingSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         _ = values
     }

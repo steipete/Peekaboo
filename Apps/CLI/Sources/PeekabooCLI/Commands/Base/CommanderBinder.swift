@@ -209,16 +209,20 @@ extension CommanderBindableValues {
         }
     }
 
-    func makeFocusOptions() throws -> FocusCommandOptions {
+    func makeFocusOptions(includeBackgroundDelivery: Bool = false) throws -> FocusCommandOptions {
         var options = FocusCommandOptions()
-        try fillFocusOptions(into: &options)
+        try fillFocusOptions(into: &options, includeBackgroundDelivery: includeBackgroundDelivery)
         return options
     }
 
-    func fillFocusOptions(into options: inout FocusCommandOptions) throws {
+    func fillFocusOptions(
+        into options: inout FocusCommandOptions,
+        includeBackgroundDelivery: Bool = false
+    ) throws {
         options.noAutoFocus = self.flag("noAutoFocus")
         options.spaceSwitch = self.flag("spaceSwitch")
         options.bringToCurrentSpace = self.flag("bringToCurrentSpace")
+        options.focusBackground = includeBackgroundDelivery && self.flag("focusBackground")
         if let timeout: TimeInterval = try decodeOption("focusTimeoutSeconds", as: TimeInterval.self) {
             options.focusTimeoutSeconds = timeout
         }

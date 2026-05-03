@@ -21,6 +21,9 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Snapshot ID (uses latest if not specified)")
     var snapshot: String?
 
+    @Flag(name: .customLong("focus-background"), help: "Send the hotkey to the target process without focusing it")
+    var focusBackground = false
+
     @OptionGroup var focusOptions: FocusCommandOptions
     @RuntimeStorage private var runtime: CommandRuntime?
 
@@ -59,6 +62,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
+        self.focusOptions.focusBackground = self.focusBackground || self.focusOptions.focusBackground
         let startTime = Date()
         self.logger.setJsonOutputMode(self.jsonOutput)
 
@@ -87,45 +91,71 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
             let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
 
-            if let providedSnapshot = snapshotId {
-                _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: providedSnapshot,
-                    snapshots: self.services.snapshots
+            let deliveryMode: String
+            let targetPID: pid_t?
+
+            if self.focusOptions.focusBackground {
+                try self.validateBackgroundHotkeyOptions(snapshotId: snapshotId)
+                let resolvedPID = try await self.resolveBackgroundHotkeyProcessIdentifier()
+                try await AutomationServiceBridge.hotkey(
+                    automation: self.services.automation,
+                    keys: keysCsv,
+                    holdDuration: self.holdDuration,
+                    targetProcessIdentifier: resolvedPID
                 )
-            }
-
-            // Ensure window is focused before pressing hotkey.
-            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
-                snapshotId
+                deliveryMode = "background"
+                targetPID = resolvedPID
             } else {
-                nil
+                if let providedSnapshot = snapshotId {
+                    _ = try await SnapshotValidation.requireDetectionResult(
+                        snapshotId: providedSnapshot,
+                        snapshots: self.services.snapshots
+                    )
+                }
+
+                // Ensure window is focused before pressing hotkey.
+                let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
+                    snapshotId
+                } else {
+                    nil
+                }
+
+                try await ensureFocused(
+                    snapshotId: focusSnapshotId,
+                    target: self.target,
+                    options: self.focusOptions,
+                    services: self.services
+                )
+
+                try await AutomationServiceBridge.hotkey(
+                    automation: self.services.automation,
+                    keys: keysCsv,
+                    holdDuration: self.holdDuration
+                )
+                deliveryMode = "foreground"
+                targetPID = nil
             }
-
-            try await ensureFocused(
-                snapshotId: focusSnapshotId,
-                target: self.target,
-                options: self.focusOptions,
-                services: self.services
-            )
-
-            // Perform hotkey using the automation service
-            try await AutomationServiceBridge.hotkey(
-                automation: self.services.automation,
-                keys: keysCsv,
-                holdDuration: self.holdDuration
-            )
 
             // Output results
             let result = HotkeyResult(
                 success: true,
                 keys: keyNames,
                 keyCount: keyNames.count,
+                deliveryMode: deliveryMode,
+                targetPID: targetPID.map(Int.init),
                 executionTime: Date().timeIntervalSince(startTime)
             )
 
             output(result) {
-                print("✅ Hotkey pressed")
+                if self.focusOptions.focusBackground {
+                    print("✅ Hotkey sent")
+                } else {
+                    print("✅ Hotkey pressed")
+                }
                 print("🎹 Keys: \(keyNames.joined(separator: " + "))")
+                if let targetPID {
+                    print("🎯 Mode: background to PID \(targetPID)")
+                }
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
@@ -133,6 +163,46 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             self.handleError(error)
             throw ExitCode.failure
         }
+    }
+
+    private func validateBackgroundHotkeyOptions(snapshotId: String?) throws {
+        if snapshotId != nil {
+            throw ValidationError("--focus-background cannot be combined with --snapshot")
+        }
+
+        if self.focusOptions.noAutoFocus ||
+            self.focusOptions.focusTimeoutSeconds != nil ||
+            self.focusOptions.focusRetryCount != nil ||
+            self.focusOptions.spaceSwitch ||
+            self.focusOptions.bringToCurrentSpace {
+            throw ValidationError("--focus-background cannot be combined with focus options")
+        }
+    }
+
+    private func resolveBackgroundHotkeyProcessIdentifier() async throws -> pid_t {
+        if self.target.windowId != nil || self.target.windowTitle != nil || self.target.windowIndex != nil {
+            throw ValidationError("--focus-background supports --app or --pid")
+        }
+
+        if self.target.app != nil, self.target.pid != nil {
+            throw ValidationError("--focus-background accepts one target: use --app or --pid")
+        }
+
+        if let pid = self.target.pid {
+            guard pid > 0 else {
+                throw ValidationError("--pid must be greater than 0")
+            }
+            return pid_t(pid)
+        }
+
+        guard let appIdentifier = self.target.app?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !appIdentifier.isEmpty
+        else {
+            throw ValidationError("--focus-background requires --app or --pid")
+        }
+
+        let app = try await self.services.applications.findApplication(identifier: appIdentifier)
+        return pid_t(app.processIdentifier)
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol
@@ -144,6 +214,8 @@ struct HotkeyResult: Codable {
     let success: Bool
     let keys: [String]
     let keyCount: Int
+    let deliveryMode: String
+    let targetPID: Int?
     let executionTime: TimeInterval
 }
 
@@ -169,6 +241,7 @@ extension HotkeyCommand: ParsableCommand {
                       peekaboo hotkey --keys "cmd a"          # Select all
                       peekaboo hotkey --keys "cmd,shift,t"    # Reopen closed tab
                       peekaboo hotkey --keys "cmd space"      # Spotlight
+                      peekaboo hotkey "cmd,l" --app Safari --focus-background
 
                     KEY NAMES:
                       Modifiers: cmd, shift, alt/option, ctrl, fn
@@ -177,7 +250,8 @@ extension HotkeyCommand: ParsableCommand {
                       Special: space, return, tab, escape, delete, arrow_up, arrow_down, arrow_left, arrow_right
                       Function: f1-f12
 
-                    The keys are pressed in the order given and released in reverse order.
+                    Background hotkeys accept one non-modifier key plus optional modifiers.
+                    Use --focus-background with --app or --pid to target a process without focusing it.
                 """,
 
                 showHelpOnEmptyInvocation: true
@@ -201,6 +275,7 @@ extension HotkeyCommand: CommanderBindableCommand {
         }
         self.target = try values.makeInteractionTargetOptions()
         self.snapshot = values.singleOption("snapshot")
-        self.focusOptions = try values.makeFocusOptions()
+        self.focusOptions = try values.makeFocusOptions(includeBackgroundDelivery: true)
+        self.focusBackground = self.focusOptions.focusBackground
     }
 }

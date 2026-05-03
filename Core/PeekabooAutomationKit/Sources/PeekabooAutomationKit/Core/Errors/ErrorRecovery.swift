@@ -138,6 +138,8 @@ public struct DefaultRecoveryStrategy: ErrorRecoveryStrategy {
             return .requestPermission("Screen Recording")
         case .accessibilityPermissionDenied:
             return .requestPermission("Accessibility")
+        case .eventSynthesizingPermissionDenied:
+            return .requestPermission("Event Synthesizing")
         case .applicationNotFound:
             if let appName = error.context["identifier"] {
                 return .launchApplication(appName)

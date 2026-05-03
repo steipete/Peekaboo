@@ -120,6 +120,8 @@ extension ErrorHandlingCommand {
             .PERMISSION_ERROR_SCREEN_RECORDING
         case .permissionDeniedAccessibility:
             .PERMISSION_ERROR_ACCESSIBILITY
+        case .permissionDeniedEventSynthesizing:
+            .PERMISSION_ERROR_EVENT_SYNTHESIZING
         default:
             nil
         }
@@ -342,6 +344,42 @@ enum AutomationServiceBridge {
         try await Task { @MainActor in
             try await automation.hotkey(keys: keys, holdDuration: holdDuration)
         }.value
+    }
+
+    static func hotkey(
+        automation: any UIAutomationServiceProtocol,
+        keys: String,
+        holdDuration: Int,
+        targetProcessIdentifier: pid_t
+    ) async throws {
+        try await Task { @MainActor in
+            guard let targetedHotkeyService = automation as? any TargetedHotkeyServiceProtocol else {
+                throw PeekabooError.serviceUnavailable(
+                    "Background hotkeys require an automation service that supports targeted hotkey delivery"
+                )
+            }
+
+            guard targetedHotkeyService.supportsTargetedHotkeys else {
+                throw self.targetedHotkeyUnavailableError(service: targetedHotkeyService)
+            }
+
+            try await targetedHotkeyService.hotkey(
+                keys: keys,
+                holdDuration: holdDuration,
+                targetProcessIdentifier: targetProcessIdentifier
+            )
+        }.value
+    }
+
+    private static func targetedHotkeyUnavailableError(service: any TargetedHotkeyServiceProtocol) -> PeekabooError {
+        if service.targetedHotkeyRequiresEventSynthesizingPermission {
+            return .permissionDeniedEventSynthesizing
+        }
+
+        return .serviceUnavailable(
+            service.targetedHotkeyUnavailableReason ??
+                "Remote bridge host does not support background hotkeys; use --no-remote or update the host"
+        )
     }
 
     static func swipe(

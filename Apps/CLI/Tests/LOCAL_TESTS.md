@@ -15,6 +15,11 @@ The `TestHost` directory contains a simple SwiftUI application that serves as a 
 - Provides various test patterns for screenshot validation
 - Logs test interactions
 
+The `TestFixtures/BackgroundHotkeyProbe` package is a focused AppKit process for
+background hotkey delivery. It logs `NSEvent` key events to JSONL so local tests
+can prove `peekaboo hotkey --focus-background --pid <pid>` reaches an inactive
+target app without changing the frontmost app.
+
 ## Running Local Tests
 
 To run the local-only tests:

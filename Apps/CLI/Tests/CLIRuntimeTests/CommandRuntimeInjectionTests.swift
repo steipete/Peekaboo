@@ -1,3 +1,5 @@
+import PeekabooAutomationKit
+import PeekabooBridge
 import PeekabooCore
 import Tachikoma
 import Testing
@@ -47,6 +49,91 @@ struct CommandRuntimeInjectionTests {
         )
 
         #expect(TachikomaConfiguration.profileDirectoryName == ".peekaboo")
+    }
+
+    @Test
+    func `targeted hotkey support requires enabled bridge operation`() {
+        let supported = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 1),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .targetedHotkey],
+            permissions: PermissionsStatus(
+                screenRecording: true,
+                accessibility: true,
+                postEvent: false
+            ),
+            enabledOperations: [.captureScreen],
+            permissionTags: [
+                PeekabooBridgeOperation.targetedHotkey.rawValue: [.postEvent],
+            ]
+        )
+
+        let enabled = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 1),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .targetedHotkey],
+            enabledOperations: [.captureScreen, .targetedHotkey]
+        )
+
+        #expect(!CommandRuntime.supportsTargetedHotkeys(for: supported))
+        #expect(CommandRuntime.supportsTargetedHotkeys(for: enabled))
+
+        let availability = CommandRuntime.targetedHotkeyAvailability(for: supported)
+        #expect(availability.unavailableReason?.contains("Event Synthesizing") == true)
+        #expect(availability.missingPermissions == [.postEvent])
+    }
+
+    @Test
+    func `targeted hotkey availability does not require accessibility`() {
+        let handshake = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 1),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.targetedHotkey],
+            permissions: PermissionsStatus(
+                screenRecording: true,
+                accessibility: false,
+                postEvent: true
+            ),
+            enabledOperations: [.targetedHotkey],
+            permissionTags: [
+                PeekabooBridgeOperation.targetedHotkey.rawValue: [.postEvent],
+            ]
+        )
+
+        #expect(CommandRuntime.supportsTargetedHotkeys(for: handshake))
+        let availability = CommandRuntime.targetedHotkeyAvailability(for: handshake)
+        #expect(availability.isEnabled)
+        #expect(availability.unavailableReason == nil)
+        #expect(availability.missingPermissions.isEmpty)
+    }
+
+    @Test
+    func `post event permission request support requires advertised protocol operation`() {
+        let supported = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 2),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .requestPostEventPermission]
+        )
+        let older = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 1),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .requestPostEventPermission]
+        )
+        let hidden = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 2),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen]
+        )
+
+        #expect(CommandRuntime.supportsPostEventPermissionRequest(for: supported))
+        #expect(!CommandRuntime.supportsPostEventPermissionRequest(for: older))
+        #expect(!CommandRuntime.supportsPostEventPermissionRequest(for: hidden))
     }
 }
 

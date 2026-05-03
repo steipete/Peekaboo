@@ -72,7 +72,7 @@ private struct AXSearchOutcome {
  * - Since: PeekabooCore 1.0.0
  */
 @MainActor
-public final class UIAutomationService: UIAutomationServiceProtocol {
+public final class UIAutomationService: TargetedHotkeyServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "UIAutomationService")
     let snapshotManager: any SnapshotManagerProtocol
 
@@ -535,6 +535,17 @@ extension UIAutomationService {
         try await self.hotkeyService.hotkey(keys: keys, holdDuration: holdDuration)
 
         // Show visual feedback if available
+        let keyArray = keys.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        _ = await self.feedbackClient.showHotkeyDisplay(keys: keyArray, duration: 1.0)
+    }
+
+    public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        self.logger.debug("Delegating targeted hotkey to HotkeyService")
+        try await self.hotkeyService.hotkey(
+            keys: keys,
+            holdDuration: holdDuration,
+            targetProcessIdentifier: targetProcessIdentifier)
+
         let keyArray = keys.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
         _ = await self.feedbackClient.showHotkeyDisplay(keys: keyArray, duration: 1.0)
     }

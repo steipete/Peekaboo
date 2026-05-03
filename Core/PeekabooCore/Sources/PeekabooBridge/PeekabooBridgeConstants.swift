@@ -19,11 +19,14 @@ public enum PeekabooBridgeConstants {
     }
 
     /// Current protocol version supported by this build.
-    public static let protocolVersion = PeekabooBridgeProtocolVersion(major: 1, minor: 0)
+    public static let protocolVersion = PeekabooBridgeProtocolVersion(major: 1, minor: 2)
+
+    /// Oldest protocol version this build can serve without changing request semantics.
+    public static let minimumProtocolVersion = PeekabooBridgeProtocolVersion(major: 1, minor: 0)
 
     /// Compatible protocol range for negotiation. Update when introducing breaking changes.
     public static let supportedProtocolRange: ClosedRange<PeekabooBridgeProtocolVersion> =
-        protocolVersion...protocolVersion
+        minimumProtocolVersion...protocolVersion
 
     /// Build identifier advertised during handshake (falls back to "dev").
     public static var buildIdentifier: String {

@@ -65,6 +65,38 @@ public final class PermissionsService {
         return hasPermission
     }
 
+    /// Check if event-synthesizing permission is granted.
+    public func checkPostEventPermission() -> Bool {
+        self.logger.debug("Checking event-synthesizing permission")
+
+        if #available(macOS 10.15, *) {
+            let hasPermission = CGPreflightPostEventAccess()
+            self.logger.info("Event-synthesizing permission: \(hasPermission)")
+            return hasPermission
+        }
+
+        self.logger.info("Event-synthesizing permission: true (pre-10.15 fallback)")
+        return true
+    }
+
+    @discardableResult
+    public func requestPostEventPermission(interactive: Bool = true) -> Bool {
+        self.logger.debug("Requesting event-synthesizing permission")
+
+        guard interactive else { return self.checkPostEventPermission() }
+        if Self.isRunningUnderTests {
+            return self.checkPostEventPermission()
+        }
+
+        if #available(macOS 10.15, *) {
+            let granted = CGRequestPostEventAccess()
+            self.logger.info("Event-synthesizing permission request returned: \(granted)")
+            return granted
+        }
+
+        return self.checkPostEventPermission()
+    }
+
     @discardableResult
     public func requestAccessibilityPermission(interactive: Bool = true) -> Bool {
         self.logger.debug("Requesting accessibility permission")
@@ -77,6 +109,10 @@ public final class PermissionsService {
 
     /// Check if AppleScript permission is granted
     public func checkAppleScriptPermission() -> Bool {
+        self.checkAppleScriptPermission(allowTargetLaunch: true)
+    }
+
+    private func checkAppleScriptPermission(allowTargetLaunch: Bool) -> Bool {
         self.logger.debug("Checking AppleScript permission")
 
         // Apple Events automation permission is evaluated against a target app.
@@ -87,7 +123,7 @@ public final class PermissionsService {
             targetBundleIdentifier: bundleIdentifier,
             askUser: false)
 
-        if permissionStatus == procNotFound, !Self.isRunningUnderTests {
+        if permissionStatus == procNotFound, allowTargetLaunch, !Self.isRunningUnderTests {
             self.logger.debug("AppleScript permission probe returned procNotFound; launching target and retrying")
             Self.launchApplication(bundleIdentifier: bundleIdentifier, logger: self.logger)
             permissionStatus = Self.determineAppleScriptAutomationPermissionStatus(
@@ -217,18 +253,20 @@ public final class PermissionsService {
     }
 
     /// Check all permissions and return their status
-    public func checkAllPermissions() -> PermissionsStatus {
+    public func checkAllPermissions(allowAppleScriptLaunch: Bool = true) -> PermissionsStatus {
         // Check all permissions and return their status
         self.logger.debug("Checking all permissions")
 
         let screenRecording = self.checkScreenRecordingPermission()
         let accessibility = self.checkAccessibilityPermission()
-        let appleScript = self.checkAppleScriptPermission()
+        let appleScript = self.checkAppleScriptPermission(allowTargetLaunch: allowAppleScriptLaunch)
+        let postEvent = self.checkPostEventPermission()
 
         return PermissionsStatus(
             screenRecording: screenRecording,
             accessibility: accessibility,
-            appleScript: appleScript)
+            appleScript: appleScript,
+            postEvent: postEvent)
     }
 }
 
@@ -237,11 +275,26 @@ public struct PermissionsStatus: Sendable, Codable {
     public let screenRecording: Bool
     public let accessibility: Bool
     public let appleScript: Bool
+    public let postEvent: Bool
 
-    public init(screenRecording: Bool, accessibility: Bool, appleScript: Bool = false) {
+    public init(
+        screenRecording: Bool,
+        accessibility: Bool,
+        appleScript: Bool = false,
+        postEvent: Bool = false)
+    {
         self.screenRecording = screenRecording
         self.accessibility = accessibility
         self.appleScript = appleScript
+        self.postEvent = postEvent
+    }
+
+    public func withPostEvent(_ postEvent: Bool) -> PermissionsStatus {
+        PermissionsStatus(
+            screenRecording: self.screenRecording,
+            accessibility: self.accessibility,
+            appleScript: self.appleScript,
+            postEvent: postEvent)
     }
 
     public var allGranted: Bool {
@@ -258,6 +311,22 @@ public struct PermissionsStatus: Sendable, Codable {
     public var missingOptionalPermissions: [String] {
         var missing: [String] = []
         if !self.appleScript { missing.append("AppleScript") }
+        if !self.postEvent { missing.append("Event Synthesizing") }
         return missing
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case screenRecording
+        case accessibility
+        case appleScript
+        case postEvent
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.screenRecording = try container.decode(Bool.self, forKey: .screenRecording)
+        self.accessibility = try container.decode(Bool.self, forKey: .accessibility)
+        self.appleScript = try container.decodeIfPresent(Bool.self, forKey: .appleScript) ?? false
+        self.postEvent = try container.decodeIfPresent(Bool.self, forKey: .postEvent) ?? false
     }
 }

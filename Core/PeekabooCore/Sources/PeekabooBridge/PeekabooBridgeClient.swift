@@ -34,6 +34,41 @@ public actor PeekabooBridgeClient {
         protocolVersion: PeekabooBridgeProtocolVersion = PeekabooBridgeConstants.protocolVersion)
         async throws -> PeekabooBridgeHandshakeResponse
     {
+        do {
+            return try await self.performHandshake(
+                client: client,
+                requestedHost: requestedHost,
+                protocolVersion: protocolVersion)
+        } catch let envelope as PeekabooBridgeErrorEnvelope
+            where envelope.code == .versionMismatch &&
+            protocolVersion == PeekabooBridgeConstants.protocolVersion &&
+            PeekabooBridgeConstants.minimumProtocolVersion < PeekabooBridgeConstants.protocolVersion
+        {
+            var version = PeekabooBridgeProtocolVersion(
+                major: PeekabooBridgeConstants.protocolVersion.major,
+                minor: PeekabooBridgeConstants.protocolVersion.minor - 1)
+            while version >= PeekabooBridgeConstants.minimumProtocolVersion {
+                do {
+                    return try await self.performHandshake(
+                        client: client,
+                        requestedHost: requestedHost,
+                        protocolVersion: version)
+                } catch let fallbackEnvelope as PeekabooBridgeErrorEnvelope
+                    where fallbackEnvelope.code == .versionMismatch
+                {
+                    version = PeekabooBridgeProtocolVersion(major: version.major, minor: version.minor - 1)
+                    continue
+                }
+            }
+            throw envelope
+        }
+    }
+
+    private func performHandshake(
+        client: PeekabooBridgeClientIdentity,
+        requestedHost: PeekabooBridgeHostKind?,
+        protocolVersion: PeekabooBridgeProtocolVersion) async throws -> PeekabooBridgeHandshakeResponse
+    {
         let payload = PeekabooBridgeHandshake(
             protocolVersion: protocolVersion,
             client: client,
@@ -59,6 +94,18 @@ public actor PeekabooBridgeClient {
             throw envelope
         default:
             throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected permissions response")
+        }
+    }
+
+    public func requestPostEventPermission() async throws -> Bool {
+        let response = try await self.send(.requestPostEventPermission)
+        switch response {
+        case let .bool(granted):
+            return granted
+        case let .error(envelope):
+            throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected permission request response")
         }
     }
 
@@ -214,6 +261,14 @@ public actor PeekabooBridgeClient {
 
     public func hotkey(keys: String, holdDuration: Int) async throws {
         try await self.sendExpectOK(.hotkey(PeekabooBridgeHotkeyRequest(keys: keys, holdDuration: holdDuration)))
+    }
+
+    public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        try await self.sendExpectOK(
+            .targetedHotkey(PeekabooBridgeTargetedHotkeyRequest(
+                keys: keys,
+                holdDuration: holdDuration,
+                targetProcessIdentifier: Int32(targetProcessIdentifier))))
     }
 
     public func swipe(

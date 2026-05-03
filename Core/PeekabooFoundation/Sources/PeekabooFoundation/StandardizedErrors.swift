@@ -7,6 +7,7 @@ public enum StandardErrorCode: String, Sendable {
     // Permission errors
     case screenRecordingPermissionDenied = "PERMISSION_DENIED_SCREEN_RECORDING"
     case accessibilityPermissionDenied = "PERMISSION_DENIED_ACCESSIBILITY"
+    case eventSynthesizingPermissionDenied = "PERMISSION_DENIED_EVENT_SYNTHESIZING"
 
     // Not found errors
     case applicationNotFound = "APP_NOT_FOUND"
@@ -127,6 +128,8 @@ extension StandardizedError {
             "Grant Screen Recording permission in System Settings"
         case .accessibilityPermissionDenied:
             "Grant Accessibility permission in System Settings"
+        case .eventSynthesizingPermissionDenied:
+            "Grant event-synthesizing access in System Settings > Privacy & Security > Accessibility"
         case .applicationNotFound:
             "Ensure the application is installed and running"
         case .windowNotFound:

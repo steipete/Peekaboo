@@ -56,7 +56,8 @@ If you disable the `clipboard` tool via allow/deny filters, the injected DESKTOP
   - Any audio capture path (`AudioInputService`, voice command helpers) that transcribes speech through `PeekabooAIService`.  
   Disable by clearing `PEEKABOO_AI_PROVIDERS`, removing API keys, or adding these names to your deny list when running offline.
 - **Medium risk** – can manipulate apps or data  
-  - `click`, `type`, `press`, `scroll`, `swipe`, `drag`, `move`, `hotkey`: can trigger actions in foreground apps.  
+  - `click`, `type`, `press`, `scroll`, `swipe`, `drag`, `move`: can trigger actions in foreground apps.
+  - `hotkey`: can trigger actions in foreground apps, or send process-targeted keyboard events to a background app when used with `--focus-background`. Background delivery still requires macOS event-posting access and does not prove the target app handled the shortcut.
   - `window`, `app`, `menu_click`, `dock_launch`, `space`: can close apps, move windows, switch spaces.  
   - `permissions`: can prompt/alter macOS permissions flow; disable for locked-down sessions.  
   - `mcp_agent`: can cascade into other tools via MCP.

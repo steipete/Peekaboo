@@ -1,4 +1,5 @@
 import CoreGraphics
+import Darwin
 import Foundation
 import PeekabooFoundation
 
@@ -127,6 +128,30 @@ public protocol DetectElementsRequestTimeoutAdjusting: UIAutomationServiceProtoc
         snapshotId: String?,
         windowContext: WindowContext?,
         requestTimeoutSec: TimeInterval) async throws -> ElementDetectionResult
+}
+
+/// Optional capability for automation services that can send hotkeys to a process without focusing it.
+@MainActor
+public protocol TargetedHotkeyServiceProtocol: UIAutomationServiceProtocol {
+    var supportsTargetedHotkeys: Bool { get }
+    var targetedHotkeyUnavailableReason: String? { get }
+    var targetedHotkeyRequiresEventSynthesizingPermission: Bool { get }
+
+    func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws
+}
+
+extension TargetedHotkeyServiceProtocol {
+    public var supportsTargetedHotkeys: Bool {
+        true
+    }
+
+    public var targetedHotkeyUnavailableReason: String? {
+        nil
+    }
+
+    public var targetedHotkeyRequiresEventSynthesizingPermission: Bool {
+        false
+    }
 }
 
 /// Profiles controlling how mouse paths are generated.

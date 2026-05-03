@@ -7,18 +7,19 @@ read_when:
 
 # `peekaboo permissions`
 
-`peekaboo permissions` centralizes entitlement checks. The default `status` subcommand reports the runtime view of Screen Recording, Accessibility, Full Disk Access, and any other guardrails the services expose. `grant` prints the same table plus human-readable steps so you can fix issues without hunting through docs.
+`peekaboo permissions` centralizes entitlement checks. The default `status` subcommand reports the runtime view of Screen Recording, Accessibility, and Event Synthesizing. `grant` prints the same table plus human-readable steps so you can fix issues without hunting through docs.
 
 ## Subcommands
 | Name | Purpose |
 | --- | --- |
 | `status` (default) | Fetches the current permission set via `PermissionHelpers.getCurrentPermissions` and prints each entry (`granted`, `denied`, etc.). Honors `--json` so agents can block proactively. |
 | `grant` | Reuses the same snapshot but focuses on remediation: when in text mode it prints the exact System Settings pane/location for each missing entitlement. |
+| `request-event-synthesizing` | Triggers the macOS Event Synthesizing prompt needed by `hotkey --focus-background`. With the default remote runtime it requests the permission for the selected bridge host; use `--no-remote` to request it for the local CLI process. |
 
 ## Implementation notes
-- Both subcommands conform to `RuntimeOptionsConfigurable`, so they inherit global `--json`/`--verbose` flags even when invoked from compound commands like `peekaboo learn`.
+- All subcommands conform to `RuntimeOptionsConfigurable`, so they inherit global `--json`/`--verbose` flags even when invoked from compound commands like `peekaboo learn`.
 - The command executes entirely on the main actor, avoiding extra prompts or sandbox warnings—the same code path runs at CLI startup to warn if entitlements are missing.
-- JSON mode uses `outputSuccessCodable`, which means you get a `{name, status, grantInstructions}` object for each permission and can diff the snapshots over time.
+- JSON mode uses `outputSuccessCodable`, which means status results include a `permissions` array with `{name, isRequired, isGranted, grantInstructions}` entries that can be diffed over time.
 
 ## Examples
 ```bash
@@ -26,10 +27,13 @@ read_when:
 peekaboo permissions
 
 # Feed the status into an agent to ensure entitlements are set
-peekaboo permissions --json | jq '.data[] | select(.status != "granted")'
+peekaboo permissions --json | jq '.data.permissions[] | select(.isGranted == false)'
 
 # Hand someone clear remediation steps
 peekaboo permissions grant
+
+# Request Event Synthesizing for background hotkeys
+peekaboo permissions request-event-synthesizing
 ```
 
 ## Troubleshooting

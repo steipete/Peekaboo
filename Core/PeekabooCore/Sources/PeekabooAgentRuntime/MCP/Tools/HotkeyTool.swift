@@ -13,9 +13,8 @@ public struct HotkeyTool: MCPTool {
 
     public var description: String {
         """
-        Presses keyboard shortcuts and key combinations.
-        Simulates pressing multiple keys simultaneously like Cmd+C or Ctrl+Shift+T.
-        Keys are pressed in order and released in reverse order.
+        Presses keyboard shortcuts.
+        Simulates one primary key plus optional modifiers, like Cmd+C or Ctrl+Shift+T.
         \(PeekabooMCPVersion.banner) using openai/gpt-5.1, anthropic/claude-sonnet-4.5
         """
     }
@@ -25,7 +24,7 @@ public struct HotkeyTool: MCPTool {
             properties: [
                 "keys": SchemaBuilder.string(
                     description: """
-                    Comma-separated list of keys to press (e.g., 'cmd,c' for copy,
+                    Comma-separated hotkey chord to press (e.g., 'cmd,c' for copy,
                     'cmd,shift,t' for reopen tab). Supported keys: cmd, shift,
                     alt/option, ctrl, fn, a-z, 0-9, space, return, tab, escape,
                     delete, arrow_up, arrow_down, arrow_left, arrow_right, f1-f12.

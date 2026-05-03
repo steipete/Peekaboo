@@ -22,7 +22,7 @@ extension HotkeyCommand: CommanderSignatureProviding {
             ],
             optionGroups: [
                 InteractionTargetOptions.commanderSignature(),
-                FocusCommandOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(includeBackgroundDelivery: true),
             ]
         )
     }

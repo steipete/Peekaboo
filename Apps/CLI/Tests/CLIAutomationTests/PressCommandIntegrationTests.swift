@@ -110,6 +110,15 @@ struct PressCommandIntegrationTests {
     }
 
     @Test
+    func `Press command rejects background focus delivery`() throws {
+        #expect(throws: (any Error).self) {
+            try CLIOutputCapture.suppressStderr {
+                _ = try PressCommand.parse(["escape", "--focus-background"])
+            }
+        }
+    }
+
+    @Test
     func `Press command JSON output format`() throws {
         let command = try PressCommand.parse(["tab", "--json"])
         #expect(command.jsonOutput == true)

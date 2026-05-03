@@ -144,7 +144,7 @@ struct PeekabooSettingsPersistenceTests {
     }
 }
 
-@Suite("PeekabooSettings Config Hydration Tests", .tags(.services, .integration))
+@Suite(.tags(.services, .integration))
 @MainActor
 struct PeekabooSettingsConfigHydrationTests {
     @Test
