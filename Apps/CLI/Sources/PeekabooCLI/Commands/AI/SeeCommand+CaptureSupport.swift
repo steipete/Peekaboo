@@ -4,6 +4,38 @@ import Foundation
 import PeekabooCore
 import PeekabooFoundation
 
+enum SeeAnnotationCoordinateMapper {
+    static func windowOrigin(for detectionResult: ElementDetectionResult) -> CGPoint {
+        if let windowBounds = detectionResult.metadata.windowContext?.windowBounds {
+            return windowBounds.origin
+        }
+
+        guard !detectionResult.elements.all.isEmpty else {
+            return .zero
+        }
+
+        let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
+        let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
+        return CGPoint(x: minX, y: minY)
+    }
+
+    static func drawingRect(for element: DetectedElement, imageSize: CGSize, windowOrigin: CGPoint) -> NSRect {
+        let elementFrame = CGRect(
+            x: element.bounds.origin.x - windowOrigin.x,
+            y: element.bounds.origin.y - windowOrigin.y,
+            width: element.bounds.width,
+            height: element.bounds.height
+        )
+
+        return NSRect(
+            x: elementFrame.origin.x,
+            y: imageSize.height - elementFrame.origin.y - elementFrame.height,
+            width: elementFrame.width,
+            height: elementFrame.height
+        )
+    }
+}
+
 @MainActor
 extension SeeCommand {
     func saveScreenshot(_ imageData: Data) throws -> String {
@@ -146,31 +178,19 @@ extension SeeCommand {
         )
         self.logger.verbose("Image size: \(imageSize)")
 
-        var windowOrigin = CGPoint.zero
-        if !detectionResult.elements.all.isEmpty {
-            let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
-            let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
-            windowOrigin = CGPoint(x: minX, y: minY)
-            self.logger.verbose("Estimated window origin from elements: \(windowOrigin)")
-        }
+        let windowOrigin = SeeAnnotationCoordinateMapper.windowOrigin(for: detectionResult)
+        self.logger.verbose("Using annotation window origin: \(windowOrigin)")
 
         var elementRects: [(element: DetectedElement, rect: NSRect)] = []
         for element in enabledElements {
-            let elementFrame = CGRect(
-                x: element.bounds.origin.x - windowOrigin.x,
-                y: element.bounds.origin.y - windowOrigin.y,
-                width: element.bounds.width,
-                height: element.bounds.height
-            )
-
-            let rect = NSRect(
-                x: elementFrame.origin.x,
-                y: imageSize.height - elementFrame.origin.y - elementFrame.height,
-                width: elementFrame.width,
-                height: elementFrame.height
-            )
-
-            elementRects.append((element: element, rect: rect))
+            elementRects.append((
+                element: element,
+                rect: SeeAnnotationCoordinateMapper.drawingRect(
+                    for: element,
+                    imageSize: imageSize,
+                    windowOrigin: windowOrigin
+                )
+            ))
         }
 
         let labelPlacer = SmartLabelPlacer(

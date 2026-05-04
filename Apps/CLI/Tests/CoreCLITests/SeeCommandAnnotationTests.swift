@@ -55,6 +55,47 @@ struct SeeCommandAnnotationTests {
     }
 
     @Test
+    func `Annotation uses captured window origin instead of first element origin`() {
+        let element = DetectedElement(
+            id: "elem_63",
+            type: .button,
+            label: "Update",
+            value: nil,
+            bounds: CGRect(x: 500, y: 300, width: 100, height: 50),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: [:]
+        )
+        let windowBounds = CGRect(x: 400, y: 200, width: 800, height: 600)
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot-1",
+            screenshotPath: "/tmp/snapshot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(
+                detectionTime: 0,
+                elementCount: 1,
+                method: "AXorcist",
+                warnings: [],
+                windowContext: WindowContext(windowBounds: windowBounds),
+                isDialog: false
+            )
+        )
+
+        let windowOrigin = SeeAnnotationCoordinateMapper.windowOrigin(for: detectionResult)
+        let drawingRect = SeeAnnotationCoordinateMapper.drawingRect(
+            for: element,
+            imageSize: CGSize(width: 800, height: 600),
+            windowOrigin: windowOrigin
+        )
+
+        #expect(windowOrigin == CGPoint(x: 400, y: 200))
+        #expect(drawingRect.origin.x == 100)
+        #expect(drawingRect.origin.y == 450)
+        #expect(drawingRect.size.width == 100)
+        #expect(drawingRect.size.height == 50)
+    }
+
+    @Test
     func `Annotation is disabled for screen mode captures`() {
         // This test documents that annotation should be disabled for full screen captures
         // due to performance constraints
