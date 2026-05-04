@@ -84,38 +84,37 @@ public struct AnalyzeTool: MCPTool {
             return ToolResponse.error("Image file not found: \(imagePath)")
         }
 
-        // Resolve AI providers from config manager (env overrides config)
-        let providers = await MainActor.run {
-            ConfigurationManager.shared.getAIProviders()
+        let modelOverride: LanguageModel?
+        do {
+            modelOverride = try Self.modelOverride(from: arguments)
+        } catch {
+            return ToolResponse.error("Invalid provider_config: \(error.localizedDescription)")
         }
-        // Determine default model/provider from config
-        let (modelName, providerType) = self.parseAIProviders(providers)
 
         do {
-            self.logger.info("Analyzing image with \(providerType ?? "auto")/\(modelName)")
+            self.logger.info("Analyzing image with \(modelOverride?.description ?? "configured default")")
             let startTime = Date()
 
-            // Use the new API
-            let analysisText = try await analyzeImageWithAI(
-                imagePath: expandedPath,
+            let aiService = await MainActor.run { PeekabooAIService() }
+            let analysis = try await aiService.analyzeImageFileDetailed(
+                at: expandedPath,
                 question: question,
-                modelName: modelName,
-                providerType: providerType)
+                model: modelOverride)
 
             let duration = Date().timeIntervalSince(startTime)
             self.logger.info("Analysis completed in \(String(format: "%.2f", duration))s")
 
             let timingMessage = [
                 "",
-                "👻 Peekaboo: Analyzed image with \(providerType ?? "unknown")/\(modelName)",
+                "👻 Peekaboo: Analyzed image with \(analysis.provider)/\(analysis.model)",
                 "in \(String(format: "%.2f", duration))s.",
             ].joined(separator: " ")
 
             let baseMeta: [String: Value] = [
                 "image_path": .string(imagePath),
                 "question": .string(question),
-                "provider": providerType != nil ? .string(providerType!) : .null,
-                "model": .string(modelName),
+                "provider": .string(analysis.provider),
+                "model": .string(analysis.model),
                 "execution_time": .double(duration),
             ]
             let summary = ToolEventSummary(
@@ -124,7 +123,7 @@ public struct AnalyzeTool: MCPTool {
 
             return ToolResponse(
                 content: [
-                    .text(text: analysisText, annotations: nil, _meta: nil),
+                    .text(text: analysis.text, annotations: nil, _meta: nil),
                     .text(text: timingMessage, annotations: nil, _meta: nil),
                 ],
                 meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
@@ -137,90 +136,74 @@ public struct AnalyzeTool: MCPTool {
 
     // MARK: - Private Helpers
 
-    private func parseAIProviders(_ providers: String) -> (modelName: String, providerType: String?) {
-        // Parse PEEKABOO_AI_PROVIDERS format: "provider/model,provider2/model2"
-        let components = providers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+    static func modelOverride(from arguments: ToolArguments) throws -> LanguageModel? {
+        struct Input: Decodable {
+            struct ProviderConfig: Decodable {
+                let type: String?
+                let model: String?
+            }
 
-        if let firstProvider = components.first {
-            let parts = firstProvider.split(separator: "/")
-            if parts.count >= 2 {
-                let provider = String(parts[0])
-                let model = String(parts[1])
-                return (model, provider)
-            } else {
-                // Just a model name
-                return (String(firstProvider), nil)
+            let providerConfig: ProviderConfig?
+
+            enum CodingKeys: String, CodingKey {
+                case providerConfig = "provider_config"
             }
         }
 
-        // Default fallback
-        return ("gpt-5.1", "openai")
-    }
-
-    private func analyzeImageWithAI(
-        imagePath: String,
-        question: String,
-        modelName: String,
-        providerType: String?) async throws -> String
-    {
-        // Load and encode the image
-        guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)) else {
-            throw PeekabooError.invalidInput("Could not load image from path: \(imagePath)")
+        let input = try arguments.decode(Input.self)
+        guard let config = input.providerConfig else {
+            return nil
         }
 
-        let base64Image = imageData.base64EncodedString()
+        return try self.languageModel(providerType: config.type, modelName: config.model)
+    }
 
-        // Create the model using the new API
-        let languageModel: LanguageModel
-        if let providerType {
-            switch providerType.lowercased() {
-            case "anthropic":
-                languageModel = .anthropic(.opus45)
-            case "openai":
-                languageModel = .openai(.gpt51)
-            case "grok":
-                languageModel = .grok(.grok4)
-            case "ollama":
-                languageModel = .ollama(.llava)
-            default:
-                throw PeekabooError.invalidInput("Unknown provider type: \(providerType)")
+    static func languageModel(providerType: String?, modelName: String?) throws -> LanguageModel? {
+        let provider = providerType?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let model = modelName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+
+        guard let provider, !provider.isEmpty, provider != "auto" else {
+            guard let model else { return nil }
+            guard let parsed = LanguageModel.parse(from: model) else {
+                throw PeekabooError.invalidInput("Unknown model: \(model)")
             }
-        } else {
-            // Try to parse the model name into a LanguageModel
-            languageModel = try self.parseModelName(modelName)
+            return parsed
         }
 
-        // Create the conversation with the image and question
-        let imageContent = ModelMessage.ContentPart.ImageContent(data: base64Image, mimeType: "image/png")
-        let messages = [ModelMessage.user(text: question, images: [imageContent])]
-
-        // Use the global generateText function
-        let result = try await generateText(
-            model: languageModel,
-            messages: messages,
-            tools: nil,
-            settings: .default,
-            maxSteps: 1)
-
-        return result.text
+        switch provider {
+        case "openai":
+            guard let model else { return .openai(.gpt51) }
+            if let parsed = LanguageModel.parse(from: model), case .openai = parsed {
+                return parsed
+            }
+            return .openai(.custom(model))
+        case "anthropic":
+            guard let model else { return .anthropic(.opus45) }
+            if let parsed = LanguageModel.parse(from: model), case .anthropic = parsed {
+                return parsed
+            }
+            return .anthropic(.custom(model))
+        case "grok", "xai":
+            guard let model else { return .grok(.grok4) }
+            if let parsed = LanguageModel.parse(from: model), case .grok = parsed {
+                return parsed
+            }
+            return .grok(.custom(model))
+        case "ollama":
+            guard let model else { return .ollama(.llava) }
+            return .ollama(.custom(model))
+        default:
+            throw PeekabooError.invalidInput("Unknown provider type: \(provider)")
+        }
     }
+}
 
-    /// Parse a model name string into a LanguageModel enum
-    private func parseModelName(_ modelName: String) throws -> LanguageModel {
-        // Parse a model name string into a LanguageModel enum
-        let lowercased = modelName.lowercased()
-
-        // Claude models
-        if lowercased.contains("claude") || lowercased.contains("sonnet") || lowercased.contains("opus") {
-            return .anthropic(.opus45)
-        }
-
-        // OpenAI models
-        if lowercased.contains("gpt") {
-            return .openai(.gpt51)
-        }
-
-        // Default fallback aligns with Peekaboo's supported set
-        return .openai(.gpt51)
+extension String {
+    fileprivate var nilIfEmpty: String? {
+        self.isEmpty ? nil : self
     }
 }

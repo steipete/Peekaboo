@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - MCP `image` now returns an `isError: true` tool result when Screen Recording permission is missing instead of surfacing an internal server error.
+- MCP `analyze` now honors configured AI providers and per-call `provider_config` models instead of hardcoding OpenAI GPT-5.1.
 - Window capture on macOS 26 now resolves native Retina scale from `NSScreen.backingScaleFactor` before falling back to ScreenCaptureKit display ratios.
 - `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank Chrome captures.

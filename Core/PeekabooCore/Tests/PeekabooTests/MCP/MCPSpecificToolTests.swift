@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Tachikoma
 import TachikomaMCP
 import Testing
 @testable import PeekabooAgentRuntime
@@ -319,6 +320,38 @@ struct MCPSpecificToolTests {
             #expect(requiredArray.contains(.string("question")))
             #expect(requiredArray.count == 1) // Only question is required
         }
+    }
+
+    @Test
+    func `Analyze provider config preserves OpenAI custom model`() throws {
+        let arguments = ToolArguments(raw: [
+            "provider_config": [
+                "type": "openai",
+                "model": "doubao-seed-1-8-251228",
+            ],
+        ])
+
+        let model = try AnalyzeTool.modelOverride(from: arguments)
+
+        #expect(model == LanguageModel.openai(.custom("doubao-seed-1-8-251228")))
+    }
+
+    @Test
+    func `Analyze provider config parses provider models without hardcoded defaults`() throws {
+        #expect(try AnalyzeTool.languageModel(providerType: "openai", modelName: "gpt-4o") == .openai(.gpt4o))
+        #expect(try AnalyzeTool
+            .languageModel(providerType: "anthropic", modelName: "claude-sonnet-4.5") == .anthropic(.sonnet45))
+        #expect(try AnalyzeTool
+            .languageModel(providerType: "ollama", modelName: "llava:13b") == .ollama(.custom("llava:13b")))
+    }
+
+    @Test
+    func `Analyze provider config can defer to configured default`() throws {
+        let arguments = ToolArguments(raw: [:])
+
+        let model = try AnalyzeTool.modelOverride(from: arguments)
+
+        #expect(model == nil)
     }
 }
 
