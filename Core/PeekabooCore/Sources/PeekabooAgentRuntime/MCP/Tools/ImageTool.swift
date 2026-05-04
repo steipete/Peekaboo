@@ -51,7 +51,16 @@ public struct ImageTool: MCPTool {
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
         let request = try ImageRequest(arguments: arguments)
-        let captureResults = try await self.captureImages(for: request)
+        guard await self.context.screenCapture.hasScreenRecordingPermission() else {
+            return self.screenRecordingPermissionError()
+        }
+
+        let captureResults: [CaptureResult]
+        do {
+            captureResults = try await self.captureImages(for: request)
+        } catch PeekabooError.permissionDeniedScreenRecording {
+            return self.screenRecordingPermissionError()
+        }
         let savedFiles = try self.saveCaptures(captureResults, request: request)
 
         if let question = request.question {
@@ -65,6 +74,13 @@ public struct ImageTool: MCPTool {
             format: request.format,
             savedFiles: savedFiles,
             captureResults: captureResults)
+    }
+
+    private func screenRecordingPermissionError() -> ToolResponse {
+        let responseText = "Screen Recording permission is required. " +
+            "Grant via: System Settings > Privacy & Security > Screen Recording"
+        let summary = ToolEventSummary(actionDescription: "Image Capture", notes: "Screen Recording missing")
+        return ToolResponse.error(responseText, meta: ToolEventSummary.merge(summary: summary, into: nil))
     }
 }
 

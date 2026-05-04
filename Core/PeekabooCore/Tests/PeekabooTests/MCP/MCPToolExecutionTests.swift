@@ -67,6 +67,30 @@ struct MCPToolExecutionTests {
         }
     }
 
+    @Test
+    func `Image tool returns MCP error response when screen recording is missing`() async throws {
+        let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: false) }
+        let context = await MCPToolTestHelpers.makeContext(screenCapture: screenCapture)
+        let tool = ImageTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "path": "/tmp/peekaboo-missing-permission.png",
+            "format": "png",
+        ]))
+
+        #expect(response.isError == true)
+        let captureAttemptCount = await MainActor.run { screenCapture.captureAttemptCount }
+        #expect(captureAttemptCount == 0)
+
+        guard case let .text(text: output, annotations: _, _meta: _) = response.content.first else {
+            Issue.record("Expected text error response")
+            return
+        }
+
+        #expect(output.contains("Screen Recording permission is required"))
+        #expect(output.contains("System Settings > Privacy & Security > Screen Recording"))
+    }
+
     // MARK: - List Tool Tests
 
     @Test
@@ -371,6 +395,7 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 @MainActor
 private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     private let screenRecordingGranted: Bool
+    private(set) var captureAttemptCount = 0
 
     init(screenRecordingGranted: Bool) {
         self.screenRecordingGranted = screenRecordingGranted
@@ -381,7 +406,8 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .screen)
+        self.captureAttemptCount += 1
+        return self.makeResult(mode: .screen)
     }
 
     func captureWindow(
@@ -390,14 +416,16 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .window)
+        self.captureAttemptCount += 1
+        return self.makeResult(mode: .window)
     }
 
     func captureFrontmost(
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .frontmost)
+        self.captureAttemptCount += 1
+        return self.makeResult(mode: .frontmost)
     }
 
     func captureArea(
@@ -405,7 +433,8 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .area)
+        self.captureAttemptCount += 1
+        return self.makeResult(mode: .area)
     }
 
     func hasScreenRecordingPermission() async -> Bool {
