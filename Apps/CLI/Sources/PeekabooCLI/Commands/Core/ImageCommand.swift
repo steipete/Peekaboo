@@ -613,6 +613,12 @@ extension ImageCommand {
             score += 500
         }
 
+        if window.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            score -= 500
+        } else {
+            score += 2500
+        }
+
         if !window.isMinimized {
             score += 300
         }

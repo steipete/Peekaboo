@@ -485,6 +485,67 @@ struct ImageCommandTests {
     }
 
     @Test(.tags(.imageCapture))
+    func `Prefers titled app windows over untitled helper windows`() async throws {
+        let appName = "Google Chrome"
+        let helper = ServiceWindowInfo(
+            windowID: 17514,
+            title: "",
+            bounds: CGRect(x: 40, y: 40, width: 1200, height: 900),
+            isMinimized: false,
+            isMainWindow: true,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 0
+        )
+        let browser = ServiceWindowInfo(
+            windowID: 17513,
+            title: "Craig Lyons | LinkedIn",
+            bounds: CGRect(x: 50, y: 50, width: 1200, height: 900),
+            isMinimized: false,
+            isMainWindow: false,
+            windowLevel: 0,
+            alpha: 1.0,
+            index: 1
+        )
+        let windows = [helper, browser]
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 5353,
+            bundleIdentifier: "com.google.Chrome",
+            name: appName,
+            windowCount: windows.count
+        )
+        let captureResult = Self.makeCaptureResult(app: appInfo, window: browser)
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
+            return captureResult
+        }
+
+        let applications = StubApplicationService(applications: [appInfo], windowsByApp: [appName: windows])
+        let windowService = StubWindowService(windowsByApp: [appName: windows])
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: applications,
+            windows: windowService,
+            screenCapture: captureService
+        )
+
+        let outputPath = Self.makeTempCapturePath("chrome.png")
+        var command = try ImageCommand.parse(["--app", appName, "--path", outputPath])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+        let windowID = try #require(recordedWindowID)
+        #expect(windowID == CGWindowID(browser.windowID))
+        try? FileManager.default.removeItem(atPath: outputPath)
+    }
+
+    @Test(.tags(.imageCapture))
     func `Honors --window-title when selecting a window`() async throws {
         let appName = "LogsApp"
         let inspector = ServiceWindowInfo(
