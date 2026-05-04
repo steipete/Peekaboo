@@ -108,10 +108,21 @@ enum PermissionHelpers {
 
     /// Format permission status for display
     static func formatPermissionStatus(_ permission: PermissionInfo) -> String {
-        // Format permission status for display
         let status = permission.isGranted ? "Granted" : "Not Granted"
         let requirement = permission.isRequired ? "Required" : "Optional"
         return "\(permission.name) (\(requirement)): \(status)"
+    }
+
+    static func bridgeScreenRecordingHint(for response: PermissionStatusResponse) -> String? {
+        guard response.source == "bridge",
+              response.permissions.contains(where: { permission in
+                  permission.name == "Screen Recording" && !permission.isGranted
+              })
+        else { return nil }
+
+        return "Hint: status came from the selected Peekaboo Bridge host. Grant Screen Recording to that " +
+            "host app, or run capture commands with --no-remote --capture-engine cg when the caller " +
+            "process already has permission."
     }
 
     /// Format permissions for help display with dynamic status

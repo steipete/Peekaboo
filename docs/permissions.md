@@ -30,6 +30,19 @@ read_when:
    peekaboo permissions grant     # Show grant instructions
    ```
 
+## Bridge and subprocess runners
+
+`peekaboo permissions status` prints a `Source:` line. If it says `Peekaboo Bridge`, capture and automation
+permissions are being checked on the selected host app. Grant Screen Recording and Accessibility to that host,
+or bypass Bridge for local capture when the caller already has Screen Recording:
+
+```bash
+peekaboo see --mode screen --screen-index 0 --no-remote --capture-engine cg --json
+```
+
+This is useful for OpenClaw or other Node/subprocess runners where the parent process has TCC grants but the
+Bridge host does not.
+
 ## Performance Tips
 
 - **Hybrid enumeration** – with Screen Recording enabled, Peekaboo prefers the CGWindowList APIs and falls back to AX only when necessary.

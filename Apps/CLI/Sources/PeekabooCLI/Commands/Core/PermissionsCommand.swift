@@ -66,6 +66,10 @@ extension PermissionsCommand {
                 let sourceLabel = response.source == "bridge" ? "Peekaboo Bridge" : "local runtime"
                 print("Source: \(sourceLabel)")
                 response.permissions.forEach { print(PermissionHelpers.formatPermissionStatus($0)) }
+                if let hint = PermissionHelpers.bridgeScreenRecordingHint(for: response) {
+                    print("")
+                    print(hint)
+                }
             }
         }
     }

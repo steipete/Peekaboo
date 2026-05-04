@@ -34,5 +34,6 @@ peekaboo permissions grant
 
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
+- Check the printed `Source:` line. If it says `Peekaboo Bridge`, the status reflects the selected host app's TCC grants. Grant Screen Recording to that host, or force local capture with `--no-remote --capture-engine cg` when the caller process already has permission.
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.
 - Re-run with `--json` or `--verbose` to surface detailed errors.

@@ -60,3 +60,24 @@ Bridge hosts are intended to be long-lived and keep automation state **in memory
 - Use `--no-remote` to force local execution.
 - Use `--bridge-socket <path>` or `PEEKABOO_BRIDGE_SOCKET` to override host discovery.
 - Use `peekaboo bridge status` to verify which host would be selected and why (probe results, handshake errors, etc.).
+
+## Screen Recording troubleshooting
+
+TCC permissions belong to the process that performs the capture. When the CLI routes through Bridge, Screen
+Recording must be granted to the selected host app, not just to the terminal, Node process, or editor that
+spawned `peekaboo`.
+
+For subprocess runners such as OpenClaw, this means a capture can fail through Bridge even though the parent
+process is listed in System Settings. Check the selected host and permission source first:
+
+```bash
+peekaboo bridge status --verbose
+peekaboo permissions status
+```
+
+If the parent process already has Screen Recording but the selected Bridge host does not, force local capture
+and the CoreGraphics engine:
+
+```bash
+peekaboo see --mode screen --screen-index 0 --no-remote --capture-engine cg --json
+```

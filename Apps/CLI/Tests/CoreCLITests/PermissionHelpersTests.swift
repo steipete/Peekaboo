@@ -1,0 +1,47 @@
+import Testing
+@testable import PeekabooCLI
+
+struct PermissionHelpersTests {
+    @Test
+    func `bridge hint explains remote screen recording denial`() {
+        let response = PermissionHelpers.PermissionStatusResponse(
+            source: "bridge",
+            permissions: [
+                PermissionHelpers.PermissionInfo(
+                    name: "Screen Recording",
+                    isRequired: true,
+                    isGranted: false,
+                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                ),
+                PermissionHelpers.PermissionInfo(
+                    name: "Accessibility",
+                    isRequired: true,
+                    isGranted: true,
+                    grantInstructions: "System Settings > Privacy & Security > Accessibility"
+                ),
+            ]
+        )
+
+        let hint = PermissionHelpers.bridgeScreenRecordingHint(for: response)
+
+        #expect(hint?.contains("selected Peekaboo Bridge host") == true)
+        #expect(hint?.contains("--no-remote --capture-engine cg") == true)
+    }
+
+    @Test
+    func `bridge hint stays quiet for local screen recording denial`() {
+        let response = PermissionHelpers.PermissionStatusResponse(
+            source: "local",
+            permissions: [
+                PermissionHelpers.PermissionInfo(
+                    name: "Screen Recording",
+                    isRequired: true,
+                    isGranted: false,
+                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                ),
+            ]
+        )
+
+        #expect(PermissionHelpers.bridgeScreenRecordingHint(for: response) == nil)
+    }
+}

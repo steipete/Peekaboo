@@ -21,6 +21,7 @@ read_when:
 - `--bridge-socket <path>` (or `PEEKABOO_BRIDGE_SOCKET`) overrides host discovery and probes only that socket.
 - Hosts validate callers by code signature TeamID. If the host rejects the client (`unauthorizedClient`), install a signed Peekaboo CLI build or enable the debug-only escape hatch on the host.
 - If `bridge status` reports `internalError` / “Bridge host returned no response”, the probed host likely closed the socket without replying (older host builds). Hosts built from `main` after 2025-12-18 return a structured `unauthorizedClient` error instead, which is much easier to debug.
+- If a candidate reports `perm: SR=N`, grant Screen Recording to that host app. For capture-only subprocesses whose caller already has Screen Recording, bypass Bridge with `--no-remote --capture-engine cg`.
 
 ## Examples
 ```bash
@@ -40,4 +41,8 @@ peekaboo bridge status --bridge-socket \
 
 # Force local (skip Peekaboo.app / Clawdbot.app hosts)
 peekaboo bridge status --no-remote
+
+# OpenClaw/subprocess capture workaround when the caller already has Screen Recording
+peekaboo see --mode screen --screen-index 0 \
+  --no-remote --capture-engine cg --json
 ```

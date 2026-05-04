@@ -6,6 +6,7 @@
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
+- Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
 
 ## [3.0.0-beta4] - 2026-04-28
 

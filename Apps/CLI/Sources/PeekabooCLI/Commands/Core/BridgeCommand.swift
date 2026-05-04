@@ -99,6 +99,10 @@ extension BridgeCommand {
             print("===============")
             print("")
             print("Selected: \(report.selected.humanSummary)")
+            if let hint = report.bridgeScreenRecordingHint {
+                print("")
+                print(hint)
+            }
 
             if report.remoteSkipped {
                 print("Remote: skipped (\(report.remoteSkipReason ?? "disabled"))")
@@ -260,6 +264,14 @@ private struct BridgeStatusReport: Codable {
     let selected: BridgeSelectionReport
     let candidates: [BridgeCandidateReport]
     let client: BridgeClientReport
+
+    var bridgeScreenRecordingHint: String? {
+        guard let candidate = self.candidates.first(where: { $0.screenRecordingDenied }) else { return nil }
+        let hostKind = candidate.hostKind ?? "Bridge host"
+        return "Hint: \(hostKind) at \(candidate.socketPath) does not have Screen Recording. Grant it to " +
+            "the host app, or run capture commands with --no-remote --capture-engine cg when the caller " +
+            "process already has permission."
+    }
 }
 
 private struct BridgeClientReport: Codable {
@@ -285,6 +297,20 @@ private struct BridgeClientReport: Codable {
 private struct BridgeCandidateReport: Codable {
     let socketPath: String
     let result: BridgeCandidateResult
+
+    var hostKind: String? {
+        if case let .success(handshake) = self.result {
+            return handshake.hostKind.rawValue
+        }
+        return nil
+    }
+
+    var screenRecordingDenied: Bool {
+        if case let .success(handshake) = self.result {
+            return handshake.permissions?.screenRecording == false
+        }
+        return false
+    }
 
     var humanSummary: String {
         switch self.result {
