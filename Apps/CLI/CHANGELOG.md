@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `peekaboo agent --model` now understands the GPT-5.1 identifiers and defaults to `gpt-5.1`, matching the latest OpenAI release while keeping backward-compatible aliases for GPT-5 and GPT-4o inputs.
 
+### Fixed
+- MCP `image` now returns an `isError: true` tool result when Screen Recording permission is missing instead of surfacing an internal server error.
+- Window capture on macOS 26 now resolves native Retina scale from `NSScreen.backingScaleFactor` before falling back to ScreenCaptureKit display ratios.
+- `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
+- Natural-language automation examples now use `peekaboo agent "..."`.
+
 ## [2.0.2] - 2025-07-03
 
 ### Fixed
