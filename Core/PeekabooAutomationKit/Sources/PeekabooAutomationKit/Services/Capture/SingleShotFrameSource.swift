@@ -81,13 +81,10 @@ final class SingleShotFrameSource: CaptureFrameSource {
         for display: SCDisplay,
         preference: CaptureScalePreference) -> CGFloat
     {
-        let nativeScale: CGFloat = {
-            let width = CGFloat(display.width)
-            let frameWidth = display.frame.width
-            guard frameWidth > 0 else { return 1.0 }
-            let scale = width / frameWidth
-            return scale > 0 ? scale : 1.0
-        }()
+        let nativeScale: CGFloat = ScreenCaptureScaleResolver.nativeScale(
+            displayID: display.displayID,
+            fallbackPixelWidth: display.width,
+            frameWidth: display.frame.width)
 
         switch preference {
         case .native:

@@ -3,6 +3,7 @@
 //  PeekabooCore
 //
 
+import AppKit
 import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
@@ -13,6 +14,45 @@ import PeekabooFoundation
 extension SCShareableContent: @retroactive @unchecked Sendable {}
 extension SCDisplay: @retroactive @unchecked Sendable {}
 extension SCWindow: @retroactive @unchecked Sendable {}
+
+@_spi(Testing) public enum ScreenCaptureScaleResolver {
+    public static func nativeScale(
+        displayID: CGDirectDisplayID,
+        fallbackPixelWidth: Int,
+        frameWidth: CGFloat,
+        screens: [NSScreen] = NSScreen.screens) -> CGFloat
+    {
+        self.nativeScale(
+            screenBackingScaleFactor: self.screenBackingScaleFactor(displayID: displayID, screens: screens),
+            fallbackPixelWidth: fallbackPixelWidth,
+            frameWidth: frameWidth)
+    }
+
+    public static func nativeScale(
+        screenBackingScaleFactor: CGFloat?,
+        fallbackPixelWidth: Int,
+        frameWidth: CGFloat) -> CGFloat
+    {
+        if let screenScale = screenBackingScaleFactor, screenScale > 0 {
+            return screenScale
+        }
+
+        guard frameWidth > 0 else { return 1.0 }
+        let scale = CGFloat(fallbackPixelWidth) / frameWidth
+        return scale > 0 ? scale : 1.0
+    }
+
+    private static func screenBackingScaleFactor(displayID: CGDirectDisplayID, screens: [NSScreen]) -> CGFloat? {
+        let targetID = NSNumber(value: displayID)
+        guard let screen = screens.first(where: { screen in
+            screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber == targetID
+        }) else {
+            return nil
+        }
+
+        return screen.backingScaleFactor > 0 ? screen.backingScaleFactor : nil
+    }
+}
 
 @MainActor
 @_spi(Testing) public protocol ModernScreenCaptureOperating: Sendable {

@@ -1161,11 +1161,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
 
         private func nativeScale(for display: SCDisplay) -> CGFloat {
-            let width = CGFloat(display.width)
-            let frameWidth = display.frame.width
-            guard frameWidth > 0 else { return 1.0 }
-            let scale = width / frameWidth
-            return scale > 0 ? scale : 1.0
+            ScreenCaptureScaleResolver.nativeScale(
+                displayID: display.displayID,
+                fallbackPixelWidth: display.width,
+                frameWidth: display.frame.width)
         }
 
         private func scaleFactor(for window: SCWindow, displays: [SCDisplay]) -> CGFloat {

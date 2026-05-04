@@ -93,6 +93,26 @@ struct ScreenCaptureServiceFlowTests {
     }
 
     @Test
+    func `native scale prefers NSScreen backing scale over SCDisplay ratio`() {
+        let scale = ScreenCaptureScaleResolver.nativeScale(
+            screenBackingScaleFactor: 2.0,
+            fallbackPixelWidth: 1200,
+            frameWidth: 1200)
+
+        #expect(scale == 2.0)
+    }
+
+    @Test
+    func `native scale falls back to SCDisplay ratio when NSScreen is unavailable`() {
+        let scale = ScreenCaptureScaleResolver.nativeScale(
+            screenBackingScaleFactor: nil,
+            fallbackPixelWidth: 2400,
+            frameWidth: 1200)
+
+        #expect(scale == 2.0)
+    }
+
+    @Test
     func `captureWindow resolves applications via fixtures`() async throws {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures)
