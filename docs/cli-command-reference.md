@@ -18,6 +18,7 @@ Use `peekaboo <command> --help` for inline flag descriptions; this page links to
 - `capture` – Long-running capture. `capture live` (adaptive PNG frames) replaces watch; `capture video` ingests a video and samples frames. Outputs frames, contact sheet, metadata, optional MP4.
 - [`list`](commands/list.md) – Subcommands: `apps`, `windows`, `screens`, `menubar`, `permissions`.
 - [`tools`](commands/tools.md) – Filter native vs MCP tools; group by server or emit JSON summaries.
+- [`completions`](commands/completions.md) – Generate shell-native completions for zsh, bash, and fish from Commander metadata.
 - [`run`](commands/run.md) – Execute `.peekaboo.json` scripts (`--output`, `--no-fail-fast`).
 - [`sleep`](commands/sleep.md) – Millisecond pauses between steps.
 - [`clean`](commands/clean.md) – Remove snapshot caches by ID, age, or all at once (`--dry-run` supported).

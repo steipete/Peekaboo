@@ -18,6 +18,7 @@ Core automation
 
 System & config
 - `config.md`, `permissions.md`, `bridge.md`, `daemon.md`, `tools.md`, `clean.md`, `run.md`, `learn.md`, `list.md`.
+- `completions.md` — install shell-native completions for zsh, bash, and fish.
 - MCP helpers: `mcp.md`.
 - Clipboard: `clipboard.md`.
 
