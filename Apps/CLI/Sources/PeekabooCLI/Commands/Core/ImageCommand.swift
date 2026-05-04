@@ -270,19 +270,27 @@ extension ImageCommand {
 
     private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
-        let resolvedWindowIndex = try await self.resolveWindowIndex(for: identifier)
-        let result = try await ImageCaptureBridge.captureWindow(
-            services: self.services,
-            appIdentifier: identifier,
-            windowIndex: resolvedWindowIndex,
-            scale: self.captureScale
-        )
+        let resolvedWindow = try await self.resolveWindow(for: identifier)
+        let result = if let resolvedWindow {
+            try await ImageCaptureBridge.captureWindowById(
+                services: self.services,
+                windowId: resolvedWindow.windowID,
+                scale: self.captureScale
+            )
+        } else {
+            try await ImageCaptureBridge.captureWindow(
+                services: self.services,
+                appIdentifier: identifier,
+                windowIndex: nil,
+                scale: self.captureScale
+            )
+        }
 
         let saved = try self.saveCaptureResult(
             result,
             preferredName: self.windowTitle ?? identifier,
             index: nil,
-            windowIndex: resolvedWindowIndex
+            windowIndex: resolvedWindow?.index
         )
 
         return [saved]
@@ -304,10 +312,9 @@ extension ImageCommand {
 
         var savedFiles: [SavedFile] = []
         for (ordinal, window) in filtered.indexed() {
-            let result = try await ImageCaptureBridge.captureWindow(
+            let result = try await ImageCaptureBridge.captureWindowById(
                 services: self.services,
-                appIdentifier: identifier,
-                windowIndex: window.index,
+                windowId: window.windowID,
                 scale: self.captureScale
             )
 
@@ -491,11 +498,7 @@ extension ImageCommand {
         }
     }
 
-    private func resolveWindowIndex(for identifier: String) async throws -> Int? {
-        if let explicitIndex = self.windowIndex {
-            return explicitIndex
-        }
-
+    private func resolveWindow(for identifier: String) async throws -> ServiceWindowInfo? {
         do {
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
@@ -506,7 +509,7 @@ extension ImageCommand {
                 return nil
             }
 
-            return try self.selectWindowIndex(from: windows, appIdentifier: identifier)
+            return try self.selectWindow(from: windows, appIdentifier: identifier)
         } catch let error as PeekabooError {
             switch error {
             case .permissionDeniedAccessibility:
@@ -527,7 +530,7 @@ extension ImageCommand {
         }
     }
 
-    private func selectWindowIndex(from windows: [ServiceWindowInfo], appIdentifier: String) throws -> Int? {
+    private func selectWindow(from windows: [ServiceWindowInfo], appIdentifier: String) throws -> ServiceWindowInfo? {
         if let explicitIndex = self.windowIndex {
             guard let explicitWindow = windows.first(where: { $0.index == explicitIndex }) else {
                 throw PeekabooError.windowNotFound(criteria: "No window at index \(explicitIndex)")
@@ -535,7 +538,7 @@ extension ImageCommand {
             guard WindowFiltering.isRenderable(explicitWindow) else {
                 throw PeekabooError.windowNotFound(criteria: "Window \(explicitIndex) is not shareable")
             }
-            return explicitIndex
+            return explicitWindow
         }
 
         let filtered = self.filterRenderableWindows(windows, appIdentifier: appIdentifier)
@@ -552,14 +555,14 @@ extension ImageCommand {
                     criteria: "title containing '\(title)' in \(appIdentifier)"
                 )
             }
-            return match.index
+            return match
         }
 
         if let preferred = Self.preferredWindow(from: filtered) {
-            return preferred.index
+            return preferred
         }
 
-        return filtered.first?.index
+        return filtered.first
     }
 
     private func filterRenderableWindows(

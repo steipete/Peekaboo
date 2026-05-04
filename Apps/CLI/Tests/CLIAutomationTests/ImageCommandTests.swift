@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -454,10 +455,9 @@ struct ImageCommandTests {
         )
         let captureResult = Self.makeCaptureResult(app: appInfo, window: terminal)
         let captureService = StubScreenCaptureService(permissionGranted: true)
-        var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { identifier, index, _ in
-            #expect(identifier == appName)
-            recordedWindowIndex = index
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
             return captureResult
         }
 
@@ -479,8 +479,8 @@ struct ImageCommandTests {
         )
 
         try await command.run(using: runtime)
-        let index = try #require(recordedWindowIndex)
-        #expect(index == terminal.index)
+        let windowID = try #require(recordedWindowID)
+        #expect(windowID == CGWindowID(terminal.windowID))
         try? FileManager.default.removeItem(atPath: outputPath)
     }
 
@@ -505,7 +505,7 @@ struct ImageCommandTests {
             isMainWindow: true,
             windowLevel: 0,
             alpha: 1.0,
-            index: 1
+            index: 11
         )
         let windows = [inspector, logs]
         let appInfo = ServiceApplicationInfo(
@@ -517,9 +517,9 @@ struct ImageCommandTests {
 
         let captureResult = Self.makeCaptureResult(app: appInfo, window: logs)
         let captureService = StubScreenCaptureService(permissionGranted: true)
-        var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { _, index, _ in
-            recordedWindowIndex = index
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
             return captureResult
         }
 
@@ -545,8 +545,8 @@ struct ImageCommandTests {
         )
 
         try await command.run(using: runtime)
-        let index = try #require(recordedWindowIndex)
-        #expect(index == logs.index)
+        let windowID = try #require(recordedWindowID)
+        #expect(windowID == CGWindowID(logs.windowID))
         try? FileManager.default.removeItem(atPath: outputPath)
     }
 
@@ -693,9 +693,9 @@ struct ImageCommandTests {
 
         let captureResult = Self.makeCaptureResult(app: appInfo, window: visible)
         let captureService = StubScreenCaptureService(permissionGranted: true)
-        var recordedWindowIndex: Int?
-        captureService.captureWindowHandler = { _, index, _ in
-            recordedWindowIndex = index
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
             return captureResult
         }
 
@@ -715,8 +715,8 @@ struct ImageCommandTests {
         )
 
         try await command.run(using: runtime)
-        let index = try #require(recordedWindowIndex)
-        #expect(index == visible.index)
+        let windowID = try #require(recordedWindowID)
+        #expect(windowID == CGWindowID(visible.windowID))
         try? FileManager.default.removeItem(atPath: path)
     }
 

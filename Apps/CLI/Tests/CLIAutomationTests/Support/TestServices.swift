@@ -23,6 +23,7 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     var defaultCaptureResult: CaptureResult?
     var captureScreenHandler: ((Int?, CaptureScalePreference) async throws -> CaptureResult)?
     var captureWindowHandler: ((String, Int?, CaptureScalePreference) async throws -> CaptureResult)?
+    var captureWindowByIdHandler: ((CGWindowID, CaptureScalePreference) async throws -> CaptureResult)?
     var captureFrontmostHandler: ((CaptureScalePreference) async throws -> CaptureResult)?
     var captureAreaHandler: ((CGRect, CaptureScalePreference) async throws -> CaptureResult)?
 
@@ -49,6 +50,17 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     ) async throws -> CaptureResult {
         if let handler = self.captureWindowHandler {
             return try await handler(appIdentifier, windowIndex, scale)
+        }
+        return try await self.makeDefaultCaptureResult(function: #function)
+    }
+
+    func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode _: CaptureVisualizerMode,
+        scale: CaptureScalePreference
+    ) async throws -> CaptureResult {
+        if let handler = self.captureWindowByIdHandler {
+            return try await handler(windowID, scale)
         }
         return try await self.makeDefaultCaptureResult(function: #function)
     }
