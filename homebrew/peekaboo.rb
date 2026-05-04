@@ -6,8 +6,8 @@ class Peekaboo < Formula
   license "MIT"
   version "3.0.0-beta4"
 
-  # macOS Sonoma (14.0) or later required
-  depends_on macos: :sonoma
+  # macOS Sequoia (15.0) or later required
+  depends_on macos: :sequoia
 
   def install
     odie "Peekaboo is Apple Silicon only (arm64)." if Hardware::CPU.intel?

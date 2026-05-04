@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
+
 ## [3.0.0-beta4] - 2026-04-28
 
 ### Added
