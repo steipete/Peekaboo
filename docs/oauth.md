@@ -24,9 +24,10 @@ These flows avoid storing API keys and instead keep refresh/access tokens in `~/
 4. No API key is written for OAuth flows.
 
 ## How requests are sent
-- Providers prefer OAuth tokens when present. If the access token is expired, Peekaboo refreshes once per request and updates the credentials file.
+- Providers resolve OAuth tokens and API keys through the shared Tachikoma credential manager. If the access token is expired, Peekaboo refreshes once per request and updates the credentials file.
 - Anthropic requests include the beta header used for Claude Max: `anthropic-beta: oauth-2025-04-20,claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14`.
 - If OAuth tokens are absent but an API key exists, the provider falls back to the API-key path.
+- OpenAI/Codex OAuth tokens may still be rejected by OpenAI API endpoints if the issued token lacks platform API scopes such as model or Responses access. In that case, use `peekaboo config add openai <api-key>` / `OPENAI_API_KEY` for `see --analyze`, `image --analyze`, and agent runs until the OAuth client is granted the required scopes.
 
 ## Validating connectivity
 - `peekaboo config show --timeout 30` pings each configured provider and reports status (`ready (validated)`, `stored (validation failed: <reason>)`, `missing`).
@@ -41,4 +42,5 @@ These flows avoid storing API keys and instead keep refresh/access tokens in `~/
 
 ## Troubleshooting
 - If validation fails after login, run `peekaboo config show --timeout 10 --verbose` to see the provider error.
+- OpenAI errors mentioning missing scopes are server-side OAuth scope failures, not local credential loading failures. Configure an API key for API-backed OpenAI features.
 - Stale access tokens are refreshed automatically; if refresh fails, rerun `peekaboo config login <provider>`.

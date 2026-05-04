@@ -26,7 +26,7 @@ Peekaboo supports custom AI providers through configuration-based setup. This al
 ## Built-in vs Custom Providers
 
 ### Built-in Providers
-- **OpenAI**: GPT-5 family, GPT-4.1, GPT-4o, o4-mini (OAuth or API key)
+- **OpenAI**: GPT-5 family, GPT-4.1, GPT-4o, o4-mini (API key; OAuth tokens are resolved but can be rejected by OpenAI API endpoints if the login client lacks platform API scopes)
 - **Anthropic**: Claude 4 / Max / Pro / 3.x (OAuth or API key)
 - **Grok (xAI)**: Grok 4, Grok 2 series (API key; `grok` canonical, `xai` alias)
 - **Gemini**: Gemini 1.5 family (API key)
@@ -101,6 +101,8 @@ peekaboo config add gemini ya29....
 peekaboo config login openai
 peekaboo config login anthropic
 ```
+
+Note: OpenAI OAuth currently depends on the scopes granted by OpenAI's OAuth client. If API-backed calls report missing scopes, configure `OPENAI_API_KEY` or run `peekaboo config add openai <api-key>`.
 
 ## CLI Management
 
