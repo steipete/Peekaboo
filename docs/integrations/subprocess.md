@@ -1,3 +1,10 @@
+---
+summary: 'Run Peekaboo reliably from subprocess contexts such as Node.js and OpenClaw.'
+read_when:
+  - 'using Peekaboo from a child process or wrapper script'
+  - 'working around Bridge permission failures in automation hosts'
+---
+
 # Subprocess Integration Guide
 
 ## Problem: Permission Errors from Subprocesses
@@ -157,7 +164,7 @@ peekaboo list windows --app Safari --json
 Increase timeout for complex UIs:
 
 ```bash
-peekaboo see --app Safari --timeout 30 --no-remote --capture-engine cg
+peekaboo see --app Safari --timeout-seconds 30 --no-remote --capture-engine cg
 ```
 
 ### Memory issues (large screenshots)
@@ -209,5 +216,5 @@ if (reloadBtn) {
 
 ## Related Issues
 
-- #77 - Permission errors from OpenClaw
+- #77 - Documents the subprocess workaround for OpenClaw permission errors
 - #75 - Bridge capture failures (related)

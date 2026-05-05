@@ -1,3 +1,10 @@
+---
+summary: 'Integration guides for running Peekaboo from other tools and automation environments.'
+read_when:
+  - 'calling Peekaboo from Node.js, OpenClaw, or subprocess contexts'
+  - 'debugging integration permission or routing failures'
+---
+
 # Peekaboo Integrations
 
 Integration guides for using Peekaboo with other tools and frameworks.
