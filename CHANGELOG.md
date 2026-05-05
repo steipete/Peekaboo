@@ -10,6 +10,9 @@
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
 
+### Community
+- Added PeekabooWin to the README community projects list. Thanks @FelixKruger!
+
 ## [3.0.0-beta4] - 2026-04-28
 
 ### Added
