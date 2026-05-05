@@ -16,9 +16,9 @@ jobs:
       - name: Resolve release tag
         run: |
           if [ "${{ github.event_name }}" = "release" ]; then
-            echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+            echo "RELEASE_TAG=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
           else
-            echo "RELEASE_TAG=v${{ github.event.inputs.version }}" >> $GITHUB_ENV
+            echo "RELEASE_TAG=v${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
           fi
 
       - name: Dispatch tap formula update
@@ -30,9 +30,6 @@ jobs:
             exit 1
           fi
 
-          # Strip leading v from tag for filename compatibility if needed
-          CLEAN_TAG="${RELEASE_TAG#v}"
-          
           request_id="peekaboo-${RELEASE_TAG}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           expected_title="Update peekaboo for ${RELEASE_TAG} (${request_id})"
 
