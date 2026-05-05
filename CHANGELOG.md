@@ -8,6 +8,7 @@
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
 - Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
+- `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
 
 ## [3.0.0-beta4] - 2026-04-28
 

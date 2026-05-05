@@ -1,4 +1,6 @@
+import CoreGraphics
 import Foundation
+import ImageIO
 import Tachikoma
 
 /// AI service for handling model interactions and AI-powered features
@@ -29,22 +31,8 @@ public final class PeekabooAIService {
 
     /// Analyze an image with a question using AI
     public func analyzeImage(imageData: Data, question: String, model: LanguageModel? = nil) async throws -> String {
-        // Analyze an image with a question using AI
-        let selectedModel = model ?? self.defaultModel
-
-        // Create a message with the image using Tachikoma's API
-        let base64String = imageData.base64EncodedString()
-        let imageContent = ModelMessage.ContentPart.ImageContent(data: base64String, mimeType: "image/png")
-        let messages = [
-            ModelMessage.user(text: question, images: [imageContent]),
-        ]
-
-        // Generate response using Tachikoma's generateText function
-        let response = try await Tachikoma.generateText(
-            model: selectedModel,
-            messages: messages)
-
-        return response.text
+        let result = try await self.analyzeImageDetailed(imageData: imageData, question: question, model: model)
+        return result.text
     }
 
     /// Analyze an image with a question returning structured metadata
@@ -65,26 +53,14 @@ public final class PeekabooAIService {
             model: selectedModel,
             messages: messages)
 
-        // Map provider/model from LanguageModel enum
-        let (provider, modelName): (String, String) = switch selectedModel {
-        case let .openai(m): ("openai", m.modelId)
-        case let .anthropic(m): ("anthropic", m.modelId)
-        case let .google(m): ("google", m.rawValue)
-        case let .mistral(m): ("mistral", m.rawValue)
-        case let .groq(m): ("groq", m.rawValue)
-        case let .grok(m): ("grok", m.modelId)
-        case let .ollama(m): ("ollama", m.modelId)
-        case let .lmstudio(m): ("lmstudio", m.modelId)
-        case let .azureOpenAI(deployment, _, _, _): ("azure-openai", deployment)
-        case let .openRouter(modelId): ("openrouter", modelId)
-        case let .together(modelId): ("together", modelId)
-        case let .replicate(modelId): ("replicate", modelId)
-        case let .openaiCompatible(modelId, _): ("openai-compatible", modelId)
-        case let .anthropicCompatible(modelId, _): ("anthropic-compatible", modelId)
-        case let .custom(provider): ("custom", provider.modelId)
-        }
+        let (provider, modelName) = Self.providerAndModelName(for: selectedModel)
 
-        return AnalysisResult(provider: provider, model: modelName, text: response.text)
+        let normalizedText = Self.normalizeCoordinateTextIfNeeded(
+            response.text,
+            model: modelName,
+            imageSize: Self.imageSize(from: imageData))
+
+        return AnalysisResult(provider: provider, model: modelName, text: normalizedText)
     }
 
     /// Analyze an image file with a question
@@ -188,5 +164,101 @@ public final class PeekabooAIService {
             return [.anthropic(.opus45)]
         }
         return [.openai(.gpt51), .anthropic(.opus45)]
+    }
+
+    private static func providerAndModelName(for model: LanguageModel) -> (provider: String, model: String) {
+        switch model {
+        case let .openai(m): ("openai", m.modelId)
+        case let .anthropic(m): ("anthropic", m.modelId)
+        case let .google(m): ("google", m.rawValue)
+        case let .mistral(m): ("mistral", m.rawValue)
+        case let .groq(m): ("groq", m.rawValue)
+        case let .grok(m): ("grok", m.modelId)
+        case let .ollama(m): ("ollama", m.modelId)
+        case let .lmstudio(m): ("lmstudio", m.modelId)
+        case let .azureOpenAI(deployment, _, _, _): ("azure-openai", deployment)
+        case let .openRouter(modelId): ("openrouter", modelId)
+        case let .together(modelId): ("together", modelId)
+        case let .replicate(modelId): ("replicate", modelId)
+        case let .openaiCompatible(modelId, _): ("openai-compatible", modelId)
+        case let .anthropicCompatible(modelId, _): ("anthropic-compatible", modelId)
+        case let .custom(provider): ("custom", provider.modelId)
+        }
+    }
+
+    nonisolated static func normalizeCoordinateTextIfNeeded(
+        _ text: String,
+        model: String,
+        imageSize: CGSize?) -> String
+    {
+        guard self.modelUsesNormalizedThousandCoordinates(model),
+              let imageSize,
+              imageSize.width > 0,
+              imageSize.height > 0
+        else {
+            return text
+        }
+
+        let nsText = text as NSString
+        let numberPattern = #"(-?\d+(?:\.\d+)?)"#
+        let pattern = #"\[\s*"# +
+            numberPattern +
+            #"\s*,\s*"# +
+            numberPattern +
+            #"\s*,\s*"# +
+            numberPattern +
+            #"\s*,\s*"# +
+            numberPattern +
+            #"\s*\]"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return text
+        }
+
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length)).reversed()
+        var result = text
+        for match in matches {
+            let values = (1...4).compactMap { index -> Double? in
+                Double(nsText.substring(with: match.range(at: index)))
+            }
+            guard values.count == 4,
+                  values.allSatisfy({ (0.0...1000.0).contains($0) }),
+                  values[2] > values[0],
+                  values[3] > values[1]
+            else {
+                continue
+            }
+
+            let converted = [
+                Int((values[0] * Double(imageSize.width) / 1000.0).rounded()),
+                Int((values[1] * Double(imageSize.height) / 1000.0).rounded()),
+                Int((values[2] * Double(imageSize.width) / 1000.0).rounded()),
+                Int((values[3] * Double(imageSize.height) / 1000.0).rounded()),
+            ]
+            let original = nsText.substring(with: match.range)
+            let replacement = "[\(converted[0]), \(converted[1]), \(converted[2]), \(converted[3])] " +
+                "(converted from GLM normalized \(original))"
+
+            if let range = Range(match.range, in: result) {
+                result.replaceSubrange(range, with: replacement)
+            }
+        }
+
+        return result
+    }
+
+    private nonisolated static func modelUsesNormalizedThousandCoordinates(_ model: String) -> Bool {
+        model.lowercased().contains("glm")
+    }
+
+    private nonisolated static func imageSize(from imageData: Data) -> CGSize? {
+        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? CGFloat,
+              let height = properties[kCGImagePropertyPixelHeight] as? CGFloat
+        else {
+            return nil
+        }
+
+        return CGSize(width: width, height: height)
     }
 }

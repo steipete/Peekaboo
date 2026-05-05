@@ -57,6 +57,7 @@ When `--json` is supplied, the CLI prints:
 - `ui_elements` – flattened list of actionable nodes (buttons, text fields, links, etc.).
 - `interactable_count`, `element_count`, `capture_mode`, and performance metadata for debugging.
 - Each `ui_elements[n]` entry now mirrors the raw AX metadata we capture—`title`, `label`, **`description`**, `role_description`, `help`, `identifier`, and the keyboard shortcut if one exists. That makes Chrome toolbar icons (which frequently hide their name in `AXDescription`) searchable without relying on coordinates.
+- GLM vision model analysis responses are converted from the model's 0-1000 bounding box coordinate space into screenshot pixel coordinates before they are printed, so follow-up `click --coords` calls can use returned box centers directly.
 
 Use `jq` or any JSON parser to find elements:
 
