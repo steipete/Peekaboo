@@ -11,3 +11,9 @@ extension PermissionsCommand.GrantSubcommand: CommanderSignatureProviding {
         CommandSignature()
     }
 }
+
+extension PermissionsCommand.RequestEventSynthesizingSubcommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature()
+    }
+}

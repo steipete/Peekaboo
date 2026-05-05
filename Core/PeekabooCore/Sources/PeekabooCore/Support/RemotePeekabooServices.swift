@@ -68,11 +68,22 @@ public final class RemoteScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting {
+public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, TargetedHotkeyServiceProtocol {
     private let client: PeekabooBridgeClient
+    public let supportsTargetedHotkeys: Bool
+    public let targetedHotkeyUnavailableReason: String?
+    public let targetedHotkeyRequiresEventSynthesizingPermission: Bool
 
-    public init(client: PeekabooBridgeClient) {
+    public init(
+        client: PeekabooBridgeClient,
+        supportsTargetedHotkeys: Bool = false,
+        targetedHotkeyUnavailableReason: String? = nil,
+        targetedHotkeyRequiresEventSynthesizingPermission: Bool = false)
+    {
         self.client = client
+        self.supportsTargetedHotkeys = supportsTargetedHotkeys
+        self.targetedHotkeyUnavailableReason = targetedHotkeyUnavailableReason
+        self.targetedHotkeyRequiresEventSynthesizingPermission = targetedHotkeyRequiresEventSynthesizingPermission
     }
 
     public func detectElements(
@@ -133,6 +144,57 @@ public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjust
 
     public func hotkey(keys: String, holdDuration: Int) async throws {
         try await self.client.hotkey(keys: keys, holdDuration: holdDuration)
+    }
+
+    public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        guard self.supportsTargetedHotkeys else {
+            throw Self.targetedHotkeyUnavailableError(
+                reason: self.targetedHotkeyUnavailableReason,
+                requiresEventSynthesizingPermission: self.targetedHotkeyRequiresEventSynthesizingPermission)
+        }
+
+        do {
+            try await self.client.hotkey(
+                keys: keys,
+                holdDuration: holdDuration,
+                targetProcessIdentifier: targetProcessIdentifier)
+        } catch let envelope as PeekabooBridgeErrorEnvelope {
+            switch envelope.code {
+            case .permissionDenied:
+                throw Self.permissionDeniedError(for: envelope)
+            case .invalidRequest:
+                throw PeekabooError.invalidInput(envelope.message)
+            case .operationNotSupported:
+                throw PeekabooError.serviceUnavailable(envelope.message)
+            default:
+                throw envelope
+            }
+        }
+    }
+
+    private static func targetedHotkeyUnavailableError(
+        reason: String?,
+        requiresEventSynthesizingPermission: Bool) -> PeekabooError
+    {
+        if requiresEventSynthesizingPermission {
+            return .permissionDeniedEventSynthesizing
+        }
+
+        return .serviceUnavailable(
+            reason ?? "Remote bridge host does not support background hotkeys; use --no-remote or update the host")
+    }
+
+    private static func permissionDeniedError(for envelope: PeekabooBridgeErrorEnvelope) -> PeekabooError {
+        switch envelope.permission {
+        case .postEvent:
+            .permissionDeniedEventSynthesizing
+        case .accessibility:
+            .permissionDeniedAccessibility
+        case .screenRecording:
+            .permissionDeniedScreenRecording
+        case .appleScript, .none:
+            .permissionDeniedEventSynthesizing
+        }
     }
 
     public func swipe(
@@ -561,14 +623,26 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
     public let agent: (any AgentServiceProtocol)?
 
     private let client: PeekabooBridgeClient
+    private let supportsPostEventPermissionRequest: Bool
 
-    public init(client: PeekabooBridgeClient) {
+    public init(
+        client: PeekabooBridgeClient,
+        supportsTargetedHotkeys: Bool = false,
+        targetedHotkeyUnavailableReason: String? = nil,
+        targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
+        supportsPostEventPermissionRequest: Bool = false)
+    {
         self.client = client
+        self.supportsPostEventPermissionRequest = supportsPostEventPermissionRequest
 
         self.logging = LoggingService()
         self.screenCapture = RemoteScreenCaptureService(client: client)
         self.applications = RemoteApplicationService(client: client)
-        self.automation = RemoteUIAutomationService(client: client)
+        self.automation = RemoteUIAutomationService(
+            client: client,
+            supportsTargetedHotkeys: supportsTargetedHotkeys,
+            targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
+            targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
         self.windows = RemoteWindowManagementService(client: client)
         let snapshotManager = RemoteSnapshotManager(client: client)
 
@@ -596,5 +670,22 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
 
     public func ensureVisualizerConnection() {
         // Remote helper already holds TCC; no-op for client-side container.
+    }
+
+    public func permissionsStatus() async throws -> PermissionsStatus {
+        try await self.client.permissionsStatus()
+    }
+
+    public func requestPostEventPermission() async throws -> Bool {
+        guard self.supportsPostEventPermissionRequest else {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .operationNotSupported,
+                message: """
+                Remote bridge host cannot request Event Synthesizing permission. \
+                Update the host or run with --no-remote to request it for the local CLI.
+                """)
+        }
+
+        return try await self.client.requestPostEventPermission()
     }
 }

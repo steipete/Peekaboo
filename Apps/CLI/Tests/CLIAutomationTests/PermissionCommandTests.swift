@@ -27,7 +27,7 @@ struct PermissionCommandTests {
         )
 
         #expect(payload.success == true)
-        #expect(payload.data.count == 2)
+        #expect(payload.data.count == 3)
         if let screenRecording = payload.data.first(where: { $0.name == "Screen Recording" }) {
             #expect(screenRecording.isGranted == false)
             #expect(screenRecording.isRequired == true)
@@ -40,6 +40,12 @@ struct PermissionCommandTests {
             #expect(accessibility.isRequired == true)
         } else {
             Issue.record("Missing accessibility entry")
+        }
+
+        if let eventSynthesizing = payload.data.first(where: { $0.name == "Event Synthesizing" }) {
+            #expect(eventSynthesizing.isRequired == false)
+        } else {
+            Issue.record("Missing event synthesizing entry")
         }
     }
 
@@ -62,8 +68,58 @@ struct PermissionCommandTests {
 
         #expect(result.exitStatus == 0)
     }
+
+    @Test
+    func `permissions status JSON includes event synthesizing`() async throws {
+        let services = await MainActor.run {
+            TestServicesFactory.makePeekabooServices()
+        }
+
+        let result = try await InProcessCommandRunner.run([
+            "permissions",
+            "status",
+            "--no-remote",
+            "--json",
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        let payload = try ExternalCommandRunner.decodeJSONResponse(
+            from: result,
+            as: CodableJSONResponse<PermissionHelpers.PermissionStatusResponse>.self
+        )
+        #expect(payload.success)
+        #expect(payload.data.permissions.contains { $0.name == "Event Synthesizing" })
+    }
+
+    @Test
+    func `permissions can request event synthesizing in JSON mode`() async throws {
+        let services = await MainActor.run {
+            TestServicesFactory.makePeekabooServices()
+        }
+
+        let result = try await InProcessCommandRunner.run([
+            "permissions",
+            "request-event-synthesizing",
+            "--json",
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        let payload = try ExternalCommandRunner.decodeJSONResponse(
+            from: result,
+            as: CodableJSONResponse<PermissionRequestResultForTest>.self
+        )
+        #expect(payload.success)
+        #expect(payload.data.action == "request-event-synthesizing")
+    }
 }
 #endif
+
+private struct PermissionRequestResultForTest: Codable {
+    let action: String
+    let already_granted: Bool
+    let prompt_triggered: Bool
+    let granted: Bool?
+}
 
 extension PermissionCommandTests {
     fileprivate static func balancedJSON(in text: Substring) -> String? {

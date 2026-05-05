@@ -22,11 +22,15 @@ struct PermissionCommand: ParsableCommand {
 
           # Request accessibility permission
           peekaboo agent permission request-accessibility
+
+          # Request event-synthesizing permission for background hotkeys
+          peekaboo agent permission request-event-synthesizing
         """,
         subcommands: [
             StatusSubcommand.self,
             RequestScreenRecordingSubcommand.self,
-            RequestAccessibilitySubcommand.self
+            RequestAccessibilitySubcommand.self,
+            RequestEventSynthesizingSubcommand.self
         ],
         defaultSubcommand: StatusSubcommand.self
     )
@@ -85,12 +89,23 @@ extension PermissionCommand {
 
         @MainActor
         private func fetchPermissionStatus() async -> AgentPermissionStatusPayload {
+            if let remoteServices = self.services as? RemotePeekabooServices,
+               let status = try? await remoteServices.permissionsStatus() {
+                return AgentPermissionStatusPayload(
+                    screen_recording: status.screenRecording,
+                    accessibility: status.accessibility,
+                    event_synthesizing: status.postEvent
+                )
+            }
+
             let screenRecording = await self.services.screenCapture.hasScreenRecordingPermission()
             let accessibility = await AutomationServiceBridge
                 .hasAccessibilityPermission(automation: self.services.automation)
+            let eventSynthesizing = self.services.permissions.checkPostEventPermission()
             return AgentPermissionStatusPayload(
                 screen_recording: screenRecording,
-                accessibility: accessibility
+                accessibility: accessibility,
+                event_synthesizing: eventSynthesizing
             )
         }
 
@@ -104,15 +119,21 @@ extension PermissionCommand {
             print("==========================\n")
             self.printStatusLine(label: "Screen Recording", granted: status.screen_recording)
             self.printStatusLine(label: "Accessibility", granted: status.accessibility)
+            self.printStatusLine(label: "Event Synthesizing", granted: status.event_synthesizing)
 
-            guard !status.screen_recording || !status.accessibility else { return }
-
-            print("\nTo grant missing permissions:")
-            if !status.screen_recording {
-                print("- Run: peekaboo agent permission request-screen-recording")
+            if !status.screen_recording || !status.accessibility {
+                print("\nTo grant missing required permissions:")
+                if !status.screen_recording {
+                    print("- Run: peekaboo agent permission request-screen-recording")
+                }
+                if !status.accessibility {
+                    print("- Run: peekaboo agent permission request-accessibility")
+                }
             }
-            if !status.accessibility {
-                print("- Run: peekaboo agent permission request-accessibility")
+
+            if !status.event_synthesizing {
+                print("\nOptional for background hotkeys:")
+                print("- Run: peekaboo agent permission request-event-synthesizing")
             }
         }
 
@@ -357,6 +378,99 @@ extension PermissionCommand {
             }
         }
     }
+
+    // MARK: - Request Event Synthesizing Subcommand
+
+    struct RequestEventSynthesizingSubcommand: ErrorHandlingCommand, OutputFormattable {
+        nonisolated(unsafe) static var commandDescription: CommandDescription {
+            MainActorCommandDescription.describe {
+                CommandDescription(
+                    commandName: "request-event-synthesizing",
+                    abstract: "Request event-synthesizing permission for background hotkeys"
+                )
+            }
+        }
+
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
+
+        /// Prompt macOS for event-posting access used by process-targeted hotkeys.
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.prepare(using: runtime)
+            do {
+                let payload = try await self.requestEventSynthesizingPermission()
+                self.renderEventSynthesizingResult(payload: payload)
+            } catch {
+                self.handleError(error)
+                throw ExitCode.failure
+            }
+        }
+
+        private mutating func prepare(using runtime: CommandRuntime) {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+        }
+
+        private func requestEventSynthesizingPermission() async throws -> AgentPermissionActionResult {
+            let result = try await PermissionHelpers.requestEventSynthesizingPermission(services: self.services)
+            return AgentPermissionActionResult(
+                action: result.action,
+                source: result.source,
+                already_granted: result.already_granted,
+                prompt_triggered: result.prompt_triggered,
+                granted: result.granted
+            )
+        }
+
+        private func renderEventSynthesizingResult(payload: AgentPermissionActionResult) {
+            if self.jsonOutput {
+                outputSuccessCodable(data: payload, logger: self.logger)
+                return
+            }
+
+            guard !payload.already_granted else {
+                print("✅ Event Synthesizing permission is already granted!")
+                return
+            }
+
+            if payload.granted == true {
+                print("✅ Event Synthesizing permission granted!")
+            } else {
+                print("❌ Event Synthesizing permission denied\n")
+                print("To grant manually:")
+                print("1. Open System Settings")
+                print("2. Go to Privacy & Security > Accessibility")
+                if payload.source == "bridge" {
+                    print("3. Enable the process that showed the prompt")
+                } else {
+                    print("3. Enable Peekaboo")
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Response Types
@@ -364,13 +478,29 @@ extension PermissionCommand {
 private struct AgentPermissionStatusPayload: Codable {
     let screen_recording: Bool
     let accessibility: Bool
+    let event_synthesizing: Bool
 }
 
 private struct AgentPermissionActionResult: Codable {
     let action: String
+    let source: String?
     let already_granted: Bool
     let prompt_triggered: Bool
     let granted: Bool?
+
+    init(
+        action: String,
+        source: String? = nil,
+        already_granted: Bool,
+        prompt_triggered: Bool,
+        granted: Bool?
+    ) {
+        self.action = action
+        self.source = source
+        self.already_granted = already_granted
+        self.prompt_triggered = prompt_triggered
+        self.granted = granted
+    }
 }
 
 extension PermissionCommand.StatusSubcommand: ParsableCommand {}
@@ -384,3 +514,7 @@ extension PermissionCommand.RequestScreenRecordingSubcommand: AsyncRuntimeComman
 extension PermissionCommand.RequestAccessibilitySubcommand: ParsableCommand {}
 
 extension PermissionCommand.RequestAccessibilitySubcommand: AsyncRuntimeCommand {}
+
+extension PermissionCommand.RequestEventSynthesizingSubcommand: ParsableCommand {}
+
+extension PermissionCommand.RequestEventSynthesizingSubcommand: AsyncRuntimeCommand {}

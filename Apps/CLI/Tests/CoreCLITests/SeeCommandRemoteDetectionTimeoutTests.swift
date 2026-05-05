@@ -6,7 +6,6 @@ import Testing
 @testable import PeekabooCLI
 
 @MainActor
-@Suite("SeeCommand remote detection timeout")
 struct SeeCommandRemoteDetectionTimeoutTests {
     @Test
     func `Timeout-aware automation receives a wall-clock cushion`() async throws {

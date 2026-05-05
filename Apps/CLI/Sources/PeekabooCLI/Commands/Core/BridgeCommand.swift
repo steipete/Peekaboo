@@ -328,7 +328,8 @@ private struct BridgeCandidateReport: Codable {
                 let sr = status.screenRecording ? "Y" : "N"
                 let ax = status.accessibility ? "Y" : "N"
                 let appleScript = status.appleScript ? "Y" : "N"
-                return "perm: SR=\(sr) AX=\(ax) AS=\(appleScript)"
+                let eventSynthesizing = status.postEvent ? "Y" : "N"
+                return "perm: SR=\(sr) AX=\(ax) AS=\(appleScript) ES=\(eventSynthesizing)"
             }
             if let permissionsSummary {
                 return "\(self.socketPath) — OK (\(handshake.hostKind.rawValue), \(opsSummary), \(permissionsSummary))"

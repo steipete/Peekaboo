@@ -20,6 +20,7 @@ final class Permissions {
     var screenRecordingStatus: ObservablePermissionsService.PermissionState = .notDetermined
     var accessibilityStatus: ObservablePermissionsService.PermissionState = .notDetermined
     var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
+    var postEventStatus: ObservablePermissionsService.PermissionState = .notDetermined
 
     var hasAllPermissions: Bool {
         self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
@@ -81,6 +82,15 @@ final class Permissions {
         self.syncFromService()
     }
 
+    func requestPostEvent() {
+        do {
+            try self.permissionsService.requestPostEvent()
+        } catch {
+            self.logger.error("Failed to request Event Synthesizing permission: \(error)")
+        }
+        self.syncFromService()
+    }
+
     func startMonitoring() {
         self.registerMonitoring()
     }
@@ -126,6 +136,7 @@ final class Permissions {
         self.screenRecordingStatus = self.permissionsService.screenRecordingStatus
         self.accessibilityStatus = self.permissionsService.accessibilityStatus
         self.appleScriptStatus = self.permissionsService.appleScriptStatus
+        self.postEventStatus = self.permissionsService.postEventStatus
     }
 
     private func check(force: Bool) {

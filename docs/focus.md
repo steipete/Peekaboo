@@ -97,11 +97,26 @@ Use cases:
 - For coordinate-based clicks that don't need window focus
 - Testing or debugging focus issues
 
-### `--focus-timeout <seconds>`
+### `--focus-background`
+Uses command-supported background delivery instead of activating the target app.
+
+```bash
+peekaboo hotkey "cmd,l" --app Safari --focus-background
+```
+
+Use cases:
+- Sending app shortcuts without stealing focus
+- Keeping a long-running foreground workflow uninterrupted
+
+Currently, only `hotkey` exposes this mode, and it requires exactly one process target: `--app` or `--pid`. Other interaction commands keep the standard focus flags because their mouse and typing events still need an actionable foreground target.
+
+`--focus-background` is a delivery mode, not a focus mode, so it cannot be combined with `--snapshot`, `--no-auto-focus`, `--focus-timeout-seconds`, retry, or Space-switching flags. It requires Event Synthesizing access for the process that sends the event; `peekaboo permissions request-event-synthesizing` requests it for the selected bridge host by default, or for the local CLI when used with `--no-remote`. macOS does not acknowledge whether the target app handled a process-targeted hotkey; Peekaboo reports that the event was sent to a live process after event-posting permission preflight.
+
+### `--focus-timeout-seconds <seconds>`
 Sets how long to wait for focus operations (default: 5.0).
 
 ```bash
-peekaboo type "Long text..." --focus-timeout 10
+peekaboo type "Long text..." --focus-timeout-seconds 10
 ```
 
 Use cases:
@@ -265,7 +280,7 @@ Be aware that Space switching takes time:
 
 ```bash
 # For critical operations, increase timeout
-peekaboo click "Save" --focus-timeout 10
+peekaboo click "Save" --focus-timeout-seconds 10
 
 # Or move windows to avoid switching
 peekaboo type "Important data" --bring-to-current-space
@@ -319,7 +334,7 @@ The window is taking too long to focus:
 
 ```bash
 # Increase timeout
-peekaboo click "Button" --focus-timeout 10
+peekaboo click "Button" --focus-timeout-seconds 10
 
 # Or increase retry count
 peekaboo click "Button" --focus-retry-count 5

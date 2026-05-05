@@ -51,6 +51,109 @@ struct PeekabooBridgeTests {
     }
 
     @Test
+    func `handshake accepts minimum compatible version`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: PeekabooServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.minimumProtocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(handshake.negotiatedVersion == PeekabooBridgeConstants.minimumProtocolVersion)
+        #expect(handshake.supportedOperations.contains(PeekabooBridgeOperation.permissionsStatus))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.targetedHotkey))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.requestPostEventPermission))
+    }
+
+    @Test
+    func `client handshake retries minimum compatible version`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: PeekabooServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                supportedVersions: PeekabooBridgeConstants.minimumProtocolVersion...PeekabooBridgeConstants
+                    .minimumProtocolVersion)
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+        let client = PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2)
+
+        let handshake = try await client.handshake(client: identity)
+
+        #expect(handshake.negotiatedVersion == PeekabooBridgeConstants.minimumProtocolVersion)
+    }
+
+    @Test
+    func `client handshake retries highest compatible minor version`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let previousVersion = PeekabooBridgeProtocolVersion(major: 1, minor: 1)
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: PeekabooServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                supportedVersions: previousVersion...previousVersion)
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+        let client = PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2)
+
+        let handshake = try await client.handshake(client: identity)
+
+        #expect(handshake.negotiatedVersion == previousVersion)
+    }
+
+    @Test
     func `handshake rejects unauthorized team`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -210,6 +313,59 @@ struct PeekabooBridgeTests {
     }
 
     @Test
+    func `permissions status does not launch AppleScript probe`() async throws {
+        let recorder = PermissionLaunchRecorder()
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true },
+                permissionStatusEvaluator: { allowAppleScriptLaunch in
+                    recorder.status(allowAppleScriptLaunch: allowAppleScriptLaunch)
+                })
+        }
+
+        let request = PeekabooBridgeRequest.permissionsStatus
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case .permissionsStatus = response else {
+            Issue.record("Expected permissions status response, got \(response)")
+            return
+        }
+
+        #expect(!recorder.allowAppleScriptLaunchValues.contains(true))
+    }
+
+    @Test
+    func `request post event permission runs on bridge host`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { false },
+                postEventAccessRequester: { true })
+        }
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(
+            PeekabooBridgeRequest.requestPostEventPermission)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .bool(granted) = response else {
+            Issue.record("Expected bool response, got \(response)")
+            return
+        }
+
+        #expect(granted)
+    }
+
+    @Test
     func `daemon status not advertised without provider`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -241,6 +397,41 @@ struct PeekabooBridgeTests {
         }
 
         #expect(handshake.supportedOperations.contains(.daemonStatus) == false)
+    }
+
+    @Test
+    func `targeted hotkey is not advertised without automation capability`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubNonTargetedServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(!handshake.supportedOperations.contains(.targetedHotkey))
+        #expect(handshake.enabledOperations?.contains(.targetedHotkey) != true)
     }
 
     @Test
@@ -278,7 +469,8 @@ struct PeekabooBridgeTests {
                 services: stub,
                 hostKind: .gui,
                 allowlistedTeams: [],
-                allowlistedBundles: [])
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
         }
 
         let request = PeekabooBridgeRequest.captureFrontmost(
@@ -306,7 +498,8 @@ struct PeekabooBridgeTests {
                 services: stub,
                 hostKind: .gui,
                 allowlistedTeams: [],
-                allowlistedBundles: [])
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
         }
 
         let request = PeekabooBridgeRequest.captureWindow(
@@ -337,7 +530,8 @@ struct PeekabooBridgeTests {
                 services: stub,
                 hostKind: .gui,
                 allowlistedTeams: [],
-                allowlistedBundles: [])
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
         }
 
         let request = PeekabooBridgeRequest.click(
@@ -358,6 +552,454 @@ struct PeekabooBridgeTests {
             Issue.record("Expected elementId(B1), got \(String(describing: lastClick?.target))")
         }
         #expect(lastClick?.type == .single)
+    }
+
+    @Test
+    func `automation targeted hotkey is forwarded`() async throws {
+        let stub = await MainActor.run { StubServices() }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case .ok = response else {
+            Issue.record("Expected ok response, got \(response)")
+            return
+        }
+
+        let lastHotkey = await stub.automationStub.lastProcessTargetedHotkey
+        #expect(lastHotkey?.keys == "cmd,l")
+        #expect(lastHotkey?.holdDuration == 50)
+        #expect(lastHotkey?.targetProcessIdentifier == 9001)
+    }
+
+    @Test
+    func `automation targeted hotkey does not launch AppleScript probe`() async throws {
+        let recorder = PermissionLaunchRecorder()
+        let stub = await MainActor.run { StubServices() }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true },
+                permissionStatusEvaluator: { allowAppleScriptLaunch in
+                    recorder.status(allowAppleScriptLaunch: allowAppleScriptLaunch)
+                })
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case .ok = response else {
+            Issue.record("Expected ok response, got \(response)")
+            return
+        }
+
+        #expect(!recorder.allowAppleScriptLaunchValues.contains(true))
+    }
+
+    @Test
+    func `AppleScript operations allow AppleScript probe launch during permission gate`() async throws {
+        let recorder = PermissionLaunchRecorder()
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true },
+                permissionStatusEvaluator: { allowAppleScriptLaunch in
+                    recorder.status(allowAppleScriptLaunch: allowAppleScriptLaunch)
+                })
+        }
+
+        let request = PeekabooBridgeRequest.launchApplication(
+            PeekabooBridgeAppIdentifierRequest(identifier: "StubApp"))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case .application = response else {
+            Issue.record("Expected application response, got \(response)")
+            return
+        }
+
+        #expect(recorder.allowAppleScriptLaunchValues.contains(true))
+    }
+
+    @Test
+    func `automation targeted hotkey is rejected without automation capability`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubNonTargetedServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+
+        #expect(envelope.code == .operationNotSupported)
+    }
+
+    @Test
+    func `automation invalid targeted hotkey returns invalid request`() async throws {
+        let stub = await MainActor.run { StubServices() }
+        await MainActor.run {
+            stub.automationStub.targetedHotkeyError = PeekabooError.invalidInput("Unsupported background hotkey key")
+        }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,unknown", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+
+        #expect(envelope.code == .invalidRequest)
+        #expect(envelope.message == "Unsupported background hotkey key")
+    }
+
+    @Test
+    func `automation targeted hotkey permission errors return permission denied`() async throws {
+        let stub = await MainActor.run { StubServices() }
+        await MainActor.run {
+            stub.automationStub.targetedHotkeyError = PeekabooError.permissionDeniedAccessibility
+        }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+
+        #expect(envelope.code == .permissionDenied)
+        #expect(envelope.permission == .accessibility)
+    }
+
+    @Test
+    func `automation targeted hotkey service unavailable returns operation not supported`() async throws {
+        let stub = await MainActor.run { StubServices() }
+        await MainActor.run {
+            stub.automationStub.targetedHotkeyError = PeekabooError
+                .serviceUnavailable("remote host does not support it")
+        }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+
+        let request = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .error(envelope) = response else {
+            Issue.record("Expected error response, got \(response)")
+            return
+        }
+
+        #expect(envelope.code == .operationNotSupported)
+    }
+
+    @Test
+    func `targeted hotkey is disabled when post event access is missing`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { false })
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+        let handshakeRequest = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let handshakeData = try JSONEncoder.peekabooBridgeEncoder().encode(handshakeRequest)
+        let handshakeResponseData = await server.decodeAndHandle(handshakeData, peer: nil)
+        let handshakeResponse = try self.decode(handshakeResponseData)
+
+        guard case let .handshake(handshake) = handshakeResponse else {
+            Issue.record("Expected handshake response, got \(handshakeResponse)")
+            return
+        }
+
+        #expect(handshake.supportedOperations.contains(.targetedHotkey))
+        #expect(handshake.enabledOperations?.contains(.targetedHotkey) == false)
+        let permissionTags = handshake.permissionTags[PeekabooBridgeOperation.targetedHotkey.rawValue]
+        #expect(permissionTags == [.postEvent])
+
+        let hotkeyRequest = PeekabooBridgeRequest.targetedHotkey(
+            PeekabooBridgeTargetedHotkeyRequest(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001))
+        let hotkeyData = try JSONEncoder.peekabooBridgeEncoder().encode(hotkeyRequest)
+        let hotkeyResponseData = await server.decodeAndHandle(hotkeyData, peer: nil)
+        let hotkeyResponse = try self.decode(hotkeyResponseData)
+
+        guard case let .error(envelope) = hotkeyResponse else {
+            Issue.record("Expected error response, got \(hotkeyResponse)")
+            return
+        }
+
+        #expect(envelope.code == .permissionDenied)
+        #expect(envelope.permission == .postEvent)
+    }
+}
+
+extension PeekabooBridgeTests {
+    @Test
+    func `remote targeted hotkey maps revoked post event permission`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let postEventAccess = MutableBoolBox(true)
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { postEventAccess.value })
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+        let client = PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2)
+
+        let handshake = try await client.handshake(client: identity)
+        #expect(handshake.enabledOperations?.contains(.targetedHotkey) == true)
+
+        postEventAccess.value = false
+        let remote = await MainActor.run {
+            RemoteUIAutomationService(client: client, supportsTargetedHotkeys: true)
+        }
+
+        do {
+            try await remote.hotkey(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001)
+            Issue.record("Expected Event Synthesizing permission error")
+        } catch PeekabooError.permissionDeniedEventSynthesizing {
+            // Expected.
+        }
+    }
+
+    @Test
+    func `remote targeted hotkey preserves service permission errors`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let stub = await MainActor.run { StubServices() }
+        await MainActor.run {
+            stub.automationStub.targetedHotkeyError = PeekabooError.permissionDeniedAccessibility
+        }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let remote = await MainActor.run {
+            RemoteUIAutomationService(
+                client: PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2),
+                supportsTargetedHotkeys: true)
+        }
+
+        do {
+            try await remote.hotkey(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001)
+            Issue.record("Expected Accessibility permission error")
+        } catch PeekabooError.permissionDeniedAccessibility {
+            // Expected.
+        }
+    }
+
+    @Test
+    func `remote targeted hotkey maps invalid request envelope`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let stub = await MainActor.run { StubServices() }
+        await MainActor.run {
+            stub.automationStub.targetedHotkeyError = PeekabooError
+                .invalidInput("Target process identifier is not running: 9001")
+        }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: stub,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let remote = await MainActor.run {
+            RemoteUIAutomationService(
+                client: PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2),
+                supportsTargetedHotkeys: true)
+        }
+
+        do {
+            try await remote.hotkey(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001)
+            Issue.record("Expected invalid input error")
+        } catch let PeekabooError.invalidInput(message) {
+            #expect(message == "Target process identifier is not running: 9001")
+        }
+    }
+
+    @Test
+    func `remote targeted hotkey maps operation not supported envelope`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-client-\(UUID().uuidString).sock"
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubNonTargetedServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [],
+                postEventAccessEvaluator: { true })
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let remote = await MainActor.run {
+            RemoteUIAutomationService(
+                client: PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2),
+                supportsTargetedHotkeys: true)
+        }
+
+        do {
+            try await remote.hotkey(keys: "cmd,l", holdDuration: 50, targetProcessIdentifier: 9001)
+            Issue.record("Expected service unavailable error")
+        } catch let PeekabooError.serviceUnavailable(message) {
+            #expect(message.contains("is not supported by this host"))
+        }
+    }
+
+    @Test
+    func `targeted hotkey only requires post event permission`() {
+        #expect(PeekabooBridgeOperation.targetedHotkey.requiredPermissions == [.postEvent])
+    }
+
+    @Test
+    func `targeted hotkey is not advertised for unsupported remote automation services`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubRemoteAutomationServices(supportsTargetedHotkeys: false),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(!handshake.supportedOperations.contains(.targetedHotkey))
     }
 }
 
@@ -380,6 +1022,38 @@ private final class StubServices: PeekabooBridgeServiceProviding {
     init() {
         self.screenCapture = self.screenCaptureStub
         self.automation = self.automationStub
+    }
+}
+
+@MainActor
+private final class StubNonTargetedServices: PeekabooBridgeServiceProviding {
+    let screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
+    let automation: any UIAutomationServiceProtocol = StubNonTargetedAutomationService()
+    let applications: any ApplicationServiceProtocol = StubApplicationService()
+    let windows: any WindowManagementServiceProtocol = StubWindowService()
+    let menu: any MenuServiceProtocol = UnimplementedMenuService()
+    let dock: any DockServiceProtocol = UnimplementedDockService()
+    let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
+    let snapshots: any SnapshotManagerProtocol = SnapshotManager()
+    let permissions: PermissionsService = .init()
+}
+
+@MainActor
+private final class StubRemoteAutomationServices: PeekabooBridgeServiceProviding {
+    let screenCapture: any ScreenCaptureServiceProtocol = StubScreenCaptureService()
+    let automation: any UIAutomationServiceProtocol
+    let applications: any ApplicationServiceProtocol = StubApplicationService()
+    let windows: any WindowManagementServiceProtocol = StubWindowService()
+    let menu: any MenuServiceProtocol = UnimplementedMenuService()
+    let dock: any DockServiceProtocol = UnimplementedDockService()
+    let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
+    let snapshots: any SnapshotManagerProtocol = SnapshotManager()
+    let permissions: PermissionsService = .init()
+
+    init(supportsTargetedHotkeys: Bool) {
+        self.automation = RemoteUIAutomationService(
+            client: PeekabooBridgeClient(socketPath: "/tmp/peekaboo-unused.sock"),
+            supportsTargetedHotkeys: supportsTargetedHotkeys)
     }
 }
 
@@ -450,9 +1124,17 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-private final class StubAutomationService: UIAutomationServiceProtocol {
+private final class StubAutomationService: TargetedHotkeyServiceProtocol {
     struct Click { let target: ClickTarget; let type: ClickType }
+    struct TargetedHotkey {
+        let keys: String
+        let holdDuration: Int
+        let targetProcessIdentifier: pid_t?
+    }
+
     private(set) var lastClick: Click?
+    private(set) var lastProcessTargetedHotkey: TargetedHotkey?
+    var targetedHotkeyError: (any Error)?
 
     func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
         -> ElementDetectionResult
@@ -473,6 +1155,78 @@ private final class StubAutomationService: UIAutomationServiceProtocol {
     func click(target: ClickTarget, clickType: ClickType, snapshotId _: String?) async throws {
         self.lastClick = Click(target: target, type: clickType)
     }
+
+    func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async
+    throws {}
+
+    func typeActions(_ actions: [TypeAction], cadence _: TypingCadence, snapshotId _: String?) async throws
+        -> TypeResult
+    {
+        TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
+    }
+
+    func scroll(_ request: ScrollRequest) async throws {
+        _ = request
+    }
+
+    func hotkey(keys _: String, holdDuration _: Int) async throws {}
+
+    func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        if let targetedHotkeyError {
+            throw targetedHotkeyError
+        }
+
+        self.lastProcessTargetedHotkey = TargetedHotkey(
+            keys: keys,
+            holdDuration: holdDuration,
+            targetProcessIdentifier: targetProcessIdentifier)
+    }
+
+    func swipe(from _: CGPoint, to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async
+    throws {}
+
+    func hasAccessibilityPermission() async -> Bool {
+        true
+    }
+
+    func waitForElement(target _: ClickTarget, timeout _: TimeInterval, snapshotId _: String?) async throws
+        -> WaitForElementResult
+    {
+        WaitForElementResult(found: true, element: nil, waitTime: 0)
+    }
+
+    func drag(_: DragOperationRequest) async throws {}
+
+    func moveMouse(to _: CGPoint, duration _: Int, steps _: Int, profile _: MouseMovementProfile) async throws {}
+
+    func getFocusedElement() -> UIFocusInfo? {
+        nil
+    }
+
+    func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
+        throw PeekabooError.operationError(message: "stub")
+    }
+}
+
+@MainActor
+private final class StubNonTargetedAutomationService: UIAutomationServiceProtocol {
+    func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
+        -> ElementDetectionResult
+    {
+        ElementDetectionResult(
+            snapshotId: "s",
+            screenshotPath: "/tmp/s.png",
+            elements: DetectedElements(),
+            metadata: DetectionMetadata(
+                detectionTime: 0,
+                elementCount: 0,
+                method: "stub",
+                warnings: [],
+                windowContext: nil,
+                isDialog: false))
+    }
+
+    func click(target _: ClickTarget, clickType _: ClickType, snapshotId _: String?) async throws {}
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async
     throws {}
@@ -715,5 +1469,26 @@ private final class StubDaemonControl: PeekabooDaemonControlProviding {
 
     func requestStop() async -> Bool {
         true
+    }
+}
+
+private final class MutableBoolBox: @unchecked Sendable {
+    var value: Bool
+
+    init(_ value: Bool) {
+        self.value = value
+    }
+}
+
+private final class PermissionLaunchRecorder: @unchecked Sendable {
+    private(set) var allowAppleScriptLaunchValues: [Bool] = []
+
+    func status(allowAppleScriptLaunch: Bool) -> PermissionsStatus {
+        self.allowAppleScriptLaunchValues.append(allowAppleScriptLaunch)
+        return PermissionsStatus(
+            screenRecording: true,
+            accessibility: true,
+            appleScript: true,
+            postEvent: true)
     }
 }

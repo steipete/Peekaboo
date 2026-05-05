@@ -1,7 +1,6 @@
 import Testing
 @testable import PeekabooCLI
 
-@Suite("ClickCommand focus verification")
 struct ClickCommandFocusVerificationTests {
     @Test
     func `Exact app name match passes`() {

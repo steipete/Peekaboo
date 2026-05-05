@@ -104,7 +104,7 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-final class StubAutomationService: UIAutomationServiceProtocol {
+final class StubAutomationService: TargetedHotkeyServiceProtocol {
     struct ClickCall {
         let target: ClickTarget
         let clickType: ClickType
@@ -158,6 +158,12 @@ final class StubAutomationService: UIAutomationServiceProtocol {
         let holdDuration: Int
     }
 
+    struct TargetedHotkeyCall {
+        let keys: String
+        let holdDuration: Int
+        let targetProcessIdentifier: pid_t
+    }
+
     struct WaitForElementCall {
         let target: ClickTarget
         let timeout: TimeInterval
@@ -178,8 +184,12 @@ final class StubAutomationService: UIAutomationServiceProtocol {
     var dragCalls: [DragCall] = []
     var moveMouseCalls: [MoveMouseCall] = []
     var hotkeyCalls: [HotkeyCall] = []
+    var targetedHotkeyCalls: [TargetedHotkeyCall] = []
     var waitForElementCalls: [WaitForElementCall] = []
     var detectElementsCalls: [(imageData: Data, snapshotId: String?, windowContext: WindowContext?)] = []
+    var supportsTargetedHotkeys = true
+    var targetedHotkeyUnavailableReason: String?
+    var targetedHotkeyRequiresEventSynthesizingPermission = false
 
     var nextTypeActionsResult: TypeResult?
     var typeActionsResultProvider: (([TypeAction], TypingCadence, String?) -> TypeResult)?
@@ -272,6 +282,14 @@ final class StubAutomationService: UIAutomationServiceProtocol {
 
     func hotkey(keys: String, holdDuration: Int) async throws {
         self.hotkeyCalls.append(HotkeyCall(keys: keys, holdDuration: holdDuration))
+    }
+
+    func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        self.targetedHotkeyCalls.append(TargetedHotkeyCall(
+            keys: keys,
+            holdDuration: holdDuration,
+            targetProcessIdentifier: targetProcessIdentifier
+        ))
     }
 
     func swipe(from: CGPoint, to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws {
@@ -383,10 +401,27 @@ final class StubApplicationService: ApplicationServiceProtocol {
     }
 
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
+        if let pid = Self.parsePID(identifier),
+           let match = self.applications.first(where: { $0.processIdentifier == pid }) {
+            return match
+        }
+
         if let match = self.applications.first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
             return match
         }
         throw PeekabooError.appNotFound(identifier)
+    }
+
+    private static func parsePID(_ identifier: String) -> pid_t? {
+        let trimmed = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pidString: String = if trimmed.uppercased().hasPrefix("PID:") {
+            String(trimmed.dropFirst(4))
+        } else {
+            trimmed
+        }
+
+        guard let rawPID = Int32(pidString), rawPID > 0 else { return nil }
+        return pid_t(rawPID)
     }
 
     func listWindows(

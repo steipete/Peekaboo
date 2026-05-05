@@ -6,11 +6,12 @@ enum PermissionCapability: String, CaseIterable, Hashable {
     case screenRecording
     case accessibility
     case appleScript
+    case postEvent
 
     var isRequired: Bool {
         switch self {
         case .screenRecording, .accessibility: true
-        case .appleScript: false
+        case .appleScript, .postEvent: false
         }
     }
 
@@ -19,6 +20,7 @@ enum PermissionCapability: String, CaseIterable, Hashable {
         case .screenRecording: "Screen Recording"
         case .accessibility: "Accessibility"
         case .appleScript: "Automation (AppleScript)"
+        case .postEvent: "Event Synthesizing"
         }
     }
 
@@ -30,6 +32,8 @@ enum PermissionCapability: String, CaseIterable, Hashable {
             "Control UI elements, mouse, and keyboard"
         case .appleScript:
             "Control apps via Apple Events (optional)"
+        case .postEvent:
+            "Send background hotkeys without activating the app"
         }
     }
 
@@ -38,6 +42,7 @@ enum PermissionCapability: String, CaseIterable, Hashable {
         case .screenRecording: "display"
         case .accessibility: "hand.raised"
         case .appleScript: "applescript"
+        case .postEvent: "keyboard"
         }
     }
 
@@ -58,6 +63,11 @@ enum PermissionCapability: String, CaseIterable, Hashable {
                 "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation",
                 "x-apple.systempreferences:com.apple.preference.security",
             ]
+        case .postEvent:
+            [
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                "x-apple.systempreferences:com.apple.preference.security",
+            ]
         }
     }
 
@@ -69,6 +79,8 @@ enum PermissionCapability: String, CaseIterable, Hashable {
             permissions.accessibilityStatus
         case .appleScript:
             permissions.appleScriptStatus
+        case .postEvent:
+            permissions.postEventStatus
         }
     }
 
@@ -81,6 +93,8 @@ enum PermissionCapability: String, CaseIterable, Hashable {
             permissions.requestAccessibility()
         case .appleScript:
             permissions.requestAppleScript()
+        case .postEvent:
+            permissions.requestPostEvent()
         }
 
         await permissions.refresh()

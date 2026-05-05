@@ -19,6 +19,13 @@ struct FocusCommandOptions: CommanderParsable, FocusOptionsProtocol {
     @Flag(name: .long, help: "Bring window to current Space instead of switching")
     var bringToCurrentSpace = false
 
+    @RuntimeStorage private var focusBackgroundStorage: Bool?
+
+    var focusBackground: Bool {
+        get { self.focusBackgroundStorage ?? false }
+        set { self.focusBackgroundStorage = newValue }
+    }
+
     init() {}
 
     // MARK: FocusOptionsProtocol

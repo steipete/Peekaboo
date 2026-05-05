@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 import PeekabooBridge
 import PeekabooCore
@@ -15,6 +16,19 @@ enum PermissionHelpers {
         let source: String
         let permissions: [PermissionInfo]
     }
+
+    struct EventSynthesizingPermissionRequestResult: Codable {
+        let action: String
+        let source: String
+        let already_granted: Bool
+        let prompt_triggered: Bool
+        let granted: Bool?
+    }
+
+    static let remoteEventSynthesizingUnsupportedMessage = """
+    Remote bridge host cannot request Event Synthesizing permission. \
+    Update the host or run with --no-remote to request it for the local CLI.
+    """
 
     /// Try to fetch permissions from a remote Peekaboo Bridge host; falls back to local services on failure.
     @MainActor
@@ -83,7 +97,12 @@ enum PermissionHelpers {
             await Task { @MainActor in
                 let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
                 let accessibility = await services.automation.hasAccessibilityPermission()
-                return PermissionsStatus(screenRecording: screenRecording, accessibility: accessibility)
+                let postEvent = services.permissions.checkPostEventPermission()
+                return PermissionsStatus(
+                    screenRecording: screenRecording,
+                    accessibility: accessibility,
+                    postEvent: postEvent
+                )
             }.value
         }
 
@@ -99,11 +118,68 @@ enum PermissionHelpers {
                 isRequired: true,
                 isGranted: status.accessibility,
                 grantInstructions: "System Settings > Privacy & Security > Accessibility"
+            ),
+            PermissionInfo(
+                name: "Event Synthesizing",
+                isRequired: false,
+                isGranted: status.postEvent,
+                grantInstructions: "System Settings > Privacy & Security > Accessibility"
             )
         ]
 
         let source = remoteStatus != nil ? "bridge" : "local"
         return PermissionStatusResponse(source: source, permissions: permissionList)
+    }
+
+    @MainActor
+    static func requestEventSynthesizingPermission(
+        services: any PeekabooServiceProviding
+    ) async throws -> EventSynthesizingPermissionRequestResult {
+        if let remoteServices = services as? RemotePeekabooServices {
+            let status = try await remoteServices.permissionsStatus()
+            if status.postEvent {
+                return .init(
+                    action: "request-event-synthesizing",
+                    source: "bridge",
+                    already_granted: true,
+                    prompt_triggered: false,
+                    granted: true
+                )
+            }
+
+            do {
+                let granted = try await remoteServices.requestPostEventPermission()
+                return .init(
+                    action: "request-event-synthesizing",
+                    source: "bridge",
+                    already_granted: false,
+                    prompt_triggered: true,
+                    granted: granted
+                )
+            } catch let envelope as PeekabooBridgeErrorEnvelope where envelope.code == .operationNotSupported {
+                throw ValidationError(self.remoteEventSynthesizingUnsupportedMessage)
+            }
+        }
+
+        let permissions = services.permissions
+        if permissions.checkPostEventPermission() {
+            return .init(
+                action: "request-event-synthesizing",
+                source: "local",
+                already_granted: true,
+                prompt_triggered: false,
+                granted: true
+            )
+        }
+
+        let granted = permissions.requestPostEventPermission(interactive: true)
+        return .init(
+            action: "request-event-synthesizing",
+            source: "local",
+            already_granted: false,
+            prompt_triggered: true,
+            granted: granted
+        )
     }
 
     /// Format permission status for display

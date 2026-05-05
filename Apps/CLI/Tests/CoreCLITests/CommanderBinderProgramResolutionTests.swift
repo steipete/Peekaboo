@@ -88,6 +88,39 @@ struct CommanderBinderProgramResolutionTests {
 
     @Test
     @MainActor
+    func `Commander program resolves hotkey background focus flag`() throws {
+        let descriptors = CommanderRegistryBuilder.buildDescriptors()
+        let program = Program(descriptors: descriptors.map(\.metadata))
+        let invocation = try program.resolve(argv: [
+            "peekaboo",
+            "hotkey",
+            "cmd,l",
+            "--app", "Safari",
+            "--focus-background"
+        ])
+        let values = invocation.parsedValues
+        #expect(values.positional == ["cmd,l"])
+        #expect(values.options["app"] == ["Safari"])
+        #expect(values.flags.contains("focusBackground"))
+    }
+
+    @Test
+    @MainActor
+    func `Commander program rejects background focus flag for click`() throws {
+        let descriptors = CommanderRegistryBuilder.buildDescriptors()
+        let program = Program(descriptors: descriptors.map(\.metadata))
+        #expect(throws: (any Error).self) {
+            _ = try program.resolve(argv: [
+                "peekaboo",
+                "click",
+                "--coords", "10,10",
+                "--focus-background"
+            ])
+        }
+    }
+
+    @Test
+    @MainActor
     func `Commander program resolves type command options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))

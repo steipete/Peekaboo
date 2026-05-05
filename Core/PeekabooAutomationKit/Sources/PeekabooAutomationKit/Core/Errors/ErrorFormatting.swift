@@ -93,6 +93,8 @@ extension StandardErrorCode {
             "Screen Recording Permission Denied"
         case .accessibilityPermissionDenied:
             "Accessibility Permission Denied"
+        case .eventSynthesizingPermissionDenied:
+            "Event Synthesizing Permission Denied"
         case .applicationNotFound:
             "Application Not Found"
         case .windowNotFound:
@@ -141,7 +143,7 @@ extension StandardErrorCode {
     /// Error category for grouping
     public var category: String {
         switch self {
-        case .screenRecordingPermissionDenied, .accessibilityPermissionDenied:
+        case .screenRecordingPermissionDenied, .accessibilityPermissionDenied, .eventSynthesizingPermissionDenied:
             "Permission"
         case .applicationNotFound, .windowNotFound, .elementNotFound, .sessionNotFound, .snapshotNotFound,
              .fileNotFound,

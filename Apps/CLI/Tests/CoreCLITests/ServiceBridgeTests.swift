@@ -44,6 +44,42 @@ struct ServiceBridgeTests {
         #expect(mock.waitCalls.count == 1)
     }
 
+    @Test func `automation targeted hotkey forwards calls`() async throws {
+        let automation = MockTargetedAutomationService()
+
+        try await AutomationServiceBridge.hotkey(
+            automation: automation,
+            keys: "cmd,l",
+            holdDuration: 75,
+            targetProcessIdentifier: 12345
+        )
+
+        #expect(automation.targetedHotkeyCalls.count == 1)
+        #expect(automation.targetedHotkeyCalls.first?.keys == "cmd,l")
+        #expect(automation.targetedHotkeyCalls.first?.holdDuration == 75)
+        #expect(automation.targetedHotkeyCalls.first?.targetProcessIdentifier == 12345)
+    }
+
+    @Test func `automation targeted hotkey maps missing event synthesizing permission`() async throws {
+        let automation = MockTargetedAutomationService()
+        automation.supportsTargetedHotkeys = false
+        automation.targetedHotkeyRequiresEventSynthesizingPermission = true
+        automation.targetedHotkeyUnavailableReason =
+            "Remote bridge host supports background hotkeys, but current permissions are missing: Event Synthesizing"
+
+        do {
+            try await AutomationServiceBridge.hotkey(
+                automation: automation,
+                keys: "cmd,l",
+                holdDuration: 75,
+                targetProcessIdentifier: 12345
+            )
+            Issue.record("Expected Event Synthesizing permission error")
+        } catch PeekabooError.permissionDeniedEventSynthesizing {
+            #expect(automation.targetedHotkeyCalls.isEmpty)
+        }
+    }
+
     @Test func `window bridge returns stubbed windows`() async throws {
         let window = ServiceWindowInfo(
             windowID: 101,
@@ -93,7 +129,7 @@ struct ServiceBridgeTests {
 }
 
 @MainActor
-final class MockAutomationService: UIAutomationServiceProtocol {
+class MockAutomationService: UIAutomationServiceProtocol {
     struct ClickCall { let target: ClickTarget; let clickType: ClickType; let snapshotId: String? }
     var clickCalls: [ClickCall] = []
     var waitCalls: [ClickTarget] = []
@@ -168,6 +204,28 @@ final class MockAutomationService: UIAutomationServiceProtocol {
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("not implemented")
+    }
+}
+
+@MainActor
+final class MockTargetedAutomationService: MockAutomationService, TargetedHotkeyServiceProtocol {
+    struct TargetedHotkeyCall {
+        let keys: String
+        let holdDuration: Int
+        let targetProcessIdentifier: pid_t
+    }
+
+    var targetedHotkeyCalls: [TargetedHotkeyCall] = []
+    var supportsTargetedHotkeys = true
+    var targetedHotkeyUnavailableReason: String?
+    var targetedHotkeyRequiresEventSynthesizingPermission = false
+
+    func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+        self.targetedHotkeyCalls.append(.init(
+            keys: keys,
+            holdDuration: holdDuration,
+            targetProcessIdentifier: targetProcessIdentifier
+        ))
     }
 }
 

@@ -2,6 +2,7 @@ import CoreGraphics
 import XCTest
 @testable import PeekabooAutomationKit
 
+@MainActor
 final class WindowListMapperTests: XCTestCase {
     func testMapsCGWindowTitleToSCWindowIndex() {
         let cgWindows = [
@@ -48,7 +49,6 @@ final class WindowListMapperTests: XCTestCase {
                 spaceName: nil,
                 screenIndex: nil,
                 screenName: nil,
-                isOffScreen: false,
                 layer: 0,
                 isOnScreen: true,
                 sharingState: nil,
@@ -66,7 +66,6 @@ final class WindowListMapperTests: XCTestCase {
                 spaceName: nil,
                 screenIndex: nil,
                 screenName: nil,
-                isOffScreen: false,
                 layer: 0,
                 isOnScreen: true,
                 sharingState: nil,

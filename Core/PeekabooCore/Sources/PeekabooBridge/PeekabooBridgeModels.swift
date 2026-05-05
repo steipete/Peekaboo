@@ -27,12 +27,14 @@ public enum PeekabooBridgeHostKind: String, Codable, Sendable, CaseIterable {
 public enum PeekabooBridgePermissionKind: String, Codable, Sendable {
     case screenRecording
     case accessibility
+    case postEvent
     case appleScript
 }
 
 public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Hashable {
     // Core
     case permissionsStatus
+    case requestPostEventPermission
     case daemonStatus
     case daemonStop
     // Capture
@@ -47,6 +49,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     case typeActions
     case scroll
     case hotkey
+    case targetedHotkey
     case swipe
     case drag
     case moveMouse
@@ -118,8 +121,10 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
         switch self {
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements:
             [.screenRecording]
-        case .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse, .waitForElement,
-             .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
+        case .targetedHotkey:
+            [.postEvent]
+        case .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse,
+             .waitForElement, .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow, .listMenus, .listFrontmostMenus,
              .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .menuExtraOpenMenuFrame,
              .listMenuBarItems, .clickMenuBarItemNamed, .clickMenuBarItemIndex, .listDockItems, .launchDockItem,
@@ -131,6 +136,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
             [.appleScript]
         case ._appleScriptProbe,
              .permissionsStatus,
+             .requestPostEventPermission,
              .daemonStatus,
              .daemonStop,
              .createSnapshot,
@@ -154,6 +160,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     /// Operations enabled by default for remote helper hosts.
     public static let remoteDefaultAllowlist: Set<PeekabooBridgeOperation> = [
         .permissionsStatus,
+        .requestPostEventPermission,
         .daemonStatus,
         .daemonStop,
         .captureScreen,
@@ -166,6 +173,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
         .typeActions,
         .scroll,
         .hotkey,
+        .targetedHotkey,
         .swipe,
         .drag,
         .moveMouse,
@@ -416,6 +424,23 @@ public struct PeekabooBridgeScrollRequest: Codable, Sendable {
 public struct PeekabooBridgeHotkeyRequest: Codable, Sendable {
     public let keys: String
     public let holdDuration: Int
+
+    public init(keys: String, holdDuration: Int) {
+        self.keys = keys
+        self.holdDuration = holdDuration
+    }
+}
+
+public struct PeekabooBridgeTargetedHotkeyRequest: Codable, Sendable {
+    public let keys: String
+    public let holdDuration: Int
+    public let targetProcessIdentifier: Int32
+
+    public init(keys: String, holdDuration: Int, targetProcessIdentifier: Int32) {
+        self.keys = keys
+        self.holdDuration = holdDuration
+        self.targetProcessIdentifier = targetProcessIdentifier
+    }
 }
 
 public struct PeekabooBridgeSwipeRequest: Codable, Sendable {
@@ -488,6 +513,10 @@ public struct PeekabooBridgeWindowBoundsRequest: Codable, Sendable {
 
 public struct PeekabooBridgeAppIdentifierRequest: Codable, Sendable {
     public let identifier: String
+
+    public init(identifier: String) {
+        self.identifier = identifier
+    }
 }
 
 public struct PeekabooBridgeQuitAppRequest: Codable, Sendable {
@@ -642,6 +671,7 @@ public struct PeekabooBridgeCleanSnapshotsOlderRequest: Codable, Sendable {
 public enum PeekabooBridgeRequest: Codable, Sendable {
     case handshake(PeekabooBridgeHandshake)
     case permissionsStatus
+    case requestPostEventPermission
     case daemonStatus
     case daemonStop
     case captureScreen(PeekabooBridgeCaptureScreenRequest)
@@ -654,6 +684,7 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case typeActions(PeekabooBridgeTypeActionsRequest)
     case scroll(PeekabooBridgeScrollRequest)
     case hotkey(PeekabooBridgeHotkeyRequest)
+    case targetedHotkey(PeekabooBridgeTargetedHotkeyRequest)
     case swipe(PeekabooBridgeSwipeRequest)
     case drag(PeekabooBridgeDragRequest)
     case moveMouse(PeekabooBridgeMoveMouseRequest)
@@ -719,6 +750,7 @@ extension PeekabooBridgeRequest {
         switch self {
         case .handshake: .permissionsStatus
         case .permissionsStatus: .permissionsStatus
+        case .requestPostEventPermission: .requestPostEventPermission
         case .daemonStatus: .daemonStatus
         case .daemonStop: .daemonStop
         case .captureScreen: .captureScreen
@@ -731,6 +763,7 @@ extension PeekabooBridgeRequest {
         case .typeActions: .typeActions
         case .scroll: .scroll
         case .hotkey: .hotkey
+        case .targetedHotkey: .targetedHotkey
         case .swipe: .swipe
         case .drag: .drag
         case .moveMouse: .moveMouse
@@ -841,10 +874,17 @@ public struct PeekabooBridgeErrorEnvelope: Codable, Sendable, Error {
     public let code: PeekabooBridgeErrorCode
     public let message: String
     public let details: String?
+    public let permission: PeekabooBridgePermissionKind?
 
-    public init(code: PeekabooBridgeErrorCode, message: String, details: String? = nil) {
+    public init(
+        code: PeekabooBridgeErrorCode,
+        message: String,
+        details: String? = nil,
+        permission: PeekabooBridgePermissionKind? = nil)
+    {
         self.code = code
         self.message = message
         self.details = details
+        self.permission = permission
     }
 }

@@ -531,11 +531,13 @@ struct CommanderBinderCommandBindingTests {
         let parsed = ParsedValues(
             positional: ["cmd,space"],
             options: ["keys": ["cmd,c"], "holdDuration": ["120"]],
-            flags: []
+            flags: ["focusBackground"]
         )
         let command = try CommanderCLIBinder.instantiateCommand(ofType: HotkeyCommand.self, parsedValues: parsed)
         #expect(command.resolvedKeys == "cmd,space")
         #expect(command.holdDuration == 120)
+        #expect(command.focusOptions.focusBackground)
+        #expect(command.focusOptions.autoFocus == true)
     }
 
     @Test

@@ -33,6 +33,9 @@ public final class PeekabooBridgeServer {
     private let supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion>
     private let allowedOperations: Set<PeekabooBridgeOperation>
     private let daemonControl: (any PeekabooDaemonControlProviding)?
+    private let postEventAccessEvaluator: @MainActor @Sendable () -> Bool
+    private let postEventAccessRequester: @MainActor @Sendable () -> Bool
+    private let permissionStatusEvaluator: @MainActor @Sendable (_ allowAppleScriptLaunch: Bool) -> PermissionsStatus
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
     private let logger = Logger(subsystem: "boo.peekaboo.bridge", category: "server")
@@ -45,6 +48,9 @@ public final class PeekabooBridgeServer {
         supportedVersions: ClosedRange<PeekabooBridgeProtocolVersion> = PeekabooBridgeConstants.supportedProtocolRange,
         allowedOperations: Set<PeekabooBridgeOperation> = PeekabooBridgeOperation.remoteDefaultAllowlist,
         daemonControl: (any PeekabooDaemonControlProviding)? = nil,
+        postEventAccessEvaluator: @escaping @MainActor @Sendable () -> Bool = { CGPreflightPostEventAccess() },
+        postEventAccessRequester: @escaping @MainActor @Sendable () -> Bool = { CGRequestPostEventAccess() },
+        permissionStatusEvaluator: (@MainActor @Sendable (_ allowAppleScriptLaunch: Bool) -> PermissionsStatus)? = nil,
         encoder: JSONEncoder = .peekabooBridgeEncoder(),
         decoder: JSONDecoder = .peekabooBridgeDecoder())
     {
@@ -55,6 +61,15 @@ public final class PeekabooBridgeServer {
         self.supportedVersions = supportedVersions
         self.allowedOperations = allowedOperations
         self.daemonControl = daemonControl
+        self.postEventAccessEvaluator = postEventAccessEvaluator
+        self.postEventAccessRequester = postEventAccessRequester
+        if let permissionStatusEvaluator {
+            self.permissionStatusEvaluator = permissionStatusEvaluator
+        } else {
+            self.permissionStatusEvaluator = { [services] allowAppleScriptLaunch in
+                services.permissions.checkAllPermissions(allowAppleScriptLaunch: allowAppleScriptLaunch)
+            }
+        }
         self.encoder = encoder
         self.decoder = decoder
     }
@@ -99,12 +114,12 @@ public final class PeekabooBridgeServer {
             }
         }
 
-        let permissions = self.services.permissions.checkAllPermissions()
-        let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
         let op = request.operation
+        let permissions = self.currentPermissions(allowAppleScriptLaunch: op.requiredPermissions.contains(.appleScript))
+        let effectiveOps = self.effectiveAllowedOperations(permissions: permissions)
 
         do {
-            try self.validateOperationAccess(for: request, effectiveOps: effectiveOps)
+            try self.validateOperationAccess(for: request, permissions: permissions, effectiveOps: effectiveOps)
             return try await self.handleAuthorized(request, peer: peer)
         } catch let envelope as PeekabooBridgeErrorEnvelope {
             failed = true
@@ -124,6 +139,23 @@ public final class PeekabooBridgeServer {
 
             if let error = error as? PeekabooError {
                 switch error {
+                case let .invalidInput(message):
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .invalidRequest,
+                        message: message,
+                        details: "\(error)")
+                case .permissionDeniedAccessibility, .permissionDeniedScreenRecording,
+                     .permissionDeniedEventSynthesizing:
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .permissionDenied,
+                        message: error.localizedDescription,
+                        details: "\(error)",
+                        permission: Self.bridgePermission(for: error))
+                case let .serviceUnavailable(message):
+                    throw PeekabooBridgeErrorEnvelope(
+                        code: .operationNotSupported,
+                        message: message,
+                        details: "\(error)")
                 case let .notImplemented(message):
                     throw PeekabooBridgeErrorEnvelope(
                         code: .operationNotSupported,
@@ -143,6 +175,7 @@ public final class PeekabooBridgeServer {
 
     private func validateOperationAccess(
         for request: PeekabooBridgeRequest,
+        permissions: PermissionsStatus,
         effectiveOps: Set<PeekabooBridgeOperation>) throws
     {
         let op = request.operation
@@ -150,16 +183,20 @@ public final class PeekabooBridgeServer {
             return
         }
 
-        guard self.allowedOperations.contains(op) else {
+        guard self.allowedOperationsToAdvertise().contains(op) else {
             throw PeekabooBridgeErrorEnvelope(
                 code: .operationNotSupported,
                 message: "Operation \(op.rawValue) is not supported by this host")
         }
 
         guard effectiveOps.contains(op) else {
+            let missingPermission = op.requiredPermissions
+                .subtracting(Self.grantedPermissions(from: permissions))
+                .min { $0.rawValue < $1.rawValue }
             throw PeekabooBridgeErrorEnvelope(
                 code: .permissionDenied,
-                message: "Operation \(op.rawValue) is not allowed with current permissions")
+                message: "Operation \(op.rawValue) is not allowed with current permissions",
+                permission: missingPermission)
         }
     }
 
@@ -168,12 +205,12 @@ public final class PeekabooBridgeServer {
         peer: PeekabooBridgePeer?) async throws -> PeekabooBridgeResponse
     {
         switch request.operation {
-        case .permissionsStatus, .daemonStatus, .daemonStop:
+        case .permissionsStatus, .requestPostEventPermission, .daemonStatus, .daemonStop:
             try await self.handleCoreRequest(request, peer: peer)
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea:
             try await self.handleCaptureRequest(request)
-        case .detectElements, .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse,
-             .waitForElement:
+        case .detectElements, .click, .type, .typeActions, .scroll, .hotkey, .targetedHotkey, .swipe, .drag,
+             .moveMouse, .waitForElement:
             try await self.handleAutomationRequest(request)
         case .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow:
@@ -207,7 +244,9 @@ public final class PeekabooBridgeServer {
     {
         switch request {
         case .permissionsStatus:
-            return .permissionsStatus(self.services.permissions.checkAllPermissions())
+            return .permissionsStatus(self.currentPermissions(allowAppleScriptLaunch: false))
+        case .requestPostEventPermission:
+            return .bool(self.postEventAccessRequester())
         case .daemonStatus:
             guard let daemonControl = self.daemonControl else {
                 throw PeekabooBridgeErrorEnvelope(
@@ -315,6 +354,21 @@ public final class PeekabooBridgeServer {
             return .ok
         case let .hotkey(payload):
             try await self.services.automation.hotkey(keys: payload.keys, holdDuration: payload.holdDuration)
+            return .ok
+        case let .targetedHotkey(payload):
+            guard
+                let targetedHotkeyService = self.services.automation as? any TargetedHotkeyServiceProtocol,
+                targetedHotkeyService.supportsTargetedHotkeys
+            else {
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .operationNotSupported,
+                    message: "Background hotkeys are not supported by this bridge host")
+            }
+
+            try await targetedHotkeyService.hotkey(
+                keys: payload.keys,
+                holdDuration: payload.holdDuration,
+                targetProcessIdentifier: pid_t(payload.targetProcessIdentifier))
             return .ok
         case let .swipe(payload):
             try await self.services.automation.swipe(
@@ -651,9 +705,17 @@ public final class PeekabooBridgeServer {
                     "bridge handshake ok pid=\(pid, privacy: .public) bundle=\(bundleDescription, privacy: .public)")
         }
 
-        let permissions = self.services.permissions.checkAllPermissions()
-        let advertisedOps = Array(self.allowedOperationsToAdvertise()).sorted { $0.rawValue < $1.rawValue }
-        let enabledOps = self.effectiveAllowedOperations(permissions: permissions)
+        let negotiated = min(
+            max(payload.protocolVersion, self.supportedVersions.lowerBound),
+            self.supportedVersions.upperBound)
+
+        let permissions = self.currentPermissions(allowAppleScriptLaunch: false)
+        let advertisedOps = Array(self.operationsCompatibleWithNegotiatedVersion(
+            self.allowedOperationsToAdvertise(),
+            negotiated)).sorted { $0.rawValue < $1.rawValue }
+        let enabledOps = self.operationsCompatibleWithNegotiatedVersion(
+            self.effectiveAllowedOperations(permissions: permissions),
+            negotiated)
         let permissionTags = Dictionary(
             uniqueKeysWithValues: advertisedOps.map { op in
                 (op.rawValue, Array(op.requiredPermissions).sorted { $0.rawValue < $1.rawValue })
@@ -666,10 +728,6 @@ public final class PeekabooBridgeServer {
             tags=\(permissionTags.count, privacy: .public)
             """)
 
-        let negotiated = min(
-            max(payload.protocolVersion, self.supportedVersions.lowerBound),
-            self.supportedVersions.upperBound)
-
         let response = PeekabooBridgeHandshakeResponse(
             negotiatedVersion: negotiated,
             hostKind: self.hostKind,
@@ -681,16 +739,42 @@ public final class PeekabooBridgeServer {
         return .handshake(response)
     }
 
+    private func operationsCompatibleWithNegotiatedVersion(
+        _ operations: Set<PeekabooBridgeOperation>,
+        _ negotiated: PeekabooBridgeProtocolVersion) -> Set<PeekabooBridgeOperation>
+    {
+        var compatible = operations
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 1) {
+            compatible.remove(.targetedHotkey)
+        }
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 2) {
+            compatible.remove(.requestPostEventPermission)
+        }
+        return compatible
+    }
+
     private func allowedOperationsToAdvertise() -> Set<PeekabooBridgeOperation> {
         var operations = self.allowedOperations
         if self.daemonControl == nil {
             operations.remove(.daemonStatus)
             operations.remove(.daemonStop)
         }
+        if (self.services.automation as? any TargetedHotkeyServiceProtocol)?.supportsTargetedHotkeys != true {
+            operations.remove(.targetedHotkey)
+        }
         return operations
     }
 
     private func effectiveAllowedOperations(permissions: PermissionsStatus) -> Set<PeekabooBridgeOperation> {
+        let granted = Self.grantedPermissions(from: permissions)
+
+        return Set(
+            self.allowedOperationsToAdvertise().filter { operation in
+                operation.requiredPermissions.isSubset(of: granted)
+            })
+    }
+
+    private static func grantedPermissions(from permissions: PermissionsStatus) -> Set<PeekabooBridgePermissionKind> {
         var granted: Set<PeekabooBridgePermissionKind> = []
         if permissions.screenRecording {
             granted.insert(.screenRecording)
@@ -701,10 +785,28 @@ public final class PeekabooBridgeServer {
         if permissions.appleScript {
             granted.insert(.appleScript)
         }
+        if permissions.postEvent {
+            granted.insert(.postEvent)
+        }
 
-        return Set(
-            self.allowedOperationsToAdvertise().filter { operation in
-                operation.requiredPermissions.isSubset(of: granted)
-            })
+        return granted
+    }
+
+    private func currentPermissions(allowAppleScriptLaunch: Bool = true) -> PermissionsStatus {
+        self.permissionStatusEvaluator(allowAppleScriptLaunch)
+            .withPostEvent(self.postEventAccessEvaluator())
+    }
+
+    private static func bridgePermission(for error: PeekabooError) -> PeekabooBridgePermissionKind? {
+        switch error {
+        case .permissionDeniedAccessibility:
+            .accessibility
+        case .permissionDeniedScreenRecording:
+            .screenRecording
+        case .permissionDeniedEventSynthesizing:
+            .postEvent
+        default:
+            nil
+        }
     }
 }

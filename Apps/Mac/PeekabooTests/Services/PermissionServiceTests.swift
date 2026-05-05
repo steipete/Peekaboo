@@ -10,8 +10,10 @@ struct PermissionsTests {
         var screenRecordingStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var accessibilityStatus: ObservablePermissionsService.PermissionState = .notDetermined
         var appleScriptStatus: ObservablePermissionsService.PermissionState = .notDetermined
+        var postEventStatus: ObservablePermissionsService.PermissionState = .notDetermined
 
         private(set) var checkPermissionsCallCount = 0
+        private(set) var requestPostEventCallCount = 0
         var hasAllPermissions: Bool {
             self.screenRecordingStatus == .authorized && self.accessibilityStatus == .authorized
         }
@@ -23,6 +25,10 @@ struct PermissionsTests {
         func requestScreenRecording() throws {}
         func requestAccessibility() throws {}
         func requestAppleScript() throws {}
+        func requestPostEvent() throws {
+            self.requestPostEventCallCount += 1
+        }
+
         func startMonitoring(interval: TimeInterval) {}
         func stopMonitoring() {}
     }
@@ -130,6 +136,14 @@ struct PermissionsTests {
         await self.permissions.check()
         #expect(self.mockPermissionsService.checkPermissionsCallCount == 1)
     }
+
+    @Test
+    @MainActor
+    func `Event synthesizing request is forwarded to permission service`() {
+        self.permissions.requestPostEvent()
+
+        #expect(self.mockPermissionsService.requestPostEventCallCount == 1)
+    }
 }
 
 @Suite(.tags(.services, .integration, .permissions))
@@ -144,6 +158,7 @@ struct PermissionsSystemTests {
         // We can't actually test if System Preferences opens in unit tests
         permissions.requestScreenRecording()
         permissions.requestAccessibility()
+        permissions.requestPostEvent()
 
         // Give a moment for any async operations
         try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds

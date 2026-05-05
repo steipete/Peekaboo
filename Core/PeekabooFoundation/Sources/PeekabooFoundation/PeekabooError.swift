@@ -5,6 +5,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
     // Permission errors
     case permissionDeniedScreenRecording
     case permissionDeniedAccessibility
+    case permissionDeniedEventSynthesizing
 
     // App and window errors
     case appNotFound(String)
@@ -67,6 +68,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             return "Screen Recording permission is required"
         case .permissionDeniedAccessibility:
             return "Accessibility permission is required"
+        case .permissionDeniedEventSynthesizing:
+            return "Event-synthesizing permission is required"
         case let .appNotFound(name):
             return "Application '\(name)' not found"
         case let .ambiguousAppIdentifier(name, suggestions):
@@ -149,6 +152,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             .screenRecordingPermissionDenied
         case .permissionDeniedAccessibility:
             .accessibilityPermissionDenied
+        case .permissionDeniedEventSynthesizing:
+            .eventSynthesizingPermissionDenied
         case .appNotFound:
             .applicationNotFound
         case .ambiguousAppIdentifier:
@@ -300,7 +305,7 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
 
     public var category: ErrorCategory {
         switch self {
-        case .permissionDeniedScreenRecording, .permissionDeniedAccessibility:
+        case .permissionDeniedScreenRecording, .permissionDeniedAccessibility, .permissionDeniedEventSynthesizing:
             .permissions
         case .appNotFound, .ambiguousAppIdentifier, .windowNotFound, .displayNotFound,
              .elementNotFound, .ambiguousElement, .menuNotFound, .menuItemNotFound,
@@ -339,6 +344,8 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
             "Grant Screen Recording permission in System Settings → Privacy & Security → Screen Recording"
         case .permissionDeniedAccessibility:
             "Grant Accessibility permission in System Settings → Privacy & Security → Accessibility"
+        case .permissionDeniedEventSynthesizing:
+            "Grant event-synthesizing access in System Settings → Privacy & Security → Accessibility"
         case let .ambiguousAppIdentifier(_, suggestions):
             "Try one of: \(suggestions.joined(separator: ", "))"
         case .noAIProviderAvailable:

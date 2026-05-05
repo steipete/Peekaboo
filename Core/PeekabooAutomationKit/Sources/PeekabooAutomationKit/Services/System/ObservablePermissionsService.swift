@@ -7,6 +7,7 @@ public protocol ObservablePermissionsServiceProtocol {
     var screenRecordingStatus: ObservablePermissionsService.PermissionState { get }
     var accessibilityStatus: ObservablePermissionsService.PermissionState { get }
     var appleScriptStatus: ObservablePermissionsService.PermissionState { get }
+    var postEventStatus: ObservablePermissionsService.PermissionState { get }
     var hasAllPermissions: Bool { get }
     /// Refresh the cached permission states by querying the underlying services.
     func checkPermissions()
@@ -16,6 +17,8 @@ public protocol ObservablePermissionsServiceProtocol {
     func requestAccessibility() throws
     /// Trigger the AppleScript permission prompt if needed.
     func requestAppleScript() throws
+    /// Trigger the event-synthesizing permission prompt if needed.
+    func requestPostEvent() throws
     /// Begin periodic permission polling with the given interval.
     func startMonitoring(interval: TimeInterval)
     /// Stop any in-flight monitoring timers.
@@ -39,6 +42,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
     public private(set) var screenRecordingStatus: PermissionState = .notDetermined
     public private(set) var accessibilityStatus: PermissionState = .notDetermined
     public private(set) var appleScriptStatus: PermissionState = .notDetermined
+    public private(set) var postEventStatus: PermissionState = .notDetermined
 
     /// Timer for monitoring permission changes
     private var monitorTimer: Timer?
@@ -131,6 +135,12 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
         self.checkPermissions()
     }
 
+    /// Request event-synthesizing permission
+    public func requestPostEvent() throws {
+        _ = self.core.requestPostEventPermission(interactive: true)
+        self.checkPermissions()
+    }
+
     /// Check if all permissions are granted
     public var hasAllPermissions: Bool {
         self.status.allGranted
@@ -147,6 +157,7 @@ public final class ObservablePermissionsService: ObservablePermissionsServicePro
         self.screenRecordingStatus = self.status.screenRecording ? .authorized : .denied
         self.accessibilityStatus = self.status.accessibility ? .authorized : .denied
         self.appleScriptStatus = self.status.appleScript ? .authorized : .denied
+        self.postEventStatus = self.status.postEvent ? .authorized : .denied
     }
 
     deinit {
@@ -170,12 +181,14 @@ extension ObservablePermissionsService {
             case screenRecording
             case accessibility
             case appleScript
+            case postEvent
 
             public var displayName: String {
                 switch self {
                 case .screenRecording: "Screen Recording"
                 case .accessibility: "Accessibility"
                 case .appleScript: "AppleScript"
+                case .postEvent: "Event Synthesizing"
                 }
             }
 
@@ -187,6 +200,8 @@ extension ObservablePermissionsService {
                     "Required to interact with UI elements and send input events"
                 case .appleScript:
                     "Required to control applications and automate system tasks"
+                case .postEvent:
+                    "Required to send background hotkeys to a target process"
                 }
             }
 
@@ -198,6 +213,8 @@ extension ObservablePermissionsService {
                     "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
                 case .appleScript:
                     "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+                case .postEvent:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
                 }
             }
         }
@@ -224,6 +241,12 @@ extension ObservablePermissionsService {
                 displayName: PermissionInfo.PermissionType.appleScript.displayName,
                 explanation: PermissionInfo.PermissionType.appleScript.explanation,
                 settingsURL: URL(string: PermissionInfo.PermissionType.appleScript.settingsURLString)),
+            PermissionInfo(
+                type: .postEvent,
+                status: self.postEventStatus,
+                displayName: PermissionInfo.PermissionType.postEvent.displayName,
+                explanation: PermissionInfo.PermissionType.postEvent.explanation,
+                settingsURL: URL(string: PermissionInfo.PermissionType.postEvent.settingsURLString)),
         ]
     }
 }
