@@ -7,6 +7,7 @@
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!
 - Added a thin `peekaboo-cli` agent skill that points agents at live CLI help and canonical command docs. Thanks @terryso for [#98](https://github.com/steipete/Peekaboo/pull/98)!
+- Release automation now dispatches the centralized Homebrew tap updater and waits for the matching tap workflow run. Thanks @dinakars777 for [#110](https://github.com/steipete/Peekaboo/pull/110)!
 
 ### Fixed
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
