@@ -72,10 +72,12 @@ struct MCPSpecificToolTests {
         #expect(props["clear"] != nil)
         #expect(props["path"] != nil)
         #expect(props["select"] != nil)
-        #expect(props["window"] != nil)
+        #expect(props["window_title"] != nil)
+        #expect(props["window_index"] != nil)
+        #expect(props["window_id"] != nil)
         #expect(props["name"] != nil)
         #expect(props["force"] != nil)
-        #expect(props["index"] != nil)
+        #expect(props["field_index"] != nil)
 
         // Check action enum values
         if let actionSchema = props["action"],
@@ -244,7 +246,7 @@ struct MCPSpecificToolTests {
 
     @Test
     func `Move tool supports both coordinates and elements`() {
-        let tool = MoveTool()
+        let tool = makeTestTool(MoveTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -271,7 +273,7 @@ struct MCPSpecificToolTests {
 
     @Test
     func `Swipe tool direction validation`() {
-        let tool = SwipeTool()
+        let tool = makeTestTool(SwipeTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
@@ -299,7 +301,7 @@ struct MCPSpecificToolTests {
 
     @Test
     func `Analyze tool supports multiple input formats`() {
-        let tool = AnalyzeTool()
+        let tool = makeTestTool(AnalyzeTool.init)
 
         guard case let .object(schema) = tool.inputSchema,
               let properties = schema["properties"],
