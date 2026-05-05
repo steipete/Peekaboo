@@ -102,10 +102,7 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
         for path in paths {
             lines.append("        '\(self.caseLabel(path.key))')")
             for choice in path[keyPath: accessor] {
-                lines
-                    .append(
-                        "            print -r -- $'\(self.zshEscaped(choice.value))\\t\(self.zshEscaped(choice.help ?? ""))'"
-                    )
+                lines.append(self.printLine(value: choice.value, help: choice.help ?? ""))
             }
             lines.append("            ;;")
         }
@@ -121,7 +118,7 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
         var lines = ["    case \"$1\" in", "        '')"]
         for option in document.rootOptions {
             for name in option.names {
-                lines.append("            print -r -- $'\(self.zshEscaped(name))\\t\(self.zshEscaped(option.help))'")
+                lines.append(self.printLine(value: name, help: option.help))
             }
         }
         lines.append("            ;;")
@@ -129,8 +126,7 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
             lines.append("        '\(self.caseLabel(path.key))')")
             for option in path.options {
                 for name in option.names {
-                    lines
-                        .append("            print -r -- $'\(self.zshEscaped(name))\\t\(self.zshEscaped(option.help))'")
+                    lines.append(self.printLine(value: name, help: option.help))
                 }
             }
             lines.append("            ;;")
@@ -149,10 +145,7 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
             for (index, argument) in path.arguments.enumerated() where !argument.choices.isEmpty {
                 lines.append("        '\(self.caseLabel(path.key)):\(index)')")
                 for choice in argument.choices {
-                    lines
-                        .append(
-                            "            print -r -- $'\(self.zshEscaped(choice.value))\\t\(self.zshEscaped(choice.help ?? ""))'"
-                        )
+                    lines.append(self.printLine(value: choice.value, help: choice.help ?? ""))
                 }
                 lines.append("            ;;")
             }
@@ -172,10 +165,7 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
                 for name in option.names {
                     lines.append("        '\(self.caseLabel(path.key)):\(self.caseLabel(name))')")
                     for choice in option.valueChoices {
-                        lines
-                            .append(
-                                "            print -r -- $'\(self.zshEscaped(choice.value))\\t\(self.zshEscaped(choice.help ?? ""))'"
-                            )
+                        lines.append(self.printLine(value: choice.value, help: choice.help ?? ""))
                     }
                     lines.append("            ;;")
                 }
@@ -191,6 +181,10 @@ struct ZshCompletionRenderer: ShellCompletionRendering {
 
     private func caseLabel(_ label: String) -> String {
         label.replacingOccurrences(of: "'", with: "'\\''")
+    }
+
+    private func printLine(value: String, help: String) -> String {
+        "            print -r -- $'\(self.zshEscaped(value))\\t\(self.zshEscaped(help))'"
     }
 
     private func zshEscaped(_ value: String) -> String {

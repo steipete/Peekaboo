@@ -240,7 +240,7 @@ struct CompletionsCommandTests {
 
     // MARK: - Helpers
 
-    nonisolated(unsafe) static let fishAvailable: Bool = {
+    nonisolated static let fishAvailable: Bool = {
         let paths = (ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/usr/local/bin")
             .split(separator: ":")
         return paths.contains { dir in

@@ -109,10 +109,7 @@ struct FishCompletionRenderer: ShellCompletionRendering {
         for path in paths {
             lines.append("        case '\(self.fishEscaped(path.key))'")
             for choice in path[keyPath: accessor] {
-                lines
-                    .append(
-                        "            printf '%s\\t%s\\n' '\(self.fishEscaped(choice.value))' '\(self.fishEscaped(choice.help ?? ""))'"
-                    )
+                lines.append(self.printfLine(value: choice.value, help: choice.help ?? ""))
             }
         }
         lines.append(contentsOf: [
@@ -126,20 +123,14 @@ struct FishCompletionRenderer: ShellCompletionRendering {
         var lines = ["    switch $argv[1]", "        case ''"]
         for option in document.rootOptions {
             for name in option.names {
-                lines
-                    .append(
-                        "            printf '%s\\t%s\\n' '\(self.fishEscaped(name))' '\(self.fishEscaped(option.help))'"
-                    )
+                lines.append(self.printfLine(value: name, help: option.help))
             }
         }
         for path in document.flattenedPaths {
             lines.append("        case '\(self.fishEscaped(path.key))'")
             for option in path.options {
                 for name in option.names {
-                    lines
-                        .append(
-                            "            printf '%s\\t%s\\n' '\(self.fishEscaped(name))' '\(self.fishEscaped(option.help))'"
-                        )
+                    lines.append(self.printfLine(value: name, help: option.help))
                 }
             }
         }
@@ -156,10 +147,7 @@ struct FishCompletionRenderer: ShellCompletionRendering {
             for (index, argument) in path.arguments.enumerated() where !argument.choices.isEmpty {
                 lines.append("        case '\(self.fishEscaped(path.key)):\(index)'")
                 for choice in argument.choices {
-                    lines
-                        .append(
-                            "            printf '%s\\t%s\\n' '\(self.fishEscaped(choice.value))' '\(self.fishEscaped(choice.help ?? ""))'"
-                        )
+                    lines.append(self.printfLine(value: choice.value, help: choice.help ?? ""))
                 }
             }
         }
@@ -177,10 +165,7 @@ struct FishCompletionRenderer: ShellCompletionRendering {
                 for name in option.names {
                     lines.append("        case '\(self.fishEscaped(path.key)):\(self.fishEscaped(name))'")
                     for choice in option.valueChoices {
-                        lines
-                            .append(
-                                "            printf '%s\\t%s\\n' '\(self.fishEscaped(choice.value))' '\(self.fishEscaped(choice.help ?? ""))'"
-                            )
+                        lines.append(self.printfLine(value: choice.value, help: choice.help ?? ""))
                     }
                 }
             }
@@ -190,6 +175,10 @@ struct FishCompletionRenderer: ShellCompletionRendering {
             "    end",
         ])
         return lines.joined(separator: "\n")
+    }
+
+    private func printfLine(value: String, help: String) -> String {
+        "            printf '%s\\t%s\\n' '\(self.fishEscaped(value))' '\(self.fishEscaped(help))'"
     }
 
     private func fishEscaped(_ value: String) -> String {
