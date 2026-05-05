@@ -62,6 +62,24 @@ npx -y @steipete/peekaboo
 # }
 ```
 
+## Shell completions
+
+Peekaboo can generate shell-native completions directly from the same Commander
+metadata that powers CLI help and docs:
+
+```bash
+# Current shell (recommended)
+eval "$(peekaboo completions $SHELL)"
+
+# Explicit shells
+eval "$(peekaboo completions zsh)"
+eval "$(peekaboo completions bash)"
+peekaboo completions fish | source
+```
+
+For persistent setup and troubleshooting, see
+[docs/commands/completions.md](docs/commands/completions.md).
+
 | Command | Key flags / subcommands | What it does |
 | --- | --- | --- |
 | [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json` | Capture and annotate UI, return snapshot + element IDs |
@@ -83,6 +101,7 @@ npx -y @steipete/peekaboo
 | [image](docs/commands/image.md) | `--mode screen/window/menu`, `--retina`, `--analyze` | Screenshot screen/window/menu bar (+analyze) |
 | [list](docs/commands/list.md) | `apps`, `windows`, `screens`, `menubar`, `permissions` | Enumerate apps, windows, screens, permissions |
 | [tools](docs/commands/tools.md) | `--verbose`, `--json`, `--no-sort` | Inspect native Peekaboo tools |
+| [completions](docs/commands/completions.md) | `[shell]` | Generate zsh/bash/fish completion scripts from Commander metadata |
 | [config](docs/commands/config.md) | `init`, `show`, `add`, `login`, `models` | Manage credentials/providers/settings |
 | [permissions](docs/commands/permissions.md) | `status`, `grant` | Check/grant required macOS permissions |
 | [run](docs/commands/run.md) | `.peekaboo.json`, `--output`, `--no-fail-fast` | Execute `.peekaboo.json` automation scripts |
