@@ -3,6 +3,86 @@ import Foundation
 import ImageIO
 import Tachikoma
 
+private final class PeekabooCustomProviderModel: ModelProvider, @unchecked Sendable {
+    enum Kind {
+        case openai
+        case anthropic
+    }
+
+    let providerID: String
+    let resolvedModelID: String
+    let kind: Kind
+    let modelId: String
+    let baseURL: String?
+    let apiKey: String?
+    let capabilities: ModelCapabilities
+
+    init(
+        providerID: String,
+        resolvedModelID: String,
+        kind: Kind,
+        baseURL: String,
+        apiKey: String?,
+        supportsVision: Bool)
+    {
+        self.providerID = providerID
+        self.resolvedModelID = resolvedModelID
+        self.kind = kind
+        self.modelId = "\(providerID)/\(resolvedModelID)"
+        self.baseURL = baseURL
+        self.apiKey = apiKey
+        self.capabilities = ModelCapabilities(
+            supportsVision: supportsVision,
+            supportsTools: true,
+            supportsStreaming: true)
+    }
+
+    func generateText(request: ProviderRequest) async throws -> ProviderResponse {
+        switch self.kind {
+        case .openai:
+            try await self.openAICompatibleProvider().generateText(request: request)
+        case .anthropic:
+            try await self.anthropicCompatibleProvider().generateText(request: request)
+        }
+    }
+
+    func streamText(request: ProviderRequest) async throws -> AsyncThrowingStream<TextStreamDelta, any Error> {
+        switch self.kind {
+        case .openai:
+            try await self.openAICompatibleProvider().streamText(request: request)
+        case .anthropic:
+            try await self.anthropicCompatibleProvider().streamText(request: request)
+        }
+    }
+
+    private func compatibleConfiguration() -> TachikomaConfiguration {
+        let configuration = TachikomaConfiguration(loadFromEnvironment: true)
+        guard let apiKey, !apiKey.isEmpty else { return configuration }
+
+        switch self.kind {
+        case .openai:
+            configuration.setAPIKey(apiKey, for: "openai_compatible")
+        case .anthropic:
+            configuration.setAPIKey(apiKey, for: "anthropic_compatible")
+        }
+        return configuration
+    }
+
+    private func openAICompatibleProvider() throws -> OpenAICompatibleProvider {
+        try OpenAICompatibleProvider(
+            modelId: self.resolvedModelID,
+            baseURL: self.baseURL ?? "",
+            configuration: self.compatibleConfiguration())
+    }
+
+    private func anthropicCompatibleProvider() throws -> AnthropicCompatibleProvider {
+        try AnthropicCompatibleProvider(
+            modelId: self.resolvedModelID,
+            baseURL: self.baseURL ?? "",
+            configuration: self.compatibleConfiguration())
+    }
+}
+
 /// AI service for handling model interactions and AI-powered features
 @MainActor
 public final class PeekabooAIService {
@@ -17,6 +97,7 @@ public final class PeekabooAIService {
 
     public init(configuration: ConfigurationManager = .shared) {
         self.configuration = configuration
+        TachikomaConfiguration.profileDirectoryName = ".peekaboo"
         _ = configuration.loadConfiguration()
         self.resolvedModels = Self.resolveAvailableModels(configuration: configuration)
         self.defaultModel = self.resolvedModels.first ?? .openai(.gpt51)
@@ -51,7 +132,8 @@ public final class PeekabooAIService {
 
         let response = try await Tachikoma.generateText(
             model: selectedModel,
-            messages: messages)
+            messages: messages,
+            configuration: self.tachikomaConfiguration(for: selectedModel))
 
         let (provider, modelName) = Self.providerAndModelName(for: selectedModel)
 
@@ -99,7 +181,8 @@ public final class PeekabooAIService {
 
         let response = try await Tachikoma.generateText(
             model: selectedModel,
-            messages: messages)
+            messages: messages,
+            configuration: self.tachikomaConfiguration(for: selectedModel))
 
         return response.text
     }
@@ -109,7 +192,7 @@ public final class PeekabooAIService {
         self.resolvedModels
     }
 
-    private static func parseProviderEntry(_ entry: String) -> LanguageModel? {
+    private static func parseProviderEntry(_ entry: String, configuration: ConfigurationManager) -> LanguageModel? {
         if let parsed = AIProviderParser.parse(entry) {
             let provider = parsed.provider.lowercased()
             let modelString = parsed.model
@@ -142,6 +225,13 @@ public final class PeekabooAIService {
             case "lmstudio":
                 return .lmstudio(.custom(modelString))
             default:
+                if let customModel = self.customProviderModel(
+                    providerID: provider,
+                    modelString: modelString,
+                    configuration: configuration)
+                {
+                    return .custom(provider: customModel)
+                }
                 return nil
             }
         }
@@ -155,7 +245,7 @@ public final class PeekabooAIService {
         let parsed = providers
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .compactMap { self.parseProviderEntry($0) }
+            .compactMap { self.parseProviderEntry($0, configuration: configuration) }
 
         if !parsed.isEmpty { return parsed }
 
@@ -182,8 +272,75 @@ public final class PeekabooAIService {
         case let .replicate(modelId): ("replicate", modelId)
         case let .openaiCompatible(modelId, _): ("openai-compatible", modelId)
         case let .anthropicCompatible(modelId, _): ("anthropic-compatible", modelId)
-        case let .custom(provider): ("custom", provider.modelId)
+        case let .custom(provider):
+            if let peekabooProvider = provider as? PeekabooCustomProviderModel {
+                (peekabooProvider.providerID, peekabooProvider.resolvedModelID)
+            } else {
+                ("custom", provider.modelId)
+            }
         }
+    }
+
+    private func tachikomaConfiguration(for model: LanguageModel) -> TachikomaConfiguration {
+        guard case let .custom(provider) = model,
+              let peekabooProvider = provider as? PeekabooCustomProviderModel
+        else {
+            return .current
+        }
+
+        let configuration = TachikomaConfiguration(loadFromEnvironment: true)
+        guard let apiKey = peekabooProvider.apiKey, !apiKey.isEmpty else {
+            return configuration
+        }
+
+        switch peekabooProvider.kind {
+        case .openai:
+            configuration.setAPIKey(apiKey, for: "openai_compatible")
+        case .anthropic:
+            configuration.setAPIKey(apiKey, for: "anthropic_compatible")
+        }
+        return configuration
+    }
+
+    private static func customProviderModel(
+        providerID: String,
+        modelString: String,
+        configuration: ConfigurationManager) -> PeekabooCustomProviderModel?
+    {
+        guard let provider = configuration.getCustomProvider(id: providerID),
+              provider.enabled
+        else {
+            return nil
+        }
+
+        let model = provider.models?[modelString]
+        let resolvedModelID = model?.name ?? modelString
+        let kind: PeekabooCustomProviderModel.Kind = switch provider.type {
+        case .openai: .openai
+        case .anthropic: .anthropic
+        }
+
+        CustomProviderRegistry.shared.loadFromProfile()
+
+        return PeekabooCustomProviderModel(
+            providerID: providerID,
+            resolvedModelID: resolvedModelID,
+            kind: kind,
+            baseURL: provider.options.baseURL,
+            apiKey: self.resolveCredential(provider.options.apiKey, configuration: configuration),
+            supportsVision: model?.supportsVision ?? true)
+    }
+
+    private static func resolveCredential(_ reference: String, configuration: ConfigurationManager) -> String? {
+        guard reference.hasPrefix("{env:"), reference.hasSuffix("}") else {
+            return reference
+        }
+
+        let variableName = String(reference.dropFirst(5).dropLast(1))
+        if let environmentValue = ProcessInfo.processInfo.environment[variableName] {
+            return environmentValue
+        }
+        return configuration.credentialValue(for: variableName)
     }
 
     nonisolated static func normalizeCoordinateTextIfNeeded(

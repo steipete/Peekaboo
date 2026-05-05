@@ -13,6 +13,7 @@
 - Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
+- `image --analyze` now honors configured custom AI providers such as `local-proxy/model` instead of falling back to built-in defaults. Thanks @381181295 for [#99](https://github.com/steipete/Peekaboo/pull/99)!
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!
