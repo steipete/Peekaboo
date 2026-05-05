@@ -15,6 +15,7 @@ private final class PeekabooCustomProviderModel: ModelProvider, @unchecked Senda
     let modelId: String
     let baseURL: String?
     let apiKey: String?
+    let additionalHeaders: [String: String]
     let capabilities: ModelCapabilities
 
     init(
@@ -23,6 +24,7 @@ private final class PeekabooCustomProviderModel: ModelProvider, @unchecked Senda
         kind: Kind,
         baseURL: String,
         apiKey: String?,
+        additionalHeaders: [String: String],
         supportsVision: Bool)
     {
         self.providerID = providerID
@@ -31,6 +33,7 @@ private final class PeekabooCustomProviderModel: ModelProvider, @unchecked Senda
         self.modelId = "\(providerID)/\(resolvedModelID)"
         self.baseURL = baseURL
         self.apiKey = apiKey
+        self.additionalHeaders = additionalHeaders
         self.capabilities = ModelCapabilities(
             supportsVision: supportsVision,
             supportsTools: true,
@@ -72,14 +75,16 @@ private final class PeekabooCustomProviderModel: ModelProvider, @unchecked Senda
         try OpenAICompatibleProvider(
             modelId: self.resolvedModelID,
             baseURL: self.baseURL ?? "",
-            configuration: self.compatibleConfiguration())
+            configuration: self.compatibleConfiguration(),
+            additionalHeaders: self.additionalHeaders)
     }
 
     private func anthropicCompatibleProvider() throws -> AnthropicCompatibleProvider {
         try AnthropicCompatibleProvider(
             modelId: self.resolvedModelID,
             baseURL: self.baseURL ?? "",
-            configuration: self.compatibleConfiguration())
+            configuration: self.compatibleConfiguration(),
+            additionalHeaders: self.additionalHeaders)
     }
 }
 
@@ -328,6 +333,7 @@ public final class PeekabooAIService {
             kind: kind,
             baseURL: provider.options.baseURL,
             apiKey: self.resolveCredential(provider.options.apiKey, configuration: configuration),
+            additionalHeaders: provider.options.headers ?? [:],
             supportsVision: model?.supportsVision ?? true)
     }
 
