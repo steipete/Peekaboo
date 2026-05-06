@@ -169,6 +169,82 @@ public final class WindowIdentityService {
         self.windowExists(windowID: windowID)
     }
 
+    public func isTopmostRenderableWindow(windowID: CGWindowID) -> Bool {
+        guard let windowList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID) as? [[String: Any]],
+            let target = windowList.first(where: { Self.windowID(from: $0) == windowID }),
+            let ownerPID = Self.ownerPID(from: target),
+            Self.isRenderableWindow(target)
+        else {
+            return false
+        }
+
+        return Self.topmostRenderableWindowID(ownerPID: ownerPID, in: windowList) == windowID
+    }
+
+    nonisolated static func topmostRenderableWindowID(ownerPID: pid_t, in windowList: [[String: Any]]) -> CGWindowID? {
+        windowList.first { window in
+            Self.ownerPID(from: window) == ownerPID && Self.isRenderableWindow(window)
+        }.flatMap(self.windowID(from:))
+    }
+
+    nonisolated static func isRenderableWindow(_ window: [String: Any]) -> Bool {
+        let layer = Self.intValue(window[kCGWindowLayer as String]) ?? 0
+        let alpha = Self.cgFloatValue(window[kCGWindowAlpha as String]) ?? 1.0
+        let bounds = Self.bounds(from: window)
+        return layer == 0 && bounds.width >= 50 && bounds.height >= 50 && alpha > 0
+    }
+
+    private nonisolated static func windowID(from window: [String: Any]) -> CGWindowID? {
+        self.intValue(window[kCGWindowNumber as String]).map(CGWindowID.init)
+    }
+
+    private nonisolated static func ownerPID(from window: [String: Any]) -> pid_t? {
+        self.intValue(window[kCGWindowOwnerPID as String]).map(pid_t.init)
+    }
+
+    private nonisolated static func bounds(from window: [String: Any]) -> CGRect {
+        guard let bounds = window[kCGWindowBounds as String] as? [String: Any] else {
+            return .zero
+        }
+
+        return CGRect(
+            x: Self.cgFloatValue(bounds["X"]) ?? 0,
+            y: Self.cgFloatValue(bounds["Y"]) ?? 0,
+            width: Self.cgFloatValue(bounds["Width"]) ?? 0,
+            height: Self.cgFloatValue(bounds["Height"]) ?? 0)
+    }
+
+    private nonisolated static func intValue(_ value: Any?) -> Int? {
+        if let intValue = value as? Int {
+            return intValue
+        }
+        if let int32Value = value as? Int32 {
+            return Int(int32Value)
+        }
+        if let number = value as? NSNumber {
+            return number.intValue
+        }
+        return nil
+    }
+
+    private nonisolated static func cgFloatValue(_ value: Any?) -> CGFloat? {
+        if let cgFloat = value as? CGFloat {
+            return cgFloat
+        }
+        if let double = value as? Double {
+            return CGFloat(double)
+        }
+        if let int = value as? Int {
+            return CGFloat(int)
+        }
+        if let number = value as? NSNumber {
+            return CGFloat(truncating: number)
+        }
+        return nil
+    }
+
     // MARK: - AX attribute helpers
 
     public func windowIDFromAttribute(_ attribute: Any?) -> CGWindowID? {

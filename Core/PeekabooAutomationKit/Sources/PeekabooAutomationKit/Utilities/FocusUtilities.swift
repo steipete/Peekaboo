@@ -165,38 +165,46 @@ public final class FocusManagementService {
 
     /// Focus a window by its CGWindowID
     public func focusWindow(windowID: CGWindowID, options: FocusOptions = FocusOptions()) async throws {
-        // Attempting to focus window
-
-        // Verify window exists
+        // Verify window exists before any focus work starts.
         guard self.windowIdentityService.windowExists(windowID: windowID) else {
             throw FocusError.windowNotFound(windowID)
         }
 
-        // Handle Space switching if needed
+        // Handle Space switching if needed.
         if options.switchSpace || options.bringToCurrentSpace {
             try await self.handleSpaceFocus(windowID: windowID, bringToCurrentSpace: options.bringToCurrentSpace)
         }
 
-        // Find the window handle (app + element)
-        guard let handle = windowIdentityService.findWindow(byID: windowID) else {
+        // Resolve once to identify the owning app; AX handles can go stale after activation.
+        guard let initialHandle = self.windowIdentityService.findWindow(byID: windowID) else {
             throw FocusError.axElementNotFound(windowID)
         }
 
-        let runningApp = handle.app.application
+        let runningApp = initialHandle.app.application
 
-        // Activate the application
-        if !runningApp.isActive {
-            runningApp.activate()
-
-            // Wait for activation
-            try await self.waitForCondition(
-                timeout: 2.0,
-                interval: 0.1,
-                condition: { runningApp.isActive })
+        if let appIdentifier = runningApp.bundleIdentifier ?? runningApp.localizedName {
+            try? await self.applications.activateApplication(identifier: appIdentifier)
         }
 
-        // Focus the window
-        try await self.focusWindowElement(handle.element, windowID: windowID, options: options)
+        if !runningApp.isActive {
+            _ = runningApp.activate()
+        }
+
+        try await self.waitForCondition(
+            timeout: 3.0,
+            interval: 0.1,
+            condition: {
+                runningApp.isActive ||
+                    NSWorkspace.shared.frontmostApplication?.processIdentifier == runningApp.processIdentifier
+            })
+
+        guard let refreshedHandle = self.windowIdentityService.findWindow(byID: windowID, in: runningApp) ??
+            self.windowIdentityService.findWindow(byID: windowID)
+        else {
+            throw FocusError.axElementNotFound(windowID)
+        }
+
+        try await self.focusWindowElement(refreshedHandle.element, windowID: windowID, options: options)
     }
 
     // MARK: - Private Helpers
@@ -259,18 +267,14 @@ public final class FocusManagementService {
         let startTime = Date()
 
         while Date().timeIntervalSince(startTime) < timeout {
-            // Check if window is main/focused
-            // We check the main attribute directly
-            if let isMain = windowElement.isMain(), isMain {
-                // Also verify it's not minimized
-                if let isMinimized = windowElement.isMinimized(),
-                   !isMinimized
-                {
-                    return // Success
-                }
+            let isMain = windowElement.isMain() ?? false
+            let isMinimized = windowElement.isMinimized() ?? false
+            let isTopmostRenderable = self.windowIdentityService.isTopmostRenderableWindow(windowID: windowID)
+
+            if !isMinimized, isMain || isTopmostRenderable {
+                return
             }
 
-            // Wait before next check
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
         }
 

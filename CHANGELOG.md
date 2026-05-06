@@ -18,6 +18,7 @@
 - Custom OpenAI-compatible and Anthropic-compatible AI providers now forward configured proxy headers during generation and streaming.
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
 - `image --analyze` now honors configured custom AI providers such as `local-proxy/model` instead of falling back to built-in defaults. Thanks @381181295 for [#99](https://github.com/steipete/Peekaboo/pull/99)!
+- Browser focus verification now tolerates stale AX handles by re-resolving windows after activation and checking the topmost renderable CG window. Thanks @ZVNC28 for [#103](https://github.com/steipete/Peekaboo/pull/103)!
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

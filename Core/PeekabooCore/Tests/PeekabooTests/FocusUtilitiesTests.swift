@@ -4,6 +4,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@testable import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
@@ -176,6 +177,22 @@ struct FocusUtilitiesTests {
         #expect(overlayWindow.isRenderable == false)
     }
 
+    @Test
+    func `topmost renderable window ignores browser helper windows`() {
+        let ownerPID: pid_t = 1234
+        let windowList: [[String: Any]] = [
+            Self.windowDictionary(id: 99, ownerPID: 9999, width: 900, height: 700),
+            Self.windowDictionary(id: 40, ownerPID: ownerPID, width: 3008, height: 30),
+            Self.windowDictionary(id: 41, ownerPID: ownerPID, width: 1, height: 1),
+            Self.windowDictionary(id: 42, ownerPID: ownerPID, width: 1200, height: 900),
+            Self.windowDictionary(id: 43, ownerPID: ownerPID, width: 1200, height: 900),
+        ]
+
+        #expect(WindowIdentityService.topmostRenderableWindowID(ownerPID: ownerPID, in: windowList) == 42)
+        #expect(WindowIdentityService.isRenderableWindow(windowList[1]) == false)
+        #expect(WindowIdentityService.isRenderableWindow(windowList[3]) == true)
+    }
+
     // MARK: - FocusError Tests
 
     @Test
@@ -195,5 +212,27 @@ struct FocusUtilitiesTests {
             #expect(description != nil)
             #expect(try !#require(description?.isEmpty))
         }
+    }
+
+    private static func windowDictionary(
+        id: Int,
+        ownerPID: pid_t,
+        width: CGFloat,
+        height: CGFloat,
+        layer: Int = 0,
+        alpha: CGFloat = 1.0) -> [String: Any]
+    {
+        [
+            kCGWindowNumber as String: NSNumber(value: id),
+            kCGWindowOwnerPID as String: NSNumber(value: ownerPID),
+            kCGWindowLayer as String: NSNumber(value: layer),
+            kCGWindowAlpha as String: NSNumber(value: Double(alpha)),
+            kCGWindowBounds as String: [
+                "X": 0,
+                "Y": 0,
+                "Width": NSNumber(value: Double(width)),
+                "Height": NSNumber(value: Double(height)),
+            ],
+        ]
     }
 }
