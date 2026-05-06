@@ -728,6 +728,101 @@ struct ImageCommandTests {
     }
 
     @Test(.tags(.imageCapture))
+    func `Retina flag applies to window ID captures`() async throws {
+        let window = ServiceWindowInfo(
+            windowID: 120_099,
+            title: "Zephyr Agency",
+            bounds: CGRect(x: 50, y: 50, width: 1460, height: 945)
+        )
+        let app = ServiceApplicationInfo(
+            processIdentifier: 7373,
+            bundleIdentifier: "app.zephyr.agency",
+            name: "Zephyr Agency",
+            windowCount: 1
+        )
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowID: CGWindowID?
+        var recordedScale: CaptureScalePreference?
+        captureService.captureWindowByIdHandler = { windowID, scale in
+            recordedWindowID = windowID
+            recordedScale = scale
+            return Self.makeCaptureResult(app: app, window: window)
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(screenCapture: captureService)
+        let path = Self.makeTempCapturePath("window-id-retina.png")
+        var command = try ImageCommand.parse([
+            "--window-id", "\(window.windowID)",
+            "--retina",
+            "--path", path,
+            "--json",
+        ])
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+
+        #expect(recordedWindowID == CGWindowID(window.windowID))
+        #expect(recordedScale == .native)
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    @Test(.tags(.imageCapture))
+    func `App capture skips offscreen toolbar helpers`() async throws {
+        let appName = "Zephyr Agency"
+        let toolbar = ServiceWindowInfo(
+            windowID: 140_686,
+            title: "",
+            bounds: CGRect(x: -10000, y: -10000, width: 2560, height: 30),
+            index: 0
+        )
+        let mainWindow = ServiceWindowInfo(
+            windowID: 120_099,
+            title: appName,
+            bounds: CGRect(x: 50, y: 50, width: 1460, height: 945),
+            isMainWindow: true,
+            index: 1
+        )
+        let windows = [toolbar, mainWindow]
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 7373,
+            bundleIdentifier: "app.zephyr.agency",
+            name: appName,
+            windowCount: windows.count
+        )
+
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
+            return Self.makeCaptureResult(app: appInfo, window: mainWindow)
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: [appInfo], windowsByApp: [appName: windows]),
+            windows: StubWindowService(windowsByApp: [appName: windows]),
+            screenCapture: captureService
+        )
+
+        let path = Self.makeTempCapturePath("zephyr.png")
+        var command = try ImageCommand.parse(["--app", appName, "--path", path])
+        command.captureFocus = .background
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+
+        #expect(recordedWindowID == CGWindowID(mainWindow.windowID))
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    @Test(.tags(.imageCapture))
     func `Skips windows marked non-shareable`() async throws {
         let appName = "Console"
         let hidden = ServiceWindowInfo(
