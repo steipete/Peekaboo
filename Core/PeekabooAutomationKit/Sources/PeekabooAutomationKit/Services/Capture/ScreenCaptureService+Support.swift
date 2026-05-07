@@ -338,6 +338,8 @@ func withTimeout<T: Sendable>(
 }
 
 enum ScreenCaptureKitCaptureGate {
+    /// Protects concurrent SCK calls within one process. ScreenCaptureKit can leak
+    /// continuations instead of returning an error when re-entered under load.
     @MainActor private static var isCaptureActive = false
 
     @MainActor
@@ -382,6 +384,8 @@ enum ScreenCaptureKitCaptureGate {
         self.isCaptureActive = true
         defer { self.isCaptureActive = false }
 
+        // Also serialize across separate `peekaboo` CLI invocations; the underlying
+        // replayd/ScreenCaptureKit service is shared system-wide.
         let path = (NSTemporaryDirectory() as NSString)
             .appendingPathComponent("boo.peekaboo.sckit-capture.lock")
         let fd = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
@@ -391,7 +395,8 @@ enum ScreenCaptureKitCaptureGate {
         defer { close(fd) }
 
         while flock(fd, LOCK_EX | LOCK_NB) != 0 {
-            guard errno == EWOULDBLOCK || errno == EAGAIN else {
+            guard errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR else {
+                // Locking is defensive. If it fails unexpectedly, keep capture functional.
                 return try await operation()
             }
 

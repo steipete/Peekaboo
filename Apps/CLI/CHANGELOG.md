@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank Chrome captures.
 - `peekaboo image --capture-engine` is now accepted by Commander-based live parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
+- Concurrent `peekaboo see` calls now queue the local screenshot/detection pipeline across processes, avoiding ReplayKit/ScreenCaptureKit continuation hangs under parallel usage.
 - Natural-language automation examples now use `peekaboo agent "..."`.
 
 ### Performance
