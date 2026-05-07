@@ -240,10 +240,14 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw PeekabooError.elementNotFound("Element '\(element)' found but has no bounds")
             }
 
-            // Return center of element
-            return CGPoint(
+            let center = CGPoint(
                 x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
                 y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
+            )
+            return try await WindowMovementTracking.adjustPoint(
+                center,
+                snapshotId: activeSnapshotId,
+                snapshots: self.services.snapshots
             )
         } else if elementId != nil {
             throw PeekabooError.snapshotNotFound("No snapshot found")

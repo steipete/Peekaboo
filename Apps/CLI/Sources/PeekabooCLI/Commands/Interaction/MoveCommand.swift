@@ -167,7 +167,11 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                     throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
                 }
 
-                targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                targetLocation = try await WindowMovementTracking.adjustPoint(
+                    CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                    snapshotId: observation.snapshotId,
+                    snapshots: self.services.snapshots
+                )
                 targetDescription = self.formatElementInfo(element)
 
             } else if let query = to {
@@ -201,7 +205,11 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                     )
                 }
 
-                targetLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                targetLocation = try await WindowMovementTracking.adjustPoint(
+                    CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                    snapshotId: activeSnapshotId,
+                    snapshots: self.services.snapshots
+                )
                 targetDescription = self.formatElementInfo(element)
 
             } else {

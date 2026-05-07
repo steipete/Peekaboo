@@ -71,7 +71,11 @@ public final class ScrollService {
             return nil
         }
 
-        return CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+        let point = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+        return try await WindowMovementTracking.adjustPoint(
+            point,
+            snapshotId: snapshotId,
+            snapshots: self.snapshotManager)
     }
 
     private func performScroll(_ context: ScrollExecutionContext) async throws {

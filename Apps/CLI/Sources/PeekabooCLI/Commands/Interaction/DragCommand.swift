@@ -250,9 +250,14 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
         }
 
-        return CGPoint(
+        let center = CGPoint(
             x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
             y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
+        )
+        return try await WindowMovementTracking.adjustPoint(
+            center,
+            snapshotId: snapshotId,
+            snapshots: self.services.snapshots
         )
     }
 

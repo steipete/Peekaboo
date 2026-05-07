@@ -176,20 +176,10 @@ public final class TypeService {
     }
 
     private func resolveAdjustedPoint(_ point: CGPoint, snapshotId: String?) async throws -> CGPoint {
-        guard let snapshotId,
-              let snapshot = try? await self.snapshotManager.getUIAutomationSnapshot(snapshotId: snapshotId)
-        else {
-            return point
-        }
-
-        switch WindowMovementTracking.adjustPoint(point, snapshot: snapshot) {
-        case let .unchanged(original):
-            return original
-        case let .adjusted(adjusted, _):
-            return adjusted
-        case let .stale(message):
-            throw PeekabooError.snapshotStale(message)
-        }
+        try await WindowMovementTracking.adjustPoint(
+            point,
+            snapshotId: snapshotId,
+            snapshots: self.snapshotManager)
     }
 
     @MainActor

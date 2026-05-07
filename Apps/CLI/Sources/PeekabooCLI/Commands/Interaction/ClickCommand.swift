@@ -325,15 +325,6 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
 
-            if let observationForInvalidation {
-                await InteractionObservationInvalidator.invalidateAfterMutation(
-                    observationForInvalidation,
-                    snapshots: self.services.snapshots,
-                    logger: self.logger,
-                    reason: "click"
-                )
-            }
-
             // Get the frontmost app after clicking
             let frontmostApp = NSWorkspace.shared.frontmostApplication
             let appName = frontmostApp?.localizedName ?? "Unknown"
@@ -345,7 +336,11 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             switch clickTarget {
             case let .elementId(id):
                 if let element = waitResult.element {
-                    clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                    clickLocation = try await WindowMovementTracking.adjustPoint(
+                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
+                        snapshots: self.services.snapshots
+                    )
                     clickedElement = self.formatElementInfo(element)
                 } else {
                     // Shouldn't happen but handle gracefully
@@ -359,7 +354,11 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
             case let .query(query):
                 if let element = waitResult.element {
-                    clickLocation = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
+                    clickLocation = try await WindowMovementTracking.adjustPoint(
+                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
+                        snapshots: self.services.snapshots
+                    )
                     clickedElement = self.formatElementInfo(element)
                 } else {
                     // Use a default description
@@ -377,6 +376,15 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 executionTime: Date().timeIntervalSince(startTime),
                 targetApp: appName
             )
+
+            if let observationForInvalidation {
+                await InteractionObservationInvalidator.invalidateAfterMutation(
+                    observationForInvalidation,
+                    snapshots: self.services.snapshots,
+                    logger: self.logger,
+                    reason: "click"
+                )
+            }
 
             output(result) {
                 print("✅ Click successful")

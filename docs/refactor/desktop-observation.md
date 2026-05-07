@@ -89,12 +89,13 @@ Landed:
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.
 - Element-targeted actions now receive stale-window diagnostics when a snapshot window disappears or changes size.
+- Element-targeted move, drag, swipe, click output, and scroll targeting now share the core moved-window point adjustment.
 
 Still incomplete:
 
 - Further capture-service cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
-- Finish interaction observe-if-needed, target-point diagnostics, and explicit/focus-cache invalidation policy.
+- Finish interaction observe-if-needed, richer target-point diagnostics, and explicit/focus-cache invalidation policy.
 - Optional module extraction after boundaries are stable.
 
 Current size pressure:
@@ -244,6 +245,7 @@ Deliverables:
 - click/type/scroll/drag/swipe invalidate implicitly reused latest snapshots after mutations;
 - hotkey/press/focus invalidation policy is explicit once they consume fresh observation context;
 - stale snapshot failures identify the previous and current window identity;
+- element target points share one snapshot-window movement adjustment path;
 - action results include target-point and stale-snapshot diagnostics.
 
 Exit criteria:
@@ -860,6 +862,7 @@ Work:
 - done: teach click/type/move/scroll/drag/swipe/hotkey/press to resolve snapshot context through the shared helper;
 - done: centralize post-action invalidation for implicitly reused latest snapshots after click/type/scroll/drag/swipe;
 - done: define stale-window diagnostics for disappeared or resized snapshot windows;
+- done: centralize moved-window target-point adjustment for click/type/move/scroll/drag/swipe element paths;
 - teach focus commands to accept fresh observation context where available;
 - add observe-if-needed for missing/stale element IDs;
 - define explicit-snapshot and focus-command invalidation policy;

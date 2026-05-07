@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import os.log
+import PeekabooFoundation
 
 public enum WindowMovementAdjustment: Sendable {
     case unchanged(CGPoint)
@@ -67,6 +68,27 @@ public enum WindowMovementTracking {
     {
         let point = CGPoint(x: frame.midX, y: frame.midY)
         return self.adjustPoint(point, snapshot: snapshot)
+    }
+
+    public static func adjustPoint(
+        _ point: CGPoint,
+        snapshotId: String?,
+        snapshots: any SnapshotManagerProtocol) async throws -> CGPoint
+    {
+        guard let snapshotId,
+              let snapshot = try? await snapshots.getUIAutomationSnapshot(snapshotId: snapshotId)
+        else {
+            return point
+        }
+
+        switch self.adjustPoint(point, snapshot: snapshot) {
+        case let .unchanged(original):
+            return original
+        case let .adjusted(adjusted, _):
+            return adjusted
+        case let .stale(message):
+            throw PeekabooError.snapshotStale(message)
+        }
     }
 
     private static func currentBounds(for windowID: CGWindowID) -> CGRect? {
