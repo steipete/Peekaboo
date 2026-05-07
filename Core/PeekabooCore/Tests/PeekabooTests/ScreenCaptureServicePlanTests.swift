@@ -112,10 +112,10 @@ struct ScreenCaptureServicePlanTests {
 
     @Test
     func `Frame source policy uses stream for screen/area and single-shot for windows`() {
-        #expect(ScreenCaptureService.frameSourcePolicy(for: .screen, windowID: nil) == .fastStream)
-        #expect(ScreenCaptureService.frameSourcePolicy(for: .area, windowID: nil) == .fastStream)
-        #expect(ScreenCaptureService.frameSourcePolicy(for: .multi, windowID: nil) == .fastStream)
-        #expect(ScreenCaptureService.frameSourcePolicy(for: .window, windowID: CGWindowID(42)) == .singleShot)
-        #expect(ScreenCaptureService.frameSourcePolicy(for: .frontmost, windowID: nil) == .singleShot)
+        #expect(ScreenCapturePlanner.frameSourcePolicy(for: .screen, windowID: nil) == .fastStream)
+        #expect(ScreenCapturePlanner.frameSourcePolicy(for: .area, windowID: nil) == .fastStream)
+        #expect(ScreenCapturePlanner.frameSourcePolicy(for: .multi, windowID: nil) == .fastStream)
+        #expect(ScreenCapturePlanner.frameSourcePolicy(for: .window, windowID: CGWindowID(42)) == .singleShot)
+        #expect(ScreenCapturePlanner.frameSourcePolicy(for: .frontmost, windowID: nil) == .singleShot)
     }
 }

@@ -269,7 +269,7 @@ struct ScreenCaptureServiceFlowTests {
         let displayFrame = CGRect(x: 1920, y: 200, width: 2560, height: 1440)
         let globalRect = CGRect(x: 2000, y: 260, width: 300, height: 200)
 
-        let local = ScreenCaptureService.displayLocalSourceRect(globalRect: globalRect, displayFrame: displayFrame)
+        let local = ScreenCapturePlanner.displayLocalSourceRect(globalRect: globalRect, displayFrame: displayFrame)
 
         #expect(local == CGRect(x: 80, y: 60, width: 300, height: 200))
     }
@@ -279,7 +279,7 @@ struct ScreenCaptureServiceFlowTests {
         let displayFrame = CGRect(x: -3008, y: 0, width: 3008, height: 1692)
         let globalRect = CGRect(x: -2998, y: 10, width: 200, height: 150)
 
-        let local = ScreenCaptureService.displayLocalSourceRect(globalRect: globalRect, displayFrame: displayFrame)
+        let local = ScreenCapturePlanner.displayLocalSourceRect(globalRect: globalRect, displayFrame: displayFrame)
 
         #expect(local == CGRect(x: 10, y: 10, width: 200, height: 150))
     }

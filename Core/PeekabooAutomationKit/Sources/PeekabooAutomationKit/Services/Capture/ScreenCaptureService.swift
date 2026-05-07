@@ -44,20 +44,6 @@ import PeekabooFoundation
 @MainActor
 // swiftlint:disable type_body_length
 public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwareScreenCaptureServiceProtocol {
-    /// Convert a global desktop-space rectangle to a display-local `sourceRect`.
-    ///
-    /// ScreenCaptureKit expects `SCStreamConfiguration.sourceRect` in **display-local logical coordinates**.
-    ///
-    /// `SCWindow.frame` and `SCDisplay.frame` returned from `SCShareableContent` are in **global desktop
-    /// coordinates** (same space as `NSScreen.frame`, including non-zero / negative origins for secondary
-    /// displays).
-    ///
-    /// When using a display-bound filter (`SCContentFilter(display:...)`), passing a global rect directly can
-    /// crop the wrong region or fail with an “invalid parameter” error on non-primary displays.
-    @_spi(Testing) public static func displayLocalSourceRect(globalRect: CGRect, displayFrame: CGRect) -> CGRect {
-        globalRect.offsetBy(dx: -displayFrame.origin.x, dy: -displayFrame.origin.y)
-    }
-
     @_spi(Testing) public struct Dependencies {
         let feedbackClient: any AutomationFeedbackClient
         let permissionEvaluator: any ScreenRecordingPermissionEvaluating
@@ -164,27 +150,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             case .frontmost: "frontmost window capture"
             case .area: "area capture"
             }
-        }
-    }
-
-    @_spi(Testing) public enum FrameSourcePolicy: Sendable {
-        case fastStream
-        case singleShot
-    }
-
-    @_spi(Testing) public static func frameSourcePolicy(
-        for mode: CaptureMode,
-        windowID: CGWindowID?) -> FrameSourcePolicy
-    {
-        if windowID != nil {
-            return .singleShot
-        }
-
-        switch mode {
-        case .screen, .area, .multi:
-            return .fastStream
-        case .window, .frontmost:
-            return .singleShot
         }
     }
 
@@ -636,7 +601,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
 
         let filter = SCContentFilter(display: display, excludingWindows: [])
         let config = SCStreamConfiguration()
-        config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+        config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
             globalRect: rect,
             displayFrame: display.frame)
         config.width = Int(rect.width * outputScale)
@@ -1030,7 +995,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 correlationId: correlationId)
 
             let displayIndex = content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0
-            let localRect = ScreenCaptureService.displayLocalSourceRect(
+            let localRect = ScreenCapturePlanner.displayLocalSourceRect(
                 globalRect: rect,
                 displayFrame: display.frame)
             let request = CaptureFrameRequest(
@@ -1053,7 +1018,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         private func captureDisplayFrame(
             request: CaptureFrameRequest) async throws -> (image: CGImage, metadata: CaptureMetadata)
         {
-            let policy = ScreenCaptureService.frameSourcePolicy(for: request.mode, windowID: nil)
+            let policy = ScreenCapturePlanner.frameSourcePolicy(for: request.mode, windowID: nil)
             if self.useFastStream, policy == .fastStream {
                 do {
                     try await self.frameSource.start(request: request)
@@ -1100,7 +1065,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             let config = SCStreamConfiguration()
             // `window.frame` is in global desktop coordinates. `sourceRect` must be display-local when the filter
             // is display-bound, otherwise captures can fail on secondary displays (non-zero/negative origins).
-            config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+            config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
                 globalRect: window.frame,
                 displayFrame: display.frame)
             config.width = width
@@ -1609,7 +1574,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             let config = self.makeScreenshotConfiguration()
             // Display-bound filters expect display-local geometry. This mirrors the reliable modern path and keeps
             // single-shot captures crisp without relying on the obsolete CoreGraphics window API.
-            config.sourceRect = ScreenCaptureService.displayLocalSourceRect(
+            config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
                 globalRect: scWindow.frame,
                 displayFrame: display.frame)
             config.width = max(Int(scWindow.frame.width * nativeScale), 1)

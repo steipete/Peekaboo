@@ -55,6 +55,7 @@ Landed:
 - Application menu-bar detection now lives in `MenuBarElementCollector`.
 - Accessibility tree traversal now lives in `AXTreeCollector`.
 - Detection app/window fallback selection now lives in `ElementDetectionWindowResolver`.
+- Capture frame-source policy and display-local source rectangle planning now live in `ScreenCapturePlanner`.
 
 Still intentionally incomplete:
 
