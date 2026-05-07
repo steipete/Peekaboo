@@ -171,6 +171,7 @@ Landed:
 - `PeekabooServices` now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - `WindowToolFormatter` now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
 - Agent tool formatting now routes Dock, shell/wait, and clipboard tools through dedicated formatters, with menu/dialog rendering split into focused companion files.
+- `UIAutomationToolFormatter` now keeps pointer and keyboard result rendering in focused companion files, and `move`/`drag`/`swipe` summaries use current pointer metadata instead of blank base summaries.
 - `SpaceUtilities` now keeps private CGS API declarations and public Space models/errors in focused files.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
