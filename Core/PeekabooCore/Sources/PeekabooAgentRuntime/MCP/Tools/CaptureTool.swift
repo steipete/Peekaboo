@@ -27,13 +27,18 @@ public struct CaptureTool: MCPTool {
                     default: "live"),
 
                 // Live targeting
-                "mode": SchemaBuilder.string(description: "screen|window|frontmost|region"),
+                "mode": SchemaBuilder.string(
+                    description: "screen|window|frontmost|area (region alias)",
+                    enum: ["screen", "window", "frontmost", "area", "region"]),
                 "app": SchemaBuilder.string(description: "Optional app/bundle/PID target for window mode"),
+                "pid": SchemaBuilder.number(description: "Optional process ID target for window mode"),
                 "window_title": SchemaBuilder.string(description: "Optional window title filter"),
                 "window_index": SchemaBuilder.number(description: "Optional window index"),
                 "screen_index": SchemaBuilder.number(description: "Optional screen index"),
-                "region": SchemaBuilder.string(description: "x,y,width,height for region mode"),
-                "capture_focus": SchemaBuilder.string(description: "auto|background|foreground"),
+                "region": SchemaBuilder.string(description: "x,y,width,height for area mode"),
+                "capture_focus": SchemaBuilder.string(
+                    description: "auto|background|foreground",
+                    enum: ["auto", "background", "foreground"]),
 
                 // Live cadence
                 "duration_seconds": SchemaBuilder.number(description: "Duration seconds (default 60, max 180)"),
@@ -117,6 +122,93 @@ public struct CaptureTool: MCPTool {
 
 // MARK: - Request parsing
 
+enum CaptureToolArgumentResolver {
+    static func source(from rawValue: String?) throws -> CaptureSessionResult.Source {
+        let normalized = self.normalized(rawValue) ?? "live"
+        guard let source = CaptureSessionResult.Source(rawValue: normalized) else {
+            throw PeekabooError.invalidInput("Unsupported capture source '\(rawValue ?? "")'. Use live or video.")
+        }
+        return source
+    }
+
+    static func mode(
+        from rawValue: String?,
+        hasRegion: Bool,
+        hasWindowTarget: Bool) throws -> CaptureMode
+    {
+        if let normalized = self.normalized(rawValue) {
+            if normalized == "region" { return .area }
+            guard let mode = CaptureMode(rawValue: normalized) else {
+                throw PeekabooError.invalidInput(
+                    "Unsupported capture mode '\(rawValue ?? "")'. Use screen, window, frontmost, or area.")
+            }
+            return mode
+        }
+        if hasRegion { return .area }
+        if hasWindowTarget { return .window }
+        return .frontmost
+    }
+
+    static func applicationIdentifier(app: String?, pid: Int?) -> String {
+        if let app = app?.trimmingCharacters(in: .whitespacesAndNewlines), !app.isEmpty {
+            return app
+        }
+        if let pid {
+            return "PID:\(pid)"
+        }
+        return "frontmost"
+    }
+
+    static func region(from rawValue: String?) throws -> CGRect {
+        guard let rawValue else {
+            throw PeekabooError.invalidInput("region is required when mode=area")
+        }
+
+        let parts = rawValue.split(separator: ",", omittingEmptySubsequences: false)
+        guard parts.count == 4 else {
+            throw PeekabooError.invalidInput("region must be x,y,width,height")
+        }
+
+        let values = try parts.map { part in
+            let trimmed = part.trimmingCharacters(in: .whitespaces)
+            guard let value = Double(trimmed), value.isFinite else {
+                throw PeekabooError.invalidInput("region must contain numeric x,y,width,height values")
+            }
+            return value
+        }
+
+        guard values[2] > 0, values[3] > 0 else {
+            throw PeekabooError.invalidInput("region width and height must be greater than zero")
+        }
+
+        return CGRect(x: values[0], y: values[1], width: values[2], height: values[3])
+    }
+
+    static func diffStrategy(from rawValue: String?) throws -> CaptureOptions.DiffStrategy {
+        let normalized = self.normalized(rawValue) ?? "fast"
+        guard let strategy = CaptureOptions.DiffStrategy(rawValue: normalized) else {
+            throw PeekabooError.invalidInput("Unsupported diff_strategy '\(rawValue ?? "")'. Use fast or quality.")
+        }
+        return strategy
+    }
+
+    static func captureFocus(from rawValue: String?) throws -> CaptureFocus {
+        let normalized = self.normalized(rawValue) ?? "auto"
+        guard let focus = CaptureFocus(rawValue: normalized) else {
+            throw PeekabooError.invalidInput(
+                "Unsupported capture_focus '\(rawValue ?? "")'. Use auto, background, or foreground.")
+        }
+        return focus
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed.lowercased()
+    }
+}
+
 private struct CaptureRequest {
     let source: CaptureSessionResult.Source
     let scope: CaptureScope
@@ -132,13 +224,13 @@ private struct CaptureRequest {
 
     init(arguments: ToolArguments) async throws {
         let input = try arguments.decode(CaptureInput.self)
-        self.source = CaptureSessionResult.Source(rawValue: input.source ?? "live") ?? .live
+        self.source = try CaptureToolArgumentResolver.source(from: input.source)
 
         // Shared caps/output
         let maxFrames = input.maxFrames ?? 800
         let maxMb = input.maxMb
         let resolutionCap = input.resolutionCap ?? 1440
-        let diffStrategy = CaptureOptions.DiffStrategy(rawValue: input.diffStrategy ?? "fast") ?? .fast
+        let diffStrategy = try CaptureToolArgumentResolver.diffStrategy(from: input.diffStrategy)
         let diffBudget = input.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
         let highlight = input.highlightChanges ?? false
         let constraints = CaptureConstraints(
@@ -165,7 +257,7 @@ private struct CaptureRequest {
             let scope = try CaptureRequest.resolveScope(from: input)
             self.scope = scope
             self.frameSource = nil
-            let opts = CaptureRequest.buildLiveOptions(
+            let opts = try CaptureRequest.buildLiveOptions(
                 from: input,
                 constraints: constraints)
             self.options = opts
@@ -264,18 +356,13 @@ extension CaptureRequest {
     fileprivate static func resolveScope(from input: CaptureInput) throws -> CaptureScope {
         let modeStr = input.mode
         let explicitApp = input.app
-        let explicitPid = input.pid.flatMap { Int32($0) }
         let windowTitle = input.window_title
         let windowIndex = input.window_index
 
-        let mode: CaptureMode = {
-            if let m = modeStr {
-                if m.lowercased() == "region" { return .area }
-                return CaptureMode(rawValue: m) ?? .frontmost
-            }
-            if explicitApp != nil || explicitPid != nil || windowTitle != nil { return .window }
-            return .frontmost
-        }()
+        let mode = try CaptureToolArgumentResolver.mode(
+            from: modeStr,
+            hasRegion: input.region != nil,
+            hasWindowTarget: explicitApp != nil || input.pid != nil || windowTitle != nil || windowIndex != nil)
 
         switch mode {
         case .screen:
@@ -291,17 +378,13 @@ extension CaptureRequest {
         case .frontmost:
             return CaptureScope(kind: .frontmost)
         case .window:
-            let appIdentifier = explicitApp ?? "frontmost"
+            let appIdentifier = CaptureToolArgumentResolver.applicationIdentifier(app: explicitApp, pid: input.pid)
             return CaptureScope(kind: .window, applicationIdentifier: appIdentifier, windowIndex: windowIndex)
         case .area:
-            guard let regionStr = input.region else {
-                throw PeekabooError.invalidInput("region is required when mode=region")
-            }
-            let parts = regionStr.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
-            guard parts.count == 4 else { throw PeekabooError.invalidInput("region must be x,y,width,height") }
+            let region = try CaptureToolArgumentResolver.region(from: input.region)
             return CaptureScope(
                 kind: .region,
-                region: CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3]))
+                region: region)
         case .multi:
             throw PeekabooError.invalidInput("mode multi not supported for capture")
         }
@@ -318,7 +401,7 @@ extension CaptureRequest {
 
     fileprivate static func buildLiveOptions(
         from input: CaptureInput,
-        constraints: CaptureConstraints) -> CaptureOptions
+        constraints: CaptureConstraints) throws -> CaptureOptions
     {
         let duration = max(1, min(input.durationSeconds ?? 60, 180))
         let idle = min(max(input.idleFps ?? 2, 0.1), 5)
@@ -328,7 +411,7 @@ extension CaptureRequest {
         let quiet = max(Int(input.quietMs ?? 1000), 0)
         let maxFrames = max(constraints.maxFrames, 1)
         let maxMbAdjusted = constraints.maxMb.flatMap { $0 > 0 ? $0 : nil }
-        let focus = input.capture_focus.flatMap { CaptureFocus(rawValue: $0) } ?? .auto
+        let focus = try CaptureToolArgumentResolver.captureFocus(from: input.capture_focus)
 
         return CaptureOptions(
             duration: duration,
