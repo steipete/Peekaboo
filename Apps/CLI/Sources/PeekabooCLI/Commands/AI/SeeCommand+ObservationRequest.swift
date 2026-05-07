@@ -50,7 +50,7 @@ extension SeeCommand {
                 return try .app(identifier: self.resolveApplicationIdentifier(), window: self.seeWindowSelection)
             }
 
-            return nil
+            throw ValidationError("Provide --window-id, or --app/--pid for window mode")
 
         case .frontmost:
             return .frontmost

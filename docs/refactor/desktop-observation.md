@@ -92,6 +92,7 @@ Landed:
 - `peekaboo see --app menubar` now routes through the shared observation `.menubar` target while keeping tiny strip annotations disabled.
 - ScreenCaptureKit area captures now use the single-shot frame source because fast-stream display sessions returned full-display frames for area source rectangles.
 - `peekaboo see --mode area` now fails during command binding/target selection instead of silently entering the legacy capture bridge; area capture remains an `image`/service-level feature until `see` exposes rectangle inputs.
+- CLI `see` no longer carries legacy window/frontmost capture fallback code; observation-backed targets now own those paths, and the remaining fallback handles only all-screen/multi capture plus menu-bar popover recovery.
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.

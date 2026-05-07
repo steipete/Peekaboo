@@ -1,5 +1,4 @@
 import Commander
-import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -89,7 +88,7 @@ extension SeeCommand {
             )
         }
 
-        let result = try await self.performStandardCapture()
+        let result = try await self.performLegacyScreenCapture()
         return CaptureContext(
             captureResult: result,
             captureBounds: nil,
@@ -99,7 +98,7 @@ extension SeeCommand {
         )
     }
 
-    private func performStandardCapture() async throws -> CaptureResult {
+    private func performLegacyScreenCapture() async throws -> CaptureResult {
         let effectiveMode = self.determineMode()
         self.logger.verbose(
             "Determined capture mode",
@@ -121,66 +120,8 @@ extension SeeCommand {
             self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
 
-        case .window:
-            if let windowId = self.windowId {
-                self.logger.verbose("Initiating window capture (by id)", category: "Capture", metadata: [
-                    "windowId": windowId,
-                ])
-
-                self.logger.startTimer("window_capture")
-                let result = try await self.services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
-                self.logger.stopTimer("window_capture")
-                self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-                return result
-            } else if self.app != nil || self.pid != nil {
-                let appIdentifier = try self.resolveApplicationIdentifier()
-                self.logger.verbose("Initiating window capture", category: "Capture", metadata: [
-                    "app": appIdentifier,
-                    "windowTitle": self.windowTitle ?? "any",
-                ])
-
-                if let resolvedWindowId = try await self.resolveWindowId(
-                    appIdentifier: appIdentifier,
-                    titleFragment: self.windowTitle
-                ) {
-                    self.logger.verbose("Resolved window id for capture", category: "Capture", metadata: [
-                        "windowId": resolvedWindowId
-                    ])
-
-                    self.logger.startTimer("window_capture")
-                    let result = try await self.services.screenCapture.captureWindow(
-                        windowID: CGWindowID(resolvedWindowId)
-                    )
-                    self.logger.stopTimer("window_capture")
-                    self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-                    return result
-                }
-
-                let windowIndex = try await self.resolveSeeWindowIndex(
-                    appIdentifier: appIdentifier,
-                    titleFragment: self.windowTitle
-                )
-
-                self.logger.startTimer("window_capture")
-                let result = try await self.services.screenCapture.captureWindow(
-                    appIdentifier: appIdentifier,
-                    windowIndex: windowIndex
-                )
-                self.logger.stopTimer("window_capture")
-                self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-                return result
-            } else {
-                throw ValidationError("Provide --window-id, or --app/--pid for window mode")
-            }
-
-        case .frontmost:
-            self.logger.verbose("Capturing frontmost window")
-            let result = try await self.services.screenCapture.captureFrontmost()
-            self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
-            return result
-
-        case .area:
-            throw ValidationError("Area capture mode is not supported for 'see' yet. Use --mode screen or window")
+        case .window, .frontmost, .area:
+            throw ValidationError("\(effectiveMode.rawValue) captures must use the desktop observation pipeline")
         }
     }
 }

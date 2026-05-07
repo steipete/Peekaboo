@@ -139,6 +139,24 @@ struct SeeCommandAnnotationTests {
 
     @Test
     @MainActor
+    func `Frontmost captures use observation target`() throws {
+        let command = try SeeCommand.parse(["--mode", "frontmost"])
+
+        #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == .frontmost)
+    }
+
+    @Test
+    @MainActor
+    func `Window mode without target fails before capture fallback`() throws {
+        let command = try SeeCommand.parse(["--mode", "window"])
+
+        #expect(throws: ValidationError.self) {
+            _ = try command.observationTargetForCaptureWithDetectionIfPossible()
+        }
+    }
+
+    @Test
+    @MainActor
     func `Area mode is rejected before capture fallback`() throws {
         #expect(throws: CommanderBindingError.invalidArgument(
             label: "mode",
