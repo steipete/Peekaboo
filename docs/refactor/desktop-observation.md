@@ -1551,6 +1551,36 @@ Results:
 - `see --app "Google Chrome"` completed in `0.703s` with `126` elements / `121` interactables and a `1672x1297` screenshot;
 - frontmost TextEdit `see` after the span cleanup completed in `0.93s` wall / `0.815s` JSON execution time with `396` elements and `303` interactables; spans included `state.snapshot=104.9ms`, `target.resolve=55.4ms`, `capture.window=164.1ms`, `detection.ax=379.5ms`, `output.write=5.1ms`, `output.raw.write=0.5ms`, `snapshot.write=4.6ms`, and total `desktop.observe=813.3ms`.
 
+Live verification after private ScreenCaptureKit fallback controls, May 7, 2026:
+
+```bash
+swift build --package-path Apps/CLI
+swift build --package-path Apps/CLI -Xswiftc -DPEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP
+swift build --package-path Apps/CLI
+./Apps/CLI/.build/debug/peekaboo image --window-id 13441 --retina --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/text-private-on.png --json --no-remote
+PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP=1 ./Apps/CLI/.build/debug/peekaboo image --window-id 13441 --retina --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/text-private-off.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app TextEdit --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/text-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/text-see.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13977 --retina --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/chrome-private-on.png --json --no-remote
+PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP=false ./Apps/CLI/.build/debug/peekaboo image --window-id 13977 --retina --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/chrome-private-off.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/chrome-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/chrome-see.png --json --no-remote
+screencapture -l 13441 -o -x .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/text-native.png
+screencapture -l 13977 -o -x .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/chrome-native.png
+./Apps/CLI/.build/debug/peekaboo capture live --mode area --region 100,100,320,220 --capture-engine cg --duration 2 --max-frames 4 --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/concurrent/live --json --no-remote &
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --capture-engine modern --path .artifacts/live-e2e/2026-05-07T221125Z-fallback-switch/concurrent/text-modern-see.png --json --no-remote
+```
+
+Results:
+
+- normal and `-DPEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP` CLI builds both completed successfully;
+- runtime private lookup enabled and disabled both captured nonblank TextEdit and Chrome window-ID screenshots in `0.41-0.42s`;
+- `PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP=1` and `PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP=false` both continued through the fallback ladder instead of failing capture;
+- TextEdit `image --app` selected the `656x422` titled document window instead of the visible `3008x30` auxiliary strips; Chrome `image --app` selected the `1672x1297` titled browser window instead of helper windows;
+- TextEdit and Chrome `--retina` captures matched native `screencapture -l` dimensions on this 1x host: `656x422` and `1672x1297`;
+- `see --app TextEdit` completed in `0.60s` wall / `0.493s` JSON execution time; `see --app "Google Chrome"` completed in `1.03s` wall / `0.926s` JSON execution time;
+- concurrent `capture live --capture-engine cg --mode area` and `see --capture-engine modern` completed without deadlock; live capture took `2.40s`, overlapping `see` took `0.67s`, and both produced nonblank artifacts.
+
 ### Performance Budgets
 
 Budgets are manual benchmark targets, not flaky unit-test thresholds.
