@@ -160,6 +160,7 @@ Landed:
 - Dialog service cleanup removed stale duplicate file-dialog navigation, filename, save-verification, and key-mapping helpers from the main implementation file; the active file-dialog path stays in `DialogService+FileDialogs`.
 - File-dialog handling now keeps orchestration, navigation/focus, filename entry, and save verification in focused service files.
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
+- Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal no longer pays an unused `defaults read` before running AppleScript.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps delegated detection, click, typing, scroll, hotkey, and gesture operations in `UIAutomationService+Operations`; the primary file keeps initialization, focus, and AX wait/search behavior.
@@ -367,6 +368,11 @@ MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines
 MenuService+MenuExtraAccessibility.swift: 367 lines
 MenuService+MenuExtraSupport.swift: 281 lines
+DockService.swift: 65 lines
+DockService+Actions.swift: 159 lines
+DockService+Items.swift: 150 lines
+DockService+Support.swift: 43 lines
+DockService+Visibility.swift: 78 lines
 CommanderRuntimeRouter.swift: 240 lines
 CommanderRuntimeRouter+Help.swift: 192 lines
 AgentChatUI.swift: 340 lines
