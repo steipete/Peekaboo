@@ -105,6 +105,9 @@ Landed:
 - Watch capture artifact writing now lives in `WatchCaptureArtifactWriter`, keeping PNG encoding, contact sheets, resizing, and change highlighting away from session orchestration.
 - Watch capture session filesystem duties now live in `WatchCaptureSessionStore`, keeping output directory setup, managed autoclean, and metadata JSON writing out of session orchestration.
 - Watch capture region validation now lives in `WatchCaptureRegionValidator`, keeping visible-screen clamping and region warnings out of session orchestration.
+- Watch capture result assembly now lives in `WatchCaptureResultBuilder`, keeping stats, options snapshots, no-motion warnings, and result metadata out of session orchestration.
+- Watch capture frame acquisition now lives in `WatchCaptureFrameProvider`, keeping live/video source selection, region-target capture, and resolution capping out of session orchestration.
+- Watch capture active/idle hysteresis now lives in `WatchCaptureActivityPolicy`; the unused private motion-interval accumulator was removed from session state.
 
 Still incomplete:
 
@@ -121,11 +124,14 @@ ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines
 ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
-WatchCaptureSession.swift: 648 lines
+WatchCaptureSession.swift: 486 lines
 WatchCaptureArtifactWriter.swift: 150 lines
 WatchFrameDiffer.swift: 250 lines
 WatchCaptureSessionStore.swift: 49 lines
 WatchCaptureRegionValidator.swift: 31 lines
+WatchCaptureResultBuilder.swift: 96 lines
+WatchCaptureFrameProvider.swift: 97 lines
+WatchCaptureActivityPolicy.swift: 18 lines
 WindowManagementService.swift: 819 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines

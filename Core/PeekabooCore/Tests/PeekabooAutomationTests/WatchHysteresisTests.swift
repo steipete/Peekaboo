@@ -25,7 +25,7 @@ struct WatchHysteresisTests {
     func `Exit requires calm for quietMs window`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-1.2)
-        let shouldExit = WatchCaptureSession.shouldExitActive(
+        let shouldExit = WatchCaptureActivityPolicy.shouldExitActive(
             changePercent: 0.5,
             threshold: 2.0,
             lastActivityTime: lastActivity,
@@ -38,7 +38,7 @@ struct WatchHysteresisTests {
     func `Stays active when change stays above half-threshold`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-2)
-        let shouldExit = WatchCaptureSession.shouldExitActive(
+        let shouldExit = WatchCaptureActivityPolicy.shouldExitActive(
             changePercent: 1.2, // >= threshold/2 when threshold is 2.0
             threshold: 2.0,
             lastActivityTime: lastActivity,
@@ -51,7 +51,7 @@ struct WatchHysteresisTests {
     func `Stays active until quietMs elapses`() {
         let now = Date()
         let lastActivity = now.addingTimeInterval(-0.3)
-        let shouldExit = WatchCaptureSession.shouldExitActive(
+        let shouldExit = WatchCaptureActivityPolicy.shouldExitActive(
             changePercent: 0.1,
             threshold: 1.0,
             lastActivityTime: lastActivity,
@@ -75,7 +75,7 @@ struct WatchHysteresisTests {
                 active = true
                 lastActivity = now
             }
-            let shouldExit = active && WatchCaptureSession.shouldExitActive(
+            let shouldExit = active && WatchCaptureActivityPolicy.shouldExitActive(
                 changePercent: change,
                 threshold: threshold,
                 lastActivityTime: lastActivity,

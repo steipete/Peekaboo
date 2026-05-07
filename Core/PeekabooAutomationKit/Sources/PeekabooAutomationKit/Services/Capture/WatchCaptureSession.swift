@@ -72,12 +72,11 @@ public final class WatchCaptureSession {
         static let contactThumb: CGFloat = 200
     }
 
-    private let screenCapture: any ScreenCaptureServiceProtocol
+    private let frameProvider: WatchCaptureFrameProvider
     private let scope: CaptureScope
     private let options: CaptureOptions
     private let outputRoot: URL
     private let store: WatchCaptureSessionStore
-    private let regionValidator: WatchCaptureRegionValidator
     private let frameSource: (any CaptureFrameSource)?
     private let sourceKind: CaptureSessionResult.Source
     private let videoIn: String?
@@ -89,15 +88,12 @@ public final class WatchCaptureSession {
     private var videoWriter: VideoWriter?
 
     private var frames: [CaptureFrameInfo] = []
-    private var motionIntervals: [CaptureMotionInterval] = []
     private var warnings: [CaptureWarning] = []
     private var framesDropped: Int = 0
     private var totalBytes: Int = 0
-    private var activeIntervalStart: (index: Int, startMs: Int, maxChange: Double)?
 
     public init(dependencies: WatchCaptureDependencies, configuration: WatchCaptureConfiguration) {
-        self.screenCapture = dependencies.screenCapture
-        self.regionValidator = WatchCaptureRegionValidator(screenService: dependencies.screenService)
+        let regionValidator = WatchCaptureRegionValidator(screenService: dependencies.screenService)
         self.frameSource = dependencies.frameSource
         self.scope = configuration.scope
         self.options = configuration.options
@@ -117,6 +113,12 @@ public final class WatchCaptureSession {
         } else {
             self.videoWriterFPS = configuration.options.activeFps
         }
+        self.frameProvider = WatchCaptureFrameProvider(
+            screenCapture: dependencies.screenCapture,
+            frameSource: dependencies.frameSource,
+            scope: configuration.scope,
+            options: configuration.options,
+            regionValidator: regionValidator)
     }
 
     public func run() async throws -> CaptureSessionResult {
@@ -128,8 +130,7 @@ public final class WatchCaptureSession {
 
         let timing = self.makeTiming(start: Date())
         try await self.captureFrames(timing: timing)
-        self.finalizeActiveInterval(start: timing.start)
-        try await self.ensureFallbackFrame(start: timing.start)
+        try await self.ensureFallbackFrame()
 
         if let writer = self.videoWriter {
             try await writer.finish()
@@ -141,24 +142,23 @@ public final class WatchCaptureSession {
             columns: Constants.contactMaxColumns,
             thumbSize: CGSize(width: Constants.contactThumb, height: Constants.contactThumb))
         let durationMs = self.elapsedMilliseconds(since: timing.start)
-        self.appendNoMotionWarningIfNeeded()
-
-        let optionsSnapshot = self.makeOptionsSnapshot()
-        let stats = self.makeStats(durationMs: durationMs)
         let metadataURL = self.outputRoot.appendingPathComponent("metadata.json")
-        let metadata = CaptureSessionResult(
-            source: self.sourceKind,
+        let metadata = WatchCaptureResultBuilder(
+            sourceKind: self.sourceKind,
             videoIn: self.videoIn,
             videoOut: self.videoWriter?.finalURL.path,
-            frames: self.frames,
-            contactSheet: contact,
-            metadataFile: metadataURL.path,
-            stats: stats,
             scope: self.scope,
-            diffAlgorithm: self.options.diffStrategy.rawValue,
-            diffScale: "w\(Int(Constants.diffScaleWidth))",
-            options: optionsSnapshot,
-            warnings: self.warnings)
+            options: self.options,
+            videoOptions: self.videoOptions,
+            diffScale: "w\(Int(Constants.diffScaleWidth))")
+            .build(.init(
+                frames: self.frames,
+                contactSheet: contact,
+                metadataURL: metadataURL,
+                durationMs: durationMs,
+                framesDropped: self.framesDropped,
+                totalBytes: self.totalBytes,
+                warnings: self.warnings))
 
         try self.store.writeJSON(metadata, to: metadataURL)
         return metadata
@@ -253,9 +253,8 @@ public final class WatchCaptureSession {
 
             let diff = self.computeDiff(cgImage: cgImage, previous: state.lastDiffBuffer)
             state.lastDiffBuffer = diff.buffer
-            self.updateActiveInterval(
+            self.updateActiveMode(
                 changePercent: diff.changePercent,
-                elapsedNs: elapsedNs,
                 now: now,
                 state: &state)
 
@@ -285,73 +284,12 @@ public final class WatchCaptureSession {
         }
     }
 
-    private struct CaptureEnvelope {
-        let cgImage: CGImage?
-        let metadata: CaptureMetadata
-        let motionBoxes: [CGRect]?
-    }
-
-    private func captureFrame() async throws -> CaptureEnvelope? {
-        if let source = self.frameSource {
-            guard let output = try await source.nextFrame() else { return nil }
-            guard let image = output.cgImage else {
-                return CaptureEnvelope(cgImage: nil, metadata: output.metadata, motionBoxes: nil)
-            }
-            let capped = self.capResolutionIfNeeded(image)
-            return CaptureEnvelope(cgImage: capped, metadata: output.metadata, motionBoxes: nil)
+    private func captureFrame() async throws -> WatchCaptureFrame? {
+        let output = try await self.frameProvider.captureFrame()
+        if let warning = output.warning {
+            self.warnings.append(warning)
         }
-
-        let result: CaptureResult
-        switch self.scope.kind {
-        case .screen:
-            result = try await self.screenCapture.captureScreen(
-                displayIndex: self.scope.screenIndex,
-                visualizerMode: .watchCapture,
-                scale: .logical1x)
-        case .frontmost:
-            result = try await self.screenCapture.captureFrontmost(
-                visualizerMode: .watchCapture,
-                scale: .logical1x)
-        case .window:
-            guard let app = self.scope.applicationIdentifier else {
-                throw PeekabooError.windowNotFound(criteria: "missing application identifier")
-            }
-            result = try await self.screenCapture.captureWindow(
-                appIdentifier: app,
-                windowIndex: self.scope.windowIndex,
-                visualizerMode: .watchCapture,
-                scale: .logical1x)
-        case .region:
-            guard let rect = self.scope.region else {
-                throw PeekabooError.captureFailed(reason: "Region missing for watch capture")
-            }
-            let validation = try self.regionValidator.validateRegion(rect)
-            if let warning = validation.warning {
-                self.warnings.append(warning)
-            }
-            result = try await self.screenCapture.captureArea(
-                validation.rect,
-                visualizerMode: .watchCapture,
-                scale: .logical1x)
-        }
-
-        guard let image = WatchCaptureArtifactWriter.makeCGImage(from: result.imageData) else {
-            return CaptureEnvelope(cgImage: nil, metadata: result.metadata, motionBoxes: nil)
-        }
-
-        let cappedImage = self.capResolutionIfNeeded(image)
-        return CaptureEnvelope(cgImage: cappedImage, metadata: result.metadata, motionBoxes: nil)
-    }
-
-    private func capResolutionIfNeeded(_ image: CGImage) -> CGImage {
-        guard let cap = self.options.resolutionCap else { return image }
-        let width = CGFloat(image.width)
-        let height = CGFloat(image.height)
-        let maxDimension = max(width, height)
-        guard maxDimension > cap else { return image }
-        let scale = cap / maxDimension
-        let newSize = CGSize(width: width * scale, height: height * scale)
-        return WatchCaptureArtifactWriter.resize(image: image, to: newSize) ?? image
+        return output.frame
     }
 
     private static func elapsedNanoseconds(since start: Date, now: Date) -> UInt64 {
@@ -404,15 +342,14 @@ public final class WatchCaptureSession {
             enterActive: diff.changePercent >= self.options.changeThresholdPercent)
     }
 
-    private func updateActiveInterval(
+    private func updateActiveMode(
         changePercent: Double,
-        elapsedNs: UInt64,
         now: Date,
         state: inout SessionState)
     {
         let threshold = self.options.changeThresholdPercent
         let enterActive = changePercent >= threshold
-        let exitActive = state.activeMode && Self.shouldExitActive(
+        let exitActive = state.activeMode && WatchCaptureActivityPolicy.shouldExitActive(
             changePercent: changePercent,
             threshold: threshold,
             lastActivityTime: state.lastActivityTime,
@@ -425,32 +362,11 @@ public final class WatchCaptureSession {
 
         if enterActive, !state.activeMode {
             state.activeMode = true
-            self.activeIntervalStart = (
-                index: state.frameIndex,
-                startMs: Int(elapsedNs / 1_000_000),
-                maxChange: changePercent)
             return
         }
 
         if exitActive {
-            if let interval = self.activeIntervalStart {
-                let endMs = Int(elapsedNs / 1_000_000)
-                self.motionIntervals.append(
-                    WatchMotionInterval(
-                        startFrameIndex: interval.index,
-                        endFrameIndex: max(state.frameIndex - 1, interval.index),
-                        startMs: interval.startMs,
-                        endMs: endMs,
-                        maxChangePercent: interval.maxChange))
-            }
             state.activeMode = false
-            self.activeIntervalStart = nil
-            return
-        }
-
-        if state.activeMode, var interval = self.activeIntervalStart {
-            interval.maxChange = max(interval.maxChange, changePercent)
-            self.activeIntervalStart = interval
         }
     }
 
@@ -493,7 +409,7 @@ public final class WatchCaptureSession {
     }
 
     private struct FrameSaveContext {
-        let capture: CaptureEnvelope
+        let capture: WatchCaptureFrame
         let index: Int
         let timestampMs: Int
         let changePercent: Double
@@ -541,25 +457,7 @@ public final class WatchCaptureSession {
 
     // MARK: - Utilities
 
-    private func computeEffectiveFps(durationMs: Int) -> Double {
-        guard durationMs > 0 else { return 0 }
-        return Double(self.frames.count) / (Double(durationMs) / 1000.0)
-    }
-
-    private func finalizeActiveInterval(start: Date) {
-        guard let interval = self.activeIntervalStart else { return }
-        let endMs = self.elapsedMilliseconds(since: start)
-        self.motionIntervals.append(
-            WatchMotionInterval(
-                startFrameIndex: interval.index,
-                endFrameIndex: max(self.frames.count - 1, interval.index),
-                startMs: interval.startMs,
-                endMs: endMs,
-                maxChangePercent: interval.maxChange))
-        self.activeIntervalStart = nil
-    }
-
-    private func ensureFallbackFrame(start: Date) async throws {
+    private func ensureFallbackFrame() async throws {
         guard self.frames.isEmpty else { return }
         guard let capture = try? await self.captureFrame(), let cg = capture.cgImage else { return }
         let context = FrameSaveContext(
@@ -577,48 +475,6 @@ public final class WatchCaptureSession {
         Int(Date().timeIntervalSince(start) * 1000)
     }
 
-    private func appendNoMotionWarningIfNeeded() {
-        if self.frames.isEmpty {
-            self.warnings.append(
-                WatchWarning(code: .noMotion, message: "No frames were captured"))
-        } else if self.frames.count < 2 {
-            self.warnings.append(
-                WatchWarning(code: .noMotion, message: "No motion detected; only key frames captured"))
-        }
-    }
-
-    private func makeOptionsSnapshot() -> CaptureOptionsSnapshot {
-        CaptureOptionsSnapshot(
-            duration: self.options.duration,
-            idleFps: self.options.idleFps,
-            activeFps: self.options.activeFps,
-            changeThresholdPercent: self.options.changeThresholdPercent,
-            heartbeatSeconds: self.options.heartbeatSeconds,
-            quietMsToIdle: self.options.quietMsToIdle,
-            maxFrames: self.options.maxFrames,
-            maxMegabytes: self.options.maxMegabytes,
-            highlightChanges: self.options.highlightChanges,
-            captureFocus: self.options.captureFocus,
-            resolutionCap: self.options.resolutionCap,
-            diffStrategy: self.options.diffStrategy,
-            diffBudgetMs: self.options.diffBudgetMs,
-            video: self.videoOptions)
-    }
-
-    private func makeStats(durationMs: Int) -> WatchStats {
-        let maxMbHit = self.options.maxMegabytes != nil
-            && self.totalBytes / (1024 * 1024) >= (self.options.maxMegabytes ?? 0)
-        return WatchStats(
-            durationMs: durationMs,
-            fpsIdle: self.options.idleFps,
-            fpsActive: self.options.activeFps,
-            fpsEffective: self.computeEffectiveFps(durationMs: durationMs),
-            framesKept: self.frames.count,
-            framesDropped: self.framesDropped,
-            maxFramesHit: self.frames.count >= self.options.maxFrames,
-            maxMbHit: maxMbHit)
-    }
-
     private func sleep(ns: UInt64, since start: Date) async throws {
         // For video sources we don't throttle cadence; return immediately.
         if self.frameSource != nil { return }
@@ -626,22 +482,5 @@ public final class WatchCaptureSession {
         if ns > elapsed {
             try await Task.sleep(nanoseconds: ns - elapsed)
         }
-    }
-}
-
-extension WatchCaptureSession {
-    /// Returns true when the capture loop should drop from active to idle cadence.
-    /// We leave active mode once change is below half the threshold for at least `quietMs`.
-    static func shouldExitActive(
-        changePercent: Double,
-        threshold: Double,
-        lastActivityTime: Date,
-        quietMs: Int,
-        now: Date) -> Bool
-    {
-        guard changePercent < threshold / 2 else { return false }
-        let quietNs = UInt64(quietMs) * 1_000_000
-        let elapsedNs = UInt64(now.timeIntervalSince(lastActivityTime) * 1_000_000_000)
-        return elapsedNs >= quietNs
     }
 }
