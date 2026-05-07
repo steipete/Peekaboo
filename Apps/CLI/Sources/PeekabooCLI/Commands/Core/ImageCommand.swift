@@ -98,6 +98,30 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         self.retina ? .native : .logical1x
     }
 
+    private var observationCaptureOptions: DesktopCaptureOptions {
+        DesktopCaptureOptions(
+            engine: self.observationCaptureEnginePreference,
+            scale: self.captureScale,
+            focus: self.captureFocus,
+            visualizerMode: .screenshotFlash
+        )
+    }
+
+    private var observationCaptureEnginePreference: CaptureEnginePreference {
+        let value = (self.captureEngine ?? self.resolvedRuntime.configuration.captureEnginePreference)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch value {
+        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
+            return .modern
+        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
+            return .legacy
+        default:
+            return .auto
+        }
+    }
+
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -224,37 +248,42 @@ extension ImageCommand {
     }
 
     private func captureWindowById(_ windowId: Int) async throws -> [SavedFile] {
-        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+        let observation = try await self.captureObservation(
             target: .windowID(CGWindowID(windowId)),
-            capture: DesktopCaptureOptions(
-                engine: .auto,
-                scale: self.captureScale,
-                visualizerMode: .screenshotFlash
-            ),
-            detection: DesktopDetectionOptions(mode: .none)
-        ))
-        let result = observation.capture
+            preferredName: "window-\(windowId)",
+            index: nil
+        )
 
-        let title = result.metadata.windowInfo?.title
+        let title = observation.capture.metadata.windowInfo?.title
         let preferredName = if let title, !title.isEmpty {
             title
         } else {
             "window-\(windowId)"
         }
 
-        let saved = try self.saveCaptureResult(result, preferredName: preferredName, index: nil)
-        return [saved]
+        return try [
+            self.savedFile(
+                from: observation,
+                preferredName: preferredName,
+                windowIndex: nil
+            ),
+        ]
     }
 
     private func captureScreens() async throws -> [SavedFile] {
         if let index = self.screenIndex {
-            let result = try await ImageCaptureBridge.captureScreen(
-                services: self.services,
-                displayIndex: index,
-                scale: self.captureScale
+            let observation = try await self.captureObservation(
+                target: .screen(index: index),
+                preferredName: "screen\(index)",
+                index: nil
             )
-            let saved = try self.saveCaptureResult(result, preferredName: "screen\(index)", index: nil)
-            return [saved]
+            return try [
+                self.savedFile(
+                    from: observation,
+                    preferredName: "screen\(index)",
+                    windowIndex: nil
+                ),
+            ]
         }
 
         let screens = self.services.screens.listScreens()
@@ -262,13 +291,16 @@ extension ImageCommand {
 
         var savedFiles: [SavedFile] = []
         for (ordinal, displayIndex) in indexes.indexed() {
-            let result = try await ImageCaptureBridge.captureScreen(
-                services: self.services,
-                displayIndex: displayIndex,
-                scale: self.captureScale
+            let observation = try await self.captureObservation(
+                target: .screen(index: displayIndex),
+                preferredName: "screen\(displayIndex)",
+                index: ordinal
             )
-            let saved = try self.saveCaptureResult(result, preferredName: "screen\(displayIndex)", index: ordinal)
-            savedFiles.append(saved)
+            try savedFiles.append(self.savedFile(
+                from: observation,
+                preferredName: "screen\(displayIndex)",
+                windowIndex: nil
+            ))
         }
 
         return savedFiles
@@ -276,23 +308,17 @@ extension ImageCommand {
 
     private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
-        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+        let observation = try await self.captureObservation(
             target: .app(identifier: identifier, window: self.observationWindowSelection),
-            capture: DesktopCaptureOptions(
-                engine: .auto,
-                scale: self.captureScale,
-                visualizerMode: .screenshotFlash
-            ),
-            detection: DesktopDetectionOptions(mode: .none)
-        ))
-        let result = observation.capture
+            preferredName: identifier,
+            index: nil
+        )
         let resolvedWindow = observation.target.window
         let resolvedTitle = resolvedWindow?.title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let saved = try self.saveCaptureResult(
-            result,
+        let saved = try self.savedFile(
+            from: observation,
             preferredName: self.windowTitle ?? (resolvedTitle?.isEmpty == false ? resolvedTitle : nil) ?? identifier,
-            index: nil,
             windowIndex: resolvedWindow?.index
         )
 
@@ -315,16 +341,15 @@ extension ImageCommand {
 
         var savedFiles: [SavedFile] = []
         for (ordinal, window) in filtered.indexed() {
-            let result = try await ImageCaptureBridge.captureWindowById(
-                services: self.services,
-                windowId: window.windowID,
-                scale: self.captureScale
+            let observation = try await self.captureObservation(
+                target: .windowID(CGWindowID(window.windowID)),
+                preferredName: window.title,
+                index: ordinal
             )
 
-            let saved = try self.saveCaptureResult(
-                result,
+            let saved = try self.savedFile(
+                from: observation,
                 preferredName: window.title,
-                index: ordinal,
                 windowIndex: window.index
             )
             savedFiles.append(saved)
@@ -334,18 +359,18 @@ extension ImageCommand {
     }
 
     private func captureFrontmost() async throws -> [SavedFile] {
-        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+        let observation = try await self.captureObservation(
             target: .frontmost,
-            capture: DesktopCaptureOptions(
-                engine: .auto,
-                scale: self.captureScale,
-                visualizerMode: .screenshotFlash
+            preferredName: "frontmost",
+            index: nil
+        )
+        return try [
+            self.savedFile(
+                from: observation,
+                preferredName: "frontmost",
+                windowIndex: nil
             ),
-            detection: DesktopDetectionOptions(mode: .none)
-        ))
-        let result = observation.capture
-        let saved = try self.saveCaptureResult(result, preferredName: "frontmost", index: nil)
-        return [saved]
+        ]
     }
 
     private func captureMenuBar() async throws -> [SavedFile] {
@@ -358,13 +383,18 @@ extension ImageCommand {
         let originY = screen.frame.maxY - menuBarHeight
         let rect = CGRect(x: screen.frame.minX, y: originY, width: screen.frame.width, height: menuBarHeight)
 
-        let result = try await ImageCaptureBridge.captureArea(
-            services: self.services,
-            rect: rect,
-            scale: self.captureScale
+        let observation = try await self.captureObservation(
+            target: .area(rect),
+            preferredName: "menubar",
+            index: nil
         )
-        let saved = try self.saveCaptureResult(result, preferredName: "menubar", index: nil)
-        return [saved]
+        return try [
+            self.savedFile(
+                from: observation,
+                preferredName: "menubar",
+                windowIndex: nil
+            ),
+        ]
     }
 
     private func analyzeImage(at path: String, with prompt: String) async throws -> ImageAnalysisData {
@@ -373,22 +403,37 @@ extension ImageCommand {
         return ImageAnalysisData(provider: response.provider, model: response.model, text: response.text)
     }
 
-    private func saveCaptureResult(
-        _ result: CaptureResult,
+    private func captureObservation(
+        target: DesktopObservationTargetRequest,
         preferredName: String?,
-        index: Int?,
-        windowIndex: Int? = nil
-    ) throws -> SavedFile {
+        index: Int?
+    ) async throws -> DesktopObservationResult {
         let url = self.makeOutputURL(preferredName: preferredName, index: index)
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
 
-        let data = try self.encodeImageData(result.imageData)
-        try data.write(to: url, options: .atomic)
+        return try await self.services.desktopObservation.observe(DesktopObservationRequest(
+            target: target,
+            capture: self.observationCaptureOptions,
+            detection: DesktopDetectionOptions(mode: .none),
+            output: DesktopObservationOutputOptions(
+                path: url.path,
+                format: self.format,
+                saveRawScreenshot: true
+            )
+        ))
+    }
 
-        let windowInfo = result.metadata.windowInfo
+    private func savedFile(
+        from observation: DesktopObservationResult,
+        preferredName: String?,
+        windowIndex: Int?
+    ) throws -> SavedFile {
+        guard let path = observation.files.rawScreenshotPath else {
+            throw CaptureError.captureFailure("Observation completed without a saved screenshot path")
+        }
 
+        let windowInfo = observation.capture.metadata.windowInfo
         return SavedFile(
-            path: url.path,
+            path: path,
             item_label: preferredName ?? windowInfo?.title,
             window_title: windowInfo?.title,
             window_id: windowInfo.map { UInt32($0.windowID) },
@@ -436,22 +481,6 @@ extension ImageCommand {
         let filename = components.joined(separator: "_") + ".\(self.format.fileExtension)"
         let base = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         return base.appendingPathComponent(filename)
-    }
-
-    private func encodeImageData(_ data: Data) throws -> Data {
-        switch self.format {
-        case .png:
-            return data
-        case .jpg:
-            guard let image = NSImage(data: data),
-                  let tiff = image.tiffRepresentation,
-                  let bitmap = NSBitmapImageRep(data: tiff),
-                  let jpeg = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.92])
-            else {
-                throw CaptureError.captureFailure("Failed to convert screenshot to JPEG")
-            }
-            return jpeg
-        }
     }
 
     private func describeSavedFile(_ file: SavedFile) -> String {
