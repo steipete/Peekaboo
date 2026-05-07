@@ -2,16 +2,40 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 
+struct ImageWindowObservationTarget {
+    let target: DesktopObservationTargetRequest
+    let focusIdentifier: String
+    let preferredName: String
+}
+
 @MainActor
 extension ImageCommand {
     var observationWindowSelection: WindowSelection {
-        if let windowIndex {
-            return .index(windowIndex)
-        }
         if let windowTitle {
             return .title(windowTitle)
         }
+        if let windowIndex {
+            return .index(windowIndex)
+        }
         return .automatic
+    }
+
+    func observationApplicationTargetForWindowCapture() throws -> ImageWindowObservationTarget {
+        if let pid = try self.resolveExplicitPIDObservationTarget() {
+            let identifier = "PID:\(pid)"
+            return ImageWindowObservationTarget(
+                target: .pid(pid, window: self.observationWindowSelection),
+                focusIdentifier: identifier,
+                preferredName: identifier
+            )
+        }
+
+        let identifier = try self.resolveApplicationIdentifier()
+        return ImageWindowObservationTarget(
+            target: .app(identifier: identifier, window: self.observationWindowSelection),
+            focusIdentifier: identifier,
+            preferredName: identifier
+        )
     }
 
     func makeObservationRequest(

@@ -29,8 +29,8 @@ extension ImageCommand {
             if let windowId = self.windowId {
                 results = try await self.captureWindowById(windowId)
             } else {
-                let identifier = try self.resolveApplicationIdentifier()
-                results = try await self.captureApplicationWindow(identifier)
+                let target = try self.observationApplicationTargetForWindowCapture()
+                results = try await self.captureApplicationWindow(target)
             }
         case .multi:
             if self.app != nil || self.pid != nil {
@@ -124,11 +124,11 @@ extension ImageCommand {
         return savedFiles
     }
 
-    private func captureApplicationWindow(_ identifier: String) async throws -> [ImageCapturedFile] {
-        try await self.focusIfNeeded(appIdentifier: identifier)
+    private func captureApplicationWindow(_ target: ImageWindowObservationTarget) async throws -> [ImageCapturedFile] {
+        try await self.focusIfNeeded(appIdentifier: target.focusIdentifier)
         let observation = try await self.captureObservation(
-            target: .app(identifier: identifier, window: self.observationWindowSelection),
-            preferredName: identifier,
+            target: target.target,
+            preferredName: target.preferredName,
             index: nil
         )
         let resolvedWindow = observation.target.window
@@ -136,7 +136,8 @@ extension ImageCommand {
 
         let saved = try self.capturedFile(
             from: observation,
-            preferredName: self.windowTitle ?? (resolvedTitle?.isEmpty == false ? resolvedTitle : nil) ?? identifier,
+            preferredName: self.windowTitle ?? (resolvedTitle?.isEmpty == false ? resolvedTitle : nil) ?? target
+                .preferredName,
             windowIndex: resolvedWindow?.index
         )
 

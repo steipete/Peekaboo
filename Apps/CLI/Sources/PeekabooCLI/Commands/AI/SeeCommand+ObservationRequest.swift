@@ -42,7 +42,7 @@ extension SeeCommand {
                 }
             }
 
-            if let pid, self.app == nil {
+            if let pid = try self.resolveExplicitPIDObservationTarget() {
                 return .pid(pid, window: self.seeWindowSelection)
             }
 

@@ -12,6 +12,32 @@ protocol ApplicationResolvable {
 }
 
 extension ApplicationResolvable {
+    /// Returns a PID when the command explicitly targets one, including the documented `--app PID:<pid>` form.
+    func resolveExplicitPIDObservationTarget() throws -> Int32? {
+        if let pid, self.app == nil {
+            return pid
+        }
+
+        guard let appValue = self.app?.trimmingCharacters(in: .whitespacesAndNewlines),
+              appValue.uppercased().hasPrefix("PID:")
+        else {
+            return nil
+        }
+
+        let appPidString = String(appValue.dropFirst("PID:".count))
+        guard let appPid = Int32(appPidString) else {
+            throw PeekabooError.invalidInput("Invalid PID format in --app: '\(appValue)'")
+        }
+
+        if let pid, pid != appPid {
+            throw PeekabooError.invalidInput(
+                "Conflicting PIDs: --app specifies PID \(appPid) but --pid is \(pid)"
+            )
+        }
+
+        return appPid
+    }
+
     /// Resolves the application identifier from app and/or pid parameters
     /// Supports lenient handling for redundant but non-conflicting parameters
     func resolveApplicationIdentifier() throws -> String {
