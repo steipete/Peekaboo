@@ -93,6 +93,7 @@
 - MCP capture tooling now keeps argument normalization, request construction, path expansion, window resolution, and metadata output in focused companions.
 - MCP dialog tooling now keeps input parsing and response formatting in focused companions while the primary tool owns service dispatch.
 - MCP app tooling now keeps lifecycle, focus/switch, listing, and response formatting in focused companions while the primary action file owns dispatch.
+- MCP drag tooling now keeps request parsing, point resolution, focus handling, and response formatting in focused companions while `DragTool` owns orchestration.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps detection, click, typing, scroll, hotkey, and gesture operations in a focused companion file while the primary service owns initialization and AX wait/search behavior.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
