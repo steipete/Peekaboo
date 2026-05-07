@@ -253,9 +253,12 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 let elementId = self.on ?? self.id
 
                 if let elementId {
-                    observation = try await self.refreshObservationIfElementMissing(
+                    observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
                         observation,
-                        elementId: elementId
+                        elementIds: [elementId],
+                        target: self.target,
+                        services: self.services,
+                        logger: self.logger
                     )
                     observationForInvalidation = observation
                     activeSnapshotId = observation.snapshotId ?? ""
@@ -433,19 +436,6 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
           • Element might be disabled or not visible
           • Try increasing --wait-for timeout
         """
-    }
-
-    private func refreshObservationIfElementMissing(
-        _ observation: InteractionObservationContext,
-        elementId: String
-    ) async throws -> InteractionObservationContext {
-        try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
-            observation,
-            elementId: elementId,
-            target: self.target,
-            services: self.services,
-            logger: self.logger
-        )
     }
 
     private func focusApplicationIfNeeded(snapshotId: String?) async throws {

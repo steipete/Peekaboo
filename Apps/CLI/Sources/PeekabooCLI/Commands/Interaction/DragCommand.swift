@@ -82,7 +82,13 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 fallbackToLatest: needsSnapshot,
                 snapshots: self.services.snapshots
             )
-            observation = try await self.refreshObservationForElementTargets(observation)
+            observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
+                observation,
+                elementIds: [self.from, self.to],
+                target: self.target,
+                services: self.services,
+                logger: self.logger
+            )
             if needsSnapshot {
                 _ = try await observation.requireDetectionResult(using: self.services.snapshots)
             } else {
@@ -180,22 +186,6 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             self.handleError(error)
             throw ExitCode.failure
         }
-    }
-
-    private func refreshObservationForElementTargets(
-        _ observation: InteractionObservationContext
-    ) async throws -> InteractionObservationContext {
-        var refreshed = observation
-        for elementId in [self.from, self.to].compactMap(\.self) {
-            refreshed = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
-                refreshed,
-                elementId: elementId,
-                target: self.target,
-                services: self.services,
-                logger: self.logger
-            )
-        }
-        return refreshed
     }
 
     /// Validate user input combinations

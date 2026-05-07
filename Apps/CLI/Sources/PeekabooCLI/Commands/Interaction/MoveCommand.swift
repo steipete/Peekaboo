@@ -155,9 +155,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                     fallbackToLatest: true,
                     snapshots: self.services.snapshots
                 )
-                observation = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+                observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
                     observation,
-                    elementId: elementId,
+                    elementIds: [elementId],
                     target: self.target,
                     services: self.services,
                     logger: self.logger

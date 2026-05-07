@@ -108,6 +108,26 @@ struct InteractionObservationRefreshDependencies {
 
 @MainActor
 enum InteractionObservationRefresher {
+    static func refreshForMissingElementsIfNeeded(
+        _ observation: InteractionObservationContext,
+        elementIds: [String?],
+        target: InteractionTargetOptions,
+        services: any PeekabooServiceProviding,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
+        var refreshed = observation
+        for elementId in elementIds.compactMap(\.self) {
+            refreshed = try await self.refreshForMissingElementIfNeeded(
+                refreshed,
+                elementId: elementId,
+                target: target,
+                services: services,
+                logger: logger
+            )
+        }
+        return refreshed
+    }
+
     static func refreshForMissingElementIfNeeded(
         _ observation: InteractionObservationContext,
         elementId: String,

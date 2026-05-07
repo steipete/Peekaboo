@@ -87,6 +87,7 @@ Landed:
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
+- Element-targeted interaction commands now share one stale-snapshot refresh helper instead of maintaining command-local refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.
 - Element-targeted actions now receive stale-window diagnostics when a snapshot window disappears or changes size.
 - Element-targeted move, drag, swipe, click output, and scroll targeting now share the core moved-window point adjustment.
@@ -123,13 +124,13 @@ ImageCommand.swift: 188 lines
 ImageCommand+CapturePipeline.swift: 337 lines
 ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
-InteractionObservationContext.swift: 81 lines
-ClickCommand.swift: 535 lines
+InteractionObservationContext.swift: 285 lines
+ClickCommand.swift: 581 lines
 TypeCommand.swift: 428 lines
-MoveCommand.swift: 435 lines
-ScrollCommand.swift: 224 lines
-DragCommand.swift: 385 lines
-SwipeCommand.swift: 326 lines
+MoveCommand.swift: 450 lines
+ScrollCommand.swift: 240 lines
+DragCommand.swift: 403 lines
+SwipeCommand.swift: 343 lines
 HotkeyCommand.swift: 272 lines
 PressCommand.swift: 231 lines
 ```
@@ -863,6 +864,7 @@ Work:
 
 - done: define shared explicit/latest snapshot selection and focus snapshot policy in `InteractionObservationContext`;
 - done: teach click/type/move/scroll/drag/swipe/hotkey/press to resolve snapshot context through the shared helper;
+- done: centralize stale-snapshot refresh loops for element-targeted interaction commands;
 - done: centralize post-action invalidation for implicitly reused latest snapshots after click/type/scroll/drag/swipe;
 - done: define stale-window diagnostics for disappeared or resized snapshot windows;
 - done: centralize moved-window target-point adjustment for click/type/move/scroll/drag/swipe element paths;

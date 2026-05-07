@@ -76,9 +76,9 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             )
 
             if let elementId = self.on {
-                observation = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+                observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
                     observation,
-                    elementId: elementId,
+                    elementIds: [elementId],
                     target: self.target,
                     services: self.services,
                     logger: self.logger
