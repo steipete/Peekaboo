@@ -88,14 +88,17 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
             // Convert key names to comma-separated format for the service
             let keysCsv = keyNames.joined(separator: ",")
 
-            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
+            let observation = await InteractionObservationContext.resolve(
+                explicitSnapshot: self.snapshot,
+                fallbackToLatest: false,
+                snapshots: self.services.snapshots
+            )
 
             let deliveryMode: String
             let targetPID: pid_t?
 
             if self.focusOptions.focusBackground {
-                try self.validateBackgroundHotkeyOptions(snapshotId: snapshotId)
+                try self.validateBackgroundHotkeyOptions(snapshotId: observation.snapshotId)
                 let resolvedPID = try await self.resolveBackgroundHotkeyProcessIdentifier()
                 try await AutomationServiceBridge.hotkey(
                     automation: self.services.automation,
@@ -106,22 +109,10 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 deliveryMode = "background"
                 targetPID = resolvedPID
             } else {
-                if let providedSnapshot = snapshotId {
-                    _ = try await SnapshotValidation.requireDetectionResult(
-                        snapshotId: providedSnapshot,
-                        snapshots: self.services.snapshots
-                    )
-                }
-
-                // Ensure window is focused before pressing hotkey.
-                let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
-                    snapshotId
-                } else {
-                    nil
-                }
+                try await observation.validateIfExplicit(using: self.services.snapshots)
 
                 try await ensureFocused(
-                    snapshotId: focusSnapshotId,
+                    snapshotId: observation.focusSnapshotId(for: self.target),
                     target: self.target,
                     options: self.focusOptions,
                     services: self.services

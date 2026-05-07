@@ -86,7 +86,7 @@ Landed:
 - `peekaboo see` support types, output rendering, and screen-capture helpers are split out of the primary command file.
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
-- `peekaboo click`, `type`, `move`, and `scroll` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
+- `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 
 Still incomplete:
 
@@ -122,6 +122,10 @@ ClickCommand.swift: 535 lines
 TypeCommand.swift: 428 lines
 MoveCommand.swift: 435 lines
 ScrollCommand.swift: 224 lines
+DragCommand.swift: 385 lines
+SwipeCommand.swift: 326 lines
+HotkeyCommand.swift: 272 lines
+PressCommand.swift: 231 lines
 ```
 
 Current command-boundary audit:
@@ -235,7 +239,7 @@ Deliverables:
 - `ObservationSnapshotStore` facade over the current snapshot manager;
 - action commands accept fresh observation context or snapshot ID;
 - missing/stale element IDs can observe-if-needed or fail with target/window diagnostics;
-- click/move/type/scroll/drag/hotkey/focus invalidate affected request caches;
+- click/move/type/scroll/drag/swipe/hotkey/press/focus invalidate affected request caches;
 - action results include target-point and stale-snapshot diagnostics.
 
 Exit criteria:
@@ -504,7 +508,7 @@ AX cache invalidation triggers:
 - target PID or window ID changed;
 - window bounds changed;
 - frontmost app changed;
-- click/type/scroll/drag/hotkey/focus executed;
+- click/type/scroll/drag/swipe/hotkey/press/focus executed;
 - focus fallback executed;
 - detection options changed;
 - timeout/cancellation occurred before traversal completed.
@@ -685,15 +689,15 @@ Done when:
 
 ### Track D: Interactions Reuse Observation
 
-Goal: click/type/scroll/drag/hotkey reuse observation state when available and invalidate it when they mutate UI.
+Goal: click/type/scroll/drag/swipe/hotkey/press reuse observation state when available and invalidate it when they mutate UI.
 
 Future work:
 
 - create an `ObservationSnapshotStore` facade over current snapshot manager behavior;
-- extend the shared interaction observation context to drag/hotkey/focus and fresh observation results;
+- extend the shared interaction observation context to focus commands and fresh observation results;
 - add observe-if-needed behavior for stale or missing element IDs;
 - add target-point diagnostics for click/move without a full desktop scan;
-- add explicit cache invalidation after click/type/scroll/drag/hotkey/focus.
+- add explicit cache invalidation after click/type/scroll/drag/swipe/hotkey/press/focus.
 
 Done when:
 
@@ -849,9 +853,9 @@ Purpose: make action commands consume observation state and invalidate caches.
 Work:
 
 - done: define shared explicit/latest snapshot selection and focus snapshot policy in `InteractionObservationContext`;
-- done: teach click/type/move/scroll to resolve snapshot context through the shared helper;
+- done: teach click/type/move/scroll/drag/swipe/hotkey/press to resolve snapshot context through the shared helper;
 - define stale-window diagnostics;
-- teach drag/hotkey/focus to accept fresh observation context where available;
+- teach focus commands to accept fresh observation context where available;
 - add observe-if-needed for missing/stale element IDs;
 - centralize post-action invalidation;
 - add target-point diagnostics.

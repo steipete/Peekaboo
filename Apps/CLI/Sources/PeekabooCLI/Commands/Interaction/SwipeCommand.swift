@@ -94,35 +94,21 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
             }
 
-            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
-
-            if let providedSnapshot = snapshotId {
-                _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: providedSnapshot,
-                    snapshots: self.services.snapshots
-                )
-            }
-
             let needsSnapshotForElements = self.from != nil || self.to != nil
-            let snapshotIdForElements: String? = if needsSnapshotForElements {
-                if let snapshotId {
-                    snapshotId
-                } else {
-                    await self.services.snapshots.getMostRecentSnapshot()
-                }
-            } else {
-                snapshotId
-            }
+            let observation = await InteractionObservationContext.resolve(
+                explicitSnapshot: self.snapshot,
+                fallbackToLatest: needsSnapshotForElements,
+                snapshots: self.services.snapshots
+            )
 
-            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
-                snapshotIdForElements
+            if needsSnapshotForElements {
+                _ = try await observation.requireDetectionResult(using: self.services.snapshots)
             } else {
-                nil
+                try await observation.validateIfExplicit(using: self.services.snapshots)
             }
 
             try await ensureFocused(
-                snapshotId: focusSnapshotId,
+                snapshotId: observation.focusSnapshotId(for: self.target),
                 target: self.target,
                 options: self.focusOptions,
                 services: self.services
@@ -132,7 +118,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let sourcePoint = try await resolvePoint(
                 elementId: from,
                 coords: fromCoords,
-                snapshotId: snapshotIdForElements,
+                snapshotId: observation.snapshotId,
                 description: "from",
                 waitTimeout: 5.0
             )
@@ -140,7 +126,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             let destPoint = try await resolvePoint(
                 elementId: to,
                 coords: toCoords,
-                snapshotId: snapshotIdForElements,
+                snapshotId: observation.snapshotId,
                 description: "to",
                 waitTimeout: 5.0
             )
@@ -172,7 +158,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                     profile: movement.profile
                 )
             )
-            let snapshotLabel = snapshotIdForElements ?? "latest"
+            let snapshotLabel = observation.snapshotId ?? "latest"
             AutomationEventLogger.log(
                 .gesture,
                 "swipe from=(\(Int(sourcePoint.x)),\(Int(sourcePoint.y))) to=(\(Int(destPoint.x)),\(Int(destPoint.y))) "

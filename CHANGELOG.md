@@ -53,7 +53,7 @@
 - `peekaboo see` now builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see` command support types, output rendering, and screen capture helpers are now split out of the main command file.
 - `peekaboo see` legacy capture/detection fallback is now isolated in a dedicated command-support pipeline.
-- `peekaboo click`, `type`, `move`, and `scroll` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
+- `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!

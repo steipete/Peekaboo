@@ -69,25 +69,15 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         do {
             try self.validate()
 
-            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let snapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
-
-            if let providedSnapshot = snapshotId {
-                _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: providedSnapshot,
-                    snapshots: self.services.snapshots
-                )
-            }
-
-            // Ensure window is focused before pressing keys.
-            let focusSnapshotId: String? = if snapshotId != nil || !self.target.hasAnyTarget {
-                snapshotId
-            } else {
-                nil
-            }
+            let observation = await InteractionObservationContext.resolve(
+                explicitSnapshot: self.snapshot,
+                fallbackToLatest: false,
+                snapshots: self.services.snapshots
+            )
+            try await observation.validateIfExplicit(using: self.services.snapshots)
 
             try await ensureFocused(
-                snapshotId: focusSnapshotId,
+                snapshotId: observation.focusSnapshotId(for: self.target),
                 target: self.target,
                 options: self.focusOptions,
                 services: self.services

@@ -77,20 +77,19 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             try self.validateInputs()
 
             let needsSnapshot = self.from != nil || self.to != nil
-            let snapshotId: String? = if needsSnapshot {
-                try await self.resolveSnapshot()
+            let observation = await InteractionObservationContext.resolve(
+                explicitSnapshot: self.snapshot,
+                fallbackToLatest: needsSnapshot,
+                snapshots: self.services.snapshots
+            )
+            if needsSnapshot {
+                _ = try await observation.requireDetectionResult(using: self.services.snapshots)
             } else {
-                self.snapshot
-            }
-
-            let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
-                snapshotId
-            } else {
-                nil
+                try await observation.validateIfExplicit(using: self.services.snapshots)
             }
 
             try await ensureFocused(
-                snapshotId: focusSnapshotId,
+                snapshotId: observation.focusSnapshotId(for: self.target),
                 target: self.target,
                 options: self.focusOptions,
                 services: self.services
@@ -99,7 +98,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             let startPoint = try await self.resolvePoint(
                 elementId: self.from,
                 coords: self.fromCoords,
-                snapshotId: snapshotId,
+                snapshotId: observation.snapshotId,
                 description: "from"
             )
 
@@ -109,7 +108,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 try await self.resolvePoint(
                     elementId: self.to,
                     coords: self.toCoords,
-                    snapshotId: snapshotId,
+                    snapshotId: observation.snapshotId,
                     description: "to"
                 )
             }
@@ -142,7 +141,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             AutomationEventLogger.log(
                 .drag,
                 "drag from=(\(Int(startPoint.x)),\(Int(startPoint.y))) to=(\(Int(endPoint.x)),\(Int(endPoint.y))) "
-                    + "modifiers=\(self.modifiers ?? "none") snapshot=\(snapshotId ?? "latest") "
+                    + "modifiers=\(self.modifiers ?? "none") snapshot=\(observation.snapshotId ?? "latest") "
                     + "profile=\(movement.profileName)"
             )
 
@@ -201,13 +200,6 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
            CursorMovementProfileSelection(rawValue: profileName) == nil {
             throw ValidationError("Invalid profile '\(profileName)'. Use 'linear' or 'human'.")
         }
-    }
-
-    private func resolveSnapshot() async throws -> String? {
-        if let provided = self.snapshot {
-            return provided
-        }
-        return await self.services.snapshots.getMostRecentSnapshot()
     }
 
     private func resolvePoint(
