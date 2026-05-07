@@ -8,32 +8,60 @@ struct ImageAnalysisData: Codable {
     let text: String
 }
 
+struct ImageCapturedFile {
+    let file: SavedFile
+    let observation: ImageObservationDiagnostics
+}
+
+struct ImageObservationDiagnostics: Codable {
+    let spans: [SeeObservationSpan]
+    let warnings: [String]
+    let state_snapshot: SeeDesktopStateSnapshotSummary?
+    let target: SeeObservationTargetDiagnostics?
+
+    init(timings: ObservationTimings, diagnostics: DesktopObservationDiagnostics) {
+        self.spans = timings.spans.map(SeeObservationSpan.init)
+        self.warnings = diagnostics.warnings
+        self.state_snapshot = diagnostics.stateSnapshot.map(SeeDesktopStateSnapshotSummary.init)
+        self.target = diagnostics.target.map(SeeObservationTargetDiagnostics.init)
+    }
+}
+
 struct ImageCaptureResult: Codable {
     let files: [SavedFile]
+    let observations: [ImageObservationDiagnostics]
 }
 
 struct ImageAnalyzeResult: Codable {
     let files: [SavedFile]
     let analysis: ImageAnalysisData
+    let observations: [ImageObservationDiagnostics]
 }
 
 @MainActor
 extension ImageCommand {
-    func outputResults(_ files: [SavedFile]) {
-        let output = ImageCaptureResult(files: files)
+    func outputResults(_ captures: [ImageCapturedFile]) {
+        let output = ImageCaptureResult(
+            files: captures.map(\.file),
+            observations: captures.map(\.observation)
+        )
         if self.jsonOutput {
             outputSuccessCodable(data: output, logger: self.outputLogger)
         } else {
-            files.forEach { print("📸 \(self.describeSavedFile($0))") }
+            captures.map(\.file).forEach { print("📸 \(self.describeSavedFile($0))") }
         }
     }
 
-    func outputResultsWithAnalysis(_ files: [SavedFile], analysis: ImageAnalysisData) {
-        let output = ImageAnalyzeResult(files: files, analysis: analysis)
+    func outputResultsWithAnalysis(_ captures: [ImageCapturedFile], analysis: ImageAnalysisData) {
+        let output = ImageAnalyzeResult(
+            files: captures.map(\.file),
+            analysis: analysis,
+            observations: captures.map(\.observation)
+        )
         if self.jsonOutput {
             outputSuccessCodable(data: output, logger: self.outputLogger)
         } else {
-            files.forEach { print("📸 \(self.describeSavedFile($0))") }
+            captures.map(\.file).forEach { print("📸 \(self.describeSavedFile($0))") }
             print("\n🤖 Analysis (\(analysis.provider)) - \(analysis.model):")
             print(analysis.text)
         }

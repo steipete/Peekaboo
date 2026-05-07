@@ -28,6 +28,7 @@
 - Split ScreenCaptureKit and legacy capture operators out of the screen capture facade.
 - Added request-scoped desktop state snapshots for observation target resolution and diagnostics.
 - Exposed structured desktop observation timings and diagnostics in CLI and MCP outputs.
+- `peekaboo image --json` now includes per-capture desktop observation diagnostics, including timing spans, warnings, state snapshots, and resolved target metadata.
 - Moved remaining CLI app-window filtering for image, live capture, and window listing into observation target selection.
 - Routed image/MCP menu bar strip captures through desktop observation target resolution.
 - Added observation-backed menu bar popover window resolution and capture.
@@ -79,6 +80,7 @@
 - Window capture on macOS 26 now resolves native Retina scale from the backing display before falling back to ScreenCaptureKit display ratios.
 - `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank or auxiliary-window captures in multi-window Chromium-style apps.
+- `peekaboo image --app ...` now reports `WINDOW_NOT_FOUND` when all known app windows are hidden or non-shareable instead of falling back to a generic app capture.
 - `peekaboo image --window-id ...` now reports the resolved window identity instead of leaking ScreenCaptureKit's internal helper-window ordering into `window_index`.
 - Direct element detection callers now use a real racing timeout instead of creating an unobserved timeout task.
 - Element-targeted actions now fail with snapshot window identity when a cached target window disappeared or changed size, instead of silently clicking stale coordinates.

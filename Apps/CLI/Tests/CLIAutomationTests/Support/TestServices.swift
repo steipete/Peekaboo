@@ -428,8 +428,11 @@ final class StubApplicationService: ApplicationServiceProtocol {
         for appIdentifier: String,
         timeout: Float?
     ) async throws -> UnifiedToolOutput<ServiceWindowListData> {
-        let windows = self.windowsByApp[appIdentifier] ?? []
-        let targetApp = self.applications.first(where: { $0.name == appIdentifier })
+        let targetApp = self.applications.first {
+            $0.name == appIdentifier || $0.bundleIdentifier == appIdentifier
+        }
+        let windows = self.windowsByApp[appIdentifier]
+            ?? targetApp.flatMap { self.windowsByApp[$0.name] } ?? []
         let data = ServiceWindowListData(windows: windows, targetApplication: targetApp)
         let summary = UnifiedToolOutput<ServiceWindowListData>.Summary(
             brief: "Stub window list",

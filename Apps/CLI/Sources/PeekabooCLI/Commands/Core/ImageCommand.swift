@@ -102,17 +102,17 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         do {
             // ScreenCaptureService performs the authoritative permission check inside each capture path.
             // Avoid preflighting here too; it adds fixed latency to every one-shot screenshot.
-            let savedFiles = try await CrossProcessOperationGate.withExclusiveOperation(
+            let captures = try await CrossProcessOperationGate.withExclusiveOperation(
                 named: CrossProcessOperationGate.desktopObservationName
             ) {
                 try await self.performCapture()
             }
 
-            if let prompt = self.analyze, let firstFile = savedFiles.first {
+            if let prompt = self.analyze, let firstFile = captures.first?.file {
                 let analysis = try await self.analyzeImage(at: firstFile.path, with: prompt)
-                self.outputResultsWithAnalysis(savedFiles, analysis: analysis)
+                self.outputResultsWithAnalysis(captures, analysis: analysis)
             } else {
-                self.outputResults(savedFiles)
+                self.outputResults(captures)
             }
 
             self.logger.operationComplete("image_command", success: true)

@@ -67,6 +67,7 @@ Landed:
 - Legacy area capture through the legacy capture operator.
 - Dedicated ScreenCaptureKit and legacy capture operator files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
+- `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
 - Observation-backed menu-bar strip capture for CLI `image --app menubar` and MCP `image`.
 - Observation-backed menu-bar popover window-list resolution and capture.
@@ -120,6 +121,7 @@ Landed:
 - `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
 - Drag destination-app/Dock AX lookup now lives in a focused CLI helper, `swipe` no longer carries stale platform imports, and `move --center` uses the shared screen service instead of command-local AppKit.
 - `image --app` auto focus now skips forced activation when a renderable target window already exists, fixing SwiftPM GUI captures that timed out while activation never completed.
+- Observation app-target resolution now fails with a typed window-not-found error when known windows exist but none are renderable/shareable, instead of falling back to generic app capture.
 - MCP `image` and `see` now share one observation target parser, including screen, frontmost, menubar, PID/window-index, app/window-index, and app/window-title targets; MCP `image` also maps `scale: native` and `retina: true` to native capture scale.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.

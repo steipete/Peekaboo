@@ -59,6 +59,9 @@ extension ErrorHandlingCommand {
         case let captureError as CaptureError:
             self.mapCaptureErrorToCode(captureError)
 
+        case let observationError as DesktopObservationError:
+            self.mapObservationErrorToCode(observationError)
+
         // Commander ValidationError
         case is Commander.ValidationError:
             .VALIDATION_ERROR
@@ -66,6 +69,15 @@ extension ErrorHandlingCommand {
         // Default
         default:
             .INTERNAL_SWIFT_ERROR
+        }
+    }
+
+    private func mapObservationErrorToCode(_ error: DesktopObservationError) -> ErrorCode {
+        switch error {
+        case .targetNotFound:
+            .WINDOW_NOT_FOUND
+        case .unsupportedTarget:
+            .VALIDATION_ERROR
         }
     }
 

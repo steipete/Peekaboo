@@ -7,7 +7,7 @@ import PeekabooFoundation
 
 @MainActor
 extension ImageCommand {
-    func performCapture() async throws -> [SavedFile] {
+    func performCapture() async throws -> [ImageCapturedFile] {
         if let appName = self.app?.lowercased() {
             switch appName {
             case "menubar":
@@ -20,7 +20,7 @@ extension ImageCommand {
         }
 
         let captureMode = self.determineMode()
-        var results: [SavedFile] = []
+        var results: [ImageCapturedFile] = []
 
         switch captureMode {
         case .screen:
@@ -61,7 +61,7 @@ extension ImageCommand {
         return .frontmost
     }
 
-    private func captureWindowById(_ windowId: Int) async throws -> [SavedFile] {
+    private func captureWindowById(_ windowId: Int) async throws -> [ImageCapturedFile] {
         let observation = try await self.captureObservation(
             target: .windowID(CGWindowID(windowId)),
             preferredName: "window-\(windowId)",
@@ -76,7 +76,7 @@ extension ImageCommand {
         }
 
         return try [
-            self.savedFile(
+            self.capturedFile(
                 from: observation,
                 preferredName: preferredName,
                 windowIndex: nil
@@ -84,7 +84,7 @@ extension ImageCommand {
         ]
     }
 
-    private func captureScreens() async throws -> [SavedFile] {
+    private func captureScreens() async throws -> [ImageCapturedFile] {
         if let index = self.screenIndex {
             let observation = try await self.captureObservation(
                 target: .screen(index: index),
@@ -92,7 +92,7 @@ extension ImageCommand {
                 index: nil
             )
             return try [
-                self.savedFile(
+                self.capturedFile(
                     from: observation,
                     preferredName: "screen\(index)",
                     windowIndex: nil
@@ -103,14 +103,14 @@ extension ImageCommand {
         let screens = self.services.screens.listScreens()
         let indexes = screens.isEmpty ? [0] : Array(screens.indices)
 
-        var savedFiles: [SavedFile] = []
+        var savedFiles: [ImageCapturedFile] = []
         for (ordinal, displayIndex) in indexes.indexed() {
             let observation = try await self.captureObservation(
                 target: .screen(index: displayIndex),
                 preferredName: "screen\(displayIndex)",
                 index: ordinal
             )
-            try savedFiles.append(self.savedFile(
+            try savedFiles.append(self.capturedFile(
                 from: observation,
                 preferredName: "screen\(displayIndex)",
                 windowIndex: nil
@@ -120,7 +120,7 @@ extension ImageCommand {
         return savedFiles
     }
 
-    private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
+    private func captureApplicationWindow(_ identifier: String) async throws -> [ImageCapturedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
         let observation = try await self.captureObservation(
             target: .app(identifier: identifier, window: self.observationWindowSelection),
@@ -130,7 +130,7 @@ extension ImageCommand {
         let resolvedWindow = observation.target.window
         let resolvedTitle = resolvedWindow?.title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let saved = try self.savedFile(
+        let saved = try self.capturedFile(
             from: observation,
             preferredName: self.windowTitle ?? (resolvedTitle?.isEmpty == false ? resolvedTitle : nil) ?? identifier,
             windowIndex: resolvedWindow?.index
@@ -139,7 +139,7 @@ extension ImageCommand {
         return [saved]
     }
 
-    private func captureAllApplicationWindows(_ identifier: String) async throws -> [SavedFile] {
+    private func captureAllApplicationWindows(_ identifier: String) async throws -> [ImageCapturedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
 
         let windows = try await WindowServiceBridge.listWindows(
@@ -153,7 +153,7 @@ extension ImageCommand {
             throw PeekabooError.windowNotFound(criteria: "No shareable windows for \(identifier)")
         }
 
-        var savedFiles: [SavedFile] = []
+        var savedFiles: [ImageCapturedFile] = []
         for (ordinal, window) in filtered.indexed() {
             let observation = try await self.captureObservation(
                 target: .windowID(CGWindowID(window.windowID)),
@@ -161,7 +161,7 @@ extension ImageCommand {
                 index: ordinal
             )
 
-            let saved = try self.savedFile(
+            let saved = try self.capturedFile(
                 from: observation,
                 preferredName: window.title,
                 windowIndex: window.index
@@ -172,14 +172,14 @@ extension ImageCommand {
         return savedFiles
     }
 
-    private func captureFrontmost() async throws -> [SavedFile] {
+    private func captureFrontmost() async throws -> [ImageCapturedFile] {
         let observation = try await self.captureObservation(
             target: .frontmost,
             preferredName: "frontmost",
             index: nil
         )
         return try [
-            self.savedFile(
+            self.capturedFile(
                 from: observation,
                 preferredName: "frontmost",
                 windowIndex: nil
@@ -187,14 +187,14 @@ extension ImageCommand {
         ]
     }
 
-    private func captureMenuBar() async throws -> [SavedFile] {
+    private func captureMenuBar() async throws -> [ImageCapturedFile] {
         let observation = try await self.captureObservation(
             target: .menubar,
             preferredName: "menubar",
             index: nil
         )
         return try [
-            self.savedFile(
+            self.capturedFile(
                 from: observation,
                 preferredName: "menubar",
                 windowIndex: nil
@@ -232,6 +232,24 @@ extension ImageCommand {
             window_id: windowInfo.map { UInt32($0.windowID) },
             window_index: windowIndex ?? windowInfo?.index,
             mime_type: self.format.mimeType
+        )
+    }
+
+    private func capturedFile(
+        from observation: DesktopObservationResult,
+        preferredName: String?,
+        windowIndex: Int?
+    ) throws -> ImageCapturedFile {
+        try ImageCapturedFile(
+            file: self.savedFile(
+                from: observation,
+                preferredName: preferredName,
+                windowIndex: windowIndex
+            ),
+            observation: ImageObservationDiagnostics(
+                timings: observation.timings,
+                diagnostics: observation.diagnostics
+            )
         )
     }
 

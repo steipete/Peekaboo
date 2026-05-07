@@ -109,6 +109,9 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         let lookupIdentifier = app.bundleIdentifier ?? app.name
         let windows = try await self.applications.listWindows(for: lookupIdentifier, timeout: 2).data.windows
         let selectedWindow = try self.selectWindow(from: windows, selection: selection)
+        if selection == .automatic, selectedWindow == nil, !windows.isEmpty {
+            throw DesktopObservationError.targetNotFound("shareable window for \(app.name)")
+        }
         let context = WindowContext(
             applicationName: app.name,
             applicationBundleId: app.bundleIdentifier,
