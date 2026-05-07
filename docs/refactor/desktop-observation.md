@@ -168,6 +168,7 @@ Landed:
 - Agent service orchestration now keeps execution loops, session lifecycle wrappers, and toolset assembly in focused companion files.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
+- `PeekabooServices` now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -319,6 +320,9 @@ RemoteDockService.swift: 52 lines
 RemoteDialogService.swift: 65 lines
 RemoteSnapshotManager.swift: 91 lines
 RemoteApplicationService.swift: 79 lines
+PeekabooServices.swift: 404 lines
+PeekabooServices+Agent.swift: 138 lines
+PeekabooServices+Automation.swift: 136 lines
 MenuService+Extras.swift: 296 lines
 MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines
