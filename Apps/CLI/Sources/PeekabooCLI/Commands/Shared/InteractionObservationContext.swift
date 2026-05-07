@@ -128,6 +128,51 @@ enum InteractionObservationRefresher {
         return refreshed
     }
 
+    static func refreshForMissingQueryIfNeeded(
+        _ observation: InteractionObservationContext,
+        query: String,
+        target: InteractionTargetOptions,
+        services: any PeekabooServiceProviding,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
+        try await self.refreshForMissingQueryIfNeeded(
+            observation,
+            query: query,
+            target: target,
+            dependencies: InteractionObservationRefreshDependencies(
+                desktopObservation: services.desktopObservation,
+                snapshots: services.snapshots
+            ),
+            logger: logger
+        )
+    }
+
+    static func refreshForMissingQueryIfNeeded(
+        _ observation: InteractionObservationContext,
+        query: String,
+        target: InteractionTargetOptions,
+        dependencies: InteractionObservationRefreshDependencies,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
+        guard observation.source == .latest else {
+            return observation
+        }
+
+        if let snapshotId = observation.snapshotId,
+           let detectionResult = try await dependencies.snapshots.getDetectionResult(snapshotId: snapshotId),
+           containsElement(matching: query, in: detectionResult) {
+            return observation
+        }
+
+        return try await self.refreshObservation(
+            observation,
+            reason: "missing query '\(query)'",
+            target: target,
+            dependencies: dependencies,
+            logger: logger
+        )
+    }
+
     static func refreshForMissingElementIfNeeded(
         _ observation: InteractionObservationContext,
         elementId: String,
@@ -164,6 +209,22 @@ enum InteractionObservationRefresher {
             return observation
         }
 
+        return try await self.refreshObservation(
+            observation,
+            reason: "missing element '\(elementId)'",
+            target: target,
+            dependencies: dependencies,
+            logger: logger
+        )
+    }
+
+    private static func refreshObservation(
+        _ observation: InteractionObservationContext,
+        reason: String,
+        target: InteractionTargetOptions,
+        dependencies: InteractionObservationRefreshDependencies,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
         let requestTarget = try target.observationTargetRequest()
         let result = try await dependencies.desktopObservation.observe(DesktopObservationRequest(
             target: requestTarget,
@@ -181,13 +242,37 @@ enum InteractionObservationRefresher {
         }
 
         logger.debug(
-            "Refreshed implicit observation snapshot '\(refreshedSnapshotId)' for missing element '\(elementId)'"
+            "Refreshed implicit observation snapshot '\(refreshedSnapshotId)' for \(reason)"
         )
         return InteractionObservationContext(
             explicitSnapshotId: nil,
             snapshotId: refreshedSnapshotId,
             source: .latest
         )
+    }
+
+    private static func containsElement(
+        matching query: String,
+        in detectionResult: ElementDetectionResult
+    ) -> Bool {
+        let queryLower = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !queryLower.isEmpty else { return false }
+
+        return detectionResult.elements.all.contains { element in
+            guard element.isEnabled else { return false }
+            let candidates = [
+                element.id,
+                element.label,
+                element.value,
+                element.attributes["identifier"],
+                element.attributes["title"],
+                element.attributes["description"],
+                element.attributes["role"],
+                element.type.rawValue,
+            ].compactMap { $0?.lowercased() }
+
+            return candidates.contains { $0.contains(queryLower) }
+        }
     }
 }
 

@@ -261,11 +261,109 @@ struct InteractionObservationContextTests {
         #expect(desktopObservation.requests.isEmpty)
     }
 
+    @Test
+    func `Missing implicit query refreshes observation snapshot`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let staleSnapshotId = try await snapshots.createSnapshot(id: "latest-snapshot")
+        try await snapshots.storeDetectionResult(
+            snapshotId: staleSnapshotId,
+            result: Self.detectionResult(snapshotId: staleSnapshotId, element: Self.buttonElement(id: "B1"))
+        )
+        let observation = await InteractionObservationContext.resolve(
+            explicitSnapshot: nil,
+            fallbackToLatest: true,
+            snapshots: snapshots
+        )
+        let freshDetection = Self.detectionResult(
+            snapshotId: "fresh-snapshot",
+            element: Self.buttonElement(id: "B2", label: "Save")
+        )
+        let desktopObservation = RecordingDesktopObservationService(elements: freshDetection)
+
+        let refreshed = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+            observation,
+            query: "Save",
+            target: InteractionTargetOptions(),
+            dependencies: InteractionObservationRefreshDependencies(
+                desktopObservation: desktopObservation,
+                snapshots: snapshots
+            ),
+            logger: Logger.shared
+        )
+
+        #expect(refreshed.snapshotId == "fresh-snapshot")
+        #expect(desktopObservation.requests.count == 1)
+    }
+
+    @Test
+    func `Existing implicit query does not refresh observation snapshot`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let snapshotId = try await snapshots.createSnapshot(id: "latest-snapshot")
+        try await snapshots.storeDetectionResult(
+            snapshotId: snapshotId,
+            result: Self.detectionResult(snapshotId: snapshotId, element: Self.buttonElement(id: "B1", label: "Save"))
+        )
+        let observation = await InteractionObservationContext.resolve(
+            explicitSnapshot: nil,
+            fallbackToLatest: true,
+            snapshots: snapshots
+        )
+        let desktopObservation = RecordingDesktopObservationService(
+            elements: Self.detectionResult(snapshotId: "fresh-snapshot", element: Self.buttonElement(id: "B2"))
+        )
+
+        let refreshed = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+            observation,
+            query: "Save",
+            target: InteractionTargetOptions(),
+            dependencies: InteractionObservationRefreshDependencies(
+                desktopObservation: desktopObservation,
+                snapshots: snapshots
+            ),
+            logger: Logger.shared
+        )
+
+        #expect(refreshed.snapshotId == "latest-snapshot")
+        #expect(desktopObservation.requests.isEmpty)
+    }
+
+    @Test
+    func `Explicit snapshot missing query does not refresh`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let explicit = try await snapshots.createSnapshot(id: "explicit-snapshot")
+        let observation = await InteractionObservationContext.resolve(
+            explicitSnapshot: explicit,
+            fallbackToLatest: true,
+            snapshots: snapshots
+        )
+        let desktopObservation = RecordingDesktopObservationService(
+            elements: Self.detectionResult(snapshotId: "fresh-snapshot", element: Self.buttonElement(id: "B2"))
+        )
+
+        let refreshed = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+            observation,
+            query: "Save",
+            target: InteractionTargetOptions(),
+            dependencies: InteractionObservationRefreshDependencies(
+                desktopObservation: desktopObservation,
+                snapshots: snapshots
+            ),
+            logger: Logger.shared
+        )
+
+        #expect(refreshed.snapshotId == "explicit-snapshot")
+        #expect(desktopObservation.requests.isEmpty)
+    }
+
     private static func buttonElement(id: String) -> DetectedElement {
+        self.buttonElement(id: id, label: "Button \(id)")
+    }
+
+    private static func buttonElement(id: String, label: String) -> DetectedElement {
         DetectedElement(
             id: id,
             type: .button,
-            label: "Button \(id)",
+            label: label,
             bounds: CGRect(x: 10, y: 20, width: 80, height: 24)
         )
     }

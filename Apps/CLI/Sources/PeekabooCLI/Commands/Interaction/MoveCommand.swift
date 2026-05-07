@@ -183,10 +183,17 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let query = to {
                 // Find element by text/query
-                let observation = await InteractionObservationContext.resolve(
+                var observation = await InteractionObservationContext.resolve(
                     explicitSnapshot: self.snapshot,
                     fallbackToLatest: true,
                     snapshots: self.services.snapshots
+                )
+                observation = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+                    observation,
+                    query: query,
+                    target: self.target,
+                    services: self.services,
+                    logger: self.logger
                 )
                 let activeSnapshotId = try observation.requireSnapshot()
                 try await ensureFocused(

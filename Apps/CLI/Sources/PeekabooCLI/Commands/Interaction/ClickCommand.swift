@@ -277,6 +277,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     }
 
                 } else if let searchQuery = query {
+                    observation = try await self.refreshObservationIfQueryMissing(observation, query: searchQuery)
                     observationForInvalidation = observation
                     activeSnapshotId = observation.snapshotId ?? ""
 
@@ -305,25 +306,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Determine click type
             let clickType: ClickType = self.right ? .right : (self.double ? .double : .single)
-
-            // Perform the click
-            if case .coordinates = clickTarget {
-                // For coordinate clicks, pass nil snapshot ID
-                try await AutomationServiceBridge.click(
-                    automation: self.services.automation,
-                    target: clickTarget,
-                    clickType: clickType,
-                    snapshotId: nil
-                )
-            } else {
-                // For element-based clicks, pass the snapshot ID
-                try await AutomationServiceBridge.click(
-                    automation: self.services.automation,
-                    target: clickTarget,
-                    clickType: clickType,
-                    snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
-                )
-            }
+            try await self.performClick(clickTarget, clickType: clickType, snapshotId: activeSnapshotId)
 
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
@@ -436,6 +419,34 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
           • Element might be disabled or not visible
           • Try increasing --wait-for timeout
         """
+    }
+
+    private func refreshObservationIfQueryMissing(
+        _ observation: InteractionObservationContext,
+        query: String
+    ) async throws -> InteractionObservationContext {
+        try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+            observation,
+            query: query,
+            target: self.target,
+            services: self.services,
+            logger: self.logger
+        )
+    }
+
+    private func performClick(_ target: ClickTarget, clickType: ClickType, snapshotId: String) async throws {
+        let effectiveSnapshotId: String? = if case .coordinates = target {
+            nil
+        } else {
+            snapshotId.isEmpty ? nil : snapshotId
+        }
+
+        try await AutomationServiceBridge.click(
+            automation: self.services.automation,
+            target: target,
+            clickType: clickType,
+            snapshotId: effectiveSnapshotId
+        )
     }
 
     private func focusApplicationIfNeeded(snapshotId: String?) async throws {
