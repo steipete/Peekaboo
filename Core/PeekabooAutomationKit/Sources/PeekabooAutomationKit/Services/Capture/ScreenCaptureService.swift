@@ -6,25 +6,6 @@ import Foundation
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
-protocol ScreenCaptureMetricsObserving: Sendable {
-    func record(
-        operation: String,
-        api: ScreenCaptureAPI,
-        duration: TimeInterval,
-        success: Bool,
-        error: (any Error)?)
-}
-
-struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
-    func record(
-        operation _: String,
-        api _: ScreenCaptureAPI,
-        duration _: TimeInterval,
-        success _: Bool,
-        error _: (any Error)?)
-    {}
-}
-
 /**
  * Screen and window capture service with dual API support.
  *
@@ -646,14 +627,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 "captureArea: The specified area is not within any display bounds")
         }
 
-        let nativeScale: CGFloat = {
-            let width = CGFloat(display.width)
-            let frameWidth = display.frame.width
-            guard frameWidth > 0 else { return 1.0 }
-            let scale = width / frameWidth
-            return scale > 0 ? scale : 1.0
-        }()
-        let outputScale: CGFloat = scale == .native ? nativeScale : 1.0
+        let scalePlan = ScreenCaptureScaleResolver.plan(
+            preference: scale,
+            displayID: display.displayID,
+            fallbackPixelWidth: display.width,
+            frameWidth: display.frame.width)
+        let outputScale = scalePlan.outputScale
 
         let filter = SCContentFilter(display: display, excludingWindows: [])
         let config = SCStreamConfiguration()
@@ -865,12 +844,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 throw OperationError.captureFailed(
                     reason: "Window is not on any available display")
             }
-            let targetScale = self.nativeScale(for: targetDisplay)
+            let scalePlan = self.scalePlan(for: targetDisplay, preference: scale)
             let image = try await RetryHandler.withRetry(policy: .standard) {
                 try await self.createScreenshot(
                     of: targetWindow,
                     scale: scale,
-                    targetScale: targetScale,
+                    targetScale: scalePlan.nativeScale,
                     display: targetDisplay)
             }
 
@@ -909,7 +888,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                     index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
                     name: targetDisplay.displayID.description,
                     bounds: targetDisplay.frame,
-                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0))
+                    scaleFactor: scalePlan.outputScale))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -950,13 +929,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             guard let targetDisplay = self.display(for: targetWindow, displays: content.displays) else {
                 throw OperationError.captureFailed(reason: "Window is not on any available display")
             }
-            let targetScale = self.nativeScale(for: targetDisplay)
+            let scalePlan = self.scalePlan(for: targetDisplay, preference: scale)
 
             let image = try await RetryHandler.withRetry(policy: .standard) {
                 try await self.createScreenshot(
                     of: targetWindow,
                     scale: scale,
-                    targetScale: targetScale,
+                    targetScale: scalePlan.nativeScale,
                     display: targetDisplay)
             }
 
@@ -999,7 +978,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                     index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
                     name: targetDisplay.displayID.description,
                     bounds: targetDisplay.frame,
-                    scaleFactor: scale == .native ? self.nativeScale(for: targetDisplay) : 1.0))
+                    scaleFactor: scalePlan.outputScale))
 
             return CaptureResult(imageData: imageData, metadata: metadata)
         }
@@ -1178,15 +1157,20 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
         }
 
-        private func nativeScale(for display: SCDisplay) -> CGFloat {
-            ScreenCaptureScaleResolver.nativeScale(
+        private func scalePlan(
+            for display: SCDisplay,
+            preference: CaptureScalePreference) -> ScreenCaptureScaleResolver.Plan
+        {
+            ScreenCaptureScaleResolver.plan(
+                preference: preference,
                 displayID: display.displayID,
                 fallbackPixelWidth: display.width,
                 frameWidth: display.frame.width)
         }
 
         private func scaleFactor(for window: SCWindow, displays: [SCDisplay]) -> CGFloat {
-            self.display(for: window, displays: displays).map { self.nativeScale(for: $0) } ?? 1.0
+            self.display(for: window, displays: displays)
+                .map { self.scalePlan(for: $0, preference: .native).nativeScale } ?? 1.0
         }
 
         private func display(for window: SCWindow, displays: [SCDisplay]) -> SCDisplay? {
@@ -1306,8 +1290,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 CGRect(x: 0, y: 0, width: image.width, height: image.height)
             }
 
+            let scalePlan = self.scalePlan(for: bounds, preference: scale)
             let imageData: Data
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: self.scaleFactor(for: bounds))
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
             do {
                 imageData = try scaledImage.pngData()
             } catch {
@@ -1348,7 +1333,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                     index: resolvedIndex,
                     name: nil,
                     bounds: bounds,
-                    scaleFactor: self.outputScale(for: scale, fallback: self.scaleFactor(for: bounds))))
+                    scaleFactor: scalePlan.outputScale))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1425,8 +1410,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 CGRect(x: 0, y: 0, width: image.width, height: image.height)
             }
 
+            let scalePlan = self.scalePlan(for: bounds, preference: scale)
             let imageData: Data
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: self.scaleFactor(for: bounds))
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
             do {
                 imageData = try scaledImage.pngData()
             } catch {
@@ -1470,7 +1456,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                     index: 0,
                     name: nil,
                     bounds: bounds,
-                    scaleFactor: self.outputScale(for: scale, fallback: self.scaleFactor(for: bounds))))
+                    scaleFactor: scalePlan.outputScale))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1502,10 +1488,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             }
 
             let screenBounds = targetScreen.frame
-            let scaleFactor = targetScreen.backingScaleFactor
+            let scalePlan = ScreenCaptureScaleResolver.plan(
+                preference: scale,
+                screenBackingScaleFactor: targetScreen.backingScaleFactor,
+                fallbackPixelWidth: Int(screenBounds.width * targetScreen.backingScaleFactor),
+                frameWidth: screenBounds.width)
             let image = try self.captureDisplayWithCGDisplay(screen: targetScreen)
 
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scaleFactor)
+            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
 
             let imageData: Data
             do {
@@ -1523,13 +1513,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 correlationId: correlationId)
 
             let metadata = CaptureMetadata(
-                size: CGSize(width: image.width, height: image.height),
+                size: CGSize(width: scaledImage.width, height: scaledImage.height),
                 mode: .screen,
                 displayInfo: DisplayInfo(
                     index: displayIndex ?? 0,
                     name: "Display \(displayIndex ?? 0)",
                     bounds: screenBounds,
-                    scaleFactor: self.outputScale(for: scale, fallback: scaleFactor)))
+                    scaleFactor: scalePlan.outputScale))
 
             return CaptureResult(
                 imageData: imageData,
@@ -1609,13 +1599,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                     reason: "Window \(windowID) is not on any available display")
             }
 
-            let nativeScale: CGFloat = {
-                let width = CGFloat(display.width)
-                let frameWidth = display.frame.width
-                guard frameWidth > 0 else { return 1.0 }
-                let scale = width / frameWidth
-                return scale > 0 ? scale : 1.0
-            }()
+            let nativeScale = ScreenCaptureScaleResolver.plan(
+                preference: .native,
+                displayID: display.displayID,
+                fallbackPixelWidth: display.width,
+                frameWidth: display.frame.width).nativeScale
 
             let filter = SCContentFilter(display: display, including: [scWindow])
             let config = self.makeScreenshotConfiguration()
@@ -1750,18 +1738,23 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             return context.makeImage() ?? image
         }
 
-        private func outputScale(for preference: CaptureScalePreference, fallback: CGFloat) -> CGFloat {
-            switch preference {
-            case .native: fallback
-            case .logical1x: 1.0
-            }
-        }
-
         private func scaleFactor(for bounds: CGRect) -> CGFloat {
             if let screen = NSScreen.screens.first(where: { $0.frame.contains(bounds) }) {
                 return screen.backingScaleFactor
             }
             return NSScreen.main?.backingScaleFactor ?? 1.0
+        }
+
+        private func scalePlan(
+            for bounds: CGRect,
+            preference: CaptureScalePreference) -> ScreenCaptureScaleResolver.Plan
+        {
+            let scaleFactor = self.scaleFactor(for: bounds)
+            return ScreenCaptureScaleResolver.plan(
+                preference: preference,
+                screenBackingScaleFactor: scaleFactor,
+                fallbackPixelWidth: Int(bounds.width * scaleFactor),
+                frameWidth: bounds.width)
         }
 
         private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {

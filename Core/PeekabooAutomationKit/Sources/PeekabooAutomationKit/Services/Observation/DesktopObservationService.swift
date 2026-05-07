@@ -44,9 +44,10 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             try await self.targetResolver.resolve(request.target)
         }
 
-        let capture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
+        let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
             try await self.capture(target, options: request.capture)
         }
+        let capture = Self.normalize(capture: rawCapture, for: target)
 
         let elements = try await self.detectIfNeeded(
             capture: capture,
@@ -124,6 +125,48 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         case .menubarPopover:
             throw DesktopObservationError.unsupportedTarget("menubar popover")
         }
+    }
+
+    private static func normalize(capture: CaptureResult, for target: ResolvedObservationTarget) -> CaptureResult {
+        guard
+            let resolvedWindow = target.window,
+            let capturedWindow = capture.metadata.windowInfo,
+            capturedWindow.windowID == resolvedWindow.windowID
+        else {
+            return capture
+        }
+
+        let normalizedWindow = ServiceWindowInfo(
+            windowID: capturedWindow.windowID,
+            title: resolvedWindow.title.isEmpty ? capturedWindow.title : resolvedWindow.title,
+            bounds: resolvedWindow.bounds,
+            isMinimized: capturedWindow.isMinimized,
+            isMainWindow: capturedWindow.isMainWindow,
+            windowLevel: capturedWindow.windowLevel,
+            alpha: capturedWindow.alpha,
+            index: resolvedWindow.index,
+            spaceID: capturedWindow.spaceID,
+            spaceName: capturedWindow.spaceName,
+            screenIndex: capturedWindow.screenIndex,
+            screenName: capturedWindow.screenName,
+            layer: capturedWindow.layer,
+            isOnScreen: capturedWindow.isOnScreen,
+            sharingState: capturedWindow.sharingState,
+            isExcludedFromWindowsMenu: capturedWindow.isExcludedFromWindowsMenu)
+        let metadata = CaptureMetadata(
+            size: capture.metadata.size,
+            mode: capture.metadata.mode,
+            videoTimestampMs: capture.metadata.videoTimestampMs,
+            applicationInfo: capture.metadata.applicationInfo,
+            windowInfo: normalizedWindow,
+            displayInfo: capture.metadata.displayInfo,
+            timestamp: capture.metadata.timestamp)
+
+        return CaptureResult(
+            imageData: capture.imageData,
+            savedPath: capture.savedPath,
+            metadata: metadata,
+            warning: capture.warning)
     }
 
     private var engineAwareCapture: (any EngineAwareScreenCaptureServiceProtocol)? {

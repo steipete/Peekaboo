@@ -31,7 +31,8 @@ final class SingleShotFrameSource: CaptureFrameSource {
 
         let display = request.display
         let sourceRect = request.sourceRect
-        let scaleFactor = Self.scaleFactor(for: display, preference: request.scale)
+        let scalePlan = Self.scalePlan(for: display, preference: request.scale)
+        let scaleFactor = scalePlan.outputScale
 
         let filter = SCContentFilter(display: display, excludingWindows: [])
         let config = SCStreamConfiguration()
@@ -55,6 +56,7 @@ final class SingleShotFrameSource: CaptureFrameSource {
             metadata: [
                 "durationMs": Int(duration * 1000),
                 "displayID": display.displayID,
+                "scaleSource": scalePlan.source.rawValue,
             ],
             correlationId: request.correlationId)
 
@@ -77,20 +79,14 @@ final class SingleShotFrameSource: CaptureFrameSource {
         return (cgImage: image, metadata: metadata)
     }
 
-    private nonisolated static func scaleFactor(
+    private nonisolated static func scalePlan(
         for display: SCDisplay,
-        preference: CaptureScalePreference) -> CGFloat
+        preference: CaptureScalePreference) -> ScreenCaptureScaleResolver.Plan
     {
-        let nativeScale: CGFloat = ScreenCaptureScaleResolver.nativeScale(
+        ScreenCaptureScaleResolver.plan(
+            preference: preference,
             displayID: display.displayID,
             fallbackPixelWidth: display.width,
             frameWidth: display.frame.width)
-
-        switch preference {
-        case .native:
-            return nativeScale
-        case .logical1x:
-            return 1.0
-        }
     }
 }

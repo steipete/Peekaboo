@@ -113,6 +113,47 @@ struct ScreenCaptureServiceFlowTests {
     }
 
     @Test
+    func `scale planner keeps logical output at 1x while recording native scale`() {
+        let plan = ScreenCaptureScaleResolver.plan(
+            preference: .logical1x,
+            screenBackingScaleFactor: 2.0,
+            fallbackPixelWidth: 1200,
+            frameWidth: 1200)
+
+        #expect(plan.preference == .logical1x)
+        #expect(plan.nativeScale == 2.0)
+        #expect(plan.outputScale == 1.0)
+        #expect(plan.source == .screenBackingScaleFactor)
+    }
+
+    @Test
+    func `scale planner uses native output scale for retina requests`() {
+        let plan = ScreenCaptureScaleResolver.plan(
+            preference: .native,
+            screenBackingScaleFactor: nil,
+            fallbackPixelWidth: 2400,
+            frameWidth: 1200)
+
+        #expect(plan.preference == .native)
+        #expect(plan.nativeScale == 2.0)
+        #expect(plan.outputScale == 2.0)
+        #expect(plan.source == .displayPixelRatio)
+    }
+
+    @Test
+    func `scale planner falls back to 1x for invalid display geometry`() {
+        let plan = ScreenCaptureScaleResolver.plan(
+            preference: .native,
+            screenBackingScaleFactor: nil,
+            fallbackPixelWidth: 0,
+            frameWidth: 0)
+
+        #expect(plan.nativeScale == 1.0)
+        #expect(plan.outputScale == 1.0)
+        #expect(plan.source == .fallback1x)
+    }
+
+    @Test
     func `captureWindow resolves applications via fixtures`() async throws {
         let fixtures = self.makeFixtures()
         let service = ScreenCaptureService.makeTestService(fixtures: fixtures)

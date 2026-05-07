@@ -80,6 +80,35 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(automation.detectCalls, 0)
     }
 
+    func testObservationNormalizesCapturedWindowMetadataToResolvedTarget() async throws {
+        let app = Self.app()
+        let resolvedWindow = Self.window(
+            id: 42,
+            title: "Document",
+            bounds: CGRect(x: 100, y: 100, width: 400, height: 300),
+            index: 0)
+        let capturedWindow = Self.window(
+            id: 42,
+            title: "Document",
+            bounds: CGRect(x: 100, y: 100, width: 400, height: 300),
+            index: 5)
+        let applications = RecordingApplicationService(applications: [app], windows: [resolvedWindow])
+        let capture = RecordingScreenCaptureService(
+            result: Self.captureResult(app: app, window: capturedWindow))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: RecordingUIAutomationService(),
+            applications: applications)
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .none)))
+
+        XCTAssertEqual(result.capture.metadata.windowInfo?.windowID, 42)
+        XCTAssertEqual(result.capture.metadata.windowInfo?.index, 0)
+        XCTAssertEqual(result.capture.metadata.windowInfo?.title, "Document")
+    }
+
     func testObservationWithDetectionPassesWindowContextAndWebFocusPolicy() async throws {
         let app = Self.app()
         let window = Self.window(id: 77, title: "Editor", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))

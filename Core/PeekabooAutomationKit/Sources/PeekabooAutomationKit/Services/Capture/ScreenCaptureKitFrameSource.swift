@@ -306,7 +306,8 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             return existing
         }
 
-        let scaleFactor = ScreenCaptureKitFrameSource.scaleFactor(for: display, preference: scale)
+        let scalePlan = ScreenCaptureKitFrameSource.scalePlan(for: display, preference: scale)
+        let scaleFactor = scalePlan.outputScale
         let queue = DispatchQueue(label: "boo.peekaboo.capture.stream.\(display.displayID)")
         let handler = StreamFrameHandler(
             onFrame: { [weak self] image, timestamp, _ in
@@ -338,6 +339,7 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             metadata: [
                 "displayID": display.displayID,
                 "scaleFactor": scaleFactor,
+                "scaleSource": scalePlan.source.rawValue,
             ],
             correlationId: correlationId)
 
@@ -399,21 +401,15 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             duration: self.frameWaitTimeout)
     }
 
-    private nonisolated static func scaleFactor(for display: SCDisplay, preference: CaptureScalePreference) -> CGFloat {
-        let nativeScale: CGFloat = {
-            let width = CGFloat(display.width)
-            let frameWidth = display.frame.width
-            guard frameWidth > 0 else { return 1.0 }
-            let scale = width / frameWidth
-            return scale > 0 ? scale : 1.0
-        }()
-
-        switch preference {
-        case .native:
-            return nativeScale
-        case .logical1x:
-            return 1.0
-        }
+    private nonisolated static func scalePlan(
+        for display: SCDisplay,
+        preference: CaptureScalePreference) -> ScreenCaptureScaleResolver.Plan
+    {
+        ScreenCaptureScaleResolver.plan(
+            preference: preference,
+            displayID: display.displayID,
+            fallbackPixelWidth: display.width,
+            frameWidth: display.frame.width)
     }
 
     private nonisolated static let defaultMaxFrameAge: TimeInterval = 0.25
