@@ -96,6 +96,7 @@ Landed:
 - `peekaboo dialog` click, input, file, dismiss, and list implementations now live in focused extension files, leaving `DialogCommand.swift` as registration, bindings, and shared error handling.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving `SpaceCommand.swift` as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving `DockCommand.swift` as registration, bindings, and shared error handling.
+- `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving `DaemonCommand.swift` as registration and shared daemon status support.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of maintaining command-local refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.
