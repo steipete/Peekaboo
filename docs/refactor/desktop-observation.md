@@ -177,6 +177,7 @@ Landed:
 - CLI and MCP image output paths now share directory-aware planning, so `--path .`, trailing-slash paths, and existing directories receive generated filenames instead of hidden `..png` artifacts.
 - CLI `image`, CLI `see`, and MCP target parsing now agree for explicit PID targets, including the documented `PID:<pid>` app identifier form; `image` also enforces title-over-index window selection before building its observation request.
 - `capture live --window-title/--window-index` now resolves explicit selections to stable window IDs and the watch frame provider captures those IDs directly instead of letting app-window ordering pick a different surface.
+- MCP `capture window_title/window_index` now uses the same stable-window-ID watch target shape instead of accepting `window_title` as a dead argument.
 - CLI `see` output paths now use the same directory-aware planning for primary screenshots and legacy multi-screen companion files.
 - `capture live`, `capture video`, and MCP `capture` now share small path resolvers for home-directory expansion on output directories, video input paths, and video output paths.
 - Clipboard and paste file IO now share a small `ClipboardPathResolver`, so CLI and MCP surfaces expand home-directory paths consistently before reading or writing files.

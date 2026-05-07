@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 import TachikomaMCP
 
@@ -33,7 +34,7 @@ public struct CaptureTool: MCPTool {
                 "app": SchemaBuilder.string(description: "Optional app/bundle/PID target for window mode"),
                 "pid": SchemaBuilder.number(description: "Optional process ID target for window mode"),
                 "window_title": SchemaBuilder.string(description: "Optional window title filter"),
-                "window_index": SchemaBuilder.number(description: "Optional window index"),
+                "window_index": SchemaBuilder.number(description: "Optional window index; requires app or pid"),
                 "screen_index": SchemaBuilder.number(description: "Optional screen index"),
                 "region": SchemaBuilder.string(description: "x,y,width,height for area mode"),
                 "capture_focus": SchemaBuilder.string(
@@ -81,7 +82,7 @@ public struct CaptureTool: MCPTool {
 
     @MainActor
     public func execute(arguments: ToolArguments) async throws -> ToolResponse {
-        let request = try await CaptureRequest(arguments: arguments)
+        let request = try await CaptureRequest(arguments: arguments, windows: self.context.windows)
         let dependencies = WatchCaptureDependencies(
             screenCapture: self.context.screenCapture,
             screenService: self.context.screens,
@@ -222,7 +223,7 @@ private struct CaptureRequest {
     let videoIn: String?
     let videoOut: String?
 
-    init(arguments: ToolArguments) async throws {
+    init(arguments: ToolArguments, windows: any WindowManagementServiceProtocol) async throws {
         let input = try arguments.decode(CaptureInput.self)
         self.source = try CaptureToolArgumentResolver.source(from: input.source)
 
@@ -254,7 +255,7 @@ private struct CaptureRequest {
 
         switch self.source {
         case .live:
-            let scope = try CaptureRequest.resolveScope(from: input)
+            let scope = try await CaptureRequest.resolveScope(from: input, windows: windows)
             self.scope = scope
             self.frameSource = nil
             let opts = try CaptureRequest.buildLiveOptions(
@@ -353,7 +354,10 @@ private struct CaptureInput: Codable {
 }
 
 extension CaptureRequest {
-    fileprivate static func resolveScope(from input: CaptureInput) throws -> CaptureScope {
+    fileprivate static func resolveScope(
+        from input: CaptureInput,
+        windows: any WindowManagementServiceProtocol) async throws -> CaptureScope
+    {
         let modeStr = input.mode
         let explicitApp = input.app
         let windowTitle = input.window_title
@@ -378,8 +382,12 @@ extension CaptureRequest {
         case .frontmost:
             return CaptureScope(kind: .frontmost)
         case .window:
-            let appIdentifier = CaptureToolArgumentResolver.applicationIdentifier(app: explicitApp, pid: input.pid)
-            return CaptureScope(kind: .window, applicationIdentifier: appIdentifier, windowIndex: windowIndex)
+            return try await CaptureToolWindowResolver.scope(
+                app: explicitApp,
+                pid: input.pid,
+                windowTitle: windowTitle,
+                windowIndex: windowIndex,
+                windows: windows)
         case .area:
             let region = try CaptureToolArgumentResolver.region(from: input.region)
             return CaptureScope(
