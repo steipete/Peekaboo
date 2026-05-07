@@ -116,7 +116,7 @@ extension SeeCommand {
             return originalPath
         }
 
-        let annotatedPath = (originalPath as NSString).deletingPathExtension + "_annotated.png"
+        let annotatedPath = ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: originalPath)
 
         guard let nsImage = NSImage(contentsOfFile: originalPath) else {
             throw CaptureError.fileIOError("Failed to load image from \(originalPath)")

@@ -21,6 +21,10 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
             annotatedScreenshotPath: nil)
     }
 
+    public nonisolated static func annotatedScreenshotPath(forRawScreenshotPath rawPath: String) -> String {
+        (rawPath as NSString).deletingPathExtension + "_annotated.png"
+    }
+
     private func writeRawScreenshotIfNeeded(
         capture: CaptureResult,
         options: DesktopObservationOutputOptions) throws -> String?

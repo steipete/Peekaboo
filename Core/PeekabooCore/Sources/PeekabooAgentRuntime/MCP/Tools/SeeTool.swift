@@ -23,7 +23,7 @@ private struct AnnotatedScreenshotRenderer {
         }
 
         let annotatedImage = self.makeAnnotatedImage(from: originalImage, elements: elements)
-        let annotatedPath = originalPath.replacingOccurrences(of: ".png", with: "_annotated.png")
+        let annotatedPath = ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: originalPath)
 
         guard let pngData = self.makePNGData(from: annotatedImage) else {
             self.logger.warning("Failed to generate PNG data for annotation, returning original")

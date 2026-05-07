@@ -65,11 +65,12 @@ Landed:
 - Remaining CLI app-window filtering for `image`, live `capture`, and `window list` now uses observation target selection.
 - Menu bar strip capture for CLI `image --app menubar` and MCP `image` now runs through observation.
 - Menu bar popover window-list resolution and capture now runs through observation.
+- CLI/MCP annotated screenshot companion-path planning now lives in `ObservationOutputWriter`.
 
 Still intentionally incomplete:
 
 - menu bar popover OCR and click-to-open behavior under observation;
-- annotation output under the observation writer;
+- annotation rendering and snapshot registration under the observation writer;
 - OCR as a first-class observation enhancement;
 - further extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;

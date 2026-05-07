@@ -174,6 +174,18 @@ final class DesktopObservationServiceTests: XCTestCase {
         ])
     }
 
+    func testObservationOutputWriterPlansAnnotatedCompanionPath() {
+        XCTAssertEqual(
+            ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: "/tmp/screenshot.png"),
+            "/tmp/screenshot_annotated.png")
+        XCTAssertEqual(
+            ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: "/tmp/screenshot.jpg"),
+            "/tmp/screenshot_annotated.png")
+        XCTAssertEqual(
+            ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: "relative"),
+            "relative_annotated.png")
+    }
+
     func testObservationForwardsCaptureEnginePreferenceWhenSupported() async throws {
         let app = Self.app()
         let window = Self.window(id: 99, title: "Engine", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
