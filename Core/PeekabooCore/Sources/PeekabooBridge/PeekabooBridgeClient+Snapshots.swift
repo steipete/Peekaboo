@@ -1,0 +1,91 @@
+import Foundation
+import PeekabooAutomationKit
+import PeekabooFoundation
+
+extension PeekabooBridgeClient {
+    public func createSnapshot() async throws -> String {
+        let response = try await self.send(.createSnapshot(.init()))
+        switch response {
+        case let .snapshotId(id): return id
+        case let .error(envelope): throw envelope
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected createSnapshot response")
+        }
+    }
+
+    public func storeDetectionResult(snapshotId: String, result: ElementDetectionResult) async throws {
+        try await self.sendExpectOK(.storeDetectionResult(.init(snapshotId: snapshotId, result: result)))
+    }
+
+    public func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult {
+        let response = try await self.send(.getDetectionResult(.init(snapshotId: snapshotId)))
+        switch response {
+        case let .detection(result): return result
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected getDetectionResult response")
+        }
+    }
+
+    public func storeScreenshot(_ request: PeekabooBridgeStoreScreenshotRequest) async throws {
+        try await self.sendExpectOK(.storeScreenshot(request))
+    }
+
+    public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        try await self.sendExpectOK(
+            .storeAnnotatedScreenshot(
+                .init(
+                    snapshotId: snapshotId,
+                    annotatedScreenshotPath: annotatedScreenshotPath)))
+    }
+
+    public func listSnapshots() async throws -> [SnapshotInfo] {
+        let response = try await self.send(.listSnapshots)
+        switch response {
+        case let .snapshots(list): return list
+        case let .error(envelope): throw envelope
+        default: throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected listSnapshots response")
+        }
+    }
+
+    public func getMostRecentSnapshot(applicationBundleId: String? = nil) async throws -> String {
+        let response = try await self.send(.getMostRecentSnapshot(.init(applicationBundleId: applicationBundleId)))
+        switch response {
+        case let .snapshotId(id): return id
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected getMostRecentSnapshot response")
+        }
+    }
+
+    public func cleanSnapshot(snapshotId: String) async throws {
+        try await self.sendExpectOK(.cleanSnapshot(.init(snapshotId: snapshotId)))
+    }
+
+    public func cleanSnapshotsOlderThan(days: Int) async throws -> Int {
+        let response = try await self.send(.cleanSnapshotsOlderThan(.init(days: days)))
+        switch response {
+        case let .int(count): return count
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(
+                code: .invalidRequest,
+                message: "Unexpected cleanSnapshotsOlderThan response")
+        }
+    }
+
+    public func cleanAllSnapshots() async throws -> Int {
+        let response = try await self.send(.cleanAllSnapshots)
+        switch response {
+        case let .int(count): return count
+        case let .error(envelope): throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected cleanAllSnapshots response")
+        }
+    }
+
+    public func appleScriptProbe() async throws {
+        try await self.sendExpectOK(.appleScriptProbe)
+    }
+}
