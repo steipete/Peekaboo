@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import PeekabooFoundation
 
 @MainActor
 public protocol DesktopObservationServiceProtocol: Sendable {
@@ -150,10 +151,62 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             shouldFocusWebContent: request.detection.allowWebFocusFallback)
 
         return try await tracer.span("detection.ax") {
-            try await self.automation.detectElements(
+            try await self.detectElements(
                 in: capture.imageData,
-                snapshotId: request.output.snapshotID,
-                windowContext: context)
+                snapshotID: request.output.snapshotID,
+                windowContext: context,
+                timeout: request.timeout.detection)
+        }
+    }
+
+    private func detectElements(
+        in imageData: Data,
+        snapshotID: String?,
+        windowContext: WindowContext?,
+        timeout: TimeInterval?) async throws -> ElementDetectionResult
+    {
+        let automation = self.automation
+        let operation: @Sendable () async throws -> ElementDetectionResult = {
+            try await automation.detectElements(
+                in: imageData,
+                snapshotId: snapshotID,
+                windowContext: windowContext)
+        }
+
+        guard let timeout else {
+            return try await operation()
+        }
+
+        return try await self.withDetectionTimeout(seconds: timeout, operation: operation)
+    }
+
+    private func withDetectionTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T) async throws -> T
+    {
+        guard seconds > 0 else {
+            throw CaptureError.detectionTimedOut(seconds)
+        }
+
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw CaptureError.detectionTimedOut(seconds)
+            }
+
+            do {
+                guard let result = try await group.next() else {
+                    throw CaptureError.detectionTimedOut(seconds)
+                }
+                group.cancelAll()
+                return result
+            } catch {
+                group.cancelAll()
+                throw error
+            }
         }
     }
 

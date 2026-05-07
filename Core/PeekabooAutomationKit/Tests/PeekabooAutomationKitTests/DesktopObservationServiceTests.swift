@@ -134,6 +134,25 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(capture.operations, [.windowID(99, .logical1x, .legacy)])
     }
 
+    func testObservationDetectionTimeoutUsesRequestBudget() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 100, title: "Timeout", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
+        let service = DesktopObservationService(
+            screenCapture: RecordingScreenCaptureService(result: Self.captureResult(app: app, window: window)),
+            automation: RecordingUIAutomationService(delay: 0.2),
+            applications: RecordingApplicationService(applications: [app], windows: [window]))
+
+        do {
+            _ = try await service.observe(DesktopObservationRequest(
+                target: .app(identifier: "Fixture", window: .automatic),
+                detection: DesktopDetectionOptions(mode: .accessibility),
+                timeout: DesktopObservationTimeouts(detection: 0.01)))
+            XCTFail("Expected detection timeout")
+        } catch let CaptureError.detectionTimedOut(seconds) {
+            XCTAssertEqual(seconds, 0.01, accuracy: 0.001)
+        }
+    }
+
     private static func app() -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: 123,
@@ -319,15 +338,23 @@ EngineAwareScreenCaptureServiceProtocol {
 
 @MainActor
 private final class RecordingUIAutomationService: UIAutomationServiceProtocol {
+    private let delay: TimeInterval
     var detectCalls = 0
     var lastSnapshotID: String?
     var lastWindowContext: WindowContext?
+
+    init(delay: TimeInterval = 0) {
+        self.delay = delay
+    }
 
     func detectElements(
         in _: Data,
         snapshotId: String?,
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
+        if self.delay > 0 {
+            try await Task.sleep(nanoseconds: UInt64(self.delay * 1_000_000_000))
+        }
         self.detectCalls += 1
         self.lastSnapshotID = snapshotId
         self.lastWindowContext = windowContext
