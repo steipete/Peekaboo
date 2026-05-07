@@ -56,25 +56,28 @@ public struct ImageTool: MCPTool {
             return self.screenRecordingPermissionError()
         }
 
-        let captureResults: [CaptureResult]
+        let captureSet: ImageCaptureSet
         do {
-            captureResults = try await self.captureImages(for: request)
+            captureSet = try await self.captureImages(for: request)
         } catch PeekabooError.permissionDeniedScreenRecording {
             return self.screenRecordingPermissionError()
         }
+        let captureResults = captureSet.captures
         let savedFiles = try self.saveCaptures(captureResults, request: request)
 
         if let question = request.question {
             return try await self.performAnalysis(
                 question: question,
                 savedFiles: savedFiles,
-                captureResults: captureResults)
+                captureResults: captureResults,
+                observation: captureSet.observation)
         }
 
         return self.buildCaptureResponse(
             format: request.format,
             savedFiles: savedFiles,
-            captureResults: captureResults)
+            captureResults: captureResults,
+            observation: captureSet.observation)
     }
 
     private func screenRecordingPermissionError() -> ToolResponse {
@@ -87,14 +90,19 @@ public struct ImageTool: MCPTool {
 
 // MARK: - Supporting Types
 
+private struct ImageCaptureSet {
+    let captures: [CaptureResult]
+    let observation: DesktopObservationResult?
+}
+
 extension ImageTool {
-    private func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
+    private func captureImages(for request: ImageRequest) async throws -> ImageCaptureSet {
         switch request.target {
         case .menubar:
-            return try await [self.captureMenuBar()]
+            return try await ImageCaptureSet(captures: [self.captureMenuBar()], observation: nil)
         default:
             let result = try await self.captureObservation(for: request)
-            return [result.capture]
+            return ImageCaptureSet(captures: [result.capture], observation: result)
         }
     }
 
@@ -139,7 +147,8 @@ extension ImageTool {
     private func performAnalysis(
         question: String,
         savedFiles: [MCPSavedFile],
-        captureResults: [CaptureResult]) async throws -> ToolResponse
+        captureResults: [CaptureResult],
+        observation: DesktopObservationResult?) async throws -> ToolResponse
     {
         guard let firstCapture = captureResults.first else {
             throw OperationError.captureFailed(reason: "No capture data available")
@@ -147,26 +156,29 @@ extension ImageTool {
 
         let imagePath = try savedFiles.first?.path ?? saveTemporaryImage(firstCapture.imageData)
         let analysis = try await analyzeImage(at: imagePath, question: question)
-        let baseMeta: [String: Value] = [
+        let baseMeta = ObservationDiagnosticsMetadata.merge(observation, into: .object([
             "model": .string(analysis.modelUsed),
             "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
             "question": .string(question),
-        ]
+        ]))
         let summary = ToolEventSummary(
             actionDescription: "Image Analyze",
             notes: question)
 
         return ToolResponse.text(
             analysis.text,
-            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
+            meta: ToolEventSummary.merge(summary: summary, into: baseMeta))
     }
 
     private func buildCaptureResponse(
         format: ImageFormatOption,
         savedFiles: [MCPSavedFile],
-        captureResults: [CaptureResult]) -> ToolResponse
+        captureResults: [CaptureResult],
+        observation: DesktopObservationResult?) -> ToolResponse
     {
-        let baseMeta = Value.object(["savedFiles": .array(savedFiles.map { Value.string($0.path) })])
+        let baseMeta = ObservationDiagnosticsMetadata.merge(observation, into: .object([
+            "savedFiles": .array(savedFiles.map { Value.string($0.path) }),
+        ]))
         let captureNote: String = if savedFiles.isEmpty {
             "Captured image"
         } else if savedFiles.count == 1, let label = savedFiles.first?.item_label {

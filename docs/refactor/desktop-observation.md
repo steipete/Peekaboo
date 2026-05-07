@@ -61,13 +61,13 @@ Landed:
 - Legacy area capture now executes through the legacy capture operator instead of facade helper code.
 - ScreenCaptureKit and legacy capture operators now live in dedicated files.
 - Request-scoped `DesktopStateSnapshot` now feeds observation target resolution and diagnostics.
+- CLI and MCP observation-backed outputs now expose structured observation timings and diagnostics.
 
 Still intentionally incomplete:
 
 - menubar and menubar popover observation targets;
 - annotation output under the observation writer;
 - OCR as a first-class observation enhancement;
-- structured timing export in all user-facing JSON;
 - further extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
 - moving traversal and cache invalidation into dedicated collaborators;
@@ -88,7 +88,7 @@ Next slices:
 1. Finish moving app/window ranking out of command and MCP adapters.
 2. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
 3. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
-4. Export structured observation diagnostics in CLI and MCP JSON.
+4. Keep shrinking legacy command-level capture code after bridge paths disappear.
 
 Stop when:
 

@@ -216,7 +216,8 @@ public struct SeeTool: MCPTool {
                     screenshotPath: screenshotPath,
                     annotatedPath: annotatedPath,
                     annotate: request.annotate),
-                target: target)
+                target: target,
+                observation: observation)
         } catch {
             self.logger.error("See tool execution failed: \(error.localizedDescription)")
             return ToolResponse.error("Failed to capture UI state: \(error.localizedDescription)")
@@ -379,7 +380,8 @@ public struct SeeTool: MCPTool {
         snapshot: UISnapshot,
         elements: [UIElement],
         output: ScreenshotOutput,
-        target: CaptureTarget) async throws -> ToolResponse
+        target: CaptureTarget,
+        observation: DesktopObservationResult) async throws -> ToolResponse
     {
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
         let summaryText = await buildSummary(
@@ -398,7 +400,10 @@ public struct SeeTool: MCPTool {
                 _meta: nil))
         }
 
-        let baseMeta = self.makeMetadata(snapshot: snapshot, elements: elements)
+        let baseMeta = self.makeMetadata(
+            snapshot: snapshot,
+            elements: elements,
+            observation: observation)
         var summary = ToolEventSummary(
             targetApp: snapshot.applicationName,
             windowTitle: snapshot.windowTitle,
@@ -411,12 +416,16 @@ public struct SeeTool: MCPTool {
         return ToolResponse(content: content, meta: mergedMeta)
     }
 
-    private func makeMetadata(snapshot: UISnapshot, elements: [UIElement]) -> Value {
-        .object([
+    private func makeMetadata(
+        snapshot: UISnapshot,
+        elements: [UIElement],
+        observation: DesktopObservationResult) -> Value
+    {
+        ObservationDiagnosticsMetadata.merge(observation, into: .object([
             "snapshot_id": .string(snapshot.id),
             "element_count": .double(Double(elements.count)),
             "actionable_count": .double(Double(elements.count(where: { $0.isActionable }))),
-        ])
+        ]))
     }
 
     // Removed getRolePrefix - no longer needed after refactoring to use main UIElement struct

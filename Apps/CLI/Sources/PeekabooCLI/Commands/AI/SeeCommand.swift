@@ -287,7 +287,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 metadata: captureResult.metadata,
                 elements: captureResult.elements,
                 analysis: analysisResult,
-                executionTime: executionTime
+                executionTime: executionTime,
+                observation: captureResult.observation
             )
             await self.renderResults(context: context)
 
@@ -397,7 +398,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: detectionResult.metadata
+            metadata: detectionResult.metadata,
+            observation: nil
         )
     }
 
@@ -472,7 +474,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
             elements: detectionResult.elements,
-            metadata: detectionResult.metadata
+            metadata: detectionResult.metadata,
+            observation: SeeObservationDiagnostics(
+                timings: observation.timings,
+                diagnostics: observation.diagnostics
+            )
         )
     }
 
@@ -577,6 +583,7 @@ struct CaptureAndDetectionResult {
     let screenshotPath: String
     let elements: DetectedElements
     let metadata: DetectionMetadata
+    let observation: SeeObservationDiagnostics?
 }
 
 struct SnapshotPaths {
@@ -593,6 +600,7 @@ struct SeeCommandRenderContext {
     let elements: DetectedElements
     let analysis: SeeAnalysisData?
     let executionTime: TimeInterval
+    let observation: SeeObservationDiagnostics?
 }
 
 // MARK: - JSON Output Structure (matching original)
@@ -616,6 +624,50 @@ struct SeeAnalysisData: Codable {
     let text: String
 }
 
+struct SeeObservationDiagnostics: Codable {
+    let spans: [SeeObservationSpan]
+    let warnings: [String]
+    let state_snapshot: SeeDesktopStateSnapshotSummary?
+
+    init(timings: ObservationTimings, diagnostics: DesktopObservationDiagnostics) {
+        self.spans = timings.spans.map(SeeObservationSpan.init)
+        self.warnings = diagnostics.warnings
+        self.state_snapshot = diagnostics.stateSnapshot.map(SeeDesktopStateSnapshotSummary.init)
+    }
+}
+
+struct SeeObservationSpan: Codable {
+    let name: String
+    let duration_ms: Double
+    let metadata: [String: String]
+
+    init(_ span: ObservationSpan) {
+        self.name = span.name
+        self.duration_ms = span.durationMS
+        self.metadata = span.metadata
+    }
+}
+
+struct SeeDesktopStateSnapshotSummary: Codable {
+    let display_count: Int
+    let running_application_count: Int
+    let window_count: Int
+    let frontmost_application_name: String?
+    let frontmost_bundle_identifier: String?
+    let frontmost_window_title: String?
+    let frontmost_window_id: Int?
+
+    init(_ summary: DesktopStateSnapshotSummary) {
+        self.display_count = summary.displayCount
+        self.running_application_count = summary.runningApplicationCount
+        self.window_count = summary.windowCount
+        self.frontmost_application_name = summary.frontmostApplication?.name
+        self.frontmost_bundle_identifier = summary.frontmostApplication?.bundleIdentifier
+        self.frontmost_window_title = summary.frontmostWindow?.title
+        self.frontmost_window_id = summary.frontmostWindow?.windowID
+    }
+}
+
 struct SeeResult: Codable {
     let snapshot_id: String
     let screenshot_raw: String
@@ -631,7 +683,44 @@ struct SeeResult: Codable {
     let execution_time: TimeInterval
     let ui_elements: [UIElementSummary]
     let menu_bar: MenuBarSummary?
+    let observation: SeeObservationDiagnostics?
     var success: Bool = true
+
+    init(
+        snapshot_id: String,
+        screenshot_raw: String,
+        screenshot_annotated: String,
+        ui_map: String,
+        application_name: String?,
+        window_title: String?,
+        is_dialog: Bool,
+        element_count: Int,
+        interactable_count: Int,
+        capture_mode: String,
+        analysis: SeeAnalysisData?,
+        execution_time: TimeInterval,
+        ui_elements: [UIElementSummary],
+        menu_bar: MenuBarSummary?,
+        observation: SeeObservationDiagnostics? = nil,
+        success: Bool = true
+    ) {
+        self.snapshot_id = snapshot_id
+        self.screenshot_raw = screenshot_raw
+        self.screenshot_annotated = screenshot_annotated
+        self.ui_map = ui_map
+        self.application_name = application_name
+        self.window_title = window_title
+        self.is_dialog = is_dialog
+        self.element_count = element_count
+        self.interactable_count = interactable_count
+        self.capture_mode = capture_mode
+        self.analysis = analysis
+        self.execution_time = execution_time
+        self.ui_elements = ui_elements
+        self.menu_bar = menu_bar
+        self.observation = observation
+        self.success = success
+    }
 }
 
 struct MenuBarSummary: Codable {
@@ -758,7 +847,8 @@ extension SeeCommand {
             analysis: context.analysis,
             execution_time: context.executionTime,
             ui_elements: uiElements,
-            menu_bar: menuSummary
+            menu_bar: menuSummary,
+            observation: context.observation
         )
 
         outputSuccessCodable(data: output, logger: self.outputLogger)
