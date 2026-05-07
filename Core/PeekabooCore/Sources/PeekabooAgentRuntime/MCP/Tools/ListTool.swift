@@ -1,5 +1,4 @@
 import Algorithms
-import AppKit
 import Foundation
 import MCP
 import PeekabooAutomation

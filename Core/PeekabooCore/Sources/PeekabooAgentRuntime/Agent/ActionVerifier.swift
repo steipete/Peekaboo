@@ -6,12 +6,13 @@
 //  Verifies action success by analyzing post-action screenshots with AI.
 //
 
-import AppKit
 import CoreGraphics
 import Foundation
+import ImageIO
 import os.log
 import PeekabooAutomation
 import Tachikoma
+import UniformTypeIdentifiers
 
 /// Verifies that actions completed successfully by analyzing screenshots.
 /// Uses a lightweight AI model to quickly assess visual outcomes.
@@ -171,14 +172,21 @@ public final class ActionVerifier {
     }
 
     private func analyzeScreenshot(_ image: CGImage, prompt: String) async throws -> String {
-        // Convert CGImage to PNG data
-        let nsImage = NSImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
-        guard let tiffData = nsImage.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:])
+        // Encode directly through ImageIO so agent runtime does not depend on AppKit image types.
+        let pngBuffer = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            pngBuffer,
+            UTType.png.identifier as CFString,
+            1,
+            nil)
         else {
             throw VerificationError.imageConversionFailed
         }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else {
+            throw VerificationError.imageConversionFailed
+        }
+        let pngData = pngBuffer as Data
 
         // Create image content for the model
         let base64Image = pngData.base64EncodedString()

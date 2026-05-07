@@ -4,9 +4,6 @@
 //
 
 import CoreGraphics
-#if canImport(AppKit)
-import AppKit
-#endif
 import PeekabooAutomation
 import PeekabooProtocols
 
@@ -46,22 +43,24 @@ enum VisualizerBoundsConverter {
 
     /// Resolve the display bounds we should use for coordinate conversion.
     @MainActor
-    static func resolveScreenBounds(windowBounds: CGRect, displayBounds: CGRect?) -> CGRect {
+    static func resolveScreenBounds(
+        windowBounds: CGRect,
+        displayBounds: CGRect?,
+        screens: [PeekabooAutomation.ScreenInfo]) -> CGRect
+    {
         if let displayBounds {
             return displayBounds
         }
 
-        #if canImport(AppKit)
-        if let screen = NSScreen.screens.first(where: { $0.frame.intersects(windowBounds) }) {
+        if let screen = screens.first(where: { $0.frame.intersects(windowBounds) }) {
             return screen.frame
         }
-        if let main = NSScreen.main?.frame {
-            return main
+        if let primary = screens.first(where: { $0.isPrimary }) ?? screens.first {
+            return primary.frame
         }
-        #endif
 
         // Fall back to a synthetic rectangle anchored at the window origin. This keeps overlays stable
-        // even on platforms where AppKit isn't available (unit tests, headless runners, etc.).
+        // when display metadata is unavailable (unit tests, headless runners, etc.).
         return CGRect(
             x: windowBounds.origin.x,
             y: windowBounds.origin.y,

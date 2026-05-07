@@ -272,7 +272,8 @@ public struct SeeTool: MCPTool {
             ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
         let screenBounds = VisualizerBoundsConverter.resolveScreenBounds(
             windowBounds: windowBounds,
-            displayBounds: metadata?.displayInfo?.bounds)
+            displayBounds: metadata?.displayInfo?.bounds,
+            screens: self.context.screens.listScreens())
         let protocolElements = VisualizerBoundsConverter.makeVisualizerElements(
             from: detectedElements,
             screenBounds: screenBounds)
