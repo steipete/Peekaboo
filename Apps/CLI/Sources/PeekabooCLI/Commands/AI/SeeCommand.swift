@@ -1,5 +1,4 @@
 import Algorithms
-import AppKit
 import AXorcist
 import Commander
 import CoreGraphics

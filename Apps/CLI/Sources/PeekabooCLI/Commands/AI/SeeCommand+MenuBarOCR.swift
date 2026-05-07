@@ -35,10 +35,11 @@ extension SeeCommand {
         openExtra: MenuExtraInfo?,
         appHint: String?
     ) async throws -> MenuBarPopoverCapture? {
-        let ownerPID: pid_t? = {
-            guard let openExtra else { return nil }
-            return self.resolveMenuExtraOwnerPID(openExtra)
-        }()
+        let ownerPID: pid_t? = if let openExtra {
+            await self.resolveMenuExtraOwnerPID(openExtra)
+        } else {
+            nil
+        }
         let titles = [
             openExtra?.title,
             openExtra?.ownerName,

@@ -96,17 +96,16 @@ ScreenCaptureService.swift: 494 lines
 ScreenCaptureService+Support.swift: 610 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
-SeeCommand.swift: 1169 lines
-ImageCommand.swift: 681 lines
+SeeCommand.swift: 1168 lines
+ImageCommand.swift: 635 lines
 ```
 
 Current command-boundary audit:
 
 - CLI command sources no longer import `ScreenCaptureKit`.
 - `see` all-screens capture no longer enumerates `SCShareableContent` directly.
-- `SeeCommand.swift`, `SeeCommand+CapturePipeline.swift`, and `ImageCommand.swift` still import `AppKit` for `NSImage`, `NSBitmapImageRep`, `CGWindowID`, or image encoding glue; remove this by moving file/image helpers into command-support or observation output adapters.
-- `SeeCommand+MenuBarGeometry.swift` and `SeeCommand+MenuBarCandidates.swift` still use `NSScreen` and `CGWindowListCopyWindowInfo`; migrate remaining menu-bar geometry/candidate work into observation/menu services, then delete these command helpers.
-- `ListCommand.swift` imports `AppKit`; audit whether it only needs model types and move platform queries behind services where practical.
+- AI/Core capture command sources no longer import `AppKit`; `see`, `image`, `list`, and menu-bar geometry now use shared screen/application services for screen inventory and app identity checks.
+- `SeeCommand+MenuBarCandidates.swift` still uses `CGWindowListCopyWindowInfo`; migrate remaining menu-bar candidate work into observation/menu services, then delete this command helper.
 
 Near-term rule: command code may mention `CGWindowID` as a user-facing identifier, but must not enumerate windows, displays, or ScreenCaptureKit objects directly.
 
@@ -613,9 +612,8 @@ Work:
 
 - done: remove command-local ScreenCaptureKit display enumeration from `see` all-screens capture;
 - done: verify CLI sources no longer import `ScreenCaptureKit`;
-- in progress: audit capture-facing command imports for capture-only `AppKit`, `NSScreen`, and direct CoreGraphics window work;
-- move remaining command image encoding and pixel-size helpers behind observation output or command-support adapters;
-- move remaining `see` menu-bar candidate and geometry helpers behind observation/menu services;
+- done: remove capture-facing command `AppKit`, `NSScreen`, `NSWorkspace`, and `NSRunningApplication` dependencies from AI/Core command sources;
+- in progress: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind observation/menu services;
 - finish splitting capture output helpers from `ScreenCaptureService+Support.swift`;
 - ensure forced engine and fallback behavior is covered in pure tests;
 - add diagnostics for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
@@ -623,11 +621,10 @@ Work:
 
 Recommended order:
 
-1. Convert `ImageCommand` and `SeeCommand+CapturePipeline` image/file helper use to service-owned helpers so command files can drop capture-only `AppKit`.
-2. Move `SeeCommand+MenuBarCandidates` remaining CGWindow/NSScreen candidate work into observation, preserving current popover diagnostics.
-3. Split `ScreenCaptureService+Support.swift` into focused scale, timeout/shareable-content, fallback, and result-metadata helpers.
-4. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
-5. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+1. Move `SeeCommand+MenuBarCandidates` remaining CGWindow candidate work into observation, preserving current popover diagnostics.
+2. Split `ScreenCaptureService+Support.swift` into focused scale, timeout/shareable-content, fallback, and result-metadata helpers.
+3. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
+4. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
 
 Gate:
 

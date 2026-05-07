@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -138,7 +137,7 @@ extension SeeCommand {
         windowList: [[String: Any]],
         ownerPID: pid_t?
     ) -> [MenuBarPopoverCandidate] {
-        let screens = NSScreen.screens.map { screen in
+        let screens = self.services.screens.listScreens().map { screen in
             MenuBarPopoverDetector.ScreenBounds(
                 frame: screen.frame,
                 visibleFrame: screen.visibleFrame
@@ -156,7 +155,7 @@ extension SeeCommand {
         windowList: [[String: Any]],
         preferredX: CGFloat
     ) -> [MenuBarPopoverCandidate] {
-        let screens = NSScreen.screens.map { screen in
+        let screens = self.services.screens.listScreens().map { screen in
             MenuBarPopoverDetector.ScreenBounds(
                 frame: screen.frame,
                 visibleFrame: screen.visibleFrame
@@ -274,7 +273,11 @@ extension SeeCommand {
             ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
 
             for candidate in candidates where !candidate.isEmpty {
-                let ownerPID = extra.ownerPID ?? self.resolveMenuExtraOwnerPID(extra)
+                let ownerPID: pid_t? = if let extraOwnerPID = extra.ownerPID {
+                    extraOwnerPID
+                } else {
+                    await self.resolveMenuExtraOwnerPID(extra)
+                }
                 let isOpen = await (try? self.services.menu.isMenuExtraMenuOpen(
                     title: candidate,
                     ownerPID: ownerPID
@@ -287,17 +290,19 @@ extension SeeCommand {
         return nil
     }
 
-    func resolveMenuExtraOwnerPID(_ extra: MenuExtraInfo) -> pid_t? {
+    func resolveMenuExtraOwnerPID(_ extra: MenuExtraInfo) async -> pid_t? {
         if let ownerPID = extra.ownerPID {
             return ownerPID
         }
-        let runningApps = NSWorkspace.shared.runningApplications
+        guard let runningApps = try? await self.services.applications.listApplications().data.applications else {
+            return nil
+        }
         if let bundleIdentifier = extra.bundleIdentifier,
            let match = runningApps.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
             return match.processIdentifier
         }
         if let ownerName = extra.ownerName {
-            if let match = runningApps.first(where: { $0.localizedName == ownerName }) {
+            if let match = runningApps.first(where: { $0.name == ownerName }) {
                 return match.processIdentifier
             }
             let normalizedOwner = ownerName.lowercased()
