@@ -347,6 +347,7 @@ public struct DesktopObservationResult: Sendable {
     public let target: ResolvedObservationTarget
     public let capture: CaptureResult
     public let elements: ElementDetectionResult?
+    public let ocr: OCRTextResult?
     public let files: DesktopObservationFiles
     public let timings: ObservationTimings
     public let diagnostics: DesktopObservationDiagnostics
@@ -355,6 +356,7 @@ public struct DesktopObservationResult: Sendable {
         target: ResolvedObservationTarget,
         capture: CaptureResult,
         elements: ElementDetectionResult?,
+        ocr: OCRTextResult? = nil,
         files: DesktopObservationFiles = DesktopObservationFiles(),
         timings: ObservationTimings = ObservationTimings(),
         diagnostics: DesktopObservationDiagnostics = DesktopObservationDiagnostics())
@@ -362,6 +364,7 @@ public struct DesktopObservationResult: Sendable {
         self.target = target
         self.capture = capture
         self.elements = elements
+        self.ocr = ocr
         self.files = files
         self.timings = timings
         self.diagnostics = diagnostics

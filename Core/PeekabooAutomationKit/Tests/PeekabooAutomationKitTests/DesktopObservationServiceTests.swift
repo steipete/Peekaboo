@@ -143,6 +143,87 @@ final class DesktopObservationServiceTests: XCTestCase {
         ])
     }
 
+    func testObservationWithAccessibilityAndOCRMergesStaticTextElements() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 78, title: "OCR", bounds: CGRect(x: 10, y: 20, width: 200, height: 100))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let capture = RecordingScreenCaptureService(result: Self.captureResult(app: app, window: window))
+        let automation = RecordingUIAutomationService(elements: DetectedElements(buttons: [
+            DetectedElement(id: "B1", type: .button, label: "OK", bounds: CGRect(x: 20, y: 30, width: 40, height: 20)),
+        ]))
+        let ocr = RecordingOCRRecognizer(result: OCRTextResult(
+            observations: [
+                OCRTextObservation(
+                    text: "Document Title",
+                    confidence: 0.9,
+                    boundingBox: CGRect(x: 0.1, y: 0.7, width: 0.4, height: 0.2)),
+            ],
+            imageSize: CGSize(width: 200, height: 100)))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: automation,
+            applications: applications,
+            ocrRecognizer: ocr)
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .accessibilityAndOCR)))
+
+        XCTAssertEqual(automation.detectCalls, 1)
+        XCTAssertEqual(ocr.recognizeCalls, 1)
+        XCTAssertEqual(result.ocr?.observations.first?.text, "Document Title")
+        XCTAssertEqual(result.elements?.elements.buttons.map(\.id), ["B1"])
+        XCTAssertEqual(result.elements?.elements.other.first?.label, "Document Title")
+        XCTAssertEqual(result.elements?.elements.other.first?.type, .staticText)
+        XCTAssertEqual(result.elements?.metadata.elementCount, 2)
+        XCTAssertEqual(result.elements?.metadata.method, "fake+OCR")
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "detection.ax",
+            "detection.ocr",
+        ])
+    }
+
+    func testObservationPreferOCRCanRunWithoutAccessibilityDetection() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 79, title: "OCR Only", bounds: CGRect(x: 10, y: 20, width: 200, height: 100))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let capture = RecordingScreenCaptureService(result: Self.captureResult(app: app, window: window))
+        let automation = RecordingUIAutomationService()
+        let ocr = RecordingOCRRecognizer(result: OCRTextResult(
+            observations: [
+                OCRTextObservation(
+                    text: "Open Menu",
+                    confidence: 0.8,
+                    boundingBox: CGRect(x: 0.2, y: 0.5, width: 0.3, height: 0.2)),
+            ],
+            imageSize: CGSize(width: 200, height: 100)))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: automation,
+            applications: applications,
+            ocrRecognizer: ocr)
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .none, preferOCR: true),
+            output: DesktopObservationOutputOptions(snapshotID: "ocr-only")))
+
+        XCTAssertEqual(automation.detectCalls, 0)
+        XCTAssertEqual(ocr.recognizeCalls, 1)
+        XCTAssertEqual(result.elements?.snapshotId, "ocr-only")
+        XCTAssertEqual(result.elements?.metadata.method, "OCR")
+        XCTAssertEqual(result.elements?.elements.other.first?.label, "Open Menu")
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "detection.ocr",
+        ])
+    }
+
     func testObservationOutputWriterSavesRawScreenshotWhenRequested() async throws {
         let imageData = Data([1, 2, 3, 4])
         let app = Self.app()
@@ -616,5 +697,20 @@ private final class RecordingUIAutomationService: UIAutomationServiceProtocol {
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         DetectedElement(id: "B1", type: .button, bounds: .zero)
+    }
+}
+
+@MainActor
+private final class RecordingOCRRecognizer: OCRRecognizing {
+    private let result: OCRTextResult
+    var recognizeCalls = 0
+
+    init(result: OCRTextResult) {
+        self.result = result
+    }
+
+    func recognizeText(in _: Data) throws -> OCRTextResult {
+        self.recognizeCalls += 1
+        return self.result
     }
 }

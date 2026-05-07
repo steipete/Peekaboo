@@ -14,19 +14,22 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
     private let targetResolver: any ObservationTargetResolving
     private let outputWriter: any ObservationOutputWriting
     private let stateSnapshotProvider: any DesktopStateSnapshotProviding
+    private let ocrRecognizer: any OCRRecognizing
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
         applications: any ApplicationServiceProtocol,
         screens: any ScreenServiceProtocol = ScreenService(),
-        snapshotManager: (any SnapshotManagerProtocol)? = nil)
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        ocrRecognizer: any OCRRecognizing = OCRService())
     {
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = ObservationTargetResolver(applications: applications, screens: screens)
         self.outputWriter = ObservationOutputWriter(snapshotManager: snapshotManager)
         self.stateSnapshotProvider = DesktopStateSnapshotProvider(applications: applications)
+        self.ocrRecognizer = ocrRecognizer
     }
 
     public init(
@@ -34,13 +37,15 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         automation: any UIAutomationServiceProtocol,
         targetResolver: any ObservationTargetResolving,
         outputWriter: any ObservationOutputWriting = ObservationOutputWriter(),
-        stateSnapshotProvider: any DesktopStateSnapshotProviding = EmptyDesktopStateSnapshotProvider())
+        stateSnapshotProvider: any DesktopStateSnapshotProviding = EmptyDesktopStateSnapshotProvider(),
+        ocrRecognizer: any OCRRecognizing = OCRService())
     {
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = targetResolver
         self.outputWriter = outputWriter
         self.stateSnapshotProvider = stateSnapshotProvider
+        self.ocrRecognizer = ocrRecognizer
     }
 
     public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
@@ -59,11 +64,21 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         }
         let capture = Self.normalize(capture: rawCapture, for: target)
 
-        let elements = try await self.detectIfNeeded(
+        let detection = try await self.detectIfNeeded(
             capture: capture,
             target: target,
             request: request,
             tracer: tracer)
+        let ocr = try await self.recognizeOCRIfNeeded(
+            capture: capture,
+            request: request,
+            tracer: tracer)
+        let elements = self.combineDetectionAndOCR(
+            detection: detection,
+            ocr: ocr,
+            capture: capture,
+            target: target,
+            request: request)
         let files = try await self.writeOutputIfNeeded(
             capture: capture,
             elements: elements,
@@ -74,6 +89,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             target: target,
             capture: capture,
             elements: elements,
+            ocr: ocr,
             files: files,
             timings: tracer.timings(),
             diagnostics: DesktopObservationDiagnostics(
@@ -234,6 +250,72 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         }
     }
 
+    private func recognizeOCRIfNeeded(
+        capture: CaptureResult,
+        request: DesktopObservationRequest,
+        tracer: DesktopObservationTraceRecorder) async throws -> OCRTextResult?
+    {
+        guard request.detection.mode == .accessibilityAndOCR || request.detection.preferOCR else {
+            return nil
+        }
+
+        return try await tracer.span("detection.ocr") {
+            try self.ocrRecognizer.recognizeText(in: capture.imageData)
+        }
+    }
+
+    private func combineDetectionAndOCR(
+        detection: ElementDetectionResult?,
+        ocr: OCRTextResult?,
+        capture: CaptureResult,
+        target: ResolvedObservationTarget,
+        request: DesktopObservationRequest) -> ElementDetectionResult?
+    {
+        guard let ocr else { return detection }
+
+        let context = target.detectionContext ?? Self.windowContext(from: capture)
+        guard let ocrDetection = self.ocrDetectionResult(
+            from: ocr,
+            capture: capture,
+            context: context,
+            request: request)
+        else {
+            return detection
+        }
+
+        guard !request.detection.preferOCR, let detection else {
+            return ocrDetection
+        }
+
+        return ObservationOCRMapper.merge(
+            ocrElements: ocrDetection.elements.other,
+            into: detection)
+    }
+
+    private func ocrDetectionResult(
+        from ocr: OCRTextResult,
+        capture: CaptureResult,
+        context: WindowContext?,
+        request: DesktopObservationRequest) -> ElementDetectionResult?
+    {
+        let windowBounds = context?.windowBounds ?? Self.captureBounds(from: capture)
+        let normalizedContext = WindowContext(
+            applicationName: context?.applicationName,
+            applicationBundleId: context?.applicationBundleId,
+            applicationProcessId: context?.applicationProcessId,
+            windowTitle: context?.windowTitle,
+            windowID: context?.windowID,
+            windowBounds: windowBounds,
+            shouldFocusWebContent: context?.shouldFocusWebContent)
+
+        return ObservationOCRMapper.detectionResult(
+            from: ocr,
+            snapshotID: request.output.snapshotID,
+            screenshotPath: capture.savedPath ?? "",
+            windowContext: normalizedContext,
+            detectionTime: 0)
+    }
+
     private func detectElements(
         in imageData: Data,
         snapshotID: String?,
@@ -314,6 +396,16 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             windowTitle: capture.metadata.windowInfo?.title,
             windowID: capture.metadata.windowInfo?.windowID,
             windowBounds: capture.metadata.windowInfo?.bounds)
+    }
+
+    private static func captureBounds(from capture: CaptureResult) -> CGRect {
+        if let windowBounds = capture.metadata.windowInfo?.bounds {
+            return windowBounds
+        }
+        if let displayBounds = capture.metadata.displayInfo?.bounds {
+            return displayBounds
+        }
+        return CGRect(origin: .zero, size: capture.metadata.size)
     }
 
     private static func captureSpanName(for kind: ResolvedObservationKind) -> String {

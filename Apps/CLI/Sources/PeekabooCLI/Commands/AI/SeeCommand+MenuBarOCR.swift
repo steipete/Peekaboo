@@ -13,9 +13,8 @@ extension SeeCommand {
                 services: self.services,
                 windowId: candidate.windowId
             )
-            guard let ocr = try? OCRService.recognizeText(in: captureResult.imageData) else { return nil }
-            let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
-            if normalized.contains(where: { text.contains($0) }) {
+            guard let ocr = try? OCRService().recognizeText(in: captureResult.imageData) else { return nil }
+            if ObservationOCRMapper.matches(ocr, hints: normalized) {
                 return MenuBarPopoverResolver.OCRMatch(
                     captureResult: captureResult,
                     bounds: candidate.bounds
@@ -32,8 +31,8 @@ extension SeeCommand {
                 services: self.services,
                 rect: rect
             )
-            guard let ocr = try? OCRService.recognizeText(in: captureResult.imageData) else { return nil }
-            if self.ocrMatchesHints(ocr, hints: hints) {
+            guard let ocr = try? OCRService().recognizeText(in: captureResult.imageData) else { return nil }
+            if ObservationOCRMapper.matches(ocr, hints: hints) {
                 return MenuBarPopoverResolver.OCRMatch(
                     captureResult: captureResult,
                     bounds: rect
@@ -101,8 +100,8 @@ extension SeeCommand {
 
     func ocrElements(imageData: Data, windowBounds: CGRect?) throws -> [DetectedElement] {
         guard let windowBounds else { return [] }
-        let result = try OCRService.recognizeText(in: imageData)
-        return self.buildOCRElements(from: result, windowBounds: windowBounds)
+        let result = try OCRService().recognizeText(in: imageData)
+        return ObservationOCRMapper.elements(from: result, windowBounds: windowBounds)
     }
 
     private func captureMenuBarPopoverByFrame(
@@ -118,8 +117,8 @@ extension SeeCommand {
             rect: clamped
         )
 
-        if let ocr = try? OCRService.recognizeText(in: captureResult.imageData),
-           self.ocrMatchesHints(ocr, hints: MenuBarPopoverResolverContext.normalizedHints([hint, ownerHint])) {
+        if let ocr = try? OCRService().recognizeText(in: captureResult.imageData),
+           ObservationOCRMapper.matches(ocr, hints: MenuBarPopoverResolverContext.normalizedHints([hint, ownerHint])) {
             self.logger.verbose(
                 "Selected menu bar popover via AX menu frame",
                 category: "Capture",
@@ -137,14 +136,6 @@ extension SeeCommand {
         return nil
     }
 
-    private func ocrMatchesHints(_ ocr: OCRTextResult, hints: [String]) -> Bool {
-        guard !hints.isEmpty else { return !ocr.observations.isEmpty }
-        let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
-        return hints.contains { hint in
-            text.contains(hint.lowercased())
-        }
-    }
-
     private func menuBarPopoverAreaRect(preferredX: CGFloat) -> CGRect? {
         guard let screen = self.screenForMenuBarX(preferredX) else { return nil }
         let menuBarHeight = self.menuBarHeight(for: screen)
@@ -160,59 +151,5 @@ extension SeeCommand {
         rect.origin.x = max(screen.frame.minX, min(rect.origin.x, screen.frame.maxX - rect.width))
         rect.origin.y = max(screen.frame.minY, rect.origin.y)
         return rect
-    }
-
-    private func buildOCRElements(from result: OCRTextResult, windowBounds: CGRect) -> [DetectedElement] {
-        let minConfidence: Float = 0.3
-        var elements: [DetectedElement] = []
-        var index = 1
-
-        for observation in result.observations where observation.confidence >= minConfidence {
-            let rect = self.screenRect(
-                from: observation.boundingBox,
-                imageSize: result.imageSize,
-                windowBounds: windowBounds
-            )
-
-            guard rect.width > 2, rect.height > 2 else { continue }
-
-            let attributes = [
-                "description": "ocr",
-                "confidence": String(format: "%.2f", observation.confidence)
-            ]
-
-            elements.append(
-                DetectedElement(
-                    id: "ocr_\(index)",
-                    type: .staticText,
-                    label: observation.text,
-                    value: nil,
-                    bounds: rect,
-                    isEnabled: true,
-                    isSelected: nil,
-                    attributes: attributes
-                )
-            )
-            index += 1
-        }
-
-        return elements
-    }
-
-    private func screenRect(
-        from normalizedBox: CGRect,
-        imageSize: CGSize,
-        windowBounds: CGRect
-    ) -> CGRect {
-        let width = normalizedBox.width * imageSize.width
-        let height = normalizedBox.height * imageSize.height
-        let x = normalizedBox.origin.x * imageSize.width
-        let y = (1.0 - normalizedBox.origin.y - normalizedBox.height) * imageSize.height
-        return CGRect(
-            x: windowBounds.origin.x + x,
-            y: windowBounds.origin.y + y,
-            width: width,
-            height: height
-        )
     }
 }

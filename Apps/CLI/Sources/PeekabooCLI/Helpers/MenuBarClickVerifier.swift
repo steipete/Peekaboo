@@ -282,9 +282,8 @@ struct MenuBarClickVerifier {
                 windowId: candidate.windowId,
                 timeout: captureTimeout
             ) else { return nil }
-            guard let ocr = try? OCRService.recognizeText(in: capture.imageData) else { return nil }
-            let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
-            if normalizedHints.contains(where: { text.contains($0) }) {
+            guard let ocr = try? OCRService().recognizeText(in: capture.imageData) else { return nil }
+            if ObservationOCRMapper.matches(ocr, hints: normalizedHints) {
                 return MenuBarPopoverResolver.OCRMatch(
                     captureResult: capture,
                     bounds: candidate.bounds
@@ -424,14 +423,11 @@ struct MenuBarClickVerifier {
         rect.origin.y = max(screen.frame.minY, rect.origin.y)
 
         guard let capture = try? await self.services.screenCapture.captureArea(rect) else { return nil }
-        guard let ocr = try? OCRService.recognizeText(in: capture.imageData) else { return nil }
-        let text = ocr.observations.map(\.text).joined(separator: " ").lowercased()
         let normalizedHints = expectedHints
             .map { $0.lowercased() }
             .filter { !$0.isEmpty }
-        let matches = normalizedHints.isEmpty
-            ? !text.isEmpty
-            : normalizedHints.contains(where: { text.contains($0) })
+        guard let ocr = try? OCRService().recognizeText(in: capture.imageData) else { return nil }
+        let matches = ObservationOCRMapper.matches(ocr, hints: normalizedHints)
         if matches {
             return MenuBarPopoverResolver.OCRMatch(
                 captureResult: capture,
