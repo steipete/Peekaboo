@@ -68,30 +68,10 @@ public final class SnapshotManager: SnapshotManagerProtocol {
         }
         snapshotData.uiMap = uiMap
 
-        // Extract metadata from warnings
-        for warning in result.metadata.warnings {
-            if warning.hasPrefix("app:") {
-                snapshotData.applicationName = String(warning.dropFirst(4))
-            } else if warning.hasPrefix("window:") {
-                snapshotData.windowTitle = String(warning.dropFirst(7))
-            } else if warning.hasPrefix("APP:") {
-                snapshotData.applicationName = String(warning.dropFirst(4))
-            } else if warning.hasPrefix("WINDOW:") {
-                snapshotData.windowTitle = String(warning.dropFirst(7))
-            } else if warning.hasPrefix("BOUNDS:") {
-                // Parse bounds if needed
-                if let boundsData = String(warning.dropFirst(7)).data(using: .utf8),
-                   let bounds = try? JSONDecoder().decode(CGRect.self, from: boundsData)
-                {
-                    snapshotData.windowBounds = bounds
-                }
-            } else if warning.hasPrefix("WINDOW_ID:") {
-                if let windowID = CGWindowID(String(warning.dropFirst(10))) {
-                    snapshotData.windowID = windowID
-                }
-            } else if warning.hasPrefix("AX_IDENTIFIER:") {
-                snapshotData.windowAXIdentifier = String(warning.dropFirst(14))
-            }
+        if let context = result.metadata.windowContext {
+            self.applyWindowContext(context, to: &snapshotData)
+        } else {
+            self.applyLegacyWarnings(result.metadata.warnings, to: &snapshotData)
         }
 
         // Save updated snapshot
@@ -522,6 +502,38 @@ public final class SnapshotManager: SnapshotManagerProtocol {
             checkboxes: checkboxes,
             menus: menus,
             other: other)
+    }
+
+    private func applyWindowContext(_ context: WindowContext, to snapshotData: inout UIAutomationSnapshot) {
+        snapshotData.applicationName = context.applicationName ?? snapshotData.applicationName
+        snapshotData.applicationBundleId = context.applicationBundleId ?? snapshotData.applicationBundleId
+        snapshotData.applicationProcessId = context.applicationProcessId ?? snapshotData.applicationProcessId
+        snapshotData.windowTitle = context.windowTitle ?? snapshotData.windowTitle
+        snapshotData.windowBounds = context.windowBounds ?? snapshotData.windowBounds
+        if let windowID = context.windowID {
+            snapshotData.windowID = CGWindowID(windowID)
+        }
+    }
+
+    private func applyLegacyWarnings(_ warnings: [String], to snapshotData: inout UIAutomationSnapshot) {
+        for warning in warnings {
+            if warning.hasPrefix("APP:") || warning.hasPrefix("app:") {
+                snapshotData.applicationName = String(warning.dropFirst(4))
+            } else if warning.hasPrefix("WINDOW:") || warning.hasPrefix("window:") {
+                snapshotData.windowTitle = String(warning.dropFirst(7))
+            } else if warning.hasPrefix("BOUNDS:"),
+                      let boundsData = String(warning.dropFirst(7)).data(using: .utf8),
+                      let bounds = try? JSONDecoder().decode(CGRect.self, from: boundsData)
+            {
+                snapshotData.windowBounds = bounds
+            } else if warning.hasPrefix("WINDOW_ID:"),
+                      let windowID = CGWindowID(String(warning.dropFirst(10)))
+            {
+                snapshotData.windowID = windowID
+            } else if warning.hasPrefix("AX_IDENTIFIER:") {
+                snapshotData.windowAXIdentifier = String(warning.dropFirst(14))
+            }
+        }
     }
 
     private func buildWarnings(from snapshotData: UIAutomationSnapshot) -> [String] {

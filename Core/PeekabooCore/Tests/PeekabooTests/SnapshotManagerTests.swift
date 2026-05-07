@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @testable import PeekabooAgentRuntime
@@ -60,6 +61,73 @@ struct SnapshotManagerTests {
 
         // Clean up
         try await self.snapshotManager.cleanSnapshot(snapshotId: snapshotId)
+    }
+
+    @Test
+    func `Store detection result preserves typed window context`() async throws {
+        let snapshotId = try await snapshotManager.createSnapshot()
+        let windowBounds = CGRect(x: 10, y: 20, width: 300, height: 200)
+        let metadata = DetectionMetadata(
+            detectionTime: 0.1,
+            elementCount: 0,
+            method: "test",
+            windowContext: WindowContext(
+                applicationName: "TextEdit",
+                applicationBundleId: "com.apple.TextEdit",
+                applicationProcessId: 1234,
+                windowTitle: "Notes",
+                windowID: 777,
+                windowBounds: windowBounds))
+        let result = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/test.png",
+            elements: DetectedElements(),
+            metadata: metadata)
+
+        try await snapshotManager.storeDetectionResult(snapshotId: snapshotId, result: result)
+
+        let snapshot = try await snapshotManager.getUIAutomationSnapshot(snapshotId: snapshotId)
+        #expect(snapshot?.applicationName == "TextEdit")
+        #expect(snapshot?.applicationBundleId == "com.apple.TextEdit")
+        #expect(snapshot?.applicationProcessId == 1234)
+        #expect(snapshot?.windowTitle == "Notes")
+        #expect(snapshot?.windowID == CGWindowID(777))
+        #expect(snapshot?.windowBounds == windowBounds)
+
+        try await self.snapshotManager.cleanSnapshot(snapshotId: snapshotId)
+    }
+
+    @Test
+    func `In-memory snapshot manager preserves typed window context`() async throws {
+        let manager = InMemorySnapshotManager()
+        let snapshotId = try await manager.createSnapshot()
+        let windowBounds = CGRect(x: 30, y: 40, width: 500, height: 400)
+        let metadata = DetectionMetadata(
+            detectionTime: 0.1,
+            elementCount: 0,
+            method: "test",
+            windowContext: WindowContext(
+                applicationName: "Safari",
+                applicationBundleId: "com.apple.Safari",
+                applicationProcessId: 4321,
+                windowTitle: "Example",
+                windowID: 888,
+                windowBounds: windowBounds))
+        let result = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/test.png",
+            elements: DetectedElements(),
+            metadata: metadata)
+
+        try await manager.storeDetectionResult(snapshotId: snapshotId, result: result)
+
+        let snapshot = try await manager.getUIAutomationSnapshot(snapshotId: snapshotId)
+        #expect(snapshot?.applicationName == "Safari")
+        #expect(snapshot?.applicationBundleId == "com.apple.Safari")
+        #expect(snapshot?.applicationProcessId == 4321)
+        #expect(snapshot?.windowTitle == "Example")
+        #expect(snapshot?.windowID == CGWindowID(888))
+        #expect(snapshot?.windowBounds == windowBounds)
     }
 
     @Test

@@ -81,6 +81,7 @@
 - Direct element detection callers now use a real racing timeout instead of creating an unobserved timeout task.
 - Element-targeted actions now fail with snapshot window identity when a cached target window disappeared or changed size, instead of silently clicking stale coordinates.
 - Element-targeted move, drag, swipe, click output, and scroll targeting now share the same moved-window point adjustment as click/type execution.
+- Snapshot storage now preserves typed detection window context, including bundle ID, PID, window ID, and bounds, so observation-backed actions can adjust moved-window targets reliably.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
 - Concurrent `peekaboo see` calls now queue the local screenshot/detection pipeline across processes, avoiding ReplayKit/ScreenCaptureKit continuation hangs under parallel usage.

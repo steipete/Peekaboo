@@ -280,9 +280,7 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
         snapshotData.lastUpdateTime = Date()
 
         if let context = result.metadata.windowContext {
-            snapshotData.applicationName = context.applicationName ?? snapshotData.applicationName
-            snapshotData.windowTitle = context.windowTitle ?? snapshotData.windowTitle
-            snapshotData.windowBounds = context.windowBounds ?? snapshotData.windowBounds
+            self.applyWindowContext(context, to: &snapshotData)
         } else {
             self.applyLegacyWarnings(result.metadata.warnings, to: &snapshotData)
         }
@@ -304,6 +302,17 @@ public final class InMemorySnapshotManager: SnapshotManagerProtocol {
             uiMap[element.id] = uiElement
         }
         snapshotData.uiMap = uiMap
+    }
+
+    private func applyWindowContext(_ context: WindowContext, to snapshotData: inout UIAutomationSnapshot) {
+        snapshotData.applicationName = context.applicationName ?? snapshotData.applicationName
+        snapshotData.applicationBundleId = context.applicationBundleId ?? snapshotData.applicationBundleId
+        snapshotData.applicationProcessId = context.applicationProcessId ?? snapshotData.applicationProcessId
+        snapshotData.windowTitle = context.windowTitle ?? snapshotData.windowTitle
+        snapshotData.windowBounds = context.windowBounds ?? snapshotData.windowBounds
+        if let windowID = context.windowID {
+            snapshotData.windowID = CGWindowID(windowID)
+        }
     }
 
     private func applyLegacyWarnings(_ warnings: [String], to snapshotData: inout UIAutomationSnapshot) {
