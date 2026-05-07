@@ -1,9 +1,6 @@
-import AppKit
 import CoreGraphics
 import Foundation
-import ImageIO
 import PeekabooFoundation
-import UniformTypeIdentifiers
 
 public struct WatchCaptureDependencies {
     public let screenCapture: any ScreenCaptureServiceProtocol
@@ -135,7 +132,11 @@ public final class WatchCaptureSession {
             try await writer.finish()
         }
 
-        let contact = try self.buildContactSheet()
+        let contact = try WatchCaptureArtifactWriter.buildContactSheet(
+            frames: self.frames,
+            outputRoot: self.outputRoot,
+            columns: Constants.contactMaxColumns,
+            thumbSize: CGSize(width: Constants.contactThumb, height: Constants.contactThumb))
         let durationMs = self.elapsedMilliseconds(since: timing.start)
         self.appendNoMotionWarningIfNeeded()
 
@@ -328,7 +329,7 @@ public final class WatchCaptureSession {
                 scale: .logical1x)
         }
 
-        guard let image = WatchCaptureSession.makeCGImage(from: result.imageData) else {
+        guard let image = WatchCaptureArtifactWriter.makeCGImage(from: result.imageData) else {
             return CaptureEnvelope(cgImage: nil, metadata: result.metadata, motionBoxes: nil)
         }
 
@@ -344,7 +345,7 @@ public final class WatchCaptureSession {
         guard maxDimension > cap else { return image }
         let scale = cap / maxDimension
         let newSize = CGSize(width: width * scale, height: height * scale)
-        return WatchCaptureSession.resize(image: image, to: newSize) ?? image
+        return WatchCaptureArtifactWriter.resize(image: image, to: newSize) ?? image
     }
 
     private static func elapsedNanoseconds(since start: Date, now: Date) -> UInt64 {
@@ -513,7 +514,7 @@ public final class WatchCaptureSession {
 
         let fileName = String(format: "keep-%04d.png", self.frames.count + 1)
         let url = self.outputRoot.appendingPathComponent(fileName)
-        try WatchCaptureSession.writePNG(
+        try WatchCaptureArtifactWriter.writePNG(
             image: cgImage,
             to: url,
             highlight: self.options.highlightChanges ? context.motionBoxes : nil)
@@ -530,63 +531,6 @@ public final class WatchCaptureSession {
             changePercent: context.changePercent,
             reason: context.reason,
             motionBoxes: context.motionBoxes?.isEmpty == false ? context.motionBoxes : nil)
-    }
-
-    // MARK: - Contact sheet
-
-    private func buildContactSheet() throws -> WatchContactSheet {
-        let columns = Constants.contactMaxColumns
-        let maxCells = columns * columns
-        let framesToUse: [CaptureFrameInfo]
-        let sampledIndexes: [Int]
-        if self.frames.count <= maxCells {
-            framesToUse = self.frames
-            sampledIndexes = self.frames.map(\.index)
-        } else {
-            // Sample evenly to keep contact sheets readable when many frames are kept.
-            framesToUse = WatchCaptureSession.sampleFrames(self.frames, maxCount: maxCells)
-            sampledIndexes = framesToUse.map(\.index)
-        }
-        let rows = Int(ceil(Double(framesToUse.count) / Double(columns)))
-        let thumbSize = CGSize(width: Constants.contactThumb, height: Constants.contactThumb)
-        let sheetSize = CGSize(width: CGFloat(columns) * thumbSize.width, height: CGFloat(rows) * thumbSize.height)
-        guard let context = CGContext(
-            data: nil,
-            width: Int(sheetSize.width),
-            height: Int(sheetSize.height),
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else {
-            throw PeekabooError.captureFailed(reason: "Failed to build contact sheet context")
-        }
-
-        for (idx, frame) in framesToUse.enumerated() {
-            guard let image = WatchCaptureSession.makeCGImage(fromFile: frame.path) else { continue }
-            let resized = WatchCaptureSession.resize(image: image, to: thumbSize) ?? image
-            let row = idx / columns
-            let col = idx % columns
-            let origin = CGPoint(
-                x: CGFloat(col) * thumbSize.width,
-                y: CGFloat(rows - row - 1) * thumbSize.height)
-            context.draw(resized, in: CGRect(origin: origin, size: thumbSize))
-        }
-
-        guard let cg = context.makeImage() else {
-            throw PeekabooError.captureFailed(reason: "Failed to finalize contact sheet")
-        }
-
-        let contactURL = self.outputRoot.appendingPathComponent("contact.png")
-        try WatchCaptureSession.writePNG(image: cg, to: contactURL, highlight: nil)
-
-        return CaptureContactSheet(
-            path: contactURL.path,
-            file: "contact.png",
-            columns: columns,
-            rows: rows,
-            thumbSize: thumbSize,
-            sampledFrameIndexes: sampledIndexes)
     }
 
     // MARK: - Utilities
@@ -712,89 +656,6 @@ public final class WatchCaptureSession {
         if ns > elapsed {
             try await Task.sleep(nanoseconds: ns - elapsed)
         }
-    }
-
-    private static func makeCGImage(from data: Data) -> CGImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
-    }
-
-    private static func makeCGImage(fromFile path: String) -> CGImage? {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
-        return self.makeCGImage(from: data)
-    }
-
-    private static func resize(image: CGImage, to size: CGSize) -> CGImage? {
-        guard size.width > 0, size.height > 0 else { return nil }
-        guard let context = CGContext(
-            data: nil,
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: image.bitsPerComponent,
-            bytesPerRow: 0,
-            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: image.bitmapInfo.rawValue)
-        else { return nil }
-
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(origin: .zero, size: size))
-        return context.makeImage()
-    }
-
-    private static func sampleFrames(_ frames: [CaptureFrameInfo], maxCount: Int) -> [CaptureFrameInfo] {
-        guard frames.count > maxCount else { return frames }
-        let step = Double(frames.count - 1) / Double(maxCount - 1)
-        var indexes: [Int] = []
-        for i in 0..<maxCount {
-            let idx = Int(round(Double(i) * step))
-            indexes.append(min(idx, frames.count - 1))
-        }
-        let set = Set(indexes)
-        return frames.enumerated()
-            .filter { set.contains($0.offset) }
-            .map(\.element)
-    }
-
-    private static func writePNG(image: CGImage, to url: URL, highlight: [CGRect]?) throws {
-        let finalImage: CGImage = if let highlight, !highlight.isEmpty,
-                                     let annotated = self.annotate(image: image, boxes: highlight)
-        {
-            annotated
-        } else {
-            image
-        }
-
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
-            UTType.png.identifier as CFString,
-            1,
-            nil)
-        else {
-            throw PeekabooError.captureFailed(reason: "Failed to create image destination")
-        }
-        CGImageDestinationAddImage(destination, finalImage, nil)
-        if !CGImageDestinationFinalize(destination) {
-            throw PeekabooError.captureFailed(reason: "Failed to write PNG")
-        }
-    }
-
-    private static func annotate(image: CGImage, boxes: [CGRect]) -> CGImage? {
-        guard let context = CGContext(
-            data: nil,
-            width: image.width,
-            height: image.height,
-            bitsPerComponent: image.bitsPerComponent,
-            bytesPerRow: 0,
-            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: image.bitmapInfo.rawValue)
-        else { return nil }
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        context.setStrokeColor(NSColor.systemRed.withAlphaComponent(0.8).cgColor)
-        context.setLineWidth(max(2, CGFloat(image.width) * 0.002))
-        for box in boxes {
-            context.stroke(box)
-        }
-        return context.makeImage()
     }
 
     private func writeJSON(_ value: some Encodable, to url: URL) throws {
