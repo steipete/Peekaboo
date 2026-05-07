@@ -218,69 +218,17 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         description: String,
         waitTimeout: TimeInterval
     ) async throws -> InteractionTargetPointResolution {
-        if let coordString = coords {
-            // Parse coordinates
-            let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard parts.count == 2,
-                  let x = Double(parts[0]),
-                  let y = Double(parts[1])
-            else {
-                throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
-            }
-            return InteractionTargetPointResolver.coordinate(
-                CGPoint(x: x, y: y),
-                source: .coordinates
-            )
-        } else if let element = elementId, let activeSnapshotId = snapshotId {
-            _ = try await SnapshotValidation.requireDetectionResult(
-                snapshotId: activeSnapshotId,
-                snapshots: self.services.snapshots
-            )
-
-            // Resolve from snapshot using waitForElement
-            let target = ClickTarget.elementId(element)
-            let waitResult = try await AutomationServiceBridge.waitForElement(
-                automation: self.services.automation,
-                target: target,
-                timeout: waitTimeout,
-                snapshotId: activeSnapshotId
-            )
-
-            if !waitResult.found {
-                throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
-            }
-
-            guard let foundElement = waitResult.element else {
-                throw PeekabooError.elementNotFound("Element '\(element)' found but has no bounds")
-            }
-
-            return try await InteractionTargetPointResolver.elementCenterResolution(
-                element: foundElement,
-                elementId: element,
-                snapshotId: activeSnapshotId,
-                snapshots: self.services.snapshots
-            )
-        } else if elementId != nil {
-            throw PeekabooError.snapshotNotFound("No snapshot found")
-        } else {
-            throw ValidationError("No \(description) point specified")
-        }
+        try await InteractionTargetPointResolver.elementOrCoordinateResolution(
+            InteractionTargetPointRequest(
+                elementId: elementId,
+                coordinates: coords,
+                snapshotId: snapshotId,
+                description: description,
+                waitTimeout: waitTimeout
+            ),
+            services: self.services
+        )
     }
-}
-
-// MARK: - JSON Output Structure
-
-struct SwipeResult: Codable {
-    let success: Bool
-    let fromLocation: [String: Double]
-    let toLocation: [String: Double]
-    let distance: Double
-    let duration: Int
-    let steps: Int
-    let profile: String
-    let fromTargetPoint: InteractionTargetPointDiagnostics?
-    let toTargetPoint: InteractionTargetPointDiagnostics?
-    let executionTime: TimeInterval
 }
 
 // MARK: - Conformances

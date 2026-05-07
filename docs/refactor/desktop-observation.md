@@ -118,6 +118,7 @@ Landed:
 - Desktop observation target diagnostics and trace timing now live in focused helpers, leaving `DesktopObservationService` focused on the observe pipeline.
 - `peekaboo move` result and movement-resolution types now live in `MoveCommand+Types`.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
+- Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 
 Still incomplete:
 
@@ -173,7 +174,7 @@ ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 InteractionObservationContext.swift: 284 lines
 InteractionObservationInvalidator.swift: 91 lines
-InteractionTargetPointResolver.swift: 156 lines
+InteractionTargetPointResolver.swift: 221 lines
 ClickCommand.swift: 428 lines
 ClickCommand+FocusVerification.swift: 148 lines
 ClickCommand+Output.swift: 30 lines
@@ -183,8 +184,10 @@ TypeCommand+Types.swift: 11 lines
 MoveCommand.swift: 437 lines
 MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
-DragCommand.swift: 403 lines
-SwipeCommand.swift: 343 lines
+DragCommand.swift: 360 lines
+DragCommand+Types.swift: 15 lines
+SwipeCommand.swift: 295 lines
+SwipeCommand+Types.swift: 15 lines
 HotkeyCommand.swift: 272 lines
 PressCommand.swift: 231 lines
 ```

@@ -1,3 +1,4 @@
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -55,6 +56,67 @@ enum InteractionTargetPointResolver {
                 resolved: InteractionPoint(point),
                 windowAdjustment: nil
             )
+        )
+    }
+
+    static func elementOrCoordinateResolution(
+        _ request: InteractionTargetPointRequest,
+        services: any PeekabooServiceProviding
+    ) async throws -> InteractionTargetPointResolution {
+        if let coordinateString = request.coordinates {
+            return try self.parsedCoordinateResolution(coordinateString)
+        }
+
+        guard let elementId = request.elementId else {
+            throw Commander.ValidationError("No \(request.description) point specified")
+        }
+
+        guard let snapshotId = request.snapshotId else {
+            throw PeekabooError.snapshotNotFound("No snapshot found")
+        }
+
+        // Validate the snapshot before waiting so stale/missing snapshot diagnostics stay explicit.
+        _ = try await SnapshotValidation.requireDetectionResult(
+            snapshotId: snapshotId,
+            snapshots: services.snapshots
+        )
+
+        let waitResult = try await AutomationServiceBridge.waitForElement(
+            automation: services.automation,
+            target: .elementId(elementId),
+            timeout: request.waitTimeout,
+            snapshotId: snapshotId
+        )
+
+        guard waitResult.found else {
+            throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
+        }
+
+        guard let foundElement = waitResult.element else {
+            throw PeekabooError.elementNotFound("Element '\(elementId)' found but has no bounds")
+        }
+
+        return try await self.elementCenterResolution(
+            element: foundElement,
+            elementId: elementId,
+            snapshotId: snapshotId,
+            snapshots: services.snapshots
+        )
+    }
+
+    private static func parsedCoordinateResolution(_ coordinateString: String) throws
+    -> InteractionTargetPointResolution {
+        let components = coordinateString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard components.count == 2,
+              let x = Double(components[0]),
+              let y = Double(components[1])
+        else {
+            throw Commander.ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
+        }
+
+        return self.coordinate(
+            CGPoint(x: x, y: y),
+            source: .coordinates
         )
     }
 
@@ -130,6 +192,14 @@ enum InteractionTargetPointSource: String {
 struct InteractionTargetPointResolution {
     let point: CGPoint
     let diagnostics: InteractionTargetPointDiagnostics
+}
+
+struct InteractionTargetPointRequest {
+    let elementId: String?
+    let coordinates: String?
+    let snapshotId: String?
+    let description: String
+    let waitTimeout: TimeInterval
 }
 
 struct InteractionTargetPointDiagnostics: Codable, Equatable {

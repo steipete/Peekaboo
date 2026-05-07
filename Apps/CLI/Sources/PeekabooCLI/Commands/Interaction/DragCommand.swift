@@ -228,50 +228,15 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         snapshotId: String?,
         description: String
     ) async throws -> InteractionTargetPointResolution {
-        if let coordinateString = coords {
-            let components = coordinateString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard components.count == 2,
-                  let x = Double(components[0]),
-                  let y = Double(components[1])
-            else {
-                throw ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
-            }
-            return InteractionTargetPointResolver.coordinate(
-                CGPoint(x: x, y: y),
-                source: .coordinates
-            )
-        }
-
-        guard let element = elementId else {
-            throw ValidationError("No \(description) point specified")
-        }
-
-        guard let snapshotId else {
-            throw PeekabooError.snapshotNotFound("No snapshot found")
-        }
-
-        _ = try await SnapshotValidation.requireDetectionResult(
-            snapshotId: snapshotId,
-            snapshots: self.services.snapshots
-        )
-
-        let target = ClickTarget.elementId(element)
-        let waitResult = try await AutomationServiceBridge.waitForElement(
-            automation: self.services.automation,
-            target: target,
-            timeout: 5.0,
-            snapshotId: snapshotId
-        )
-
-        guard waitResult.found, let foundElement = waitResult.element else {
-            throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
-        }
-
-        return try await InteractionTargetPointResolver.elementCenterResolution(
-            element: foundElement,
-            elementId: element,
-            snapshotId: snapshotId,
-            snapshots: self.services.snapshots
+        try await InteractionTargetPointResolver.elementOrCoordinateResolution(
+            InteractionTargetPointRequest(
+                elementId: elementId,
+                coordinates: coords,
+                snapshotId: snapshotId,
+                description: description,
+                waitTimeout: 5.0
+            ),
+            services: self.services
         )
     }
 
@@ -342,21 +307,6 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             return AXApp(dockApp).element
         }
     }
-}
-
-// MARK: - Output Types
-
-private struct DragResult: Codable {
-    let success: Bool
-    let from: [String: Int]
-    let to: [String: Int]
-    let duration: Int
-    let steps: Int
-    let profile: String
-    let modifiers: String
-    let fromTargetPoint: InteractionTargetPointDiagnostics?
-    let toTargetPoint: InteractionTargetPointDiagnostics?
-    let executionTime: TimeInterval
 }
 
 // MARK: - Conformances
