@@ -74,7 +74,8 @@ struct CommandHelpRenderer {
     private static func renderArguments(_ arguments: [ArgumentDefinition], theme: HelpTheme?) -> String? {
         guard !arguments.isEmpty else { return nil }
         let rows = arguments.map { argument -> (String, String?) in
-            let label = argument.isOptional ? "[\(argument.label)]" : "<\(argument.label)>"
+            let placeholder = self.kebabCased(argument.label)
+            let label = argument.isOptional ? "[\(placeholder)]" : "<\(placeholder)>"
             return (label, argument.help)
         }
         return self.makeSection(title: "ARGUMENTS", lines: self.renderKeyValueRows(rows, theme: theme), theme: theme)
@@ -87,18 +88,46 @@ struct CommandHelpRenderer {
                 .filter { !$0.isAlias }
                 .map(\.cliSpelling)
                 .joined(separator: ", ")
-            let valuePlaceholder = " <\(self.optionValuePlaceholder(option.label))>"
+            let valuePlaceholder = " <\(self.optionValuePlaceholder(for: option))>"
             return (names + valuePlaceholder, option.help)
         }
         return self.makeSection(title: "OPTIONS", lines: self.renderKeyValueRows(rows, theme: theme), theme: theme)
     }
 
-    private static func optionValuePlaceholder(_ label: String) -> String {
+    private static func optionValuePlaceholder(for option: OptionDefinition) -> String {
+        if let longName = option.names.compactMap(\.primaryLongComponent).first {
+            return longName
+        }
+        return self.kebabCased(self.optionLabel(option.label))
+    }
+
+    private static func optionLabel(_ label: String) -> String {
         let suffix = "Option"
         guard label.hasSuffix(suffix), label.count > suffix.count else {
             return label
         }
         return String(label.dropLast(suffix.count))
+    }
+
+    private static func kebabCased(_ value: String) -> String {
+        guard !value.isEmpty else { return value }
+        var output = ""
+
+        for character in value {
+            if character.isUppercase {
+                if !output.isEmpty, output.last != "-" {
+                    output.append("-")
+                }
+                output.append(contentsOf: character.lowercased())
+            } else if character == "_" || character == " " {
+                if !output.isEmpty, output.last != "-" {
+                    output.append("-")
+                }
+            } else {
+                output.append(character)
+            }
+        }
+        return output
     }
 
     private static func renderFlags(_ flags: [FlagDefinition], theme: HelpTheme?) -> String? {
@@ -161,6 +190,15 @@ extension CommanderName {
             "-\(value)"
         case let .long(value), let .aliasLong(value):
             "--\(value)"
+        }
+    }
+
+    fileprivate var primaryLongComponent: String? {
+        switch self {
+        case let .long(value):
+            value
+        case .short, .aliasShort, .aliasLong:
+            nil
         }
     }
 }
