@@ -137,6 +137,7 @@
 - Split frontmost-application capture lookup behind the shared capture application resolver so `ScreenCaptureService` no longer owns AppKit app identity conversion.
 - Removed stale `AXorcist` imports from CLI command files by routing app hide/unhide and accessibility permission prompting through shared services.
 - Routed menu-bar popover target resolution through the shared observation window catalog instead of a resolver-local CoreGraphics window-list query.
+- Routed drag `--to-app` destination lookup through application, window, and Dock services instead of direct CLI AX/AppKit queries.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.

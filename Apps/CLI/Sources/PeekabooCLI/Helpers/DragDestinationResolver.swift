@@ -1,5 +1,3 @@
-import AppKit
-import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooCore
@@ -15,37 +13,14 @@ struct DragDestinationResolver {
         }
 
         let appInfo = try await self.resolveApplication(appName)
-
-        // Prefer the window-listing service path so tests and WindowServer-backed flows do not
-        // require a live NSRunningApplication or AX window handle.
-        do {
-            let windowList = try await self.services.applications.listWindows(for: appInfo.name, timeout: nil)
-            if let window = windowList.data.windows.first(where: { $0.isMainWindow })
-                ?? windowList.data.windows.first {
-                return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
-            }
-        } catch {
-            // Fall back to AX-based window discovery below.
+        if let point = try? await self.centerOfBestWindow(for: appInfo.name) {
+            return point
+        }
+        if let point = try await self.centerOfBestWindow(target: .application(appInfo.name)) {
+            return point
         }
 
-        guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
-            throw PeekabooError.appNotFound(appName)
-        }
-
-        let axApp = AXApp(runningApp)
-        guard let windowElement = axApp.element.focusedWindow() ?? axApp.element.windows()?.first else {
-            throw PeekabooError.windowNotFound(
-                criteria: "No accessible window for \(appInfo.name)"
-            )
-        }
-
-        guard let frame = windowElement.frame() else {
-            throw PeekabooError.windowNotFound(
-                criteria: "Window bounds unavailable for \(appInfo.name)"
-            )
-        }
-
-        return CGPoint(x: frame.midX, y: frame.midY)
+        throw PeekabooError.windowNotFound(criteria: "No visible destination window for \(appInfo.name)")
     }
 
     private func resolveApplication(_ identifier: String) async throws -> ServiceApplicationInfo {
@@ -60,27 +35,31 @@ struct DragDestinationResolver {
     }
 
     private func findTrashPoint() async throws -> CGPoint {
-        guard let dock = self.findDockApplication(),
-              let list = dock.children()?.first(where: { $0.role() == "AXList" })
-        else {
-            throw PeekabooError.elementNotFound("Dock not found")
+        let trash = try await self.services.dock.findDockItem(name: "Trash")
+        guard let position = trash.position, let size = trash.size else {
+            throw PeekabooError.elementNotFound("Trash position unavailable in Dock")
         }
 
-        let items = list.children() ?? []
-        if let trash = items.first(where: { $0.label()?.lowercased() == "trash" }) {
-            if let position = trash.position(), let size = trash.size() {
-                return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
-            }
-        }
-
-        throw PeekabooError.elementNotFound("Trash not found in Dock")
+        return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
     }
 
-    private func findDockApplication() -> Element? {
-        let apps = NSWorkspace.shared.runningApplications
-        guard let dockApp = apps.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
+    private func centerOfBestWindow(for appName: String) async throws -> CGPoint? {
+        let windowList = try await self.services.applications.listWindows(for: appName, timeout: nil)
+        return self.centerOfBestWindow(in: windowList.data.windows)
+    }
+
+    private func centerOfBestWindow(target: WindowTarget) async throws -> CGPoint? {
+        let windows = try await self.services.windows.listWindows(target: target)
+        return self.centerOfBestWindow(in: windows)
+    }
+
+    private func centerOfBestWindow(in windows: [ServiceWindowInfo]) -> CGPoint? {
+        guard let window = windows.first(where: { $0.isMainWindow && $0.isOnScreen })
+            ?? windows.first(where: \.isOnScreen)
+            ?? windows.first
+        else {
             return nil
         }
-        return AXApp(dockApp).element
+        return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
     }
 }

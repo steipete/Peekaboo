@@ -136,11 +136,12 @@ Landed:
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
+- `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
 
 Current status:
 
 - Capture-service cleanup is mostly complete; `ScreenCaptureService.swift` is under the 500-line target and frontmost-app lookup is behind `ScreenCaptureApplicationResolver`.
-- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, visualizer demo state, screen inventory, or command helper behavior outside the capture pipeline.
+- CLI sources no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, visualizer demo state, screen inventory, or command helper behavior outside the capture pipeline.
 - Observation resolver extensions no longer own broad CoreGraphics window-list scans. Menu-bar and exact-window metadata lookup now route through focused catalog helpers.
 - Optional module extraction after boundaries are stable.
 
@@ -219,7 +220,7 @@ MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
 DragCommand.swift: 295 lines
 DragCommand+Types.swift: 15 lines
-DragDestinationResolver.swift: 87 lines
+DragDestinationResolver.swift: 65 lines
 SwipeCommand.swift: 295 lines
 SwipeCommand+Types.swift: 15 lines
 HotkeyCommand.swift: 272 lines
@@ -1002,6 +1003,7 @@ Work:
 - done: move the remaining legacy capture/detection fallback body out of `SeeCommand.swift` into `SeeCommand+DetectionPipeline.swift`;
 - done: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
 - done: split drag destination-app/Dock lookup out of `DragCommand.swift` and remove stale platform imports from `swipe`/`move`;
+- done: route `DragDestinationResolver` through service boundaries and remove direct CLI AX/AppKit destination probing;
 - done: archive stale refactor notes behind the current refactor index;
 - done: update command docs for changed diagnostics/timings;
 - done: split interaction target-point diagnostics out of `InteractionObservationContext.swift`;
@@ -1020,7 +1022,7 @@ Acceptance:
 
 - `SeeCommand.swift` under about 400 lines;
 - `ImageCommand.swift` under about 400 lines;
-- command files do not import `AXorcist` or `ScreenCaptureKit`;
+- CLI sources do not import `AXorcist` or `ScreenCaptureKit`;
 - CLI and MCP share observation request mapping.
 
 ## Testing Strategy
@@ -1241,7 +1243,7 @@ Preserve snapshot behavior unless deliberately migrated:
 - `ImageCommand.swift` is under about 400 lines.
 - `ScreenCaptureService.swift` is under about 500 lines.
 - `ElementDetectionService.swift` is under about 500 lines.
-- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`.
+- CLI sources no longer import `AXorcist` or `ScreenCaptureKit`.
 - `image --app X` and `see --app X` choose the same app window.
 - `image --window-id N` and `see --window-id N` report the same window identity.
 - `--retina` produces native display scale where macOS allows it.
