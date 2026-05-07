@@ -88,10 +88,7 @@ struct AppCommandLaunchFlowTests {
 
         var command = AppCommand.LaunchSubcommand()
         command.app = "Finder"
-        let runtime = CommandRuntime(
-            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
-            services: PeekabooServices()
-        )
+        let runtime = self.makeRuntime()
         try await command.run(using: runtime)
 
         let call = try #require(launcher.launchCalls.first)
@@ -119,10 +116,7 @@ struct AppCommandLaunchFlowTests {
         command.app = "Preview"
         command.noFocus = true
         command.openTargets = ["~/Desktop/file1.pdf", "https://example.com"]
-        let runtime = CommandRuntime(
-            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
-            services: PeekabooServices()
-        )
+        let runtime = self.makeRuntime()
         try await command.run(using: runtime)
 
         let call = try #require(launcher.launchWithDocsCalls.first)
@@ -130,5 +124,38 @@ struct AppCommandLaunchFlowTests {
         #expect(call.documentURLs.count == 2)
         #expect(call.documentURLs[0].path.hasSuffix("/Desktop/file1.pdf"))
         #expect(call.documentURLs[1].absoluteString == "https://example.com")
+    }
+
+    @Test
+    func `Launch without --open skips focus when requested`() async throws {
+        let launcher = StubApplicationLauncher()
+        launcher.launchResponses = [StubRunningApplication(localizedName: "Notes", readyAfterChecks: 1)]
+        let resolver = StubApplicationURLResolver()
+        resolver.applicationMap["Notes"] = URL(fileURLWithPath: "/Applications/Notes.app")
+
+        let originalLauncher = AppCommand.LaunchSubcommand.launcher
+        let originalResolver = AppCommand.LaunchSubcommand.resolver
+        AppCommand.LaunchSubcommand.launcher = launcher
+        AppCommand.LaunchSubcommand.resolver = resolver
+        defer {
+            AppCommand.LaunchSubcommand.launcher = originalLauncher
+            AppCommand.LaunchSubcommand.resolver = originalResolver
+        }
+
+        var command = AppCommand.LaunchSubcommand()
+        command.app = "Notes"
+        command.noFocus = true
+        let runtime = self.makeRuntime()
+        try await command.run(using: runtime)
+
+        let call = try #require(launcher.launchCalls.first)
+        #expect(call.activates == false)
+    }
+
+    private func makeRuntime() -> CommandRuntime {
+        CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: PeekabooServices(snapshotManager: InMemorySnapshotManager())
+        )
     }
 }

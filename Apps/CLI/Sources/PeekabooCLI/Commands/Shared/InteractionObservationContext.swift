@@ -56,6 +56,15 @@ struct InteractionObservationContext {
         return snapshotId
     }
 
+    static func invalidateLatestSnapshot(using snapshots: any SnapshotManagerProtocol) async throws -> String? {
+        guard let latestSnapshotId = await snapshots.getMostRecentSnapshot() else {
+            return nil
+        }
+
+        try await snapshots.cleanSnapshot(snapshotId: latestSnapshotId)
+        return latestSnapshotId
+    }
+
     static func resolve(
         explicitSnapshot rawSnapshot: String?,
         fallbackToLatest: Bool,
@@ -107,6 +116,26 @@ enum InteractionObservationInvalidator {
         } catch {
             logger.warn(
                 "Failed to invalidate implicit latest snapshot after \(reason): \(error.localizedDescription)"
+            )
+        }
+    }
+
+    static func invalidateLatestSnapshot(
+        using snapshots: any SnapshotManagerProtocol,
+        logger: Logger,
+        reason: String
+    ) async {
+        do {
+            if let invalidatedSnapshotId = try await InteractionObservationContext.invalidateLatestSnapshot(
+                using: snapshots
+            ) {
+                logger.debug(
+                    "Invalidated latest snapshot '\(invalidatedSnapshotId)' after \(reason)"
+                )
+            }
+        } catch {
+            logger.warn(
+                "Failed to invalidate latest snapshot after \(reason): \(error.localizedDescription)"
             )
         }
     }

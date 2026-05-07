@@ -551,6 +551,11 @@ extension WindowCommand {
                         expectedApp: appInfo
                     )
                 }
+                await InteractionObservationInvalidator.invalidateLatestSnapshot(
+                    using: self.services.snapshots,
+                    logger: self.logger,
+                    reason: "window focus"
+                )
                 logWindowAction(
                     action: "focus",
                     appName: appName,

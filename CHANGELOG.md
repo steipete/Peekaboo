@@ -67,6 +67,7 @@
 - `peekaboo move --on` now targets UI elements correctly.
 - `peekaboo window` subcommands now accept `--window-id` without requiring a redundant app target.
 - `peekaboo press --hold` now honors the requested hold duration.
+- `peekaboo app launch --no-focus` now also suppresses activation when launching without `--open` targets.
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
@@ -82,6 +83,7 @@
 - Element-targeted actions now fail with snapshot window identity when a cached target window disappeared or changed size, instead of silently clicking stale coordinates.
 - Element-targeted move, drag, swipe, click output, and scroll targeting now share the same moved-window point adjustment as click/type execution.
 - Snapshot storage now preserves typed detection window context, including bundle ID, PID, window ID, and bounds, so observation-backed actions can adjust moved-window targets reliably.
+- App launch/switch and window focus commands now invalidate the implicit latest snapshot after focus changes so follow-up actions do not reuse a stale frontmost UI.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
 - Concurrent `peekaboo see` calls now queue the local screenshot/detection pipeline across processes, avoiding ReplayKit/ScreenCaptureKit continuation hangs under parallel usage.

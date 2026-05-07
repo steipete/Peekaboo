@@ -105,6 +105,27 @@ struct InteractionObservationContextTests {
         #expect(await snapshots.getMostRecentSnapshot() == "explicit-snapshot")
         #expect(try await snapshots.listSnapshots().map(\.id) == ["explicit-snapshot"])
     }
+
+    @Test
+    func `Latest snapshot can be invalidated after focus changes`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let latest = try await snapshots.createSnapshot()
+
+        let invalidated = try await InteractionObservationContext.invalidateLatestSnapshot(using: snapshots)
+
+        #expect(invalidated == latest)
+        #expect(await snapshots.getMostRecentSnapshot() == nil)
+        #expect(try await snapshots.listSnapshots().isEmpty)
+    }
+
+    @Test
+    func `Latest snapshot invalidation is a no-op when none exists`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+
+        let invalidated = try await InteractionObservationContext.invalidateLatestSnapshot(using: snapshots)
+
+        #expect(invalidated == nil)
+    }
 }
 
 private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked Sendable {

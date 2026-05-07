@@ -133,6 +133,7 @@ struct AppCommand: ParsableCommand {
                 let launchedApp = try await self.launchApplication(at: url, name: self.displayName(for: url))
                 try await self.waitIfNeeded(for: launchedApp)
                 self.activateIfNeeded(launchedApp)
+                await self.invalidateFocusSnapshotIfNeeded()
                 self.renderLaunchSuccess(app: launchedApp)
             } catch {
                 self.handleError(error)
@@ -177,6 +178,15 @@ struct AppCommand: ParsableCommand {
             }
         }
 
+        private func invalidateFocusSnapshotIfNeeded() async {
+            guard self.shouldFocusAfterLaunch else { return }
+            await InteractionObservationInvalidator.invalidateLatestSnapshot(
+                using: self.services.snapshots,
+                logger: self.logger,
+                reason: "app launch focus"
+            )
+        }
+
         private func renderLaunchSuccess(app: any RunningApplicationHandle) {
             struct LaunchResult: Codable {
                 let action: String
@@ -205,7 +215,7 @@ struct AppCommand: ParsableCommand {
 
         private func launchApplication(at url: URL, name: String) async throws -> any RunningApplicationHandle {
             if self.openTargets.isEmpty {
-                return try await Self.launcher.launchApplication(at: url, activates: true)
+                return try await Self.launcher.launchApplication(at: url, activates: self.shouldFocusAfterLaunch)
             } else {
                 let urls = try self.openTargets.map { try Self.resolveOpenTarget($0) }
                 return try await Self.launcher.launchApplication(
@@ -705,6 +715,11 @@ struct AppCommand: ParsableCommand {
 
                     let data = CycleResult(action: "cycle", success: true)
 
+                    await InteractionObservationInvalidator.invalidateLatestSnapshot(
+                        using: self.services.snapshots,
+                        logger: self.logger,
+                        reason: "app switch cycle"
+                    )
                     output(data) {
                         print("✓ Cycled to next application")
                     }
@@ -738,6 +753,11 @@ struct AppCommand: ParsableCommand {
                         success: success
                     )
 
+                    await InteractionObservationInvalidator.invalidateLatestSnapshot(
+                        using: self.services.snapshots,
+                        logger: self.logger,
+                        reason: "app switch"
+                    )
                     output(data) {
                         print("✓ Switched to \(appInfo.name)")
                     }
