@@ -51,7 +51,7 @@ extension AgentCommand {
 
     private func transcribeAudio(using audioService: AudioInputService) async throws -> String {
         if let audioPath = self.audioFile {
-            let url = URL(fileURLWithPath: audioPath)
+            let url = URL(fileURLWithPath: PathResolver.expandPath(audioPath))
             return try await audioService.transcribeAudioFile(url)
         } else {
             try await audioService.startRecording()

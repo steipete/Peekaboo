@@ -21,6 +21,7 @@ read_when:
 - Scripts are parsed on the main actor via `services.process.loadScript`, so relative paths (`~/`, `./`) resolve exactly as they do when agents run scripts.
 - Execution delegates to `services.process.executeScript`, which returns a `[StepResult]` containing individual timings, success flags, and error strings; the command wraps those in a summary with total durations and counts.
 - `--output` writes via `JSONEncoder().encode` + atomic file replacement; if the write succeeds but the script fails, you still get the partial data for debugging.
+- `<scriptPath>` and `--output` accept `~/...`.
 - In JSON mode (`--json` / `--json-output` / `-j`), stdout is a single `CodableJSONResponse<ScriptExecutionResult>` payload (top-level `success` tracks overall script success).
 - The command exits non-zero if any step fails (even when `--no-fail-fast` continues execution) so CI can register the run as failed.
 

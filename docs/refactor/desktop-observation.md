@@ -167,6 +167,7 @@ Landed:
 - CLI `see` output paths now use the same directory-aware planning for primary screenshots and legacy multi-screen companion files.
 - `capture live`, `capture video`, and MCP `capture` now share small path resolvers for home-directory expansion on output directories, video input paths, and video output paths.
 - Clipboard and paste file IO now share a small `ClipboardPathResolver`, so CLI and MCP surfaces expand home-directory paths consistently before reading or writing files.
+- `run` script/output paths and agent audio-file inputs now route through the shared path resolver before file IO.
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.

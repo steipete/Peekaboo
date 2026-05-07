@@ -10,7 +10,6 @@ public enum ClipboardPathResolver {
     }
 
     private static func expandedPath(_ path: String) -> String {
-        // URL(fileURLWithPath:) treats "~" as a literal directory; expand first for shell-style CLI paths.
-        (path as NSString).expandingTildeInPath
+        PathResolver.expandPath(path)
     }
 }

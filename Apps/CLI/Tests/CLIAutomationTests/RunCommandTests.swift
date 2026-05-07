@@ -91,6 +91,36 @@ struct RunCommandCLIHarnessTests {
     }
 
     @Test
+    func `run command expands home directory script and output paths`() async throws {
+        let scriptRelativePath = "Library/Caches/peekaboo-script-\(UUID().uuidString).peekaboo.json"
+        let outputRelativePath = "Library/Caches/peekaboo-run-results-\(UUID().uuidString).json"
+        let scriptPath = "~/\(scriptRelativePath)"
+        let outputPath = "~/\(outputRelativePath)"
+        let resolvedScriptPath = NSString(string: scriptPath).expandingTildeInPath
+        let resolvedOutputPath = NSString(string: outputPath).expandingTildeInPath
+        let script = PeekabooScript(description: "Expanded paths", steps: [])
+        let process = StubProcessService()
+        process.scriptsByPath[resolvedScriptPath] = script
+        process.nextExecuteScriptResults = []
+        defer { try? FileManager.default.removeItem(atPath: resolvedOutputPath) }
+
+        let services = self.makeServices(process: process)
+        let result = try await InProcessCommandRunner.run([
+            "run",
+            scriptPath,
+            "--output", outputPath,
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        #expect(process.loadScriptCalls.first?.path == resolvedScriptPath)
+        #expect(FileManager.default.fileExists(atPath: resolvedOutputPath))
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: resolvedOutputPath))
+        let payload = try JSONDecoder().decode(ScriptExecutionResult.self, from: data)
+        #expect(payload.scriptPath == resolvedScriptPath)
+    }
+
+    @Test
     func `run command exits with failure when a step fails`() async throws {
         let scriptPath = "/tmp/failing-script.peekaboo.json"
         let script = PeekabooScript(description: "Failing script", steps: [

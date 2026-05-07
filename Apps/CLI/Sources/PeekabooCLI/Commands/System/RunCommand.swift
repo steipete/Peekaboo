@@ -63,7 +63,8 @@ struct RunCommand: OutputFormattable {
         var didEmitJSONResponse = false
 
         do {
-            let script = try await ProcessServiceBridge.loadScript(services: self.services, path: self.scriptPath)
+            let resolvedScriptPath = self.resolvedScriptPath()
+            let script = try await ProcessServiceBridge.loadScript(services: self.services, path: resolvedScriptPath)
             let results = try await ProcessServiceBridge.executeScript(
                 services: self.services,
                 script,
@@ -73,7 +74,7 @@ struct RunCommand: OutputFormattable {
 
             let output = ScriptExecutionResult(
                 success: results.allSatisfy(\.success),
-                scriptPath: self.scriptPath,
+                scriptPath: resolvedScriptPath,
                 description: script.description,
                 totalSteps: script.steps.count,
                 completedSteps: results.count { $0.success },
@@ -83,10 +84,11 @@ struct RunCommand: OutputFormattable {
             )
 
             if let outputPath = self.output {
+                let resolvedOutputPath = self.resolvedOutputPath(from: outputPath)
                 let data = try JSONEncoder().encode(output)
-                try data.write(to: URL(fileURLWithPath: outputPath))
+                try data.write(to: URL(fileURLWithPath: resolvedOutputPath))
                 if !self.jsonOutput {
-                    print("✅ Script completed. Results saved to: \(outputPath)")
+                    print("✅ Script completed. Results saved to: \(resolvedOutputPath)")
                 }
             } else if self.jsonOutput {
                 let response = CodableJSONResponse(
@@ -119,6 +121,14 @@ struct RunCommand: OutputFormattable {
             }
             throw ExitCode.failure
         }
+    }
+
+    func resolvedScriptPath() -> String {
+        PathResolver.expandPath(self.scriptPath)
+    }
+
+    func resolvedOutputPath(from outputPath: String) -> String {
+        PathResolver.expandPath(outputPath)
     }
 
     @MainActor

@@ -7,18 +7,7 @@ import XCTest
 @MainActor
 final class ProcessServiceLoadScriptTests: XCTestCase {
     func testLoadScriptInvalidEnumCodingThrowsInvalidInput() async throws {
-        let pasteboard = NSPasteboard.withUniqueName()
-        let clipboard = ClipboardService(pasteboard: pasteboard)
-
-        let processService = ProcessService(
-            applicationService: UnusedApplicationService(),
-            screenCaptureService: UnusedScreenCaptureService(),
-            snapshotManager: UnusedSnapshotManager(),
-            uiAutomationService: UnusedUIAutomationService(),
-            windowManagementService: UnusedWindowManagementService(),
-            menuService: UnusedMenuService(),
-            dockService: UnusedDockService(),
-            clipboardService: clipboard)
+        let processService = self.makeProcessService()
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("bad-\(UUID().uuidString).peekaboo.json")
@@ -55,5 +44,39 @@ final class ProcessServiceLoadScriptTests: XCTestCase {
                 XCTFail("Expected invalidInput, got: \(error)")
             }
         }
+    }
+
+    func testLoadScriptExpandsHomeDirectoryPath() async throws {
+        let processService = self.makeProcessService()
+        let relativePath = "Library/Caches/peekaboo-script-\(UUID().uuidString).peekaboo.json"
+        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(relativePath)
+        let tildePath = "~/\(relativePath)"
+        let script = """
+        {
+          "description": "home path script",
+          "steps": []
+        }
+        """
+        try script.data(using: .utf8)?.write(to: url, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let loaded = try await processService.loadScript(from: tildePath)
+
+        XCTAssertEqual(loaded.description, "home path script")
+    }
+
+    private func makeProcessService() -> ProcessService {
+        let pasteboard = NSPasteboard.withUniqueName()
+        let clipboard = ClipboardService(pasteboard: pasteboard)
+
+        return ProcessService(
+            applicationService: UnusedApplicationService(),
+            screenCaptureService: UnusedScreenCaptureService(),
+            snapshotManager: UnusedSnapshotManager(),
+            uiAutomationService: UnusedUIAutomationService(),
+            windowManagementService: UnusedWindowManagementService(),
+            menuService: UnusedMenuService(),
+            dockService: UnusedDockService(),
+            clipboardService: clipboard)
     }
 }

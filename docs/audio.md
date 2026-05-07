@@ -135,6 +135,10 @@ let result = try await generateSpeech(
 try result.audioData.write(to: outputURL)
 ```
 
+### CLI Audio Files
+
+`peekaboo agent --audio-file ~/Desktop/request.m4a "summarize this"` expands home-directory paths before transcription.
+
 ### Audio Recording with TachikomaAudio
 
 ```swift

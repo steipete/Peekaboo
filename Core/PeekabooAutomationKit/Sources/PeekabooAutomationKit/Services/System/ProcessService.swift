@@ -76,10 +76,11 @@ public final class ProcessService: ProcessServiceProtocol {
     }
 
     public func loadScript(from path: String) async throws -> PeekabooScript {
-        let url = URL(fileURLWithPath: path)
+        let resolvedPath = PathResolver.expandPath(path)
+        let url = URL(fileURLWithPath: resolvedPath)
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            throw PeekabooError.fileIOError("Script file not found: \(path)")
+            throw PeekabooError.fileIOError("Script file not found: \(resolvedPath)")
         }
 
         return try await performOperation({
@@ -88,9 +89,9 @@ public final class ProcessService: ProcessServiceProtocol {
             do {
                 return try decoder.decode(PeekabooScript.self, from: data)
             } catch let decodingError as DecodingError {
-                throw PeekabooError.invalidInput(Self.describeScriptDecodingError(decodingError, path: path))
+                throw PeekabooError.invalidInput(Self.describeScriptDecodingError(decodingError, path: resolvedPath))
             }
-        }, errorContext: "Failed to load script from \(path)")
+        }, errorContext: "Failed to load script from \(resolvedPath)")
     }
 
     private nonisolated static func describeScriptDecodingError(_ error: DecodingError, path: String) -> String {

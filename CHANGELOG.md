@@ -119,6 +119,7 @@
 - `peekaboo see --path .` now uses the same directory-aware output policy for observation and legacy screen companion paths.
 - `peekaboo capture live --path ~/...`, `peekaboo capture ... --video-out ~/...`, `peekaboo capture video --path ~/...`, `peekaboo capture video ~/...`, and MCP `capture` path inputs now expand home-directory paths consistently with the rest of the CLI.
 - `peekaboo clipboard`, `peekaboo paste`, and MCP clipboard/paste file paths now expand `~/...` before reading or writing files.
+- `peekaboo run` script/output paths and `peekaboo agent --audio-file ~/...` now expand home-directory paths before file IO.
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.
