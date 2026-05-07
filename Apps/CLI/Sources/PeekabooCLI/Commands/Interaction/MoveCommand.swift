@@ -150,10 +150,17 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let elementId = on ?? id {
                 // Move to element by ID
-                let observation = await InteractionObservationContext.resolve(
+                var observation = await InteractionObservationContext.resolve(
                     explicitSnapshot: self.snapshot,
                     fallbackToLatest: true,
                     snapshots: self.services.snapshots
+                )
+                observation = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+                    observation,
+                    elementId: elementId,
+                    target: self.target,
+                    services: self.services,
+                    logger: self.logger
                 )
                 try await ensureFocused(
                     snapshotId: observation.focusSnapshotId(for: self.target),
