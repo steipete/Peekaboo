@@ -122,6 +122,7 @@ Landed:
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
+- Desktop observation target, request, and result DTOs now live in focused model files.
 
 Still incomplete:
 
@@ -152,6 +153,10 @@ WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 DesktopObservationService.swift: 427 lines
+DesktopObservationModels.swift: 15 lines
+DesktopObservationTargetModels.swift: 191 lines
+DesktopObservationRequestModels.swift: 120 lines
+DesktopObservationResultModels.swift: 120 lines
 DesktopObservationDiagnosticsBuilder.swift: 97 lines
 DesktopObservationTraceRecorder.swift: 33 lines
 ElementDetectionService.swift: 207 lines

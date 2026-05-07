@@ -117,6 +117,7 @@
 - Shared drag/swipe element-or-coordinate point resolution through the common interaction target resolver and split gesture result DTOs into focused support files.
 - Split `peekaboo click` validation/helpers and Commander wiring into focused support files.
 - Split observation target menu-bar resolution and window-selection scoring into focused resolver extension files.
+- Split desktop observation target, request, and result DTOs into focused model files.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.
