@@ -33,7 +33,7 @@ extension SeeCommand {
             if let appValue = self.app?.lowercased() {
                 switch appValue {
                 case "menubar":
-                    return nil
+                    return .menubar
                 case "frontmost":
                     return .frontmost
                 default:
@@ -118,7 +118,7 @@ extension SeeCommand {
 
     func allowsAnnotation(for target: DesktopObservationTargetRequest) -> Bool {
         switch target {
-        case .screen, .allScreens:
+        case .screen, .allScreens, .menubar:
             false
         default:
             true

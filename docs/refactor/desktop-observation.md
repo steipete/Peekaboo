@@ -89,6 +89,8 @@ Landed:
 - Observation output reports artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
 - Desktop observation now has first-class OCR results, a `detection.ocr` timing span, OCR-only detection for `preferOCR`, and shared OCR-to-element mapping used by menu-bar helpers.
 - Desktop observation now reports a total `desktop.observe` timing span after component capture, detection, OCR, and output spans.
+- `peekaboo see --app menubar` now routes through the shared observation `.menubar` target while keeping tiny strip annotations disabled.
+- ScreenCaptureKit area captures now use the single-shot frame source because fast-stream display sessions returned full-display frames for area source rectangles.
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.

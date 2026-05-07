@@ -138,6 +138,14 @@ struct SeeCommandAnnotationTests {
 
     @Test
     @MainActor
+    func `App menubar captures use observation target`() throws {
+        let command = try SeeCommand.parse(["--app", "menubar"])
+
+        #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == .menubar)
+    }
+
+    @Test
+    @MainActor
     func `Observation screen targets disable annotations`() throws {
         let command = try SeeCommand.parse([
             "--mode", "screen",
@@ -148,6 +156,21 @@ struct SeeCommandAnnotationTests {
         let request = command.makeObservationRequest(target: .screen(index: 0))
 
         #expect(command.allowsAnnotation(for: .screen(index: 0)) == false)
+        #expect(command.allowsAnnotationForCurrentCapture() == false)
+        #expect(request.output.saveAnnotatedScreenshot == false)
+    }
+
+    @Test
+    @MainActor
+    func `Observation menu bar strip target disables annotations`() throws {
+        let command = try SeeCommand.parse([
+            "--app", "menubar",
+            "--annotate",
+            "--path", "/tmp/peekaboo-see-menubar.png",
+        ])
+        let request = command.makeObservationRequest(target: .menubar)
+
+        #expect(command.allowsAnnotation(for: .menubar) == false)
         #expect(command.allowsAnnotationForCurrentCapture() == false)
         #expect(request.output.saveAnnotatedScreenshot == false)
     }

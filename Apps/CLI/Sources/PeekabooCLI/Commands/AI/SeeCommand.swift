@@ -261,7 +261,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     func allowsAnnotationForCurrentCapture() -> Bool {
-        switch self.determineMode() {
+        if self.app?.lowercased() == "menubar" {
+            return false
+        }
+
+        return switch self.determineMode() {
         case .screen, .multi:
             false
         case .window, .frontmost, .area:

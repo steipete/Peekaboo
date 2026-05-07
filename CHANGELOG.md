@@ -40,6 +40,7 @@
 - Desktop observation JSON diagnostics now include a total `desktop.observe` timing span for end-to-end duration.
 - Added first-class OCR results to desktop observation, with shared OCR-to-element mapping for observation and menu-bar helpers.
 - `peekaboo see --menubar` now tries the desktop observation pipeline for already-open menu bar popovers before falling back to the legacy click-to-open path.
+- `peekaboo see --app menubar` now uses the shared desktop observation menu-bar target instead of command-local area capture.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.
 - Desktop observation diagnostics now report shared target resolution metadata for menu bar strip and popover captures, including source, bounds, hints, and click-open fallback status.
@@ -124,6 +125,7 @@
 - `.peekaboo.json` script `see` screenshot paths and clipboard file/output paths now expand `~/...` during process execution.
 - AI image-file analysis now expands only leading home-directory tildes instead of rewriting literal `~` characters inside filenames.
 - The shared file image writer now expands `~/...` before saving screenshots/images.
+- ScreenCaptureKit area captures now use single-shot capture so source rectangles such as the menu-bar strip save the requested region instead of a full-display frame.
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.

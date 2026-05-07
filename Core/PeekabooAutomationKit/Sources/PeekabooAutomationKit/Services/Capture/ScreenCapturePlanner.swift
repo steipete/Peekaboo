@@ -29,8 +29,10 @@ import Foundation
         }
 
         switch mode {
-        case .screen, .area, .multi:
+        case .screen, .multi:
             return .fastStream
+        case .area:
+            return .singleShot
         case .window, .frontmost:
             return .singleShot
         }
