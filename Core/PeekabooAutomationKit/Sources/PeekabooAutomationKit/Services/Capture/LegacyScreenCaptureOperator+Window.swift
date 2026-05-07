@@ -112,6 +112,7 @@ extension LegacyScreenCaptureOperator {
                 windowLevel: 0,
                 alpha: 1.0,
                 index: resolvedIndex,
+                isOffScreen: !(targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true),
                 layer: targetWindow[kCGWindowLayer as String] as? Int ?? 0,
                 isOnScreen: targetWindow[kCGWindowIsOnscreen as String] as? Bool ?? true,
                 sharingState: (targetWindow[kCGWindowSharingState as String] as? Int).flatMap {

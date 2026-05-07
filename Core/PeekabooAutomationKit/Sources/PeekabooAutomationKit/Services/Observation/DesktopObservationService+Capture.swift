@@ -102,6 +102,7 @@ extension DesktopObservationService {
             spaceName: capturedWindow.spaceName,
             screenIndex: capturedWindow.screenIndex,
             screenName: capturedWindow.screenName,
+            isOffScreen: capturedWindow.isOffScreen,
             layer: capturedWindow.layer,
             isOnScreen: capturedWindow.isOnScreen,
             sharingState: capturedWindow.sharingState,

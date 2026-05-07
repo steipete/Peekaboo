@@ -248,6 +248,7 @@ extension ScreenCaptureKitOperator {
                 windowLevel: 0,
                 alpha: 1.0,
                 index: context.windowIndex,
+                isOffScreen: !context.window.isOnScreen,
                 layer: 0,
                 isOnScreen: context.window.isOnScreen),
             displayInfo: DisplayInfo(
@@ -296,6 +297,7 @@ extension ScreenCaptureKitOperator {
             windowLevel: 0,
             alpha: 1.0,
             index: index,
+            isOffScreen: !window.isOnScreen,
             layer: 0,
             isOnScreen: window.isOnScreen)
     }

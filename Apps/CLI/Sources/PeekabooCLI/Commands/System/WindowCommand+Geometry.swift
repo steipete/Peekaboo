@@ -82,7 +82,8 @@ extension WindowCommand {
                         isMainWindow: info.isMainWindow,
                         windowLevel: info.windowLevel,
                         alpha: info.alpha,
-                        index: info.index
+                        index: info.index,
+                        isOffScreen: info.isOffScreen
                     )
                 }
 

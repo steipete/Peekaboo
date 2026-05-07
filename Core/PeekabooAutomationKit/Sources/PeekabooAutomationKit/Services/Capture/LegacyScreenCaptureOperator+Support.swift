@@ -171,6 +171,7 @@ extension LegacyScreenCaptureOperator {
             windowLevel: layer,
             alpha: alpha,
             index: index,
+            isOffScreen: !isOnScreen,
             layer: layer,
             isOnScreen: isOnScreen,
             sharingState: sharingState)

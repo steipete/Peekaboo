@@ -40,6 +40,7 @@ extension ApplicationService {
                 spaceName: window.spaceName,
                 screenIndex: window.screenIndex,
                 screenName: window.screenName,
+                isOffScreen: window.isOffScreen,
                 layer: window.layer,
                 isOnScreen: window.isOnScreen,
                 sharingState: window.sharingState,
@@ -68,6 +69,7 @@ extension ApplicationService {
             spaceName: spaces.spaceName,
             screenIndex: screen.index,
             screenName: screen.name,
+            isOffScreen: screen.index == nil,
             layer: 0,
             isOnScreen: true)
     }

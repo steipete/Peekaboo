@@ -36,6 +36,7 @@ struct WindowCGInfoLookup {
             windowLevel: layer,
             alpha: alpha,
             index: 0,
+            isOffScreen: !isOnScreen,
             layer: layer,
             isOnScreen: isOnScreen,
             sharingState: sharingState)

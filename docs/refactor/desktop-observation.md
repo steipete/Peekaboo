@@ -221,6 +221,7 @@ Landed:
 - Agent runtime visualizer bounds resolution now uses screen-service snapshots, and action verification PNG encoding uses ImageIO; `PeekabooAgentRuntime` no longer imports AppKit directly.
 - CLI app quit/relaunch now use application-service lookup, termination, and running-state polling; command code no longer scans `NSWorkspace.runningApplications` for those paths.
 - CLI visualizer smoke geometry now uses the injected screen service instead of `NSScreen.main`.
+- Application service protocol models now avoid importing AppKit; platform activation policy is carried as a service enum.
 - CLI move/scroll result telemetry now reads the current cursor position through the automation service boundary instead of direct CoreGraphics event calls.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.

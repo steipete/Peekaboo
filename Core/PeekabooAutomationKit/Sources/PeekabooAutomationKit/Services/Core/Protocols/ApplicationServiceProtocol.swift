@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import Foundation
 
@@ -209,6 +208,7 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         spaceName: String? = nil,
         screenIndex: Int? = nil,
         screenName: String? = nil,
+        isOffScreen: Bool = false,
         layer: Int = 0,
         isOnScreen: Bool = true,
         sharingState: WindowSharingState? = nil,
@@ -226,9 +226,7 @@ public struct ServiceWindowInfo: Sendable, Codable, Equatable {
         self.spaceName = spaceName
         self.screenIndex = screenIndex
         self.screenName = screenName
-        self.isOffScreen = !NSScreen.screens.contains { screen in
-            screen.frame.intersects(bounds)
-        }
+        self.isOffScreen = isOffScreen
         self.layer = layer
         self.isOnScreen = isOnScreen
         self.sharingState = sharingState

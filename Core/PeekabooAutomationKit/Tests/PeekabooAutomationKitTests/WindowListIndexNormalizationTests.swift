@@ -20,6 +20,7 @@ struct WindowListIndexNormalizationTests {
                 spaceName: nil,
                 screenIndex: nil,
                 screenName: nil,
+                isOffScreen: true,
                 layer: 0,
                 isOnScreen: true,
                 sharingState: nil,
@@ -48,6 +49,7 @@ struct WindowListIndexNormalizationTests {
         #expect(normalized.map(\.windowID) == [111, 222])
         #expect(normalized.map(\.title) == ["First", "Second"])
         #expect(normalized.map(\.index) == [0, 1])
+        #expect(normalized.map(\.isOffScreen) == [true, false])
     }
 
     @Test

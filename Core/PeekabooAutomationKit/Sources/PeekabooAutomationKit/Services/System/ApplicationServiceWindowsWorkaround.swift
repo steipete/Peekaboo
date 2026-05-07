@@ -128,6 +128,7 @@ extension ApplicationService {
             spaceName: spaceName,
             screenIndex: screenInfo?.index,
             screenName: screenInfo?.name,
+            isOffScreen: screenInfo == nil,
             layer: windowLevel,
             isOnScreen: isOnScreen,
             sharingState: sharingState,
