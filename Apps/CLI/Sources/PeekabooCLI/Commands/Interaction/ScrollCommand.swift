@@ -115,8 +115,8 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                     + "target=\(self.on ?? "pointer") snapshot=\(observation.snapshotId ?? "latest")"
             )
 
-            // Calculate total ticks for output
-            let totalTicks = self.smooth ? self.amount * 3 : self.amount
+            // Keep result telemetry aligned with ScrollService.tickConfiguration.
+            let totalTicks = self.smooth ? self.amount * 10 : self.amount
 
             // Determine scroll location for output
             let scrollLocation: CGPoint = if let elementId = on {

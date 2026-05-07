@@ -94,6 +94,7 @@ Landed:
 - Disk and in-memory snapshot stores now preserve typed detection window context so observation-backed snapshots keep bundle ID, PID, window ID, and bounds.
 - App launch/switch, window mutation, hotkey, press, and paste commands now invalidate the implicit latest snapshot after UI changes.
 - `peekaboo click --on/--id`, `click <query>`, `move --on/--id`, `move --to <query>`, `scroll --on`, `drag --from/--to`, and `swipe --from/--to` now refresh the implicit observation snapshot once when cached element targets are missing.
+- `peekaboo scroll --smooth --json` now reports the actual smooth scroll tick count used by the automation service.
 
 Still incomplete:
 
@@ -872,6 +873,7 @@ Work:
 - done: invalidate implicit latest snapshots after app launch/switch, window focus/geometry, hotkey, press, and paste changes;
 - done: refresh implicit observation snapshot once for `click --on/--id`, `click <query>`, `move --on/--id`, `move --to <query>`, `scroll --on`, `drag --from/--to`, and `swipe --from/--to` when cached element targets are missing;
 - done: broaden observe-if-needed from element IDs to implicit latest query targets while keeping no-snapshot query actions on their direct AX path;
+- done: align smooth scroll result telemetry with the automation service tick configuration;
 - teach focus commands to accept fresh observation context where available;
 - define explicit-snapshot and focus-command invalidation policy;
 - add target-point diagnostics.

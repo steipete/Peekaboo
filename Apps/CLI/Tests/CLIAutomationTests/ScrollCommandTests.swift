@@ -144,7 +144,7 @@ struct ScrollCommandTests {
         #expect(result.exitStatus == 0)
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
         let payload = try JSONDecoder().decode(CodableJSONResponse<ScrollResult>.self, from: payloadData)
-        #expect(payload.data.totalTicks == 12) // 4 * 3 when smooth
+        #expect(payload.data.totalTicks == 40) // 4 * 10 when smooth
     }
 
     @Test(arguments: [
