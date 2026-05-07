@@ -6,6 +6,7 @@ import PeekabooFoundation
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
+@_spi(Testing) import PeekabooAutomationKit
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
@@ -278,6 +279,29 @@ struct ElementDetectionServiceTests {
         #expect(elementsWithShortcuts.count == 2)
         #expect(elementsWithShortcuts[0].attributes["keyboardShortcut"] == "⌘S")
         #expect(elementsWithShortcuts[1].attributes["keyboardShortcut"] == "⇧⌘S")
+    }
+}
+
+@Suite(.tags(.ui, .safe))
+struct ElementDetectionTimeoutRunnerTests {
+    @Test
+    func `Detection timeout wins over noncooperative work`() async throws {
+        let startedAt = Date()
+
+        do {
+            _ = try await ElementDetectionTimeoutRunner.run(seconds: 0.02) {
+                let stopAt = Date().addingTimeInterval(0.5)
+                while Date() < stopAt {
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+                return [DetectedElement]()
+            }
+            Issue.record("Expected detection timeout")
+        } catch let CaptureError.detectionTimedOut(duration) {
+            #expect(duration == 0.02)
+        }
+
+        #expect(Date().timeIntervalSince(startedAt) < 0.25)
     }
 }
 

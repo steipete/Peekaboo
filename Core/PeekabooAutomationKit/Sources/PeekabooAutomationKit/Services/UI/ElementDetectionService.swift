@@ -154,7 +154,7 @@ extension ElementDetectionService {
         elementIdMap: inout [String: DetectedElement],
         timeoutSeconds: Double = 20.0) async throws -> [DetectedElement]
     {
-        let detectionTask = Task { () -> ([DetectedElement], [String: DetectedElement]) in
+        let (elements, map) = try await ElementDetectionTimeoutRunner.run(seconds: timeoutSeconds) {
             let deadline = Date().addingTimeInterval(timeoutSeconds)
             var localMap: [String: DetectedElement] = [:]
             let elements = await self.collectElements(
@@ -166,15 +166,6 @@ extension ElementDetectionService {
                 elementIdMap: &localMap)
             return (elements, localMap)
         }
-
-        let timeoutTask = Task {
-            try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
-            detectionTask.cancel()
-            throw CaptureError.detectionTimedOut(timeoutSeconds)
-        }
-
-        let (elements, map) = await detectionTask.value
-        timeoutTask.cancel()
         elementIdMap = map
         return elements
     }

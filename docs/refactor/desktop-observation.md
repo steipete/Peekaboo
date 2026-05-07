@@ -44,6 +44,7 @@ Landed:
 - Request-scoped capture engine preference now flows through observation to `ScreenCaptureService`.
 - Observation detection timeout budget is being enforced in the facade.
 - Screen capture scale planning is now centralized and unit-tested for logical 1x versus native Retina output.
+- Direct `ElementDetectionService` timeout racing is now enforced by `ElementDetectionTimeoutRunner`.
 
 Still intentionally incomplete:
 
@@ -53,6 +54,7 @@ Still intentionally incomplete:
 - structured timing export in all user-facing JSON;
 - extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
+- moving AX traversal policy, descriptor reading, and cache invalidation into dedicated collaborators;
 - command cleanup after the bridge paths disappear.
 
 The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.
