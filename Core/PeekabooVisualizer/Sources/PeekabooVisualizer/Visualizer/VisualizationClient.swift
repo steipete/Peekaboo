@@ -100,6 +100,10 @@ public final class VisualizationClient: @unchecked Sendable {
         self.log(.debug, "Visualizer client disconnect requested (no-op for notification bridge)")
     }
 
+    public var canDispatchEvents: Bool {
+        self.isEnabled && (self.isRunningInsideMacApp || Self.isVisualizerAppRunning())
+    }
+
     // MARK: - Visual Feedback Methods
 
     public func showScreenshotFlash(in rect: CGRect) async -> Bool {
@@ -202,7 +206,7 @@ public final class VisualizationClient: @unchecked Sendable {
             return false
         }
 
-        guard self.isRunningInsideMacApp || Self.isVisualizerAppRunning() else {
+        guard self.canDispatchEvents else {
             if !self.hasLoggedMissingApp,
                self.consoleMirroringEnabled,
                self.minimumConsoleLogLevel <= .verbose

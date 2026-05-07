@@ -276,6 +276,29 @@ struct CLIRuntimeSmokeTests {
         #expect(exitedSuccessfully == success)
     }
 
+    @Test
+    func `peekaboo visualizer fails fast when visual feedback is disabled`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let startTime = Date()
+        let result = try await TestChildProcess.runPeekaboo(
+            ["visualizer", "--json", "--no-remote"],
+            environment: ["PEEKABOO_VISUAL_FEEDBACK": "false"]
+        )
+        let duration = Date().timeIntervalSince(startTime)
+
+        let payload = !result.standardOutput.isEmpty ? result.standardOutput : result.standardError
+        let data = Data(payload.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any] else {
+            Issue.record("Expected JSON object output from visualizer command.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == false)
+        #expect(result.status == .exited(1))
+        #expect(duration < 1.0)
+    }
+
     private static func withSavedClipboard(_ body: () async throws -> Void) async throws {
         let slot = "cli-runtime-smoke-\(UUID().uuidString)"
         let saveResult = try await TestChildProcess.runPeekaboo([

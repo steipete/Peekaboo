@@ -92,6 +92,24 @@ struct VisualizerCommand: RuntimeOptionsConfigurable, OutputFormattable, ErrorHa
 private struct VisualizerSmokeSequence {
     let logger: Logger
 
+    private static let stepNames = [
+        "Screenshot flash",
+        "Watch capture HUD",
+        "Click ripple",
+        "Typing indicator",
+        "Scroll indicator",
+        "Mouse movement trail",
+        "Swipe gesture",
+        "Hotkey heads-up display",
+        "Window move overlay",
+        "App launch icon bounce",
+        "App quit animation",
+        "Menu breadcrumb highlight",
+        "Dialog interaction highlight",
+        "Space switch indicator",
+        "Element detection overlay"
+    ]
+
     struct StepReport: Codable {
         let name: String
         let dispatched: Bool
@@ -107,6 +125,16 @@ private struct VisualizerSmokeSequence {
     func run() async throws -> Report {
         let client = VisualizationClient.shared
         client.connect()
+
+        guard client.canDispatchEvents else {
+            self.logger.debug("VisualizerSmoke: visualizer unavailable; skipping paced event sequence")
+            return Report(
+                steps: [],
+                dispatchedCount: 0,
+                totalSteps: Self.stepNames.count,
+                failedSteps: Self.stepNames
+            )
+        }
 
         let screenFrame = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
         let primaryRect = screenFrame.insetBy(dx: screenFrame.width * 0.25, dy: screenFrame.height * 0.25)
@@ -198,7 +226,7 @@ private struct VisualizerSmokeSequence {
         return Report(
             steps: steps,
             dispatchedCount: steps.filter(\.dispatched).count,
-            totalSteps: steps.count,
+            totalSteps: Self.stepNames.count,
             failedSteps: failedSteps
         )
     }
@@ -207,7 +235,9 @@ private struct VisualizerSmokeSequence {
         self.logger.debug("VisualizerSmoke: \(name)")
         let dispatched = await action()
         self.logger.debug("VisualizerSmokeResult: \(name) dispatched=\(dispatched)")
-        try await Task.sleep(for: .milliseconds(250))
+        if dispatched {
+            try await Task.sleep(for: .milliseconds(250))
+        }
         return StepReport(name: name, dispatched: dispatched)
     }
 }
