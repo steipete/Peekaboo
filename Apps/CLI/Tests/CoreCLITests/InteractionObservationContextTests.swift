@@ -355,6 +355,44 @@ struct InteractionObservationContextTests {
         #expect(desktopObservation.requests.isEmpty)
     }
 
+    @Test
+    func `Element target point resolver adjusts moved window centers`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let snapshotId = try await snapshots.createSnapshot(id: "snapshot-with-window")
+        try await snapshots.storeDetectionResult(
+            snapshotId: snapshotId,
+            result: Self.detectionResult(
+                snapshotId: snapshotId,
+                element: DetectedElement(
+                    id: "B1",
+                    type: .button,
+                    label: "Save",
+                    bounds: CGRect(x: 50, y: 70, width: 100, height: 40)
+                )
+            )
+        )
+        snapshots.storeUIAutomationSnapshot(
+            UIAutomationSnapshot(
+                windowBounds: CGRect(x: 10, y: 20, width: 300, height: 200),
+                windowID: 42
+            ),
+            snapshotId: snapshotId
+        )
+        let tracker = CoreWindowTracker(
+            bounds: CGRect(x: 30, y: 25, width: 300, height: 200)
+        )
+        WindowMovementTracking.provider = tracker
+        defer { WindowMovementTracking.provider = nil }
+
+        let point = try await InteractionTargetPointResolver.elementCenter(
+            elementId: "B1",
+            snapshotId: snapshotId,
+            snapshots: snapshots
+        )
+
+        #expect(point == CGPoint(x: 120, y: 95))
+    }
+
     private static func buttonElement(id: String) -> DetectedElement {
         self.buttonElement(id: id, label: "Button \(id)")
     }
@@ -403,6 +441,7 @@ private final class RecordingDesktopObservationService: DesktopObservationServic
 private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked Sendable {
     private var snapshotInfos: [String: SnapshotInfo] = [:]
     private var detectionResults: [String: ElementDetectionResult] = [:]
+    private var automationSnapshots: [String: UIAutomationSnapshot] = [:]
     private var mostRecentSnapshotId: String?
 
     func createSnapshot() async throws -> String {
@@ -429,6 +468,10 @@ private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked
         self.mostRecentSnapshotId = snapshotId
     }
 
+    func storeUIAutomationSnapshot(_ snapshot: UIAutomationSnapshot, snapshotId: String) {
+        self.automationSnapshots[snapshotId] = snapshot
+    }
+
     func getDetectionResult(snapshotId: String) async throws -> ElementDetectionResult? {
         self.detectionResults[snapshotId]
     }
@@ -448,6 +491,7 @@ private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked
     func cleanSnapshot(snapshotId: String) async throws {
         self.snapshotInfos.removeValue(forKey: snapshotId)
         self.detectionResults.removeValue(forKey: snapshotId)
+        self.automationSnapshots.removeValue(forKey: snapshotId)
         if self.mostRecentSnapshotId == snapshotId {
             self.mostRecentSnapshotId = nil
         }
@@ -461,6 +505,7 @@ private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked
         let count = self.snapshotInfos.count
         self.snapshotInfos.removeAll()
         self.detectionResults.removeAll()
+        self.automationSnapshots.removeAll()
         self.mostRecentSnapshotId = nil
         return count
     }
@@ -481,7 +526,20 @@ private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked
         []
     }
 
-    func getUIAutomationSnapshot(snapshotId _: String) async throws -> UIAutomationSnapshot? {
-        nil
+    func getUIAutomationSnapshot(snapshotId: String) async throws -> UIAutomationSnapshot? {
+        self.automationSnapshots[snapshotId]
+    }
+}
+
+@MainActor
+private final class CoreWindowTracker: WindowTrackingProviding {
+    private let bounds: CGRect?
+
+    init(bounds: CGRect?) {
+        self.bounds = bounds
+    }
+
+    func windowBounds(for _: CGWindowID) -> CGRect? {
+        self.bounds
     }
 }

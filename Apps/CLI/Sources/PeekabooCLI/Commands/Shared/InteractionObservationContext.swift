@@ -276,6 +276,28 @@ enum InteractionObservationRefresher {
     }
 }
 
+@MainActor
+enum InteractionTargetPointResolver {
+    static func elementCenter(
+        elementId: String,
+        snapshotId: String?,
+        snapshots: any SnapshotManagerProtocol
+    ) async throws -> CGPoint? {
+        guard let snapshotId,
+              let detectionResult = try await snapshots.getDetectionResult(snapshotId: snapshotId),
+              let element = detectionResult.elements.findById(elementId)
+        else {
+            return nil
+        }
+
+        return try await WindowMovementTracking.adjustPoint(
+            CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+            snapshotId: snapshotId,
+            snapshots: snapshots
+        )
+    }
+}
+
 extension InteractionTargetOptions {
     func observationTargetRequest() throws -> DesktopObservationTargetRequest {
         if let windowId {

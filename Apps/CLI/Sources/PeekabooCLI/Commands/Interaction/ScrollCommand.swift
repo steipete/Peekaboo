@@ -120,19 +120,11 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
 
             // Determine scroll location for output
             let scrollLocation: CGPoint = if let elementId = on {
-                // Try to get element location from snapshot
-                if let activeSnapshotId = observation.snapshotId,
-                   let detectionResult = try? await self.services.snapshots
-                       .getDetectionResult(snapshotId: activeSnapshotId),
-                       let element = detectionResult.elements.findById(elementId) {
-                    CGPoint(
-                        x: element.bounds.midX,
-                        y: element.bounds.midY
-                    )
-                } else {
-                    // Fallback to zero if element not found (scroll still happened though)
-                    .zero
-                }
+                try await InteractionTargetPointResolver.elementCenter(
+                    elementId: elementId,
+                    snapshotId: observation.snapshotId,
+                    snapshots: self.services.snapshots
+                ) ?? .zero
             } else {
                 // Get current mouse position
                 CGEvent(source: nil)?.location ?? .zero
