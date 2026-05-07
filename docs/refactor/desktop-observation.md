@@ -100,7 +100,8 @@ ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
-SeeCommand.swift: 1168 lines
+SeeCommand.swift: 1053 lines
+SeeCommand+ObservationRequest.swift: 130 lines
 ImageCommand.swift: 595 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 ```
@@ -713,7 +714,7 @@ Purpose: make CLI/MCP boring and prepare package extraction.
 Work:
 
 - delete obsolete bridge helpers;
-- started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`);
+- started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`, `SeeCommand+ObservationRequest.swift`);
 - archive stale refactor notes;
 - update command docs for changed diagnostics/timings;
 - only then consider module extraction.
