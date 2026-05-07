@@ -125,6 +125,31 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertNil(candidate)
     }
 
+    func testPopoverResolverSelectsFromCatalogCandidates() {
+        let candidates = [
+            ObservationMenuBarPopoverCandidate(
+                windowID: 1,
+                ownerPID: 100,
+                ownerName: "Other",
+                title: nil,
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180),
+                layer: 0),
+            ObservationMenuBarPopoverCandidate(
+                windowID: 2,
+                ownerPID: 200,
+                ownerName: "Trimmy",
+                title: "Menu",
+                bounds: CGRect(x: 1100, y: 860, width: 300, height: 220),
+                layer: 0),
+        ]
+
+        let candidate = ObservationMenuBarPopoverResolver.resolve(
+            hints: ["Trimmy"],
+            candidates: candidates)
+
+        XCTAssertEqual(candidate?.windowID, 2)
+    }
+
     func testMenuBarWindowCatalogBuildsTypedSnapshot() {
         let screen = Self.primaryScreen()
         let windows = [

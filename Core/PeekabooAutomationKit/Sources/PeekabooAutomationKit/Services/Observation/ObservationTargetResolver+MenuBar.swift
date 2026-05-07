@@ -32,11 +32,10 @@ extension ObservationTargetResolver {
             throw DesktopObservationError.targetNotFound("menu bar popover screens")
         }
 
-        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        let snapshot = ObservationMenuBarWindowCatalog.currentPopoverSnapshot(screens: screens)
         guard let popover = ObservationMenuBarPopoverResolver.resolve(
             hints: hints,
-            windowList: windowList,
-            screens: screens)
+            candidates: snapshot.candidates)
         else {
             throw DesktopObservationError.targetNotFound("menu bar popover")
         }

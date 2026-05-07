@@ -42,8 +42,15 @@ enum ObservationMenuBarPopoverResolver {
         windowList: [[String: Any]],
         screens: [ScreenInfo]) -> ObservationMenuBarPopoverCandidate?
     {
-        let normalizedHints = Self.normalizedHints(hints)
         let candidates = Self.candidates(windowList: windowList, screens: screens)
+        return Self.resolve(hints: hints, candidates: candidates)
+    }
+
+    static func resolve(
+        hints: [String],
+        candidates: [ObservationMenuBarPopoverCandidate]) -> ObservationMenuBarPopoverCandidate?
+    {
+        let normalizedHints = Self.normalizedHints(hints)
         return Self.selectCandidate(candidates: candidates, hints: normalizedHints)
     }
 
