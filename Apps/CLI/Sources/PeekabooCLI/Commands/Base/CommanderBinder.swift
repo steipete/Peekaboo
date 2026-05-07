@@ -61,14 +61,19 @@ enum CommanderCLIBinder {
             // Agent execution should stay local by default unless explicitly overridden.
             options.preferRemote = false
         }
-        if commandType == ImageCommand.self && !values.flag("no-remote") && (explicitBridgeSocket?.isEmpty ?? true) {
-            // One-shot screenshots are latency-sensitive and work locally; avoid a bridge probe on every call.
+        if Self.prefersLocalVisualRuntime(commandType), !values.flag("no-remote"),
+           explicitBridgeSocket?.isEmpty ?? true {
+            // Visual one-shot commands are latency-sensitive and work locally; avoid bridge probes per call.
             options.preferRemote = false
         }
         if let socketPath = explicitBridgeSocket, !socketPath.isEmpty {
             options.bridgeSocketPath = socketPath
         }
         return options
+    }
+
+    private static func prefersLocalVisualRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
+        commandType == ImageCommand.self || commandType == SeeCommand.self
     }
 }
 
