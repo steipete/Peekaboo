@@ -126,6 +126,7 @@ Landed:
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
+- `peekaboo click` coordinate focus verification now uses the application service boundary instead of command-local `NSWorkspace` frontmost-app reads.
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
@@ -133,7 +134,7 @@ Landed:
 Current status:
 
 - Capture-service cleanup is mostly complete; `ScreenCaptureService.swift` is under the 500-line target and frontmost-app lookup is behind `ScreenCaptureApplicationResolver`.
-- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, focus verification, visualizer demo state, or command helper behavior outside the capture pipeline.
+- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, menu/frontmost target selection, visualizer demo state, or command helper behavior outside the capture pipeline.
 - Observation resolver extensions no longer own broad CoreGraphics window-list scans. Menu-bar and exact-window metadata lookup now route through focused catalog helpers.
 - Optional module extraction after boundaries are stable.
 

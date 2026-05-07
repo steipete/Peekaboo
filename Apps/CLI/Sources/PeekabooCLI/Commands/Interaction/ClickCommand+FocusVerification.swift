@@ -1,5 +1,5 @@
-import AppKit
 import Foundation
+import PeekabooCore
 import PeekabooFoundation
 
 struct FrontmostApplicationIdentity: Equatable {
@@ -17,9 +17,9 @@ struct FrontmostApplicationIdentity: Equatable {
         self.processIdentifier = processIdentifier
     }
 
-    init(application: NSRunningApplication?) {
+    init(application: ServiceApplicationInfo?) {
         self.init(
-            name: application?.localizedName,
+            name: application?.name,
             bundleIdentifier: application?.bundleIdentifier,
             processIdentifier: application?.processIdentifier
         )
@@ -120,8 +120,9 @@ enum CoordinateClickFocusVerifier {
 @MainActor
 extension ClickCommand {
     /// Verify that the target app is actually frontmost before dispatching a coordinate click.
-    func verifyFocusForCoordinateClick() throws {
-        let frontmost = FrontmostApplicationIdentity(application: NSWorkspace.shared.frontmostApplication)
+    func verifyFocusForCoordinateClick() async throws {
+        let frontmostInfo = try? await self.services.applications.getFrontmostApplication()
+        let frontmost = FrontmostApplicationIdentity(application: frontmostInfo)
         if let message = CoordinateClickFocusVerifier.mismatchMessage(
             targetApp: self.target.app,
             targetPID: self.target.pid,

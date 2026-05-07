@@ -122,6 +122,7 @@
 - Split `peekaboo type` text escape processing and result DTOs into focused support files.
 - Shared drag/swipe element-or-coordinate point resolution through the common interaction target resolver and split gesture result DTOs into focused support files.
 - Split `peekaboo click` validation/helpers and Commander wiring into focused support files.
+- Routed `peekaboo click` coordinate focus verification through the application service boundary instead of command-local `NSWorkspace` frontmost-app reads.
 - Split observation target menu-bar resolution and window-selection scoring into focused resolver extension files.
 - Split desktop observation target, request, and result DTOs into focused model files.
 - Split `DesktopObservationService` capture, detection/OCR, and output-writing plumbing into focused extension files.

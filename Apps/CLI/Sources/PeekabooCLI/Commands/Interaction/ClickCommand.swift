@@ -1,4 +1,3 @@
-import AppKit
 import Commander
 import CoreGraphics
 import Foundation
@@ -46,7 +45,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding {
+    var services: any PeekabooServiceProviding {
         self.resolvedRuntime.services
     }
 
@@ -92,7 +91,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 // InputDriver.click() sends a CGEvent at screen-absolute coordinates,
                 // so if the target window is not frontmost, the click will land on
                 // whatever window is at that position (see #90).
-                try self.verifyFocusForCoordinateClick()
+                try await self.verifyFocusForCoordinateClick()
 
             } else {
                 // `click` keeps using the latest observation for element lookup even when
@@ -168,9 +167,8 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
 
-            // Get the frontmost app after clicking
-            let frontmostApp = NSWorkspace.shared.frontmostApplication
-            let appName = frontmostApp?.localizedName ?? "Unknown"
+            // Report the frontmost app after the click through the application service boundary.
+            let appName = await self.frontmostApplicationName()
 
             // Prepare result
             let clickLocation: CGPoint
@@ -258,6 +256,10 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             self.handleError(error)
             throw ExitCode.failure
         }
+    }
+
+    private func frontmostApplicationName() async -> String {
+        await (try? self.services.applications.getFrontmostApplication().name) ?? "Unknown"
     }
 
     private func refreshObservationIfQueryMissing(
