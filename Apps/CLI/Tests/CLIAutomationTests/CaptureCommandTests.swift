@@ -30,9 +30,9 @@ struct CaptureCommandTests {
     }
 
     @Test
-    func `video options defaults`() {
+    func `video options defaults`() throws {
         let cmd = CaptureVideoCommand()
-        let opts = cmd.buildOptions()
+        let opts = try cmd.buildOptions()
         #expect(opts.maxFrames >= 1)
         #expect(opts.resolutionCap == 1440)
         #expect(opts.diffStrategy == .fast)

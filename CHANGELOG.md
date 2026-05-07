@@ -47,6 +47,7 @@
 - `peekaboo image --mode area --region x,y,width,height` now captures explicit desktop regions through desktop observation.
 - `peekaboo image --help` now lists the supported `multi` and `area` capture modes instead of the stale mode set.
 - `peekaboo capture live --region x,y,width,height` now infers area mode, `--mode area` is the canonical name, invalid modes fail clearly, and zero-sized regions are rejected.
+- `peekaboo capture live|video --diff-strategy` now rejects unsupported values instead of silently falling back to `fast`.
 - MCP `capture` now matches the CLI's area-mode parsing, advertises PID targeting, and rejects invalid source/mode/focus/diff inputs instead of silently falling back to defaults.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.

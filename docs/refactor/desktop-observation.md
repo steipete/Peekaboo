@@ -97,6 +97,7 @@ Landed:
 - CLI `image --mode area --region x,y,width,height` now routes explicit desktop-region capture through observation-backed area targets.
 - CLI `image --help` now advertises the full observation-backed mode set, including `multi` and `area`.
 - CLI `capture live --region x,y,width,height` now infers area mode, `--mode area` is canonical, `region` remains an alias, and invalid mode/region inputs fail before capture starts.
+- CLI `capture live|video --diff-strategy` now rejects unsupported values before capture starts instead of silently using `fast`.
 - MCP `capture` now uses the same strict mode/region parsing, advertises PID targeting, and rejects invalid source/focus/diff inputs before capture starts.
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.

@@ -271,7 +271,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         let quiet = max(self.quietMs ?? 1000, 0)
         let maxFrames = max(self.maxFrames ?? 800, 1)
         let resolutionCap = self.resolutionCap ?? 1440
-        let diffStrategy = CaptureOptions.DiffStrategy(rawValue: self.diffStrategy ?? "fast") ?? .fast
+        let diffStrategy = try CaptureCommandOptionParser.diffStrategy(self.diffStrategy)
         let diffBudgetMs = self.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
         let maxMb = self.maxMb.flatMap { $0 > 0 ? $0 : nil }
 

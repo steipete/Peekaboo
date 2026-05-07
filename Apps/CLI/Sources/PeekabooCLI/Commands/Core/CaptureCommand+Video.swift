@@ -60,7 +60,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 throw ValidationError("--sample-fps and --every-ms are mutually exclusive")
             }
             let outputDir = try self.resolveOutputDirectory()
-            let options = self.buildOptions()
+            let options = try self.buildOptions()
             let videoURL = self.inputVideoURL()
             let frameSource = try await VideoFrameSource(
                 url: videoURL,
@@ -122,10 +122,10 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
         }
     }
 
-    func buildOptions() -> CaptureOptions {
+    func buildOptions() throws -> CaptureOptions {
         let maxFrames = max(self.maxFrames ?? 10000, 1)
         let resolutionCap = self.resolutionCap ?? 1440
-        let diffStrategy = CaptureOptions.DiffStrategy(rawValue: self.diffStrategy ?? "fast") ?? .fast
+        let diffStrategy = try CaptureCommandOptionParser.diffStrategy(self.diffStrategy)
         let diffBudgetMs = self.diffBudgetMs ?? (diffStrategy == .quality ? 30 : nil)
         let maxMb = self.maxMb.flatMap { $0 > 0 ? $0 : nil }
         return CaptureOptions(

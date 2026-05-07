@@ -67,4 +67,19 @@ struct CaptureLiveBehaviorTests {
             _ = try zero.parseRegion()
         }
     }
+
+    @Test
+    func `capture commands reject invalid diff strategy`() {
+        var live = CaptureLiveCommand()
+        live.diffStrategy = "slow"
+        #expect(throws: ValidationError.self) {
+            _ = try live.buildOptions()
+        }
+
+        var video = CaptureVideoCommand()
+        video.diffStrategy = "slow"
+        #expect(throws: ValidationError.self) {
+            _ = try video.buildOptions()
+        }
+    }
 }
