@@ -52,6 +52,7 @@ Landed:
 - Element grouping and detection metadata assembly now live in `ElementDetectionResultBuilder`.
 - Sparse Chromium/Tauri web focus recovery now lives in `WebFocusFallback`.
 - Generic-group text-field recovery now lives in `ElementTypeAdjuster`.
+- Application menu-bar detection now lives in `MenuBarElementCollector`.
 
 Still intentionally incomplete:
 

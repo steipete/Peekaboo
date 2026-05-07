@@ -43,6 +43,7 @@ public final class ElementDetectionService {
     private let windowManagementService = WindowManagementService()
     private let axTreeCache = ElementDetectionCache()
     private let webFocusFallback = WebFocusFallback()
+    private let menuBarElementCollector = MenuBarElementCollector()
 
     public init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
@@ -495,7 +496,10 @@ extension ElementDetectionService {
                 visitedElements: &visitedElements)
 
             if appIsActive, let menuBar = appElement.menuBar() {
-                self.processMenuBar(menuBar, elements: &detectedElements, elementIdMap: &elementIdMap)
+                self.menuBarElementCollector.appendMenuBar(
+                    menuBar,
+                    elements: &detectedElements,
+                    elementIdMap: &elementIdMap)
             }
 
             let hasTextField = detectedElements.contains(where: { $0.type == .textField })
@@ -757,85 +761,6 @@ extension ElementDetectionService {
         }
 
         return nil
-    }
-
-    private func processMenuBar(
-        _ menuBar: Element,
-        elements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
-    {
-        guard let menus = menuBar.children() else { return }
-
-        for menu in menus {
-            let menuId = "menu_\(elements.count)"
-            let menuFrame = menu.frame() ?? .zero
-
-            let menuElement = DetectedElement(
-                id: menuId,
-                type: .menu,
-                label: menu.title() ?? "Menu",
-                value: nil,
-                bounds: menuFrame,
-                isEnabled: menu.isEnabled() ?? true,
-                isSelected: nil,
-                attributes: ["role": "AXMenu"])
-
-            elements.append(menuElement)
-            elementIdMap[menuId] = menuElement
-
-            // Process menu items if menu is open
-            if let menuItems = menu.children() {
-                self.processMenuItems(menuItems, parentId: menuId, elements: &elements, elementIdMap: &elementIdMap)
-            }
-        }
-    }
-
-    @MainActor
-    private func processMenuItems(
-        _ items: [Element],
-        parentId: String,
-        elements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
-    {
-        for item in items {
-            let itemId = "menuitem_\(elements.count)"
-            let itemFrame = item.frame() ?? .zero
-
-            let menuItemElement = DetectedElement(
-                id: itemId,
-                type: .other, // menuItem not in protocol
-                label: item.title() ?? "Menu Item",
-                value: nil,
-                bounds: itemFrame,
-                isEnabled: item.isEnabled() ?? true,
-                isSelected: nil,
-                attributes: self.createMenuItemAttributes(item))
-
-            elements.append(menuItemElement)
-            elementIdMap[itemId] = menuItemElement
-
-            // Note: Parent-child relationships not supported in protocol
-
-            // Process submenu items
-            if let submenu = item.children(), !submenu.isEmpty {
-                self.processMenuItems(submenu, parentId: itemId, elements: &elements, elementIdMap: &elementIdMap)
-            }
-        }
-    }
-
-    @MainActor
-    private func createMenuItemAttributes(_ item: Element) -> [String: String] {
-        var attributes = ["role": "AXMenuItem"]
-
-        if let title = item.title() { attributes["title"] = title }
-        if let shortcut = extractKeyboardShortcut(item, role: "AXMenuItem") {
-            attributes["keyboardShortcut"] = shortcut
-        }
-        if item.isEnabled() == false { attributes["isEnabled"] = "false" }
-
-        // Note: Check for special menu item types like checkmarks not implemented yet
-
-        return attributes
     }
 }
 
