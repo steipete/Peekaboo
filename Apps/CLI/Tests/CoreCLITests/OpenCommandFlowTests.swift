@@ -1,5 +1,8 @@
 import Foundation
+import PeekabooAgentRuntime
+import PeekabooAutomation
 import PeekabooCore
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
@@ -152,10 +155,176 @@ struct AppCommandLaunchFlowTests {
         #expect(call.activates == false)
     }
 
+    @Test
+    func `Switch to app activates through application service`() async throws {
+        let application = ServiceApplicationInfo(
+            processIdentifier: 42,
+            bundleIdentifier: "com.apple.finder",
+            name: "Finder"
+        )
+        let applicationService = RecordingApplicationService(applications: [application])
+
+        var command = AppCommand.SwitchSubcommand()
+        command.to = "Finder"
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: ServicesWithApplicationStub(applications: applicationService)
+        )
+        try await command.run(using: runtime)
+
+        #expect(applicationService.activateCalls == ["Finder"])
+    }
+
     private func makeRuntime() -> CommandRuntime {
         CommandRuntime(
             configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
             services: PeekabooServices(snapshotManager: InMemorySnapshotManager())
         )
     }
+}
+
+@MainActor
+private final class ServicesWithApplicationStub: PeekabooServiceProviding {
+    private let base = PeekabooServices(snapshotManager: InMemorySnapshotManager())
+    private let stubApplications: any ApplicationServiceProtocol
+
+    init(applications: any ApplicationServiceProtocol) {
+        self.stubApplications = applications
+    }
+
+    func ensureVisualizerConnection() {
+        self.base.ensureVisualizerConnection()
+    }
+
+    var logging: any LoggingServiceProtocol {
+        self.base.logging
+    }
+
+    var screenCapture: any ScreenCaptureServiceProtocol {
+        self.base.screenCapture
+    }
+
+    var applications: any ApplicationServiceProtocol {
+        self.stubApplications
+    }
+
+    var automation: any UIAutomationServiceProtocol {
+        self.base.automation
+    }
+
+    var windows: any WindowManagementServiceProtocol {
+        self.base.windows
+    }
+
+    var menu: any MenuServiceProtocol {
+        self.base.menu
+    }
+
+    var dock: any DockServiceProtocol {
+        self.base.dock
+    }
+
+    var dialogs: any DialogServiceProtocol {
+        self.base.dialogs
+    }
+
+    var snapshots: any SnapshotManagerProtocol {
+        self.base.snapshots
+    }
+
+    var files: any FileServiceProtocol {
+        self.base.files
+    }
+
+    var clipboard: any ClipboardServiceProtocol {
+        self.base.clipboard
+    }
+
+    var configuration: PeekabooCore.ConfigurationManager {
+        self.base.configuration
+    }
+
+    var process: any ProcessServiceProtocol {
+        self.base.process
+    }
+
+    var permissions: PermissionsService {
+        self.base.permissions
+    }
+
+    var audioInput: AudioInputService {
+        self.base.audioInput
+    }
+
+    var screens: any ScreenServiceProtocol {
+        self.base.screens
+    }
+
+    var agent: (any AgentServiceProtocol)? {
+        self.base.agent
+    }
+}
+
+@MainActor
+private final class RecordingApplicationService: ApplicationServiceProtocol {
+    private let applications: [ServiceApplicationInfo]
+    private(set) var activateCalls: [String] = []
+
+    init(applications: [ServiceApplicationInfo]) {
+        self.applications = applications
+    }
+
+    func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
+        UnifiedToolOutput(
+            data: ServiceApplicationListData(applications: self.applications),
+            summary: .init(brief: "Stub application list", status: .success),
+            metadata: .init(duration: 0)
+        )
+    }
+
+    func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
+        if let match = self.applications.first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
+            return match
+        }
+        throw PeekabooError.appNotFound(identifier)
+    }
+
+    func activateApplication(identifier: String) async throws {
+        self.activateCalls.append(identifier)
+    }
+
+    func listWindows(
+        for _: String,
+        timeout _: Float?
+    ) async throws -> UnifiedToolOutput<ServiceWindowListData> {
+        UnifiedToolOutput(
+            data: ServiceWindowListData(windows: [], targetApplication: nil),
+            summary: .init(brief: "Stub window list", status: .success),
+            metadata: .init(duration: 0)
+        )
+    }
+
+    func getFrontmostApplication() async throws -> ServiceApplicationInfo {
+        guard let first = self.applications.first else {
+            throw PeekabooError.appNotFound("frontmost")
+        }
+        return first
+    }
+
+    func isApplicationRunning(identifier: String) async -> Bool {
+        self.applications.contains { $0.name == identifier || $0.bundleIdentifier == identifier }
+    }
+
+    func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
+        try await self.findApplication(identifier: identifier)
+    }
+
+    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool {
+        true
+    }
+
+    func hideApplication(identifier _: String) async throws {}
+    func unhideApplication(identifier _: String) async throws {}
+    func hideOtherApplications(identifier _: String) async throws {}
+    func showAllApplications() async throws {}
 }

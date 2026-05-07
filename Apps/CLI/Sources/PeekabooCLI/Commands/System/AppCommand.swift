@@ -711,15 +711,7 @@ struct AppCommand: ParsableCommand {
                     AutomationEventLogger.log(.app, "switch action=cycle success=true")
                 } else if let targetApp = to {
                     let appInfo = try await resolveApplication(targetApp, services: self.services)
-
-                    // Find and activate the app
-                    let runningApps = NSWorkspace.shared.runningApplications
-                    guard let runningApp = runningApps
-                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) else {
-                        throw NotFoundError.application(targetApp)
-                    }
-
-                    let success = runningApp.activate()
+                    try await self.services.applications.activateApplication(identifier: appInfo.name)
                     if self.verify {
                         try await self.verifyFrontmostApp(expected: appInfo)
                     }
@@ -735,7 +727,7 @@ struct AppCommand: ParsableCommand {
                         action: "switch",
                         app_name: appInfo.name,
                         bundle_id: appInfo.bundleIdentifier ?? "unknown",
-                        success: success
+                        success: true
                     )
 
                     await InteractionObservationInvalidator.invalidateLatestSnapshot(
@@ -748,7 +740,7 @@ struct AppCommand: ParsableCommand {
                     }
                     AutomationEventLogger.log(
                         .app,
-                        "switch app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") success=\(success)"
+                        "switch app=\(appInfo.name) bundle=\(appInfo.bundleIdentifier ?? "unknown") success=true"
                     )
                 } else {
                     throw ValidationError("Either --to or --cycle must be specified")
