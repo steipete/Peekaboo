@@ -175,6 +175,25 @@ struct AppCommandLaunchFlowTests {
         #expect(applicationService.activateCalls == ["Finder"])
     }
 
+    @Test
+    func `Switch cycle uses automation hotkey service`() async throws {
+        let automation = RecordingHotkeyAutomationService()
+
+        var command = AppCommand.SwitchSubcommand()
+        command.cycle = true
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: ServicesWithApplicationStub(
+                applications: RecordingApplicationService(applications: []),
+                automation: automation
+            )
+        )
+        try await command.run(using: runtime)
+
+        #expect(automation.hotkeyCalls.map(\.keys) == ["cmd,tab"])
+        #expect(automation.hotkeyCalls.map(\.holdDuration) == [0])
+    }
+
     private func makeRuntime() -> CommandRuntime {
         CommandRuntime(
             configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
@@ -187,9 +206,14 @@ struct AppCommandLaunchFlowTests {
 private final class ServicesWithApplicationStub: PeekabooServiceProviding {
     private let base = PeekabooServices(snapshotManager: InMemorySnapshotManager())
     private let stubApplications: any ApplicationServiceProtocol
+    private let stubAutomation: any UIAutomationServiceProtocol
 
-    init(applications: any ApplicationServiceProtocol) {
+    init(
+        applications: any ApplicationServiceProtocol,
+        automation: (any UIAutomationServiceProtocol)? = nil
+    ) {
         self.stubApplications = applications
+        self.stubAutomation = automation ?? self.base.automation
     }
 
     func ensureVisualizerConnection() {
@@ -209,7 +233,7 @@ private final class ServicesWithApplicationStub: PeekabooServiceProviding {
     }
 
     var automation: any UIAutomationServiceProtocol {
-        self.base.automation
+        self.stubAutomation
     }
 
     var windows: any WindowManagementServiceProtocol {
@@ -262,6 +286,19 @@ private final class ServicesWithApplicationStub: PeekabooServiceProviding {
 
     var agent: (any AgentServiceProtocol)? {
         self.base.agent
+    }
+}
+
+private final class RecordingHotkeyAutomationService: MockAutomationService {
+    struct HotkeyCall {
+        let keys: String
+        let holdDuration: Int
+    }
+
+    private(set) var hotkeyCalls: [HotkeyCall] = []
+
+    override func hotkey(keys: String, holdDuration: Int) async throws {
+        self.hotkeyCalls.append(.init(keys: keys, holdDuration: holdDuration))
     }
 }
 

@@ -682,16 +682,7 @@ struct AppCommand: ParsableCommand {
                     if self.verify {
                         throw ValidationError("Verify is only supported with --to (not --cycle)")
                     }
-                    // Simulate Cmd+Tab
-                    let source = CGEventSource(stateID: .hidSystemState)
-                    let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: true) // Tab
-                    let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x30, keyDown: false)
-
-                    keyDown?.flags = .maskCommand
-                    keyUp?.flags = .maskCommand
-
-                    keyDown?.post(tap: .cghidEventTap)
-                    keyUp?.post(tap: .cghidEventTap)
+                    try await self.services.automation.hotkey(keys: "cmd,tab", holdDuration: 0)
 
                     struct CycleResult: Codable {
                         let action: String

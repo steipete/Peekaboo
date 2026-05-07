@@ -127,7 +127,7 @@ Landed:
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
 - `peekaboo click` coordinate focus verification now uses the application service boundary instead of command-local `NSWorkspace` frontmost-app reads.
-- `peekaboo app switch --to` now uses the application service boundary instead of command-local `NSWorkspace` running-app activation.
+- `peekaboo app switch --to` activation and `--cycle` input now use shared service boundaries instead of command-local `NSWorkspace`/`CGEvent` calls.
 - `peekaboo menu click/list` frontmost-app fallback now uses the application service boundary instead of command-local `NSWorkspace` reads.
 - Command utility, menubar, open, and space command files no longer carry stale `AppKit` imports when only Foundation/CoreGraphics APIs are used.
 - The menu-bar popover detector helper no longer depends on `AppKit` for CoreGraphics-only window metadata filtering.

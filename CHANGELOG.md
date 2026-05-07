@@ -125,7 +125,7 @@
 - Shared drag/swipe element-or-coordinate point resolution through the common interaction target resolver and split gesture result DTOs into focused support files.
 - Split `peekaboo click` validation/helpers and Commander wiring into focused support files.
 - Routed `peekaboo click` coordinate focus verification through the application service boundary instead of command-local `NSWorkspace` frontmost-app reads.
-- Routed `peekaboo app switch --to` activation through the application service boundary instead of command-local `NSWorkspace` running-app activation.
+- Routed `peekaboo app switch --to` activation and `--cycle` input through shared service boundaries instead of command-local `NSWorkspace`/`CGEvent` calls.
 - Routed `peekaboo menu click/list` frontmost-app fallback through the application service boundary instead of command-local `NSWorkspace` reads.
 - Removed stale `AppKit` imports from command utility, menubar, open, and space command files where only Foundation/CoreGraphics APIs are used.
 - Removed the stale `AppKit` dependency from the menu-bar popover detector helper.
