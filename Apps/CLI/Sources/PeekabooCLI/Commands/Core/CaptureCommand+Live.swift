@@ -182,7 +182,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
             return mode
         }
         if self.region != nil { return .area }
-        if self.app != nil || self.pid != nil || self.windowTitle != nil { return .window }
+        if self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowIndex != nil { return .window }
         return .frontmost
     }
 

@@ -6,12 +6,15 @@ import Testing
 
 struct CaptureLiveBehaviorTests {
     @Test
-    func `resolveMode defaults to window when targeting app/pid/title`() throws {
+    func `resolveMode defaults to window when targeting app pid title or index`() throws {
         var cmd = CaptureLiveCommand()
         cmd.app = "Safari"
         #expect(try cmd.resolveMode() == .window)
         cmd.app = nil
         cmd.windowTitle = "Log"
+        #expect(try cmd.resolveMode() == .window)
+        cmd.windowTitle = nil
+        cmd.windowIndex = 0
         #expect(try cmd.resolveMode() == .window)
     }
 

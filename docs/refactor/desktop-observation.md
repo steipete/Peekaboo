@@ -180,6 +180,7 @@ Landed:
 - MCP `capture window_title/window_index` now uses the same stable-window-ID watch target shape instead of accepting `window_title` as a dead argument.
 - CLI/MCP interaction target parsing now follows the observation convention that title beats index when both window selectors are present.
 - Window management commands now route their mutation target through the same resolved target used for listing/refetching, including PID targets and title-over-index selection.
+- `capture live` auto-mode resolution now treats `--window-index` as a window selector, matching app/PID/title selectors and MCP capture behavior.
 - CLI `see` output paths now use the same directory-aware planning for primary screenshots and legacy multi-screen companion files.
 - `capture live`, `capture video`, and MCP `capture` now share small path resolvers for home-directory expansion on output directories, video input paths, and video output paths.
 - Clipboard and paste file IO now share a small `ClipboardPathResolver`, so CLI and MCP surfaces expand home-directory paths consistently before reading or writing files.
