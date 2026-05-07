@@ -77,6 +77,7 @@
 ### Fixed
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
+- `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.
 - `peekaboo move --on` now targets UI elements correctly.
 - `peekaboo window` subcommands now accept `--window-id` without requiring a redundant app target.
 - `peekaboo press --hold` now honors the requested hold duration.
@@ -89,6 +90,8 @@
 - `peekaboo config` custom-provider management commands now live in a focused companion file instead of the add-provider implementation file.
 - `peekaboo list screens` implementation and screen payload models now live outside the primary list command file.
 - `peekaboo capture video` now lives in its own command file, leaving live capture and the watch alias in the primary capture command file.
+- `peekaboo agent permission` status and request flows now live in focused companion files instead of one oversized command implementation.
+- `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.

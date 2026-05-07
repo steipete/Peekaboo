@@ -70,7 +70,7 @@ enum CommanderRegistryBuilder {
         return lookup
     }
 
-    private static func buildDescriptor(for type: any ParsableCommand.Type) -> CommanderCommandDescriptor {
+    static func buildDescriptor(for type: any ParsableCommand.Type) -> CommanderCommandDescriptor {
         let description = type.commandDescription
         let commandInstance = type.init()
         let signature = self.resolveSignature(for: type, instance: commandInstance)

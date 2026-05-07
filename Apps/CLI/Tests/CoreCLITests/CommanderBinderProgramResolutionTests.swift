@@ -64,6 +64,40 @@ struct CommanderBinderProgramResolutionTests {
 
     @Test
     @MainActor
+    func `Commander router resolves agent permission alias before task argument`() throws {
+        let invocation = try CommanderRuntimeRouter.resolve(argv: [
+            "peekaboo",
+            "agent",
+            "permission",
+            "status",
+            "--json",
+        ])
+
+        #expect(invocation.metadata.name == "status")
+        #expect(String(reflecting: invocation.type).contains("PermissionCommand.StatusSubcommand"))
+        #expect(invocation.parsedValues.flags.contains("jsonOutput"))
+        #expect(invocation.parsedValues.positional.isEmpty)
+    }
+
+    @Test
+    @MainActor
+    func `Commander program keeps natural-language agent tasks positional`() throws {
+        let descriptors = CommanderRegistryBuilder.buildDescriptors()
+        let program = Program(descriptors: descriptors.map(\.metadata))
+        let invocation = try program.resolve(argv: [
+            "peekaboo",
+            "agent",
+            "list files",
+            "--dry-run",
+        ])
+
+        #expect(invocation.path == ["agent"])
+        #expect(invocation.parsedValues.positional == ["list files"])
+        #expect(invocation.parsedValues.flags.contains("dryRun"))
+    }
+
+    @Test
+    @MainActor
     func `Commander program resolves click options and focus flags`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))

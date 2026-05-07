@@ -157,6 +157,8 @@ Landed:
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo capture video` is split out of the primary capture command file.
+- `peekaboo agent permission` status and request flows are split into focused companion files.
+- `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
 
 Current status:
 
@@ -218,6 +220,9 @@ SeeCommand+Output.swift: 204 lines
 SeeCommand+Types.swift: 204 lines
 SeeCommand+Screens.swift: 146 lines
 SeeCommand+ObservationRequest.swift: 140 lines
+PermissionCommand.swift: 32 lines
+PermissionCommand+Status.swift: 120 lines
+PermissionCommand+Requests.swift: 353 lines
 ImageCommand.swift: 192 lines
 ImageCommand+CapturePipeline.swift: 386 lines
 ImageCommand+Output.swift: 102 lines
