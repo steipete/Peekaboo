@@ -156,6 +156,7 @@ Landed:
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
 - Core configuration management now keeps loading/migration, JSONC/env parsing, credentials, typed accessors, persistence/default templates, and custom-provider HTTP checks in focused files.
 - Bridge client request adapters now keep status, capture, interaction, window/app, menu/dock/dialog, snapshot, and socket transport responsibilities in focused files.
+- Bridge protocol models now keep version/error metadata, operation policy, payload DTOs, and request/response envelopes in focused files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
@@ -260,6 +261,10 @@ PeekabooBridgeClient+WindowsApplications.swift: 157 lines
 PeekabooBridgeClient+MenusDockDialogs.swift: 228 lines
 PeekabooBridgeClient+Snapshots.swift: 91 lines
 PeekabooBridgeClient+Transport.swift: 162 lines
+PeekabooBridgeModels.swift: 254 lines
+PeekabooBridgeOperation+Policy.swift: 121 lines
+PeekabooBridgePayloads.swift: 332 lines
+PeekabooBridgeRequestResponse.swift: 192 lines
 CommanderRuntimeRouter.swift: 240 lines
 CommanderRuntimeRouter+Help.swift: 192 lines
 AgentChatUI.swift: 340 lines

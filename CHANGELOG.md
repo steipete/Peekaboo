@@ -89,6 +89,7 @@
 - `peekaboo agent` output formatting helpers now live outside the event delegate so streaming and tool event handling stay focused.
 - Core configuration loading now keeps parsing, credentials, typed accessors, persistence/default templates, and custom-provider management in focused companion files.
 - Bridge client adapters now keep status, capture, interaction, window/app, menu/dock/dialog, snapshot, and socket transport code in focused files.
+- Bridge protocol models now keep operation policy, payload DTOs, and request/response envelopes in focused files.
 - `peekaboo config` custom-provider management commands now live in a focused companion file instead of the add-provider implementation file.
 - `peekaboo list screens` implementation and screen payload models now live outside the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` now live in focused companion files instead of the primary list command shell.

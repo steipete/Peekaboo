@@ -1,0 +1,121 @@
+import Foundation
+
+extension PeekabooBridgeOperation {
+    /// TCC permissions an operation relies on. Used to gate advertisement/handling.
+    public var requiredPermissions: Set<PeekabooBridgePermissionKind> {
+        switch self {
+        case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements:
+            [.screenRecording]
+        case .targetedHotkey:
+            [.postEvent]
+        case .click, .type, .typeActions, .scroll, .hotkey, .swipe, .drag, .moveMouse,
+             .waitForElement, .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
+             .minimizeWindow, .maximizeWindow, .getFocusedWindow, .listMenus, .listFrontmostMenus,
+             .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .menuExtraOpenMenuFrame,
+             .listMenuBarItems, .clickMenuBarItemNamed, .clickMenuBarItemIndex, .listDockItems, .launchDockItem,
+             .rightClickDockItem, .hideDock, .showDock, .isDockHidden, .findDockItem, .dialogFindActive,
+             .dialogClickButton, .dialogEnterText, .dialogHandleFile, .dialogDismiss, .dialogListElements:
+            [.accessibility]
+        case .launchApplication, .activateApplication, .quitApplication, .hideApplication, .unhideApplication,
+             .hideOtherApplications, .showAllApplications:
+            [.appleScript]
+        case ._appleScriptProbe,
+             .permissionsStatus,
+             .requestPostEventPermission,
+             .daemonStatus,
+             .daemonStop,
+             .createSnapshot,
+             .storeDetectionResult,
+             .getDetectionResult,
+             .storeScreenshot,
+             .storeAnnotatedScreenshot,
+             .listSnapshots,
+             .getMostRecentSnapshot,
+             .cleanSnapshot,
+             .cleanSnapshotsOlderThan,
+             .cleanAllSnapshots,
+             .listApplications,
+             .findApplication,
+             .getFrontmostApplication,
+             .isApplicationRunning:
+            []
+        }
+    }
+
+    /// Operations enabled by default for remote helper hosts.
+    public static let remoteDefaultAllowlist: Set<PeekabooBridgeOperation> = [
+        .permissionsStatus,
+        .requestPostEventPermission,
+        .daemonStatus,
+        .daemonStop,
+        .captureScreen,
+        .captureWindow,
+        .captureFrontmost,
+        .captureArea,
+        .detectElements,
+        .click,
+        .type,
+        .typeActions,
+        .scroll,
+        .hotkey,
+        .targetedHotkey,
+        .swipe,
+        .drag,
+        .moveMouse,
+        .waitForElement,
+        .listWindows,
+        .focusWindow,
+        .moveWindow,
+        .resizeWindow,
+        .setWindowBounds,
+        .closeWindow,
+        .minimizeWindow,
+        .maximizeWindow,
+        .getFocusedWindow,
+        .listApplications,
+        .findApplication,
+        .getFrontmostApplication,
+        .isApplicationRunning,
+        .launchApplication,
+        .activateApplication,
+        .quitApplication,
+        .hideApplication,
+        .unhideApplication,
+        .hideOtherApplications,
+        .showAllApplications,
+        .listMenus,
+        .listFrontmostMenus,
+        .clickMenuItem,
+        .clickMenuItemByName,
+        .listMenuExtras,
+        .clickMenuExtra,
+        .menuExtraOpenMenuFrame,
+        .listMenuBarItems,
+        .clickMenuBarItemNamed,
+        .clickMenuBarItemIndex,
+        .listDockItems,
+        .launchDockItem,
+        .rightClickDockItem,
+        .hideDock,
+        .showDock,
+        .isDockHidden,
+        .findDockItem,
+        .dialogFindActive,
+        .dialogClickButton,
+        .dialogEnterText,
+        .dialogHandleFile,
+        .dialogDismiss,
+        .dialogListElements,
+        .createSnapshot,
+        .storeDetectionResult,
+        .getDetectionResult,
+        .storeScreenshot,
+        .storeAnnotatedScreenshot,
+        .listSnapshots,
+        .getMostRecentSnapshot,
+        .cleanSnapshot,
+        .cleanSnapshotsOlderThan,
+        .cleanAllSnapshots,
+        ._appleScriptProbe,
+    ]
+}
