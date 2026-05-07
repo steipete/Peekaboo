@@ -95,11 +95,12 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             }
 
             let needsSnapshotForElements = self.from != nil || self.to != nil
-            let observation = await InteractionObservationContext.resolve(
+            var observation = await InteractionObservationContext.resolve(
                 explicitSnapshot: self.snapshot,
                 fallbackToLatest: needsSnapshotForElements,
                 snapshots: self.services.snapshots
             )
+            observation = try await self.refreshObservationForElementTargets(observation)
 
             if needsSnapshotForElements {
                 _ = try await observation.requireDetectionResult(using: self.services.snapshots)
@@ -198,6 +199,22 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             self.handleError(error)
             throw ExitCode.failure
         }
+    }
+
+    private func refreshObservationForElementTargets(
+        _ observation: InteractionObservationContext
+    ) async throws -> InteractionObservationContext {
+        var refreshed = observation
+        for elementId in [self.from, self.to].compactMap(\.self) {
+            refreshed = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+                refreshed,
+                elementId: elementId,
+                target: self.target,
+                services: self.services,
+                logger: self.logger
+            )
+        }
+        return refreshed
     }
 
     private func resolvePoint(
