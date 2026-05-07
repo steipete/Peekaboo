@@ -93,6 +93,7 @@
 - `peekaboo clipboard` Commander binding and JSON payload types now live outside the action implementation file.
 - `peekaboo bridge status` diagnostics and JSON report models now live outside the command UI file.
 - Commander runtime help rendering and theming now live outside the command resolution router.
+- `peekaboo capture live` orchestration and the hidden `capture watch` alias now live outside the root capture command file.
 - `peekaboo capture video` now lives in its own command file, leaving live capture and the watch alias in the primary capture command file.
 - `peekaboo agent permission` status and request flows now live in focused companion files instead of one oversized command implementation.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.

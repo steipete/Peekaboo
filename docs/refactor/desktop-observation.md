@@ -160,6 +160,7 @@ Landed:
 - `peekaboo clipboard` Commander binding and output DTOs are split from clipboard action logic.
 - `peekaboo bridge status` diagnostics and report DTOs are split from the command UI shell.
 - Commander runtime help rendering and theming are split from command resolution and alias routing.
+- `peekaboo capture live` orchestration and `capture watch` alias wiring are split from the root capture command shell.
 - `peekaboo capture video` is split out of the primary capture command file.
 - `peekaboo agent permission` status and request flows are split into focused companion files.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
@@ -238,6 +239,11 @@ ClipboardCommand+Types.swift: 17 lines
 BridgeCommand.swift: 140 lines
 BridgeCommand+Diagnostics.swift: 115 lines
 BridgeCommand+Models.swift: 193 lines
+CaptureCommand.swift: 20 lines
+CaptureCommand+Live.swift: 378 lines
+CaptureCommand+Video.swift: 207 lines
+CaptureCommand+WatchAlias.swift: 28 lines
+CaptureCommand+CommanderMetadata.swift: 87 lines
 CommanderRuntimeRouter.swift: 240 lines
 CommanderRuntimeRouter+Help.swift: 192 lines
 AgentChatUI.swift: 340 lines
