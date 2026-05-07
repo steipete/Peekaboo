@@ -197,7 +197,7 @@ extension SeeCommand {
     private func snapshotPaths(for context: SeeCommandRenderContext) -> SnapshotPaths {
         SnapshotPaths(
             raw: context.screenshotPath,
-            annotated: context.annotatedPath ?? context.screenshotPath,
+            annotated: context.annotatedPath ?? "",
             map: self.services.snapshots.getSnapshotStoragePath() + "/\(context.snapshotId)/snapshot.json"
         )
     }

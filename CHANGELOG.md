@@ -77,6 +77,7 @@
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
 - `peekaboo list apps`, `list screens`, and `list windows --json` now emit the same standard top-level `success/data/debug_logs` envelope as sibling CLI commands.
+- `peekaboo see --json` now leaves `screenshot_annotated` empty when no annotated image was created instead of aliasing the raw screenshot path.
 - The experimental `peekaboo commander` diagnostics command is registered again and emits standard JSON diagnostics with `--json`.
 - MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
 - `peekaboo see --mode screen --annotate` now consistently skips annotation generation instead of reporting or attempting a disabled full-screen annotation.

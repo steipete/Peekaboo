@@ -85,6 +85,7 @@ Landed:
 - `peekaboo image` builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see` builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see --mode screen --screen-index <n>` and screen analysis captures now route through desktop observation; all-screen capture remains on the legacy multi-file path until observation grows multi-artifact output.
+- `peekaboo see --json` now reports an annotated screenshot path only when an annotated file actually exists.
 - `peekaboo see` support types, output rendering, and screen helpers are split out of the primary command file.
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
