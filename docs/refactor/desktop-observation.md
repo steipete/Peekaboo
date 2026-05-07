@@ -223,6 +223,7 @@ Landed:
 - CLI visualizer smoke geometry now uses the injected screen service instead of `NSScreen.main`.
 - Application service protocol models now avoid importing AppKit; platform activation policy is carried as a service enum.
 - Scripted swipe default endpoints now use the injected screen service instead of `NSScreen.main`.
+- Window list mapping now avoids AppKit for CoreGraphics and ScreenCaptureKit-only metadata caching.
 - CLI move/scroll result telemetry now reads the current cursor position through the automation service boundary instead of direct CoreGraphics event calls.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
