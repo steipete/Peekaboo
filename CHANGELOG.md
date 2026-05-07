@@ -57,6 +57,7 @@
 - MCP `see` request/output and summary support now live outside the primary tool file.
 - `peekaboo see` command support types, output rendering, and screen capture helpers are now split out of the main command file.
 - `peekaboo see` legacy capture/detection fallback is now isolated in a dedicated command-support pipeline.
+- `peekaboo app` launch, quit, and relaunch implementations now live in focused support files, leaving the primary command file as a smaller command shell.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of duplicating per-command refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now invalidate implicitly reused latest snapshots after successful UI mutations so later commands do not silently target stale UI.
