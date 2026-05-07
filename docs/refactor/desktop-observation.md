@@ -75,6 +75,7 @@ Landed:
 - Space management keeps managed-display Space mapping helpers in a focused companion file.
 - Legacy capture keeps window capture and screen/area capture paths in focused operator companions.
 - Observation label placement keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
+- Window management keeps construction, state operations, geometry operations, listing, target resolution, title search, and close-presence polling in focused files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -240,7 +241,10 @@ WatchCaptureRegionValidator.swift: 31 lines
 WatchCaptureResultBuilder.swift: 96 lines
 WatchCaptureFrameProvider.swift: 97 lines
 WatchCaptureActivityPolicy.swift: 18 lines
-WindowManagementService.swift: 406 lines
+WindowManagementService.swift: 65 lines
+WindowManagementService+StateOperations.swift: 190 lines
+WindowManagementService+GeometryOperations.swift: 69 lines
+WindowManagementService+Listing.swift: 41 lines
 WindowManagementService+Resolution.swift: 197 lines
 WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines

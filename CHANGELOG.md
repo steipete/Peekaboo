@@ -55,6 +55,7 @@
 - Space management now keeps managed-display Space mapping helpers out of the private-CGS service file.
 - Legacy capture now keeps window capture and screen/area capture paths in focused operator companions.
 - Observation label placement now keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
+- Window management now keeps state, geometry, listing, target resolution, title search, and presence polling in focused companions.
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
