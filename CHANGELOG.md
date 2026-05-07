@@ -93,6 +93,7 @@
 - Archived stale runtime/visualizer refactor notes behind the current refactor index and documented element target-point diagnostics in the command guides.
 - Removed the obsolete command-local `ScreenCaptureBridge` shim from `peekaboo see`; fallback capture paths now call the typed capture service directly.
 - Split interaction target-point resolution into a focused command support file.
+- Split `ClickCommand` focus verification and output models into focused support files.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.

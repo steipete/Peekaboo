@@ -130,7 +130,9 @@ ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 InteractionObservationContext.swift: 370 lines
 InteractionTargetPointResolver.swift: 156 lines
-ClickCommand.swift: 581 lines
+ClickCommand.swift: 428 lines
+ClickCommand+FocusVerification.swift: 148 lines
+ClickCommand+Output.swift: 30 lines
 TypeCommand.swift: 428 lines
 MoveCommand.swift: 450 lines
 ScrollCommand.swift: 240 lines
@@ -913,6 +915,7 @@ Work:
 - done: archive stale refactor notes behind the current refactor index;
 - done: update command docs for changed diagnostics/timings;
 - done: split interaction target-point diagnostics out of `InteractionObservationContext.swift`;
+- done: split `ClickCommand` focus verification and output models out of the command shell;
 - only then consider module extraction.
 
 Gate:
