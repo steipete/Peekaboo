@@ -1,5 +1,5 @@
-import AppKit
 import Commander
+import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -206,11 +206,11 @@ extension MenuCommand {
                 return appIdentifier
             }
 
-            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            guard let frontmost = try? await self.services.applications.getFrontmostApplication() else {
                 throw ValidationError("No frontmost app found; provide --app or --pid")
             }
 
-            return frontmost.bundleIdentifier ?? frontmost.localizedName ?? "PID:\(frontmost.processIdentifier)"
+            return frontmost.bundleIdentifier ?? frontmost.name
         }
 
         private func handleMenuError(_ error: MenuError) {
@@ -549,11 +549,11 @@ extension MenuCommand {
                 return appIdentifier
             }
 
-            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            guard let frontmost = try? await self.services.applications.getFrontmostApplication() else {
                 throw ValidationError("No frontmost app found; provide --app or --pid")
             }
 
-            return frontmost.bundleIdentifier ?? frontmost.localizedName ?? "PID:\(frontmost.processIdentifier)"
+            return frontmost.bundleIdentifier ?? frontmost.name
         }
 
         private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
