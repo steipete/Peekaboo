@@ -4,6 +4,26 @@ import Testing
 
 struct TypeServiceTargetResolutionTests {
     @Test
+    func `special key mapping preserves raw SpecialKey semantics`() {
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .return) == 0x24)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .enter) == 0x4C)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .forwardDelete) == 0x75)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .capsLock) == 0x39)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .clear) == 0x47)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(for: .help) == 0x72)
+    }
+
+    @Test
+    func `special key mapping accepts CLI aliases`() {
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "esc") == 0x35)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "spacebar") == 0x31)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "forward_delete") == 0x75)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "caps_lock") == 0x39)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "page_up") == 0x74)
+        #expect(TypeServiceSpecialKeyMapping.keyCode(forRawKey: "arrow_down") == 0x7D)
+    }
+
+    @Test
     @MainActor
     func `resolveTargetElement matches identifier over other fields`() {
         let basic = DetectedElement(

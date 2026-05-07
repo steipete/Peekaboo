@@ -173,6 +173,7 @@ Landed:
 - `SpaceUtilities` now keeps private CGS API declarations and public Space models/errors in focused files.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
+- `TypeService` now keeps target resolution, typing cadence, and special-key synthesis in focused helper files; special-key synthesis now honors the documented `SpecialKey` raw values for keypad Enter, forward delete, caps lock, clear, and help.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -340,6 +341,10 @@ UIAutomationServiceProtocol.swift: 155 lines
 MouseMovementProfile.swift: 67 lines
 ElementDetectionModels.swift: 205 lines
 UIAutomationOperationModels.swift: 188 lines
+TypeService.swift: 181 lines
+TypeService+TargetResolution.swift: 118 lines
+TypeService+TypingCadence.swift: 163 lines
+TypeService+SpecialKeys.swift: 90 lines
 MenuService+Extras.swift: 296 lines
 MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines
