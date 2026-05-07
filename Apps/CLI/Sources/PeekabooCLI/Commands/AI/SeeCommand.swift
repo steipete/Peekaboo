@@ -268,8 +268,10 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return switch self.determineMode() {
         case .screen, .multi:
             false
-        case .window, .frontmost, .area:
+        case .window, .frontmost:
             true
+        case .area:
+            false
         }
     }
 }
@@ -313,6 +315,13 @@ extension SeeCommand: CommanderBindableCommand {
         self.windowTitle = values.singleOption("windowTitle")
         self.windowId = try values.decodeOption("windowId", as: Int.self)
         if let parsedMode: PeekabooCore.CaptureMode = try values.decodeOptionEnum("mode", caseInsensitive: false) {
+            guard parsedMode != .area else {
+                throw CommanderBindingError.invalidArgument(
+                    label: "mode",
+                    value: parsedMode.rawValue,
+                    reason: "`see` supports screen, window, frontmost, or multi"
+                )
+            }
             self.mode = parsedMode
         }
         self.path = values.singleOption("path")

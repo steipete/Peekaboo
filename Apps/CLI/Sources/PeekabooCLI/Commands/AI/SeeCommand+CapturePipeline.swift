@@ -89,41 +89,6 @@ extension SeeCommand {
             )
         }
 
-        if let appName = self.app?.lowercased() {
-            switch appName {
-            case "menubar":
-                self.logger.verbose("Capturing menu bar area", category: "Capture")
-                let rect = try self.menuBarRect()
-                let result = try await self.services.screenCapture.captureArea(rect)
-                return CaptureContext(
-                    captureResult: result,
-                    captureBounds: rect,
-                    prefersOCR: false,
-                    ocrMethod: nil,
-                    windowIdOverride: nil
-                )
-            case "frontmost":
-                self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
-                let result = try await self.services.screenCapture.captureFrontmost()
-                return CaptureContext(
-                    captureResult: result,
-                    captureBounds: nil,
-                    prefersOCR: false,
-                    ocrMethod: nil,
-                    windowIdOverride: nil
-                )
-            default:
-                let result = try await self.performStandardCapture()
-                return CaptureContext(
-                    captureResult: result,
-                    captureBounds: nil,
-                    prefersOCR: false,
-                    ocrMethod: nil,
-                    windowIdOverride: nil
-                )
-            }
-        }
-
         let result = try await self.performStandardCapture()
         return CaptureContext(
             captureResult: result,

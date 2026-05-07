@@ -41,6 +41,7 @@
 - Added first-class OCR results to desktop observation, with shared OCR-to-element mapping for observation and menu-bar helpers.
 - `peekaboo see --menubar` now tries the desktop observation pipeline for already-open menu bar popovers before falling back to the legacy click-to-open path.
 - `peekaboo see --app menubar` now uses the shared desktop observation menu-bar target instead of command-local area capture.
+- `peekaboo see --mode area` now fails during command binding instead of entering the legacy capture bridge and failing later.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.
 - Desktop observation diagnostics now report shared target resolution metadata for menu bar strip and popover captures, including source, bounds, hints, and click-open fallback status.

@@ -1,3 +1,4 @@
+import Commander
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
@@ -134,6 +135,29 @@ struct SeeCommandAnnotationTests {
         let command = try SeeCommand.parse(["--mode", "screen", "--analyze", "summarize"])
 
         #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == .screen(index: 0))
+    }
+
+    @Test
+    @MainActor
+    func `Area mode is rejected before capture fallback`() throws {
+        #expect(throws: CommanderBindingError.invalidArgument(
+            label: "mode",
+            value: "area",
+            reason: "`see` supports screen, window, frontmost, or multi"
+        )) {
+            _ = try SeeCommand.parse(["--mode", "area"])
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Area observation target fails explicitly`() throws {
+        var command = SeeCommand()
+        command.mode = .area
+
+        #expect(throws: ValidationError.self) {
+            _ = try command.observationTargetForCaptureWithDetectionIfPossible()
+        }
     }
 
     @Test
