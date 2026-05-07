@@ -190,13 +190,27 @@ extension MenuCommand {
                 }
 
             } catch let error as MenuError {
-                self.handleMenuError(error)
+                MenuErrorOutputSupport.renderMenuError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Failed to click menu item",
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             } catch let error as PeekabooError {
-                self.handleApplicationError(error)
+                MenuErrorOutputSupport.renderApplicationError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             } catch {
-                self.handleGenericError(error)
+                MenuErrorOutputSupport.renderGenericError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Menu operation failed",
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             }
         }
@@ -211,60 +225,6 @@ extension MenuCommand {
             }
 
             return frontmost.bundleIdentifier ?? frontmost.name
-        }
-
-        private func handleMenuError(_ error: MenuError) {
-            if self.jsonOutput {
-                let errorCode: ErrorCode = switch error {
-                case .menuBarNotFound:
-                    .MENU_BAR_NOT_FOUND
-                case .menuItemNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .submenuNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuExtraNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuItemDisabled:
-                    .INTERACTION_FAILED
-                case .menuOperationFailed:
-                    .INTERACTION_FAILED
-                }
-
-                outputError(
-                    message: error.localizedDescription,
-                    code: errorCode,
-                    details: "Failed to click menu item",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleApplicationError(_ error: PeekabooError) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .APP_NOT_FOUND,
-                    details: "Application not found",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleGenericError(_ error: any Error) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .UNKNOWN_ERROR,
-                    details: "Menu operation failed",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ Error: \(error.localizedDescription)\n", stderr)
-            }
         }
     }
 
@@ -361,52 +321,21 @@ extension MenuCommand {
                 }
 
             } catch let error as MenuError {
-                self.handleMenuError(error)
-                throw ExitCode(1)
-            } catch {
-                self.handleGenericError(error)
-                throw ExitCode(1)
-            }
-        }
-
-        private func handleMenuError(_ error: MenuError) {
-            if self.jsonOutput {
-                let errorCode: ErrorCode = switch error {
-                case .menuBarNotFound:
-                    .MENU_BAR_NOT_FOUND
-                case .menuItemNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .submenuNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuExtraNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuItemDisabled:
-                    .INTERACTION_FAILED
-                case .menuOperationFailed:
-                    .INTERACTION_FAILED
-                }
-
-                outputError(
-                    message: error.localizedDescription,
-                    code: errorCode,
+                MenuErrorOutputSupport.renderMenuError(
+                    error,
+                    jsonOutput: self.jsonOutput,
                     details: "Failed to click menu extra",
                     logger: self.outputLogger
                 )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleGenericError(_ error: any Error) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .UNKNOWN_ERROR,
+                throw ExitCode(1)
+            } catch {
+                MenuErrorOutputSupport.renderGenericError(
+                    error,
+                    jsonOutput: self.jsonOutput,
                     details: "Menu extra operation failed",
                     logger: self.outputLogger
                 )
-            } else {
-                fputs("❌ Error: \(error.localizedDescription)\n", stderr)
+                throw ExitCode(1)
             }
         }
 
@@ -533,13 +462,27 @@ extension MenuCommand {
                 }
 
             } catch let error as PeekabooError {
-                self.handleApplicationError(error)
+                MenuErrorOutputSupport.renderApplicationError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             } catch let error as MenuError {
-                self.handleMenuError(error)
+                MenuErrorOutputSupport.renderMenuError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Failed to list menus",
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             } catch {
-                self.handleGenericError(error)
+                MenuErrorOutputSupport.renderGenericError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Menu list operation failed",
+                    logger: self.outputLogger
+                )
                 throw ExitCode(1)
             }
         }
@@ -554,60 +497,6 @@ extension MenuCommand {
             }
 
             return frontmost.bundleIdentifier ?? frontmost.name
-        }
-
-        private func handleApplicationError(_ error: PeekabooError) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .APP_NOT_FOUND,
-                    details: "Application not found",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleMenuError(_ error: MenuError) {
-            if self.jsonOutput {
-                let errorCode: ErrorCode = switch error {
-                case .menuBarNotFound:
-                    .MENU_BAR_NOT_FOUND
-                case .menuItemNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .submenuNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuExtraNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuItemDisabled:
-                    .INTERACTION_FAILED
-                case .menuOperationFailed:
-                    .INTERACTION_FAILED
-                }
-
-                outputError(
-                    message: error.localizedDescription,
-                    code: errorCode,
-                    details: "Failed to list menus",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleGenericError(_ error: any Error) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .UNKNOWN_ERROR,
-                    details: "Menu list operation failed",
-                    logger: self.outputLogger
-                )
-            } else {
-                fputs("❌ Error: \(error.localizedDescription)\n", stderr)
-            }
         }
     }
 
@@ -727,52 +616,21 @@ extension MenuCommand {
                 }
 
             } catch let error as MenuError {
-                self.handleMenuError(error)
-                throw ExitCode(1)
-            } catch {
-                self.handleGenericError(error)
-                throw ExitCode(1)
-            }
-        }
-
-        private func handleMenuError(_ error: MenuError) {
-            if self.jsonOutput {
-                let errorCode: ErrorCode = switch error {
-                case .menuBarNotFound:
-                    .MENU_BAR_NOT_FOUND
-                case .menuItemNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .submenuNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuExtraNotFound:
-                    .MENU_ITEM_NOT_FOUND
-                case .menuItemDisabled:
-                    .INTERACTION_FAILED
-                case .menuOperationFailed:
-                    .INTERACTION_FAILED
-                }
-
-                outputError(
-                    message: error.localizedDescription,
-                    code: errorCode,
+                MenuErrorOutputSupport.renderMenuError(
+                    error,
+                    jsonOutput: self.jsonOutput,
                     details: "Failed to list menus",
                     logger: self.outputLogger
                 )
-            } else {
-                fputs("❌ \(error.localizedDescription)\n", stderr)
-            }
-        }
-
-        private func handleGenericError(_ error: any Error) {
-            if self.jsonOutput {
-                outputError(
-                    message: error.localizedDescription,
-                    code: .UNKNOWN_ERROR,
+                throw ExitCode(1)
+            } catch {
+                MenuErrorOutputSupport.renderGenericError(
+                    error,
+                    jsonOutput: self.jsonOutput,
                     details: "Menu list operation failed",
                     logger: self.outputLogger
                 )
-            } else {
-                fputs("❌ Error: \(error.localizedDescription)\n", stderr)
+                throw ExitCode(1)
             }
         }
     }

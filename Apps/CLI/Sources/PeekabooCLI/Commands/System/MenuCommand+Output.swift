@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 enum MenuOutputSupport {
     static func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
@@ -89,6 +90,72 @@ enum MenuOutputSupport {
 
         for subitem in item.submenu {
             Self.printMenuItem(subitem, indent: indent + 1)
+        }
+    }
+}
+
+enum MenuErrorOutputSupport {
+    static func renderMenuError(
+        _ error: MenuError,
+        jsonOutput: Bool,
+        details: String,
+        logger: Logger
+    ) {
+        if jsonOutput {
+            outputError(
+                message: error.localizedDescription,
+                code: self.errorCode(for: error),
+                details: details,
+                logger: logger
+            )
+        } else {
+            fputs("❌ \(error.localizedDescription)\n", stderr)
+        }
+    }
+
+    static func renderApplicationError(
+        _ error: PeekabooError,
+        jsonOutput: Bool,
+        logger: Logger
+    ) {
+        if jsonOutput {
+            outputError(
+                message: error.localizedDescription,
+                code: .APP_NOT_FOUND,
+                details: "Application not found",
+                logger: logger
+            )
+        } else {
+            fputs("❌ \(error.localizedDescription)\n", stderr)
+        }
+    }
+
+    static func renderGenericError(
+        _ error: any Error,
+        jsonOutput: Bool,
+        details: String,
+        logger: Logger
+    ) {
+        if jsonOutput {
+            outputError(
+                message: error.localizedDescription,
+                code: .UNKNOWN_ERROR,
+                details: details,
+                logger: logger
+            )
+        } else {
+            fputs("❌ Error: \(error.localizedDescription)\n", stderr)
+        }
+    }
+
+    private static func errorCode(for error: MenuError) -> ErrorCode {
+        switch error {
+        case .menuBarNotFound:
+            .MENU_BAR_NOT_FOUND
+        case .menuItemNotFound, .submenuNotFound, .menuExtraNotFound:
+            .MENU_ITEM_NOT_FOUND
+        case .menuItemDisabled, .menuOperationFailed:
+            .INTERACTION_FAILED
         }
     }
 }
