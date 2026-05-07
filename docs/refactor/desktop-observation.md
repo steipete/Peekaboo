@@ -74,6 +74,7 @@ Landed:
 - UI automation keeps service initialization, delegated operations, focus/wait lookup, and search-policy limits in focused files.
 - Space management keeps managed-display Space mapping helpers in a focused companion file.
 - Legacy capture keeps window capture and screen/area capture paths in focused operator companions.
+- Observation label placement keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -259,8 +260,12 @@ ObservationTargetResolver.swift: 168 lines
 ObservationTargetResolver+MenuBar.swift: 131 lines
 ObservationTargetResolver+WindowSelection.swift: 119 lines
 ObservationWindowMetadataCatalog.swift: 87 lines
-ObservationLabelPlacer.swift: 425 lines
-ObservationLabelPlacementGeometry.swift: 183 lines
+ObservationLabelPlacer.swift: 258 lines
+ObservationLabelPlacer+Filtering.swift: 73 lines
+ObservationLabelPlacer+Scoring.swift: 61 lines
+ObservationLabelPlacer+Debug.swift: 33 lines
+ObservationLabelPlacementTextDetecting.swift: 9 lines
+ObservationLabelPlacementGeometry.swift: 174 lines
 WindowCommand.swift: 66 lines
 WindowCommand+Bindings.swift: 187 lines
 WindowCommand+Focus.swift: 253 lines

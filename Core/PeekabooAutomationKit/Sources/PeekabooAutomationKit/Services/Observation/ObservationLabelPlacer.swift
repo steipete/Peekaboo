@@ -2,14 +2,6 @@ import AppKit
 import Foundation
 import PeekabooFoundation
 
-@MainActor
-protocol SmartLabelPlacerTextDetecting: AnyObject {
-    func scoreRegionForLabelPlacement(_ rect: NSRect, in image: NSImage) -> Float
-    func analyzeRegion(_ rect: NSRect, in image: NSImage) -> AcceleratedTextDetector.EdgeDensityResult
-}
-
-extension AcceleratedTextDetector: SmartLabelPlacerTextDetecting {}
-
 /// Handles intelligent label placement for UI element annotations
 @MainActor
 final class SmartLabelPlacer {
@@ -17,17 +9,17 @@ final class SmartLabelPlacer {
 
     // MARK: - Properties
 
-    private let image: NSImage
-    private let imageSize: NSSize
-    private let textDetector: any SmartLabelPlacerTextDetecting
-    private let fontSize: CGFloat
-    private let labelSpacing: CGFloat = 3
-    private let cornerInset: CGFloat = 2
-    private let scoreRegionPadding: CGFloat
+    let image: NSImage
+    let imageSize: NSSize
+    let textDetector: any SmartLabelPlacerTextDetecting
+    let fontSize: CGFloat
+    let labelSpacing: CGFloat = 3
+    let cornerInset: CGFloat = 2
+    let scoreRegionPadding: CGFloat
 
     // Label placement debugging
-    private let debugMode: Bool
-    private let logger: ObservationAnnotationLog
+    let debugMode: Bool
+    let logger: ObservationAnnotationLog
 
     // MARK: - Initialization
 
@@ -204,122 +196,6 @@ final class SmartLabelPlacer {
             prioritizeVertical: prioritizeVertical)
     }
 
-    private func filterValidPositions(
-        candidates: [LabelPlacementCandidate],
-        element: DetectedElement,
-        existingLabels: [(rect: NSRect, element: DetectedElement)],
-        allElements: [(element: DetectedElement, rect: NSRect)],
-        allowBoundaryOverflow: Bool = false,
-        logRejections: Bool = false) -> [LabelPlacementCandidate]
-    {
-        candidates.filter { candidate in
-            // Check if within image bounds (with optional relaxation)
-            if !allowBoundaryOverflow {
-                let withinBounds = candidate.rect.minX >= -5 && // Allow slight overflow on edges
-                    candidate.rect.maxX <= self.imageSize.width + 5 &&
-                    candidate.rect.minY >= -5 &&
-                    candidate.rect.maxY <= self.imageSize.height + 5
-
-                if !withinBounds {
-                    if logRejections {
-                        self.logger.verbose(
-                            "Position \(candidate.type) rejected: outside image bounds",
-                            category: "LabelPlacement",
-                            metadata: [
-                                "rect": "\(candidate.rect)",
-                                "imageBounds": "0,0 \(self.imageSize.width)x\(self.imageSize.height)",
-                            ])
-                    }
-                    return false
-                }
-            }
-
-            // Check overlap with other elements
-            for (otherElement, otherRect) in allElements {
-                if otherElement.id != element.id, candidate.rect.intersects(otherRect) {
-                    if logRejections {
-                        self.logger.verbose(
-                            "Position \(candidate.type) rejected: overlaps with element \(otherElement.id)",
-                            category: "LabelPlacement",
-                            metadata: [
-                                "candidateRect": "\(candidate.rect)",
-                                "elementRect": "\(otherRect)",
-                            ])
-                    }
-                    return false
-                }
-            }
-
-            // Check overlap with existing labels
-            for (existingLabel, labelElement) in existingLabels where candidate.rect.intersects(existingLabel) {
-                if logRejections {
-                    self.logger.verbose(
-                        "Position \(candidate.type) rejected: overlaps with label for \(labelElement.id)",
-                        category: "LabelPlacement",
-                        metadata: [
-                            "candidateRect": "\(candidate.rect)",
-                            "existingLabelRect": "\(existingLabel)",
-                        ])
-                }
-                return false
-            }
-
-            return true
-        }
-    }
-
-    private func scorePositions(
-        _ positions: [LabelPlacementCandidate],
-        elementRect: NSRect) -> [ScoredLabelPlacementCandidate]
-    {
-        positions.map { position in
-            // Convert from drawing coordinates to image coordinates for analysis
-            // Drawing has Y=0 at top, image has Y=0 at bottom
-            let imageRect = NSRect(
-                x: position.rect.origin.x,
-                y: self.imageSize.height - position.rect.origin.y - position.rect.height,
-                width: position.rect.width,
-                height: position.rect.height)
-
-            // Expand the sampled area slightly so we avoid busy regions around the label,
-            // not just underneath it. This helps place annotations over calmer backgrounds.
-            // NOTE: this is a critical tweak—by sampling beyond the label bounds we detect noisy
-            // backgrounds that would otherwise not register, which is what keeps labels from
-            // covering “interesting” UI areas (graphs, text blocks, etc.).
-            let scoringRect = LabelPlacementGeometry.clampedRect(
-                imageRect.insetBy(dx: -self.scoreRegionPadding, dy: -self.scoreRegionPadding),
-                within: NSRect(origin: .zero, size: self.imageSize))
-
-            // Score using edge detection
-            var score = self.textDetector.scoreRegionForLabelPlacement(scoringRect, in: self.image)
-
-            // Boost score for preferred positions
-            if position.type == .externalAbove {
-                score *= 1.2 // Prefer above position
-            } else if position.type == .externalBelow {
-                score *= 1.1 // Second preference for below
-            }
-
-            // Ensure score stays in valid range
-            score = min(1.0, score)
-
-            if self.debugMode {
-                self.logger.verbose(
-                    "Scoring position \(position.index) (\(position.type))",
-                    category: "LabelPlacement",
-                    metadata: [
-                        "index": position.index,
-                        "type": position.type.rawValue,
-                        "drawingRect": "\(position.rect)",
-                        "imageRect": "\(imageRect)",
-                        "score": score,
-                    ])
-            }
-
-            return (rect: position.rect, index: position.index, type: position.type, score: score)
-        }
-    }
-
     private func findInternalPosition(
         for element: DetectedElement,
         elementRect: NSRect,
@@ -378,47 +254,5 @@ final class SmartLabelPlacer {
             height: labelSize.height)
 
         return (labelRect: centerRect, connectionPoint: nil)
-    }
-}
-
-// MARK: - Debug Visualization
-
-extension SmartLabelPlacer {
-    /// Creates a debug image showing edge detection results
-    func createDebugVisualization(for rect: NSRect) -> NSImage? {
-        // Convert to image coordinates
-        let imageRect = NSRect(
-            x: rect.origin.x,
-            y: self.imageSize.height - rect.origin.y - rect.height,
-            width: rect.width,
-            height: rect.height)
-
-        let result = self.textDetector.analyzeRegion(imageRect, in: self.image)
-
-        // Create visualization showing edge density
-        let debugImage = NSImage(size: rect.size)
-        debugImage.lockFocus()
-
-        // Draw background color based on edge density
-        let color = if result.hasText {
-            NSColor.red.withAlphaComponent(0.5) // Bad for labels
-        } else {
-            NSColor.green.withAlphaComponent(0.5) // Good for labels
-        }
-
-        color.setFill()
-        NSRect(origin: .zero, size: rect.size).fill()
-
-        // Draw edge density percentage
-        let text = String(format: "%.1f%%", result.density * 100)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10),
-            .foregroundColor: NSColor.white,
-        ]
-        text.draw(at: NSPoint(x: 2, y: 2), withAttributes: attributes)
-
-        debugImage.unlockFocus()
-
-        return debugImage
     }
 }
