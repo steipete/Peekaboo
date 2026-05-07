@@ -130,6 +130,7 @@ Landed:
 - `peekaboo menu click/list` frontmost-app fallback now uses the application service boundary instead of command-local `NSWorkspace` reads.
 - Command utility, menubar, open, and space command files no longer carry stale `AppKit` imports when only Foundation/CoreGraphics APIs are used.
 - The menu-bar popover detector helper no longer depends on `AppKit` for CoreGraphics-only window metadata filtering.
+- Smart capture now receives frontmost-app and screen-bounds state through shared application and screen service boundaries instead of direct `AppKit` calls.
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
@@ -137,7 +138,7 @@ Landed:
 Current status:
 
 - Capture-service cleanup is mostly complete; `ScreenCaptureService.swift` is under the 500-line target and frontmost-app lookup is behind `ScreenCaptureApplicationResolver`.
-- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, visualizer demo state, or command helper behavior outside the capture pipeline.
+- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, visualizer demo state, screen inventory, or command helper behavior outside the capture pipeline.
 - Observation resolver extensions no longer own broad CoreGraphics window-list scans. Menu-bar and exact-window metadata lookup now route through focused catalog helpers.
 - Optional module extraction after boundaries are stable.
 

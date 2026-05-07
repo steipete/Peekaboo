@@ -6,7 +6,6 @@
 //  Provides diff-aware and region-focused screenshot capture.
 //
 
-import AppKit
 import CoreGraphics
 import Foundation
 import os.log
@@ -19,6 +18,8 @@ import os.log
 @MainActor
 public final class SmartCaptureService {
     private let captureService: any ScreenCaptureServiceProtocol
+    private let applicationResolver: any ApplicationResolving
+    private let screenService: any ScreenServiceProtocol
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "SmartCapture")
 
     /// Last captured state for diff comparison.
@@ -27,8 +28,21 @@ public final class SmartCaptureService {
     /// Time after which we force a new capture regardless of diff.
     private let forceRefreshInterval: TimeInterval = 5.0
 
-    public init(captureService: any ScreenCaptureServiceProtocol) {
+    public convenience init(captureService: any ScreenCaptureServiceProtocol) {
+        self.init(
+            captureService: captureService,
+            applicationResolver: PeekabooApplicationResolver(),
+            screenService: ScreenService())
+    }
+
+    @_spi(Testing) public init(
+        captureService: any ScreenCaptureServiceProtocol,
+        applicationResolver: any ApplicationResolving,
+        screenService: any ScreenServiceProtocol)
+    {
         self.captureService = captureService
+        self.applicationResolver = applicationResolver
+        self.screenService = screenService
     }
 
     // MARK: - Diff-Aware Capture
@@ -49,7 +63,7 @@ public final class SmartCaptureService {
         }
 
         // Quick check: has focused app changed?
-        let currentApp = NSWorkspace.shared.frontmostApplication?.localizedName
+        let currentApp = await self.frontmostApplicationName()
         if currentApp != self.lastCaptureState?.focusedApp {
             self.logger
                 .debug("App changed from \(self.lastCaptureState?.focusedApp ?? "nil") to \(currentApp ?? "nil")")
@@ -98,7 +112,7 @@ public final class SmartCaptureService {
             height: radius * 2)
 
         // Clamp to screen bounds
-        if let screenBounds = NSScreen.main?.frame {
+        if let screenBounds = self.screenService.primaryScreen?.frame {
             rect = rect.intersection(screenBounds)
         }
 
@@ -176,7 +190,7 @@ public final class SmartCaptureService {
         }
 
         let hash = self.perceptualHash(capturedImage)
-        let focusedApp = NSWorkspace.shared.frontmostApplication?.localizedName
+        let focusedApp = await self.frontmostApplicationName()
 
         self.lastCaptureState = CaptureState(
             hash: hash,
@@ -201,6 +215,10 @@ public final class SmartCaptureService {
             return nil
         }
         return cgImage
+    }
+
+    private func frontmostApplicationName() async -> String? {
+        try? await self.applicationResolver.frontmostApplication().name
     }
 
     /// Compute a perceptual hash (dHash) of an image.
