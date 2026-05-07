@@ -36,7 +36,7 @@ public struct ImageCaptureData: Codable, Sendable {
     }
 }
 
-public enum CaptureMode: String, CaseIterable, Codable, Sendable {
+public enum CaptureMode: String, CaseIterable, Codable, Sendable, Equatable {
     case screen
     case window
     case multi
@@ -44,12 +44,12 @@ public enum CaptureMode: String, CaseIterable, Codable, Sendable {
     case area
 }
 
-public enum ImageFormat: String, CaseIterable, Codable, Sendable {
+public enum ImageFormat: String, CaseIterable, Codable, Sendable, Equatable {
     case png
     case jpg
 }
 
-public enum CaptureFocus: String, CaseIterable, Codable, Sendable {
+public enum CaptureFocus: String, CaseIterable, Codable, Sendable, Equatable {
     case background
     case auto
     case foreground

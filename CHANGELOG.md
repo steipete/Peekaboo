@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Added `DesktopObservationService` and the desktop observation refactor plan as the shared path toward unified screenshot capture, target resolution, timings, and optional AX detection.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!
@@ -34,6 +35,8 @@
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
 - `image --analyze` now honors configured custom AI providers such as `local-proxy/model` instead of falling back to built-in defaults. Thanks @381181295 for [#99](https://github.com/steipete/Peekaboo/pull/99)!
 - Browser focus verification now tolerates stale AX handles by re-resolving windows after activation and checking the topmost renderable CG window. Thanks @ZVNC28 for [#103](https://github.com/steipete/Peekaboo/pull/103)!
+- `peekaboo image --app` and `peekaboo see --app/--pid/--window-id` now share the desktop observation target resolver, so helper/offscreen windows are ranked consistently across capture and detection.
+- ScreenCaptureKit screenshot calls now fail with a bounded timeout if the underlying framework leaks a continuation, instead of hanging the CLI indefinitely.
 
 ### Performance
 - Menu bar listing is faster by avoiding redundant accessibility work.
@@ -50,6 +53,7 @@
 - `peekaboo see` limits expensive AX action and keyboard-shortcut probes to roles that can use them, reducing Playground element detection from about 286ms to roughly 180-190ms in local testing.
 - `peekaboo see` skips a redundant CLI-side screen-recording preflight and relies on the capture service's permission check, shaving a fixed TCC probe from screenshot-plus-AX runs.
 - `peekaboo see` now keeps AX traversal scoped to the captured window and skips web-content focus probing once a rich native AX tree is already visible, avoiding sibling-window elements and cutting native Playground detection from about 220ms to 130ms.
+- `peekaboo see --app Playground` now runs through the observation facade in about 0.50s locally, with capture and AX detection spans reported separately.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

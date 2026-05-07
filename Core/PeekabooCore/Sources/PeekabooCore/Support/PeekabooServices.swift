@@ -69,6 +69,9 @@ public final class PeekabooServices {
     /// Centralized logging service for consistent logging across all Peekaboo components
     public let logging: any LoggingServiceProtocol
 
+    /// Unified screenshot, target resolution, and optional element-detection pipeline
+    public let desktopObservation: any DesktopObservationServiceProtocol
+
     /// Screen and window capture service supporting ScreenCaptureKit and legacy APIs
     public let screenCapture: any ScreenCaptureServiceProtocol
 
@@ -155,6 +158,10 @@ public final class PeekabooServices {
         self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenService initialized")
 
         self.logging = logging
+        self.desktopObservation = DesktopObservationService(
+            screenCapture: screenCap,
+            automation: auto,
+            applications: apps)
         self.screenCapture = screenCap
         self.applications = apps
         self.automation = auto
@@ -317,6 +324,10 @@ public final class PeekabooServices {
         self.screenCapture = screenCapture
         self.applications = applications
         self.automation = automation
+        self.desktopObservation = DesktopObservationService(
+            screenCapture: screenCapture,
+            automation: automation,
+            applications: applications)
         self.windows = windows
         self.menu = menu
         self.dock = dock
@@ -359,6 +370,10 @@ public final class PeekabooServices {
         self.screenCapture = screenCapture
         self.applications = applications
         self.automation = automation
+        self.desktopObservation = DesktopObservationService(
+            screenCapture: screenCapture,
+            automation: automation,
+            applications: applications)
         self.windows = windows
         self.menu = menu
         self.dock = dock

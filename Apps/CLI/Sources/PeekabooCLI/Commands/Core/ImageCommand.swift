@@ -224,11 +224,16 @@ extension ImageCommand {
     }
 
     private func captureWindowById(_ windowId: Int) async throws -> [SavedFile] {
-        let result = try await ImageCaptureBridge.captureWindowById(
-            services: self.services,
-            windowId: windowId,
-            scale: self.captureScale
-        )
+        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+            target: .windowID(CGWindowID(windowId)),
+            capture: DesktopCaptureOptions(
+                engine: .auto,
+                scale: self.captureScale,
+                visualizerMode: .screenshotFlash
+            ),
+            detection: DesktopDetectionOptions(mode: .none)
+        ))
+        let result = observation.capture
 
         let title = result.metadata.windowInfo?.title
         let preferredName = if let title, !title.isEmpty {
@@ -271,25 +276,22 @@ extension ImageCommand {
 
     private func captureApplicationWindow(_ identifier: String) async throws -> [SavedFile] {
         try await self.focusIfNeeded(appIdentifier: identifier)
-        let resolvedWindow = try await self.resolveWindow(for: identifier)
-        let result = if let resolvedWindow {
-            try await ImageCaptureBridge.captureWindowById(
-                services: self.services,
-                windowId: resolvedWindow.windowID,
-                scale: self.captureScale
-            )
-        } else {
-            try await ImageCaptureBridge.captureWindow(
-                services: self.services,
-                appIdentifier: identifier,
-                windowIndex: nil,
-                scale: self.captureScale
-            )
-        }
+        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+            target: .app(identifier: identifier, window: self.observationWindowSelection),
+            capture: DesktopCaptureOptions(
+                engine: .auto,
+                scale: self.captureScale,
+                visualizerMode: .screenshotFlash
+            ),
+            detection: DesktopDetectionOptions(mode: .none)
+        ))
+        let result = observation.capture
+        let resolvedWindow = observation.target.window
+        let resolvedTitle = resolvedWindow?.title.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let saved = try self.saveCaptureResult(
             result,
-            preferredName: self.windowTitle ?? identifier,
+            preferredName: self.windowTitle ?? (resolvedTitle?.isEmpty == false ? resolvedTitle : nil) ?? identifier,
             index: nil,
             windowIndex: resolvedWindow?.index
         )
@@ -332,10 +334,16 @@ extension ImageCommand {
     }
 
     private func captureFrontmost() async throws -> [SavedFile] {
-        let result = try await ImageCaptureBridge.captureFrontmost(
-            services: self.services,
-            scale: self.captureScale
-        )
+        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+            target: .frontmost,
+            capture: DesktopCaptureOptions(
+                engine: .auto,
+                scale: self.captureScale,
+                visualizerMode: .screenshotFlash
+            ),
+            detection: DesktopDetectionOptions(mode: .none)
+        ))
+        let result = observation.capture
         let saved = try self.saveCaptureResult(result, preferredName: "frontmost", index: nil)
         return [saved]
     }
@@ -554,168 +562,14 @@ extension ImageCommand {
         return Int32(identifier.dropFirst(4))
     }
 
-    private func resolveWindow(for identifier: String) async throws -> ServiceWindowInfo? {
-        // `try?` is intentional: an explicit title/index miss on the CG-only list should fall back
-        // to the existing AX-enriched path so users keep the detailed selector error behavior.
-        if let fastWindows = Self.fastCGWindows(for: identifier),
-           let fastWindow = try? self.selectWindow(from: fastWindows, appIdentifier: identifier) {
-            return fastWindow
+    private var observationWindowSelection: WindowSelection {
+        if let windowIndex {
+            return .index(windowIndex)
         }
-
-        do {
-            let windows = try await WindowServiceBridge.listWindows(
-                windows: self.services.windows,
-                target: .application(identifier)
-            )
-
-            guard !windows.isEmpty else {
-                return nil
-            }
-
-            return try self.selectWindow(from: windows, appIdentifier: identifier)
-        } catch let error as PeekabooError {
-            switch error {
-            case .permissionDeniedAccessibility:
-                self.logger.debug(
-                    "Window enumeration unavailable; falling back to capture heuristics",
-                    metadata: ["reason": error.localizedDescription]
-                )
-                return nil
-            default:
-                throw error
-            }
-        } catch {
-            self.logger.debug(
-                "Window enumeration failed; falling back to capture heuristics",
-                metadata: ["reason": error.localizedDescription]
-            )
-            return nil
+        if let windowTitle {
+            return .title(windowTitle)
         }
-    }
-
-    private static func fastCGWindows(for appIdentifier: String) -> [ServiceWindowInfo]? {
-        guard let app = self.fastRunningApplication(for: appIdentifier),
-              let windowList = CGWindowListCopyWindowInfo(
-                  [.optionAll, .excludeDesktopElements],
-                  kCGNullWindowID
-              ) as? [[String: Any]]
-        else {
-            return nil
-        }
-
-        var index = 0
-        let windows = windowList.compactMap { windowInfo -> ServiceWindowInfo? in
-            guard self.pidValue(windowInfo[kCGWindowOwnerPID as String]) == app.processIdentifier,
-                  let windowID = self.intValue(windowInfo[kCGWindowNumber as String]),
-                  let bounds = self.bounds(from: windowInfo[kCGWindowBounds as String])
-            else {
-                return nil
-            }
-
-            defer { index += 1 }
-
-            let layer = self.intValue(windowInfo[kCGWindowLayer as String]) ?? 0
-            let alpha = self.cgFloatValue(windowInfo[kCGWindowAlpha as String]) ?? 1.0
-            let isOnScreen = self.boolValue(windowInfo[kCGWindowIsOnscreen as String]) ?? true
-            let sharingState = self.intValue(windowInfo[kCGWindowSharingState as String])
-                .flatMap(WindowSharingState.init(rawValue:))
-            let title = windowInfo[kCGWindowName as String] as? String ?? ""
-
-            // Screenshot selection only needs CG window ids and geometry. Avoid the full window service here:
-            // it may enrich untitled helper windows through AX, which is expensive for Electron/Tauri apps.
-            return ServiceWindowInfo(
-                windowID: windowID,
-                title: title,
-                bounds: bounds,
-                isMinimized: bounds.origin.x < -10000 || bounds.origin.y < -10000,
-                isMainWindow: index == 0,
-                windowLevel: layer,
-                alpha: alpha,
-                index: index,
-                layer: layer,
-                isOnScreen: isOnScreen,
-                sharingState: sharingState
-            )
-        }
-
-        return windows.isEmpty ? nil : windows
-    }
-
-    private static func bounds(from value: Any?) -> CGRect? {
-        // CoreGraphics window dictionaries are CF-backed; accepting NSNumber plus native Swift
-        // numeric bridges keeps this fast path resilient across OS releases.
-        guard let dictionary = value as? [String: Any],
-              let x = self.cgFloatValue(dictionary["X"]),
-              let y = self.cgFloatValue(dictionary["Y"]),
-              let width = self.cgFloatValue(dictionary["Width"]),
-              let height = self.cgFloatValue(dictionary["Height"])
-        else {
-            return nil
-        }
-        return CGRect(x: x, y: y, width: width, height: height)
-    }
-
-    private static func pidValue(_ value: Any?) -> pid_t? {
-        self.intValue(value).map(pid_t.init)
-    }
-
-    private static func intValue(_ value: Any?) -> Int? {
-        if let int = value as? Int {
-            return int
-        }
-        return (value as? NSNumber)?.intValue
-    }
-
-    private static func cgFloatValue(_ value: Any?) -> CGFloat? {
-        if let cgFloat = value as? CGFloat {
-            return cgFloat
-        }
-        if let double = value as? Double {
-            return CGFloat(double)
-        }
-        return (value as? NSNumber).map { CGFloat($0.doubleValue) }
-    }
-
-    private static func boolValue(_ value: Any?) -> Bool? {
-        if let bool = value as? Bool {
-            return bool
-        }
-        return (value as? NSNumber)?.boolValue
-    }
-
-    private func selectWindow(from windows: [ServiceWindowInfo], appIdentifier: String) throws -> ServiceWindowInfo? {
-        if let explicitIndex = self.windowIndex {
-            guard let explicitWindow = windows.first(where: { $0.index == explicitIndex }) else {
-                throw PeekabooError.windowNotFound(criteria: "No window at index \(explicitIndex)")
-            }
-            guard WindowFiltering.isRenderable(explicitWindow) else {
-                throw PeekabooError.windowNotFound(criteria: "Window \(explicitIndex) is not shareable")
-            }
-            return explicitWindow
-        }
-
-        let filtered = self.filterRenderableWindows(windows, appIdentifier: appIdentifier)
-
-        guard !filtered.isEmpty else {
-            throw PeekabooError.windowNotFound(criteria: "No shareable windows for \(appIdentifier)")
-        }
-
-        if let title = self.windowTitle {
-            guard let match = filtered.first(where: { window in
-                window.title.localizedCaseInsensitiveContains(title)
-            }) else {
-                throw PeekabooError.windowNotFound(
-                    criteria: "title containing '\(title)' in \(appIdentifier)"
-                )
-            }
-            return match
-        }
-
-        if let preferred = Self.preferredWindow(from: filtered) {
-            return preferred
-        }
-
-        return filtered.first
+        return .automatic
     }
 
     private func filterRenderableWindows(

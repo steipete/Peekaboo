@@ -1,13 +1,13 @@
 import CoreGraphics
 import Foundation
 
-public enum CaptureVisualizerMode: Sendable, Codable {
+public enum CaptureVisualizerMode: Sendable, Codable, Equatable {
     case screenshotFlash
     case watchCapture
 }
 
 /// Preferred output scale for captures
-public enum CaptureScalePreference: Sendable, Codable {
+public enum CaptureScalePreference: Sendable, Codable, Equatable {
     /// Store images at logical 1x resolution (default)
     case logical1x
     /// Store images at the display's native pixel scale (e.g., 2x on Retina)

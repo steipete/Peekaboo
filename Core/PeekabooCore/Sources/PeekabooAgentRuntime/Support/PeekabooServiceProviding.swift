@@ -5,6 +5,7 @@ import PeekabooAutomation
 @MainActor
 public protocol PeekabooServiceProviding: AnyObject, Sendable {
     var logging: any LoggingServiceProtocol { get }
+    var desktopObservation: any DesktopObservationServiceProtocol { get }
     var screenCapture: any ScreenCaptureServiceProtocol { get }
     var applications: any ApplicationServiceProtocol { get }
     var automation: any UIAutomationServiceProtocol { get }
@@ -27,6 +28,13 @@ public protocol PeekabooServiceProviding: AnyObject, Sendable {
 
 @MainActor
 extension PeekabooServiceProviding {
+    public var desktopObservation: any DesktopObservationServiceProtocol {
+        DesktopObservationService(
+            screenCapture: self.screenCapture,
+            automation: self.automation,
+            applications: self.applications)
+    }
+
     /// Install this service container as the default provider for MCP tool contexts and registry helpers.
     public func installAgentRuntimeDefaults() {
         MCPToolContext.configureDefaultContext { [unowned services = self] in

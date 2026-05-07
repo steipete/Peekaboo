@@ -298,6 +298,10 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func performCaptureWithDetection() async throws -> CaptureAndDetectionResult {
+        if let observationResult = try await self.performObservationCaptureWithDetectionIfPossible() {
+            return observationResult
+        }
+
         let captureContext = try await self.resolveCaptureContext()
         let captureResult = captureContext.captureResult
 
@@ -380,6 +384,173 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             elements: detectionResult.elements,
             metadata: detectionResult.metadata
         )
+    }
+
+    private func performObservationCaptureWithDetectionIfPossible() async throws -> CaptureAndDetectionResult? {
+        guard let target = try self.observationTargetForCaptureWithDetectionIfPossible() else {
+            return nil
+        }
+
+        self.logger.verbose("Using desktop observation pipeline", category: "Capture", metadata: [
+            "target": self.observationTargetDescription(target)
+        ])
+        let mode = self.determineMode()
+        self.logger.operationStart("capture_phase", metadata: ["mode": mode.rawValue])
+
+        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+            target: target,
+            capture: DesktopCaptureOptions(
+                engine: .auto,
+                scale: .logical1x,
+                visualizerMode: .screenshotFlash
+            ),
+            detection: DesktopDetectionOptions(mode: .none),
+            output: DesktopObservationOutputOptions()
+        ))
+
+        self.logger.operationComplete("capture_phase", metadata: [
+            "mode": mode.rawValue
+        ])
+
+        self.logObservationSpans(observation.timings)
+
+        self.logger.startTimer("file_write")
+        let outputPath = try self.saveScreenshot(observation.capture.imageData)
+        self.logger.stopTimer("file_write")
+
+        let windowContext = self.windowContext(for: observation)
+        let detectionResult = try await self.detectElements(
+            imageData: observation.capture.imageData,
+            windowContext: windowContext
+        )
+
+        let resultWithPath = ElementDetectionResult(
+            snapshotId: detectionResult.snapshotId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: detectionResult.metadata
+        )
+
+        try await self.services.snapshots.storeScreenshot(
+            SnapshotScreenshotRequest(
+                snapshotId: detectionResult.snapshotId,
+                screenshotPath: outputPath,
+                applicationBundleId: detectionResult.metadata.windowContext?.applicationBundleId
+                    ?? observation.capture.metadata.applicationInfo?.bundleIdentifier,
+                applicationProcessId: detectionResult.metadata.windowContext?.applicationProcessId
+                    ?? observation.capture.metadata.applicationInfo.map { Int32($0.processIdentifier) },
+                applicationName: detectionResult.metadata.windowContext?.applicationName,
+                windowTitle: detectionResult.metadata.windowContext?.windowTitle,
+                windowBounds: detectionResult.metadata.windowContext?.windowBounds
+            )
+        )
+
+        try await self.services.snapshots.storeDetectionResult(
+            snapshotId: detectionResult.snapshotId,
+            result: resultWithPath
+        )
+
+        return CaptureAndDetectionResult(
+            snapshotId: detectionResult.snapshotId,
+            screenshotPath: outputPath,
+            elements: detectionResult.elements,
+            metadata: detectionResult.metadata
+        )
+    }
+
+    private func observationTargetForCaptureWithDetectionIfPossible() throws -> DesktopObservationTargetRequest? {
+        guard !self.menubar else {
+            return nil
+        }
+
+        switch self.determineMode() {
+        case .window:
+            if let windowId {
+                return .windowID(CGWindowID(windowId))
+            }
+
+            if let appValue = self.app?.lowercased() {
+                switch appValue {
+                case "menubar":
+                    return nil
+                case "frontmost":
+                    return .frontmost
+                default:
+                    break
+                }
+            }
+
+            if let pid, self.app == nil {
+                return .pid(pid, window: self.seeWindowSelection)
+            }
+
+            if self.app != nil || self.pid != nil {
+                return try .app(identifier: self.resolveApplicationIdentifier(), window: self.seeWindowSelection)
+            }
+
+            return nil
+
+        case .frontmost:
+            return .frontmost
+
+        case .screen, .multi, .area:
+            return nil
+        }
+    }
+
+    private var seeWindowSelection: WindowSelection {
+        if let windowTitle {
+            return .title(windowTitle)
+        }
+        return .automatic
+    }
+
+    private func windowContext(for observation: DesktopObservationResult) -> WindowContext {
+        let capture = observation.capture
+        let targetContext = observation.target.detectionContext
+        return WindowContext(
+            applicationName: targetContext?.applicationName ?? capture.metadata.applicationInfo?.name,
+            applicationBundleId: targetContext?.applicationBundleId ?? capture.metadata.applicationInfo?
+                .bundleIdentifier,
+            applicationProcessId: targetContext?.applicationProcessId ?? capture.metadata.applicationInfo?
+                .processIdentifier,
+            windowTitle: targetContext?.windowTitle ?? capture.metadata.windowInfo?.title,
+            windowID: targetContext?.windowID ?? capture.metadata.windowInfo?.windowID,
+            windowBounds: targetContext?.windowBounds ?? capture.metadata.windowInfo?.bounds,
+            shouldFocusWebContent: !self.noWebFocus
+        )
+    }
+
+    private func observationTargetDescription(_ target: DesktopObservationTargetRequest) -> String {
+        switch target {
+        case let .screen(index):
+            "screen:\(index.map(String.init) ?? "primary")"
+        case .allScreens:
+            "all-screens"
+        case .frontmost:
+            "frontmost"
+        case let .app(identifier, _):
+            "app:\(identifier)"
+        case let .pid(pid, _):
+            "pid:\(pid)"
+        case let .windowID(windowID):
+            "window-id:\(windowID)"
+        case let .area(rect):
+            "area:\(Int(rect.origin.x)),\(Int(rect.origin.y)),\(Int(rect.width))x\(Int(rect.height))"
+        case .menubar:
+            "menubar"
+        case .menubarPopover:
+            "menubar-popover"
+        }
+    }
+
+    private func logObservationSpans(_ timings: ObservationTimings) {
+        for span in timings.spans {
+            self.logger.verbose("Desktop observation span", category: "Performance", metadata: [
+                "span": span.name,
+                "duration_ms": Int(span.durationMS.rounded()),
+            ])
+        }
     }
 }
 
