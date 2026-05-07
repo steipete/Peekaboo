@@ -113,6 +113,7 @@ Landed:
 - `peekaboo window close`, `minimize`, and `maximize` implementations now live in `WindowCommand+State`.
 - `peekaboo window move`, `resize`, and `set-bounds` implementations now live in `WindowCommand+Geometry`.
 - `peekaboo window focus` and `list` implementations now live in `WindowCommand+Focus` and `WindowCommand+List`, leaving `WindowCommand.swift` as the command shell.
+- Interaction snapshot invalidation now lives in `InteractionObservationInvalidator`, leaving `InteractionObservationContext` focused on snapshot selection and refresh.
 
 Still incomplete:
 
@@ -161,7 +162,8 @@ ImageCommand.swift: 188 lines
 ImageCommand+CapturePipeline.swift: 337 lines
 ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
-InteractionObservationContext.swift: 370 lines
+InteractionObservationContext.swift: 284 lines
+InteractionObservationInvalidator.swift: 91 lines
 InteractionTargetPointResolver.swift: 156 lines
 ClickCommand.swift: 428 lines
 ClickCommand+FocusVerification.swift: 148 lines
