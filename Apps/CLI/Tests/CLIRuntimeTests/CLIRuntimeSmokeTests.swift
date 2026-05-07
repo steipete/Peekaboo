@@ -80,6 +80,61 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo clipboard get JSON includes exact text`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let text = "Peekaboo exact clipboard text \(UUID().uuidString)"
+
+        try await Self.withSavedClipboard {
+            let setResult = try await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "set",
+                "--text",
+                text,
+                "--json",
+                "--no-remote"
+            ])
+            #expect(setResult.status == .exited(0))
+
+            let getResult = try await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "get",
+                "--json",
+                "--no-remote"
+            ])
+            #expect(getResult.status == .exited(0))
+            let payload = try Self.jsonDataPayload(from: getResult.standardOutput)
+            #expect(payload["text"] as? String == text)
+            #expect(payload["textPreview"] as? String == text)
+
+            let stdoutJSONResult = try await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "get",
+                "--output",
+                "-",
+                "--json",
+                "--no-remote"
+            ])
+            #expect(stdoutJSONResult.status == .exited(0))
+            let stdoutJSONPayload = try Self.jsonDataPayload(from: stdoutJSONResult.standardOutput)
+            #expect(stdoutJSONPayload["text"] as? String == text)
+
+            let stdoutResult = try await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "get",
+                "--output",
+                "-",
+                "--no-remote"
+            ])
+            #expect(stdoutResult.status == .exited(0))
+            #expect(stdoutResult.standardOutput == text)
+        }
+    }
+
+    @Test
     func `peekaboo mcp help renders without starting server`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["mcp", "--help"])
@@ -130,5 +185,59 @@ struct CLIRuntimeSmokeTests {
 
         let exitedSuccessfully = result.status == .exited(0)
         #expect(exitedSuccessfully == success)
+    }
+
+    private static func withSavedClipboard(_ body: () async throws -> Void) async throws {
+        let slot = "cli-runtime-smoke-\(UUID().uuidString)"
+        let saveResult = try await TestChildProcess.runPeekaboo([
+            "clipboard",
+            "--action",
+            "save",
+            "--slot",
+            slot,
+            "--json",
+            "--no-remote"
+        ])
+
+        guard saveResult.status == .exited(0) else {
+            Issue.record("Unable to save current clipboard before smoke test; skipping clipboard mutation check.")
+            return
+        }
+
+        do {
+            try await body()
+            _ = try await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "restore",
+                "--slot",
+                slot,
+                "--json",
+                "--no-remote"
+            ])
+        } catch {
+            _ = try? await TestChildProcess.runPeekaboo([
+                "clipboard",
+                "--action",
+                "restore",
+                "--slot",
+                slot,
+                "--json",
+                "--no-remote"
+            ])
+            throw error
+        }
+    }
+
+    private static func jsonDataPayload(from output: String) throws -> [String: Any] {
+        let data = Data(output.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              json["success"] as? Bool == true,
+              let payload = json["data"] as? [String: Any] else {
+            Issue.record("Expected successful JSON envelope.")
+            return [:]
+        }
+        return payload
     }
 }

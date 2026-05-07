@@ -120,13 +120,16 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             throw ValidationError("Clipboard is empty")
         }
 
-        if let output {
-            if output == "-" {
-                FileHandle.standardOutput.write(result.data)
-            } else {
-                let url = URL(fileURLWithPath: output)
-                try result.data.write(to: url)
-            }
+        let text = result.textPreview.flatMap { _ in String(data: result.data, encoding: .utf8) }
+        let dataBase64 = self.jsonOutput && self.output == "-" && text == nil
+            ? result.data.base64EncodedString()
+            : nil
+
+        if let output, output != "-" {
+            let url = URL(fileURLWithPath: output)
+            try result.data.write(to: url)
+        } else if output == "-", !self.jsonOutput {
+            FileHandle.standardOutput.write(result.data)
         }
 
         let payload = ClipboardCommandResult(
@@ -135,11 +138,16 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: output,
             slot: nil,
+            text: text,
             textPreview: result.textPreview,
+            dataBase64: dataBase64,
             verification: nil
         )
 
         self.output(payload) {
+            if output == "-" {
+                return
+            }
             if let text = String(data: result.data, encoding: .utf8) {
                 print(text)
             } else if let output {
@@ -162,7 +170,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: nil,
             slot: nil,
+            text: nil,
             textPreview: result.textPreview,
+            dataBase64: nil,
             verification: verification
         )
 
@@ -185,7 +195,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: path,
             slot: nil,
+            text: nil,
             textPreview: result.textPreview,
+            dataBase64: nil,
             verification: verification
         )
 
@@ -203,7 +215,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: nil,
             filePath: nil,
             slot: nil,
+            text: nil,
             textPreview: nil,
+            dataBase64: nil,
             verification: nil
         )
         self.output(payload) {
@@ -220,7 +234,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: nil,
             filePath: nil,
             slot: slotName,
+            text: nil,
             textPreview: nil,
+            dataBase64: nil,
             verification: nil
         )
         self.output(payload) {
@@ -237,7 +253,9 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             size: result.data.count,
             filePath: nil,
             slot: slotName,
+            text: nil,
             textPreview: result.textPreview,
+            dataBase64: nil,
             verification: nil
         )
         self.output(payload) {
@@ -358,7 +376,9 @@ struct ClipboardCommandResult: Codable {
     let size: Int?
     let filePath: String?
     let slot: String?
+    let text: String?
     let textPreview: String?
+    let dataBase64: String?
     let verification: ClipboardVerifyResult?
 }
 
