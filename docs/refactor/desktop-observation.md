@@ -228,6 +228,7 @@ Landed:
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
 - `TypeService` now keeps target resolution, typing cadence, and special-key synthesis in focused helper files; special-key synthesis now honors the documented `SpecialKey` raw values for keypad Enter, forward delete, caps lock, clear, and help.
+- Gesture service internals now keep path generation and humanized mouse-movement synthesis in a focused companion while swipe/drag/move orchestration stays in the primary service.
 - `InMemorySnapshotManager` now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files; writes now enforce the LRU cap immediately and artifact cleanup also applies to pruned entries.
 - Agent desktop context gathering now reads focused application/window state, cursor position, and recent apps through application/window/automation service boundaries instead of direct `NSWorkspace`/CoreGraphics event/window scans.
 - MCP app cycling and move-center resolution now use injected automation/screen services instead of direct AXorcist/AppKit calls.
