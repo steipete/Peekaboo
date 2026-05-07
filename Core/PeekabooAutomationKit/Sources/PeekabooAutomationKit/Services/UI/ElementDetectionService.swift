@@ -339,8 +339,15 @@ extension ElementDetectionService {
                 let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
                 self.logger.notice("Resolved window via CGWindowID \(windowID): '\(title)' for \(identifier)")
 
-                await self.focusWindow(withID: windowID, appName: identifier)
-                let window = self.focusedWindowIfMatches(app: app) ?? handle.element
+                let window: Element
+                if let focused = self.focusedWindowIfMatches(app: app),
+                   self.windowIdentityService.getWindowID(from: focused).map(Int.init) == windowID
+                {
+                    window = focused
+                } else {
+                    await self.focusWindow(withID: windowID, appName: identifier)
+                    window = self.focusedWindowIfMatches(app: app) ?? handle.element
+                }
 
                 let subrole = window.subrole() ?? ""
                 let isDialogRole = ["AXDialog", "AXSystemDialog", "AXSheet"].contains(subrole)

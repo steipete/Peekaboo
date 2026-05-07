@@ -37,6 +37,7 @@
 - Menu bar listing is faster by avoiding redundant accessibility work.
 - Dialog discovery and visualizer dispatch now fail fast when their target UI is unavailable instead of waiting through slow default paths.
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
+- `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

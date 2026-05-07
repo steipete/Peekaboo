@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Performance
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
+- `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
 
 ## [2.0.2] - 2025-07-03
 
