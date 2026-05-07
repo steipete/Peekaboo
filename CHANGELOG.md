@@ -75,6 +75,7 @@
 - Core service registry now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - Window tool formatting now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
 - Space management utilities now isolate private CGS API declarations and public Space models from service orchestration.
+- Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
