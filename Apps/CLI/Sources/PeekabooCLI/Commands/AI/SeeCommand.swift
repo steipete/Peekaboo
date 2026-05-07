@@ -194,10 +194,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func runImpl(startTime: Date, logger: Logger) async throws {
         do {
-            // Check permissions
-            logger.verbose("Checking screen recording permissions", category: "Permissions")
-            try await requireScreenRecordingPermission(services: self.services)
-            logger.verbose("Screen recording permission granted", category: "Permissions")
+            // ScreenCaptureService performs the authoritative permission check inside each capture path.
+            // Avoid duplicating that TCC probe here; `see` is often called in latency-sensitive loops.
 
             // Perform capture and element detection
             logger.verbose("Starting capture and detection phase", category: "Capture")
