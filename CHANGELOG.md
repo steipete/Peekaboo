@@ -103,6 +103,7 @@
 - Split watch-capture result metadata, stats, options snapshots, and no-motion warnings into `WatchCaptureResultBuilder`.
 - Split watch-capture live/video frame acquisition, region-target capture, and resolution capping into `WatchCaptureFrameProvider`.
 - Split watch-capture active/idle hysteresis policy into `WatchCaptureActivityPolicy` and removed the unused private motion-interval accumulator.
+- Split `WindowManagementService` target resolution, title search, and close-presence polling into focused extension files.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.

@@ -108,6 +108,7 @@ Landed:
 - Watch capture result assembly now lives in `WatchCaptureResultBuilder`, keeping stats, options snapshots, no-motion warnings, and result metadata out of session orchestration.
 - Watch capture frame acquisition now lives in `WatchCaptureFrameProvider`, keeping live/video source selection, region-target capture, and resolution capping out of session orchestration.
 - Watch capture active/idle hysteresis now lives in `WatchCaptureActivityPolicy`; the unused private motion-interval accumulator was removed from session state.
+- Window operation orchestration now stays in `WindowManagementService`; target resolution, title search, and close-presence polling moved into dedicated service extension files.
 
 Still incomplete:
 
@@ -132,7 +133,10 @@ WatchCaptureRegionValidator.swift: 31 lines
 WatchCaptureResultBuilder.swift: 96 lines
 WatchCaptureFrameProvider.swift: 97 lines
 WatchCaptureActivityPolicy.swift: 18 lines
-WindowManagementService.swift: 819 lines
+WindowManagementService.swift: 406 lines
+WindowManagementService+Resolution.swift: 197 lines
+WindowManagementService+Search.swift: 158 lines
+WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
 WindowCommand.swift: 1221 lines
