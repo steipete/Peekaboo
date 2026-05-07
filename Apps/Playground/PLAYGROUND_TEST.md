@@ -1,5 +1,34 @@
 # Playground Tool Test Log
 
+## 2026-05-07
+
+### Live verification after desktop-observation refactor
+- **Setup**:
+  - Built the Playground with `swift build --package-path Apps/Playground`.
+  - Confirmed permissions with `./Apps/CLI/.build/debug/peekaboo permissions status --json`.
+  - Targeted only the owned Playground app (`boo.peekaboo.playground.debug`).
+- **Capture / observation**:
+  - `./Apps/CLI/.build/debug/peekaboo list windows --app boo.peekaboo.playground.debug --json`
+  - `./Apps/CLI/.build/debug/peekaboo image --app boo.peekaboo.playground.debug --window-title "Click Fixture" --path .artifacts/live-verify/current/click-fixture.png --json`
+  - `./Apps/CLI/.build/debug/peekaboo see --app boo.peekaboo.playground.debug --window-title "Click Fixture" --json`
+  - Result: window enumeration, image capture, and AX detection succeeded. The host screen currently reports `scaleFactor: 1`, so `--retina` and native `screencapture -l` both produced `1200x832` for the Click Fixture; this machine cannot reproduce a 2x Retina delta.
+- **Interactions verified through Playground OSLog**:
+  - Click: `peekaboo click --snapshot <id> --on elem_7 --app boo.peekaboo.playground.debug --json` logged `Single click on 'Single Click' button`.
+  - Type/press/hotkey: click `basic-text-field`, `peekaboo type "peekaboo typed 123" --clear`, `peekaboo press return`, then `peekaboo hotkey --keys "cmd,a"` and type again. Logs confirmed text changes and submit.
+  - Scroll: `peekaboo scroll --direction down --amount 6 --snapshot <id> --on elem_6` logged a vertical offset change.
+  - Move: `peekaboo move --snapshot <id> --on elem_30 --duration 200 --steps 8` logged `Mouse entered probe area` and `Mouse moved over probe area`.
+  - Drag: `peekaboo drag --from elem_8 --to elem_21 --snapshot <id> --duration 500 --steps 20` logged Item A dragging, hover over zones, and drop in zone3.
+  - Swipe: `peekaboo swipe --from elem_112 --to elem_116 --snapshot <id> --duration 500 --steps 18` logged `Swipe right`.
+  - Dialog: opened the Dialog Fixture with `peekaboo hotkey --keys "cmd,ctrl,8"`, clicked `Show Alert`, `peekaboo dialog list --app boo.peekaboo.playground.debug --json`, then `peekaboo dialog click --button OK --app boo.peekaboo.playground.debug --json`. Logs confirmed alert dismissal.
+  - Clipboard: `peekaboo clipboard --action save --slot codex-live-verify`, set/get/verify text, then `restore` returned the prior clipboard payload.
+- **Performance sample**:
+  - `Apps/Playground/scripts/peekaboo-perf.sh --name list-windows-playground --runs 8 --log-root .artifacts/live-verify/perf --bin ./Apps/CLI/.build/debug/peekaboo -- list windows --app boo.peekaboo.playground.debug --json-output`: mean wall `0.232s`, p95 `0.275s`, no failures.
+  - `Apps/Playground/scripts/peekaboo-perf.sh --name see-click-fixture --runs 6 --log-root .artifacts/live-verify/perf --bin ./Apps/CLI/.build/debug/peekaboo -- see --app boo.peekaboo.playground.debug --window-title "Click Fixture" --json-output`: mean wall `1.165s`, p95 `1.254s`, no failures.
+  - `Apps/Playground/scripts/peekaboo-perf.sh --name image-click-fixture --runs 6 --log-root .artifacts/live-verify/perf --bin ./Apps/CLI/.build/debug/peekaboo -- image --app boo.peekaboo.playground.debug --window-title "Click Fixture" --path .artifacts/live-verify/perf/image-click-fixture.png --json-output`: mean wall `1.257s`, p95 `1.403s`, no failures.
+- **Notes**:
+  - `move --duration` is milliseconds; `--duration 0.2` correctly fails as an integer parse error, while `--duration 200` succeeds.
+  - Concurrent `see`/`image` samples stayed green after the shared desktop-observation process gate fix.
+
 ## 2025-11-16
 
 ### ✅ `see` command – initial Playground capture failure (resolved)
