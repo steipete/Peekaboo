@@ -289,6 +289,9 @@ extension ImageCommand {
         case .background:
             return
         case .auto:
+            if await self.hasVisibleCaptureWindow(appIdentifier: appIdentifier) {
+                return
+            }
             if self.windowTitle == nil, await self.isAlreadyFrontmost(appIdentifier: appIdentifier) {
                 return
             }
@@ -309,6 +312,34 @@ extension ImageCommand {
                 options: options,
                 services: self.services
             )
+        }
+    }
+
+    private func hasVisibleCaptureWindow(appIdentifier: String) async -> Bool {
+        guard let app = try? await self.services.applications.findApplication(identifier: appIdentifier) else {
+            return false
+        }
+
+        let lookupIdentifier = app.bundleIdentifier ?? app.name
+        guard let response = try? await self.services.applications.listWindows(for: lookupIdentifier, timeout: 1) else {
+            return false
+        }
+
+        // Auto focus should not block fast background captures when the app already exposes
+        // a renderable window; explicit foreground mode still opts into forced activation.
+        let candidates = ObservationTargetResolver.captureCandidates(from: response.data.windows)
+        guard !candidates.isEmpty else {
+            return false
+        }
+
+        guard let windowTitle = self.windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !windowTitle.isEmpty
+        else {
+            return true
+        }
+
+        return candidates.contains {
+            $0.title.localizedCaseInsensitiveContains(windowTitle)
         }
     }
 

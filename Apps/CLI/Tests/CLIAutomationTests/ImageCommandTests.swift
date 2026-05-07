@@ -815,6 +815,50 @@ struct ImageCommandTests {
     }
 
     @Test(.tags(.imageCapture))
+    func `App capture auto focus skips activation when visible window exists`() async throws {
+        let appName = "SwiftPM GUI"
+        let mainWindow = ServiceWindowInfo(
+            windowID: 13665,
+            title: "SwiftPM GUI",
+            bounds: CGRect(x: 200, y: 120, width: 450, height: 732),
+            isMainWindow: true,
+            index: 0
+        )
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 6767,
+            bundleIdentifier: nil,
+            name: appName,
+            windowCount: 1
+        )
+
+        let captureService = StubScreenCaptureService(permissionGranted: true)
+        var recordedWindowID: CGWindowID?
+        captureService.captureWindowByIdHandler = { windowID, _ in
+            recordedWindowID = windowID
+            return Self.makeCaptureResult(app: appInfo, window: mainWindow)
+        }
+
+        let services = TestServicesFactory.makePeekabooServices(
+            applications: StubApplicationService(applications: [appInfo], windowsByApp: [appName: [mainWindow]]),
+            windows: StubWindowService(windowsByApp: [appName: [mainWindow]]),
+            screenCapture: captureService
+        )
+
+        let path = Self.makeTempCapturePath("swiftpm-gui.png")
+        var command = try ImageCommand.parse(["--app", appName, "--path", path])
+
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: services
+        )
+
+        try await command.run(using: runtime)
+
+        #expect(recordedWindowID == CGWindowID(mainWindow.windowID))
+        try? FileManager.default.removeItem(atPath: path)
+    }
+
+    @Test(.tags(.imageCapture))
     func `Skips windows marked non-shareable`() async throws {
         let appName = "Console"
         let hidden = ServiceWindowInfo(

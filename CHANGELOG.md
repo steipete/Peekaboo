@@ -114,6 +114,7 @@
 - Split `peekaboo move` result and movement-resolution types into a focused types file.
 - Split `peekaboo move` Commander wiring and cursor movement parameter policy into focused support files.
 - Split drag destination-app/Dock AX lookup into a focused CLI helper, removed stale platform imports from `swipe`, and made `move --center` use the shared screen service instead of querying AppKit in the command shell.
+- Made `peekaboo image --app` skip auto-focus when a renderable target window is already visible, fixing SwiftPM GUI app captures that timed out during activation and shaving app capture wall time in live TextEdit/Chrome checks.
 - Split `peekaboo type` text escape processing and result DTOs into focused support files.
 - Shared drag/swipe element-or-coordinate point resolution through the common interaction target resolver and split gesture result DTOs into focused support files.
 - Split `peekaboo click` validation/helpers and Commander wiring into focused support files.

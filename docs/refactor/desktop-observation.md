@@ -119,6 +119,7 @@ Landed:
 - `peekaboo move` result and movement-resolution types now live in `MoveCommand+Types`.
 - `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
 - Drag destination-app/Dock AX lookup now lives in a focused CLI helper, `swipe` no longer carries stale platform imports, and `move --center` uses the shared screen service instead of command-local AppKit.
+- `image --app` auto focus now skips forced activation when a renderable target window already exists, fixing SwiftPM GUI captures that timed out while activation never completed.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
@@ -1071,6 +1072,36 @@ Record:
 - interactable count;
 - target window ID/title;
 - screenshot dimensions.
+
+Live verification, May 7, 2026:
+
+```bash
+./Apps/CLI/.build/debug/peekaboo permissions status --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app TextEdit --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app "Google Chrome" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app PeekabooInspector --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13441 --path .artifacts/live-e2e/2026-05-07T1118Z/textedit-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app TextEdit --path .artifacts/live-e2e/2026-05-07T1118Z/textedit-app-fixed.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 12438 --path .artifacts/live-e2e/2026-05-07T1118Z/chrome-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T1118Z/chrome-app-fixed.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13665 --path .artifacts/live-e2e/2026-05-07T1118Z/inspector-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app PeekabooInspector --path .artifacts/live-e2e/2026-05-07T1118Z/inspector-app-fixed.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --window-id 13441 --path .artifacts/live-e2e/2026-05-07T1118Z/textedit-see-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path .artifacts/live-e2e/2026-05-07T1118Z/textedit-see-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --window-id 12438 --path .artifacts/live-e2e/2026-05-07T1118Z/chrome-see-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T1118Z/chrome-see-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --window-id 13665 --path .artifacts/live-e2e/2026-05-07T1118Z/inspector-see-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app PeekabooInspector --path .artifacts/live-e2e/2026-05-07T1118Z/inspector-see-app.png --json --no-remote
+```
+
+Results:
+
+- permissions granted: Screen Recording, Accessibility, Event Synthesizing;
+- display scale: 1x, so Retina 2x behavior remains not reproducible on this host;
+- TextEdit `--app` and `--window-id` captured the same `656x422` window; app image wall time improved from `0.72s` to `0.57s`;
+- Chrome `--app` and `--window-id` captured the same `1672x1297` window; app image wall time improved from `0.75s` to `0.55s`;
+- PeekabooInspector `image --window-id 13665` captured `450x732` in `0.39s`; before the fix, `image --app PeekabooInspector` timed out after `3.30s`, and after the fix it captured the same `450x732` window in `0.57s`;
+- `see --app` and `see --window-id` succeeded for TextEdit, Chrome, and PeekabooInspector with matching screenshot dimensions; Inspector `see --app` recorded `84` elements, `74` interactables, and desktop observation spans `state.snapshot=93ms`, `target.resolve=30ms`, `capture.window=155ms`, `detection.ax=129ms`.
 
 ### Performance Budgets
 
