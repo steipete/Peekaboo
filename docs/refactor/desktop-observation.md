@@ -89,6 +89,27 @@ Still incomplete:
 - Interaction commands reusing observation state instead of repeating lookup work.
 - Optional module extraction after boundaries are stable.
 
+Current size pressure:
+
+```text
+ScreenCaptureService.swift: 494 lines
+ScreenCaptureService+Support.swift: 610 lines
+WatchCaptureSession.swift: 1091 lines
+ElementDetectionService.swift: 207 lines
+SeeCommand.swift: 1169 lines
+ImageCommand.swift: 681 lines
+```
+
+Current command-boundary audit:
+
+- CLI command sources no longer import `ScreenCaptureKit`.
+- `see` all-screens capture no longer enumerates `SCShareableContent` directly.
+- `SeeCommand.swift`, `SeeCommand+CapturePipeline.swift`, and `ImageCommand.swift` still import `AppKit` for `NSImage`, `NSBitmapImageRep`, `CGWindowID`, or image encoding glue; remove this by moving file/image helpers into command-support or observation output adapters.
+- `SeeCommand+MenuBarGeometry.swift` and `SeeCommand+MenuBarCandidates.swift` still use `NSScreen` and `CGWindowListCopyWindowInfo`; migrate remaining menu-bar geometry/candidate work into observation/menu services, then delete these command helpers.
+- `ListCommand.swift` imports `AppKit`; audit whether it only needs model types and move platform queries behind services where practical.
+
+Near-term rule: command code may mention `CGWindowID` as a user-facing identifier, but must not enumerate windows, displays, or ScreenCaptureKit objects directly.
+
 ## Non-Negotiable Invariants
 
 - Equivalent targets resolve the same way in CLI and MCP.
@@ -469,6 +490,8 @@ Done when:
 
 - scale, engine, fallback, and permission behavior have pure tests;
 - `ScreenCaptureService.swift` is under about 500 lines;
+- `ScreenCaptureService+Support.swift` is split by responsibility and no single capture helper file exceeds about 500 lines;
+- watch/session capture has a dedicated follow-up plan before `WatchCaptureSession.swift` is split, because it is long-lived streaming behavior rather than single-shot observation;
 - no command imports `ScreenCaptureKit`;
 - `image --retina` and non-retina output can be reasoned about without live display capture.
 
@@ -588,11 +611,23 @@ Purpose: finish the plan/operator split and remove residual command capture poli
 
 Work:
 
-- in progress: audit all command imports for `ScreenCaptureKit`, capture-only `AppKit`, and direct CoreGraphics window work;
-- finish splitting capture output helpers;
-- ensure forced engine and fallback behavior is covered;
-- add diagnostics for output scale, native scale, final pixel size, engine, and fallback reason;
-- keep `ScreenCaptureService` under target size.
+- done: remove command-local ScreenCaptureKit display enumeration from `see` all-screens capture;
+- done: verify CLI sources no longer import `ScreenCaptureKit`;
+- in progress: audit capture-facing command imports for capture-only `AppKit`, `NSScreen`, and direct CoreGraphics window work;
+- move remaining command image encoding and pixel-size helpers behind observation output or command-support adapters;
+- move remaining `see` menu-bar candidate and geometry helpers behind observation/menu services;
+- finish splitting capture output helpers from `ScreenCaptureService+Support.swift`;
+- ensure forced engine and fallback behavior is covered in pure tests;
+- add diagnostics for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
+- keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
+
+Recommended order:
+
+1. Convert `ImageCommand` and `SeeCommand+CapturePipeline` image/file helper use to service-owned helpers so command files can drop capture-only `AppKit`.
+2. Move `SeeCommand+MenuBarCandidates` remaining CGWindow/NSScreen candidate work into observation, preserving current popover diagnostics.
+3. Split `ScreenCaptureService+Support.swift` into focused scale, timeout/shareable-content, fallback, and result-metadata helpers.
+4. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
+5. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
 
 Gate:
 
