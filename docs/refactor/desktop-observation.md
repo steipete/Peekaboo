@@ -85,6 +85,7 @@ Landed:
 - `peekaboo see` builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see` support types, output rendering, and screen-capture helpers are split out of the primary command file.
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
+- `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
 
 Still incomplete:
 
@@ -111,7 +112,9 @@ SeeCommand+Output.swift: 204 lines
 SeeCommand+Types.swift: 204 lines
 SeeCommand+Screens.swift: 149 lines
 SeeCommand+ObservationRequest.swift: 140 lines
-ImageCommand.swift: 595 lines
+ImageCommand.swift: 189 lines
+ImageCommand+CapturePipeline.swift: 336 lines
+ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 ```
 
@@ -871,7 +874,7 @@ Work:
 - started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`, `SeeCommand+ObservationRequest.swift`);
 - started: split large `see` support into focused files (`SeeCommand+Types.swift`, `SeeCommand+Output.swift`, `SeeCommand+ScreenCaptureBridge.swift`, `SeeCommand+Screens.swift`);
 - done: move the remaining legacy capture/detection fallback body out of `SeeCommand.swift` into `SeeCommand+DetectionPipeline.swift`;
-- continue: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
+- done: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
 - archive stale refactor notes;
 - update command docs for changed diagnostics/timings;
 - only then consider module extraction.

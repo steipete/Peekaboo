@@ -49,6 +49,7 @@
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
 - `peekaboo image` now builds desktop observation requests through a dedicated command-support adapter.
+- `peekaboo image` capture orchestration, output models, filename planning, and focus helpers are now split out of the main command file.
 - `peekaboo see` now builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see` command support types, output rendering, and screen capture helpers are now split out of the main command file.
 - `peekaboo see` legacy capture/detection fallback is now isolated in a dedicated command-support pipeline.
