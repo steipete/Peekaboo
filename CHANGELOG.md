@@ -107,6 +107,7 @@
 - Split `peekaboo window` response models and Commander binding/conformance wiring into a focused command binding file.
 - Split `peekaboo window close`, `minimize`, and `maximize` implementations into a focused state-action file.
 - Split `peekaboo window move`, `resize`, and `set-bounds` implementations into a focused geometry-action file.
+- Split `peekaboo window focus` and `list` implementations into focused command files, leaving the main window command as a thin shell.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.

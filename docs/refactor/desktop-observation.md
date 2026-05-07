@@ -112,6 +112,7 @@ Landed:
 - `peekaboo window` response models and Commander binding/conformance wiring now live in `WindowCommand+Bindings`, leaving the primary command file closer to behavior-only subcommands.
 - `peekaboo window close`, `minimize`, and `maximize` implementations now live in `WindowCommand+State`.
 - `peekaboo window move`, `resize`, and `set-bounds` implementations now live in `WindowCommand+Geometry`.
+- `peekaboo window focus` and `list` implementations now live in `WindowCommand+Focus` and `WindowCommand+List`, leaving `WindowCommand.swift` as the command shell.
 
 Still incomplete:
 
@@ -142,9 +143,11 @@ WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
-WindowCommand.swift: 465 lines
+WindowCommand.swift: 66 lines
 WindowCommand+Bindings.swift: 187 lines
+WindowCommand+Focus.swift: 253 lines
 WindowCommand+Geometry.swift: 328 lines
+WindowCommand+List.swift: 149 lines
 WindowCommand+Support.swift: 189 lines
 WindowCommand+State.swift: 250 lines
 SeeCommand.swift: 306 lines
