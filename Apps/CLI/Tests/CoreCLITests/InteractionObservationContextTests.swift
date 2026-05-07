@@ -70,6 +70,27 @@ struct InteractionObservationContextTests {
     }
 
     @Test
+    func `Interaction observation target prefers title over index`() throws {
+        var target = InteractionTargetOptions()
+        target.app = "Preview"
+        target.windowTitle = "Main"
+        target.windowIndex = 2
+
+        switch try target.observationTargetRequest() {
+        case let .app(identifier, window):
+            #expect(identifier == "Preview")
+            switch window {
+            case let .some(.title(title)):
+                #expect(title == "Main")
+            default:
+                Issue.record("Expected title window selection")
+            }
+        default:
+            Issue.record("Expected app observation target")
+        }
+    }
+
+    @Test
     func `Latest snapshot invalidates after mutation`() async throws {
         let snapshots = CoreSnapshotManagerStub()
         let latest = try await snapshots.createSnapshot()

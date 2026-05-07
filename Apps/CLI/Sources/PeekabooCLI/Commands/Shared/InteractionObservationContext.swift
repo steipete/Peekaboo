@@ -263,10 +263,10 @@ extension InteractionTargetOptions {
             return .windowID(CGWindowID(windowId))
         }
 
-        let windowSelection: WindowSelection? = if let windowIndex {
-            .index(windowIndex)
-        } else if let windowTitle {
+        let windowSelection: WindowSelection? = if let windowTitle {
             .title(windowTitle)
+        } else if let windowIndex {
+            .index(windowIndex)
         } else {
             nil
         }

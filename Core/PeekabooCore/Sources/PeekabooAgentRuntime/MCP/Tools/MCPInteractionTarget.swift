@@ -34,7 +34,8 @@ struct MCPInteractionTarget {
             throw MCPInteractionTargetError.invalidWindowId
         }
 
-        if self.windowIndex != nil, self.appIdentifier?.isEmpty ?? true {
+        let hasTitle = !(self.windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        if self.windowIndex != nil, !hasTitle, self.appIdentifier?.isEmpty ?? true {
             throw MCPInteractionTargetError.windowIndexRequiresApp
         }
     }
@@ -46,15 +47,15 @@ struct MCPInteractionTarget {
             return .windowId(windowId)
         }
 
-        if let windowIndex {
-            return .index(app: self.appIdentifier ?? "", index: windowIndex)
-        }
-
-        if let title = self.windowTitle, !title.isEmpty {
+        if let title = self.windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
             if let appId = self.appIdentifier, !appId.isEmpty {
                 return .applicationAndTitle(app: appId, title: title)
             }
             return .title(title)
+        }
+
+        if let windowIndex {
+            return .index(app: self.appIdentifier ?? "", index: windowIndex)
         }
 
         if let appId = self.appIdentifier, !appId.isEmpty {
