@@ -111,8 +111,8 @@ public final class SmartCaptureService {
             width: radius * 2,
             height: radius * 2)
 
-        // Clamp to screen bounds
-        if let screenBounds = self.screenService.primaryScreen?.frame {
+        // Clamp to the display containing the target region, so secondary-display actions stay capturable.
+        if let screenBounds = self.screenFrame(containing: rect) {
             rect = rect.intersection(screenBounds)
         }
 
@@ -205,6 +205,10 @@ public final class SmartCaptureService {
 
     private func frontmostApplicationName() async -> String? {
         try? await self.applicationResolver.frontmostApplication().name
+    }
+
+    private func screenFrame(containing rect: CGRect) -> CGRect? {
+        self.screenService.screenContainingWindow(bounds: rect)?.frame ?? self.screenService.primaryScreen?.frame
     }
 }
 

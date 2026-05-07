@@ -128,6 +128,7 @@
 - Removed the stale `AppKit` dependency from the menu-bar popover detector helper.
 - Routed smart capture frontmost-app and screen-bounds lookups through shared application and screen service boundaries.
 - Split smart capture image decoding, thumbnail resizing, and perceptual hashing into a focused image processor helper.
+- Fixed smart capture region screenshots to clamp to the display containing the action target instead of always using the primary display.
 - Split observation target menu-bar resolution and window-selection scoring into focused resolver extension files.
 - Split desktop observation target, request, and result DTOs into focused model files.
 - Split `DesktopObservationService` capture, detection/OCR, and output-writing plumbing into focused extension files.

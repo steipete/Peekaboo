@@ -132,6 +132,7 @@ Landed:
 - The menu-bar popover detector helper no longer depends on `AppKit` for CoreGraphics-only window metadata filtering.
 - Smart capture now receives frontmost-app and screen-bounds state through shared application and screen service boundaries instead of direct `AppKit` calls.
 - Smart capture image decoding, thumbnail resizing, and perceptual hashing now live in a focused image processor helper.
+- Smart capture region screenshots now clamp to the display containing the action target instead of always using the primary display.
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.

@@ -38,6 +38,40 @@ struct SmartCaptureServiceBoundaryTests {
     }
 
     @Test
+    func `Region capture clamps to screen containing target region`() async throws {
+        let capture = StubSmartScreenCaptureService()
+        let screenService = StubSmartScreenService(screens: [
+            ScreenInfo(
+                index: 0,
+                name: "Primary",
+                frame: CGRect(x: 0, y: 0, width: 100, height: 100),
+                visibleFrame: CGRect(x: 0, y: 0, width: 100, height: 80),
+                isPrimary: true,
+                scaleFactor: 2,
+                displayID: 1),
+            ScreenInfo(
+                index: 1,
+                name: "External",
+                frame: CGRect(x: 100, y: 0, width: 200, height: 100),
+                visibleFrame: CGRect(x: 100, y: 0, width: 200, height: 100),
+                isPrimary: false,
+                scaleFactor: 2,
+                displayID: 2),
+        ])
+        let service = SmartCaptureService(
+            captureService: capture,
+            applicationResolver: StubSmartApplicationResolver(appName: "TestApp"),
+            screenService: screenService)
+
+        _ = try await service.captureAroundPoint(
+            CGPoint(x: 280, y: 50),
+            radius: 40,
+            includeContextThumbnail: false)
+
+        #expect(capture.capturedAreas == [CGRect(x: 240, y: 10, width: 60, height: 80)])
+    }
+
+    @Test
     func `Diff capture refreshes when injected frontmost app changes`() async throws {
         let capture = StubSmartScreenCaptureService()
         let appResolver = StubSmartApplicationResolver(appName: "First")
@@ -154,25 +188,30 @@ private final class StubSmartApplicationResolver: ApplicationResolving, @uncheck
 
 @MainActor
 private final class StubSmartScreenService: ScreenServiceProtocol {
-    private let primary: ScreenInfo?
+    private let screens: [ScreenInfo]
 
     init(primary: ScreenInfo? = nil) {
-        self.primary = primary
+        self.screens = primary.map { [$0] } ?? []
+    }
+
+    init(screens: [ScreenInfo]) {
+        self.screens = screens
     }
 
     func listScreens() -> [ScreenInfo] {
-        self.primary.map { [$0] } ?? []
+        self.screens
     }
 
-    func screenContainingWindow(bounds _: CGRect) -> ScreenInfo? {
-        self.primary
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        return self.screens.first { $0.frame.contains(center) } ?? self.primaryScreen
     }
 
-    func screen(at _: Int) -> ScreenInfo? {
-        self.primary
+    func screen(at index: Int) -> ScreenInfo? {
+        self.screens.first { $0.index == index }
     }
 
     var primaryScreen: ScreenInfo? {
-        self.primary
+        self.screens.first { $0.isPrimary }
     }
 }
