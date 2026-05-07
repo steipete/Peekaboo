@@ -1,5 +1,5 @@
-import AppKit
 import Commander
+import CoreGraphics
 import Foundation
 import os
 import PeekabooCore
@@ -58,7 +58,10 @@ struct VisualizerCommand: RuntimeOptionsConfigurable, OutputFormattable, ErrorHa
         let startTime = Date()
         self.logger.info("Starting visualizer smoke sequence")
 
-        let report = try await VisualizerSmokeSequence(logger: self.logger).run()
+        let report = try await VisualizerSmokeSequence(
+            logger: self.logger,
+            screens: self.resolvedRuntime.services.screens
+        ).run()
         let duration = Date().timeIntervalSince(startTime)
 
         if report.failedSteps.isEmpty {
@@ -91,6 +94,7 @@ struct VisualizerCommand: RuntimeOptionsConfigurable, OutputFormattable, ErrorHa
 @MainActor
 private struct VisualizerSmokeSequence {
     let logger: Logger
+    let screens: any ScreenServiceProtocol
 
     private static let stepNames = [
         "Screenshot flash",
@@ -136,7 +140,7 @@ private struct VisualizerSmokeSequence {
             )
         }
 
-        let screenFrame = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let screenFrame = VisualizerSmokeLayout.screenFrame(using: self.screens)
         let primaryRect = screenFrame.insetBy(dx: screenFrame.width * 0.25, dy: screenFrame.height * 0.25)
         let point = CGPoint(x: primaryRect.midX, y: primaryRect.midY)
 
@@ -239,6 +243,15 @@ private struct VisualizerSmokeSequence {
             try await Task.sleep(for: .milliseconds(250))
         }
         return StepReport(name: name, dispatched: dispatched)
+    }
+}
+
+enum VisualizerSmokeLayout {
+    static let fallbackFrame = CGRect(x: 0, y: 0, width: 1440, height: 900)
+
+    @MainActor
+    static func screenFrame(using screens: any ScreenServiceProtocol) -> CGRect {
+        screens.primaryScreen?.frame ?? screens.listScreens().first?.frame ?? self.fallbackFrame
     }
 }
 
