@@ -111,7 +111,8 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         self.logger.operationStart("image_command", metadata: startMetadata)
 
         do {
-            try await requireScreenRecordingPermission(services: self.services)
+            // ScreenCaptureService performs the authoritative permission check inside each capture path.
+            // Avoid preflighting here too; it adds fixed latency to every one-shot screenshot.
             let savedFiles = try await self.performCapture()
 
             if let prompt = self.analyze, let firstFile = savedFiles.first {
