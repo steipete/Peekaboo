@@ -171,7 +171,7 @@ extension SeeCommand {
             }
         }
 
-        if self.annotate {
+        if self.annotate, context.annotatedPath != nil {
             print("\n📝 Annotated screenshot created")
         }
 

@@ -54,7 +54,16 @@ extension SeeCommand {
         case .frontmost:
             return .frontmost
 
-        case .screen, .multi, .area:
+        case .screen:
+            if let screenIndex {
+                return .screen(index: screenIndex)
+            }
+            if self.analyze != nil {
+                return .screen(index: 0)
+            }
+            return nil
+
+        case .multi, .area:
             return nil
         }
     }
@@ -71,7 +80,7 @@ extension SeeCommand {
             output: DesktopObservationOutputOptions(
                 path: self.screenshotOutputPath(),
                 saveRawScreenshot: true,
-                saveAnnotatedScreenshot: self.annotate,
+                saveAnnotatedScreenshot: self.annotate && self.allowsAnnotation(for: target),
                 saveSnapshot: true
             )
         )
@@ -105,6 +114,15 @@ extension SeeCommand {
             return .title(windowTitle)
         }
         return .automatic
+    }
+
+    func allowsAnnotation(for target: DesktopObservationTargetRequest) -> Bool {
+        switch target {
+        case .screen, .allScreens:
+            false
+        default:
+            true
+        }
     }
 
     private func observationDetectionOptions(for target: DesktopObservationTargetRequest) -> DesktopDetectionOptions {

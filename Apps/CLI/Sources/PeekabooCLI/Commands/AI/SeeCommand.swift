@@ -97,7 +97,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     var configuredCaptureEnginePreference: String? {
-        self.resolvedRuntime.configuration.captureEnginePreference
+        self.runtime?.configuration.captureEnginePreference
     }
 
     @MainActor
@@ -167,7 +167,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
             // Generate annotated screenshot if requested
             var annotatedPath = captureResult.annotatedPath
-            if self.annotate, annotatedPath == nil {
+            let annotationsAllowed = self.allowsAnnotationForCurrentCapture()
+            if self.annotate, !annotationsAllowed {
+                self.logger.info("Annotation is disabled for full screen captures due to performance constraints")
+            }
+            if self.annotate, annotatedPath == nil, annotationsAllowed {
                 logger.operationStart("generate_annotations")
                 annotatedPath = try await self.generateAnnotatedScreenshot(
                     snapshotId: captureResult.snapshotId,
@@ -184,9 +188,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                     "annotatedPath": annotatedPath ?? "none",
                 ])
             }
-            if self.annotate, annotatedPath == nil, !self.jsonOutput {
+            if self.annotate, annotationsAllowed, annotatedPath == nil, !self.jsonOutput {
                 print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
-            } else if self.annotate, let annotatedPath, !self.jsonOutput {
+            } else if self.annotate, annotationsAllowed, let annotatedPath, !self.jsonOutput {
                 let interactableElements = captureResult.elements.all.filter(\.isEnabled)
                 print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
                 self.logger.verbose("Annotated screenshot path: \(annotatedPath)")
@@ -254,6 +258,15 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     func getFileSize(_ path: String) -> Int? {
         try? FileManager.default.attributesOfItem(atPath: path)[.size] as? Int
+    }
+
+    func allowsAnnotationForCurrentCapture() -> Bool {
+        switch self.determineMode() {
+        case .screen, .multi:
+            false
+        case .window, .frontmost, .area:
+            true
+        }
     }
 }
 

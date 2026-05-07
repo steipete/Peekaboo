@@ -113,6 +113,46 @@ struct SeeCommandAnnotationTests {
     }
 
     @Test
+    @MainActor
+    func `Screen index captures use observation target`() throws {
+        let command = try SeeCommand.parse(["--mode", "screen", "--screen-index", "1"])
+
+        #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == .screen(index: 1))
+    }
+
+    @Test
+    @MainActor
+    func `All screen captures stay on legacy multi-file path`() throws {
+        let command = try SeeCommand.parse(["--mode", "screen"])
+
+        #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == nil)
+    }
+
+    @Test
+    @MainActor
+    func `Screen analysis captures primary display through observation`() throws {
+        let command = try SeeCommand.parse(["--mode", "screen", "--analyze", "summarize"])
+
+        #expect(try command.observationTargetForCaptureWithDetectionIfPossible() == .screen(index: 0))
+    }
+
+    @Test
+    @MainActor
+    func `Observation screen targets disable annotations`() throws {
+        let command = try SeeCommand.parse([
+            "--mode", "screen",
+            "--screen-index", "0",
+            "--annotate",
+            "--path", "/tmp/peekaboo-see-screen.png",
+        ])
+        let request = command.makeObservationRequest(target: .screen(index: 0))
+
+        #expect(command.allowsAnnotation(for: .screen(index: 0)) == false)
+        #expect(command.allowsAnnotationForCurrentCapture() == false)
+        #expect(request.output.saveAnnotatedScreenshot == false)
+    }
+
+    @Test
     func `Coordinate system conversion for NSGraphicsContext`() {
         // Given a window-relative element bounds with top-left origin
         let elementBounds = CGRect(x: 100, y: 100, width: 80, height: 40)

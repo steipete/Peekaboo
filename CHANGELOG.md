@@ -53,6 +53,7 @@
 - `peekaboo image` now builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo image` capture orchestration, output models, filename planning, and focus helpers are now split out of the main command file.
 - `peekaboo see` now builds desktop observation requests through a dedicated command-support adapter.
+- `peekaboo see --mode screen --screen-index <n>` and screen analysis captures now use the shared desktop observation pipeline while all-screen capture keeps the legacy multi-file behavior.
 - MCP `see` request/output and summary support now live outside the primary tool file.
 - `peekaboo see` command support types, output rendering, and screen capture helpers are now split out of the main command file.
 - `peekaboo see` legacy capture/detection fallback is now isolated in a dedicated command-support pipeline.
@@ -78,6 +79,7 @@
 - `peekaboo list apps`, `list screens`, and `list windows --json` now emit the same standard top-level `success/data/debug_logs` envelope as sibling CLI commands.
 - The experimental `peekaboo commander` diagnostics command is registered again and emits standard JSON diagnostics with `--json`.
 - MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
+- `peekaboo see --mode screen --annotate` now consistently skips annotation generation instead of reporting or attempting a disabled full-screen annotation.
 - MCP `image` and `see` now route app/PID/frontmost targets through the desktop observation resolver, so multi-window apps use the same visible-window selection as the CLI.
 - MCP `image` saved screenshots now use the shared desktop observation output writer instead of tool-local image persistence.
 - MCP `analyze` now honors configured AI providers and per-call `provider_config` model overrides instead of hardcoding the default OpenAI model.
