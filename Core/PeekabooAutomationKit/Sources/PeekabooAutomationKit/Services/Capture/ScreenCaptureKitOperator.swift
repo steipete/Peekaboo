@@ -32,9 +32,7 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.logger.debug("Fetching shareable content", correlationId: correlationId)
-        let content = try await withTimeout(seconds: 5.0) {
-            try await ScreenCaptureKitCaptureGate.currentShareableContent()
-        }
+        let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
         let displays = content.displays
 
         self.logger.debug(
@@ -96,11 +94,9 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        let content = try await withTimeout(seconds: 5.0) {
-            try await ScreenCaptureKitCaptureGate.shareableContent(
-                excludingDesktopWindows: false,
-                onScreenWindowsOnly: false)
-        }
+        let content = try await ScreenCaptureKitCaptureGate.shareableContent(
+            excludingDesktopWindows: false,
+            onScreenWindowsOnly: false)
 
         let appWindows = content.windows.filter { window in
             window.owningApplication?.processID == app.processIdentifier
@@ -215,11 +211,9 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        let content = try await withTimeout(seconds: 5.0) {
-            try await ScreenCaptureKitCaptureGate.shareableContent(
-                excludingDesktopWindows: false,
-                onScreenWindowsOnly: false)
-        }
+        let content = try await ScreenCaptureKitCaptureGate.shareableContent(
+            excludingDesktopWindows: false,
+            onScreenWindowsOnly: false)
 
         guard let targetWindow = content.windows.first(where: { $0.windowID == windowID }) else {
             throw PeekabooError.windowNotFound(criteria: "window_id \(windowID)")
@@ -427,11 +421,9 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         config.captureResolution = .best
         config.showsCursor = false
 
-        return try await withTimeout(seconds: 3.0) {
-            try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
-        }
+        return try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: config)
     }
 
     private func emitVisualizer(mode: CaptureVisualizerMode, rect: CGRect) async {

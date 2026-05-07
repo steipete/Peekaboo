@@ -220,7 +220,11 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
         }
 
-        return try await body(correlationId)
+        return try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
+            operationName: operation.metricName)
+        {
+            try await body(correlationId)
+        }
     }
 
     public func captureScreen(

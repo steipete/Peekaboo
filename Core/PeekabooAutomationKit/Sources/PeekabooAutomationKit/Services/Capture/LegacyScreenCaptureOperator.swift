@@ -380,9 +380,7 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
             "Legacy area capture using ScreenCaptureKit screenshot manager",
             correlationId: correlationId)
 
-        let content = try await withTimeout(seconds: 5.0) {
-            try await ScreenCaptureKitCaptureGate.currentShareableContent()
-        }
+        let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
         guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
             throw PeekabooError.invalidInput(
                 "captureArea: The specified area is not within any display bounds")
@@ -406,11 +404,9 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
         config.captureResolution = .best
         config.showsCursor = false
 
-        let image = try await withTimeout(seconds: 3.0) {
-            try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
-        }
+        let image = try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: config)
 
         let imageData = try image.pngData()
         let metadata = CaptureMetadata(

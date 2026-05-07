@@ -2,6 +2,8 @@ import Darwin
 import Foundation
 
 enum CrossProcessOperationGate {
+    static let desktopObservationName = "desktop-observation-command"
+
     /// Serializes same-process callers before we enter the file-lock wait loop.
     @MainActor private static var activeNames = Set<String>()
 

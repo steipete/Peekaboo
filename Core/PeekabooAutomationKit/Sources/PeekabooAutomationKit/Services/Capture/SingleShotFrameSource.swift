@@ -44,11 +44,9 @@ final class SingleShotFrameSource: CaptureFrameSource {
 
         let start = Date()
         let image = try await RetryHandler.withRetry(policy: .standard) {
-            try await withTimeout(seconds: 3.0) {
-                try await ScreenCaptureKitCaptureGate.captureImage(
-                    contentFilter: filter,
-                    configuration: config)
-            }
+            try await ScreenCaptureKitCaptureGate.captureImage(
+                contentFilter: filter,
+                configuration: config)
         }
         let duration = Date().timeIntervalSince(start)
         self.logger.debug(

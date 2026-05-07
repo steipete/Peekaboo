@@ -48,18 +48,22 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
     public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
         let tracer = DesktopObservationTraceRecorder()
 
-        let stateSnapshot = try await tracer.span("state.snapshot") {
-            try await self.stateSnapshotProvider.snapshot(for: request.target)
-        }
+        let (stateSnapshot, target, capture) = try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
+            operationName: "desktopObservation")
+        {
+            let stateSnapshot = try await tracer.span("state.snapshot") {
+                try await self.stateSnapshotProvider.snapshot(for: request.target)
+            }
 
-        let target = try await tracer.span("target.resolve") {
-            try await self.targetResolver.resolve(request.target, snapshot: stateSnapshot)
-        }
+            let target = try await tracer.span("target.resolve") {
+                try await self.targetResolver.resolve(request.target, snapshot: stateSnapshot)
+            }
 
-        let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
-            try await self.capture(target, options: request.capture, snapshot: stateSnapshot)
+            let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
+                try await self.capture(target, options: request.capture, snapshot: stateSnapshot)
+            }
+            return (stateSnapshot, target, Self.normalize(capture: rawCapture, for: target))
         }
-        let capture = Self.normalize(capture: rawCapture, for: target)
 
         let detection = try await self.detectIfNeeded(
             capture: capture,

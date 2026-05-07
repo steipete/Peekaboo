@@ -134,6 +134,7 @@
 - Browser focus verification now tolerates stale AX handles by re-resolving windows after activation and checking the topmost renderable CG window. Thanks @ZVNC28 for [#103](https://github.com/steipete/Peekaboo/pull/103)!
 - `peekaboo image --app` and `peekaboo see --app/--pid/--window-id` now share the desktop observation target resolver, so helper/offscreen windows are ranked consistently across capture and detection.
 - ScreenCaptureKit screenshot calls now fail with a bounded timeout if the underlying framework leaks a continuation, instead of hanging the CLI indefinitely.
+- `peekaboo image` and `peekaboo see` now share the same desktop-observation process gate, while ScreenCaptureKit callers avoid redundant outer timeouts, preventing transient TCC failures and continuation-misuse warnings under concurrent CLI use.
 
 ### Performance
 - Menu bar listing is faster by avoiding redundant accessibility work.

@@ -8,6 +8,50 @@ enum ScreenCaptureKitCaptureGate {
     /// Protects concurrent SCK calls within one process. ScreenCaptureKit can leak
     /// continuations instead of returning an error when re-entered under load.
     @MainActor private static var isCaptureActive = false
+    @TaskLocal private static var isInsideCaptureOperation = false
+
+    @MainActor
+    static func withExclusiveCaptureOperation<T: Sendable>(
+        operationName _: String,
+        _ operation: @escaping @MainActor @Sendable () async throws -> T) async throws -> T
+    {
+        guard !self.isInsideCaptureOperation else {
+            return try await operation()
+        }
+
+        // Hold a broader cross-process lock for the capture transaction. Per-call SCK locks are not enough
+        // because interleaving shareable-content reads and screenshot calls can leave replayd/SCK wedged.
+        let path = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("boo.peekaboo.sckit-operation.lock")
+        let fd = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard fd >= 0 else {
+            return try await operation()
+        }
+        defer { close(fd) }
+
+        while flock(fd, LOCK_EX | LOCK_NB) != 0 {
+            guard errno == EWOULDBLOCK || errno == EAGAIN || errno == EINTR else {
+                return try await operation()
+            }
+
+            try Task.checkCancellation()
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        defer { flock(fd, LOCK_UN) }
+
+        return try await self.$isInsideCaptureOperation.withValue(true) {
+            do {
+                let value = try await operation()
+                // replayd can report transient TCC/capture failures when another CLI grabs SCK immediately after
+                // a screenshot completes. Keep the transaction lock briefly so the system service can settle.
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                return value
+            } catch {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                throw error
+            }
+        }
+    }
 
     @MainActor
     static func captureImage(

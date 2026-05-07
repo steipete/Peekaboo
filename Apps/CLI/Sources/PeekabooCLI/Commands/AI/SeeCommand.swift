@@ -118,7 +118,9 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         let commandCopy = self
 
         do {
-            try await CrossProcessOperationGate.withExclusiveOperation(named: "see-command") {
+            try await CrossProcessOperationGate.withExclusiveOperation(
+                named: CrossProcessOperationGate.desktopObservationName
+            ) {
                 try await withThrowingTaskGroup(of: Void.self) { group in
                     group.addTask {
                         try await commandCopy.runImpl(startTime: startTime, logger: logger)
