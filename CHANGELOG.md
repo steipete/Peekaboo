@@ -62,6 +62,7 @@
 - `peekaboo menu` subcommands now share one error-output mapper for JSON error codes and stderr rendering.
 - `peekaboo menu` click, click-extra, and list implementations now live in focused extension files, leaving the primary command file as registration and shared types.
 - `peekaboo dialog` click, input, file, dismiss, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
+- `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of duplicating per-command refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now invalidate implicitly reused latest snapshots after successful UI mutations so later commands do not silently target stale UI.
