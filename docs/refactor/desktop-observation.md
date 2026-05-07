@@ -114,6 +114,7 @@ Landed:
 - `peekaboo window move`, `resize`, and `set-bounds` implementations now live in `WindowCommand+Geometry`.
 - `peekaboo window focus` and `list` implementations now live in `WindowCommand+Focus` and `WindowCommand+List`, leaving `WindowCommand.swift` as the command shell.
 - Interaction snapshot invalidation now lives in `InteractionObservationInvalidator`, leaving `InteractionObservationContext` focused on snapshot selection and refresh.
+- Observation label placement geometry and candidate generation now live in `ObservationLabelPlacementGeometry`, leaving `ObservationLabelPlacer` focused on scoring/orchestration.
 
 Still incomplete:
 
@@ -144,6 +145,8 @@ WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
+ObservationLabelPlacer.swift: 425 lines
+ObservationLabelPlacementGeometry.swift: 183 lines
 WindowCommand.swift: 66 lines
 WindowCommand+Bindings.swift: 187 lines
 WindowCommand+Focus.swift: 253 lines

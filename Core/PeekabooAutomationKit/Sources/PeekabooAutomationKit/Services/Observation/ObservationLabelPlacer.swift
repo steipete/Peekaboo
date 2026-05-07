@@ -72,7 +72,7 @@ final class SmartLabelPlacer {
         }
 
         // Check if element is horizontally constrained (has neighbors on sides)
-        let isHorizontallyConstrained = self.isElementHorizontallyConstrained(
+        let isHorizontallyConstrained = LabelPlacementGeometry.isHorizontallyConstrained(
             element: element,
             elementRect: elementRect,
             allElements: allElements)
@@ -132,7 +132,7 @@ final class SmartLabelPlacer {
                 // Score and pick best relaxed position
                 let scoredRelaxed = self.scorePositions(relaxedValidPositions, elementRect: elementRect)
                 if let best = scoredRelaxed.max(by: { $0.score < $1.score }) {
-                    let connectionPoint = self.calculateConnectionPoint(
+                    let connectionPoint = LabelPlacementGeometry.connectionPoint(
                         for: best.index,
                         elementRect: elementRect,
                         isExternal: true)
@@ -178,7 +178,7 @@ final class SmartLabelPlacer {
         }
 
         // Calculate connection point if needed
-        let connectionPoint = self.calculateConnectionPoint(
+        let connectionPoint = LabelPlacementGeometry.connectionPoint(
             for: best.index,
             elementRect: elementRect,
             isExternal: best.index < candidates.count)
@@ -188,132 +188,29 @@ final class SmartLabelPlacer {
 
     // MARK: - Private Methods
 
-    private func isElementHorizontallyConstrained(
-        element: DetectedElement,
-        elementRect: NSRect,
-        allElements: [(element: DetectedElement, rect: NSRect)]) -> Bool
-    {
-        // Check if there are elements close to the left and right
-        let horizontalThreshold: CGFloat = 20 // pixels
-
-        var hasLeftNeighbor = false
-        var hasRightNeighbor = false
-
-        for (otherElement, otherRect) in allElements {
-            guard otherElement.id != element.id else { continue }
-
-            // Check if vertically aligned (similar Y position)
-            let verticalOverlap = min(elementRect.maxY, otherRect.maxY) - max(elementRect.minY, otherRect.minY)
-            guard verticalOverlap > elementRect.height * 0.5 else { continue }
-
-            // Check horizontal proximity
-            if otherRect.maxX < elementRect.minX, elementRect.minX - otherRect.maxX < horizontalThreshold {
-                hasLeftNeighbor = true
-            }
-            if otherRect.minX > elementRect.maxX, otherRect.minX - elementRect.maxX < horizontalThreshold {
-                hasRightNeighbor = true
-            }
-        }
-
-        return hasLeftNeighbor || hasRightNeighbor
-    }
-
     private func generateCandidatePositions(
         for element: DetectedElement,
         elementRect: NSRect,
         labelSize: NSSize,
         prioritizeVertical: Bool = false,
-        relaxedSpacing: Bool = false) -> [(rect: NSRect, index: Int, type: PositionType)]
+        relaxedSpacing: Bool = false) -> [LabelPlacementCandidate]
     {
-        var positions: [(rect: NSRect, index: Int, type: PositionType)] = []
         let spacing = relaxedSpacing ? self.labelSpacing * 2 : self.labelSpacing
-
-        // ALWAYS generate above/below positions first for ALL element types
-        // This is the key fix - buttons need these positions too!
-        positions.append(contentsOf: [
-            // Above (priority position for horizontally constrained elements)
-            (NSRect(
-                x: elementRect.midX - labelSize.width / 2,
-                y: elementRect.maxY + spacing,
-                width: labelSize.width,
-                height: labelSize.height), 0, .externalAbove),
-            // Below
-            (NSRect(
-                x: elementRect.midX - labelSize.width / 2,
-                y: elementRect.minY - labelSize.height - spacing,
-                width: labelSize.width,
-                height: labelSize.height), 1, .externalBelow),
-        ])
-
-        // For buttons and links, add corner positions
-        if element.type == .button || element.type == .link {
-            // External corners (less intrusive)
-            positions.append(contentsOf: [
-                // Top-left external
-                (NSRect(
-                    x: elementRect.minX - labelSize.width - spacing,
-                    y: elementRect.maxY - labelSize.height,
-                    width: labelSize.width,
-                    height: labelSize.height), 2, .externalTopLeft),
-                // Top-right external
-                (NSRect(
-                    x: elementRect.maxX + spacing,
-                    y: elementRect.maxY - labelSize.height,
-                    width: labelSize.width,
-                    height: labelSize.height), 3, .externalTopRight),
-                // Bottom-left external
-                (NSRect(
-                    x: elementRect.minX - labelSize.width - spacing,
-                    y: elementRect.minY,
-                    width: labelSize.width,
-                    height: labelSize.height), 4, .externalBottomLeft),
-                // Bottom-right external
-                (NSRect(
-                    x: elementRect.maxX + spacing,
-                    y: elementRect.minY,
-                    width: labelSize.width,
-                    height: labelSize.height), 5, .externalBottomRight),
-            ])
-        }
-
-        // Add side positions
-        positions.append(contentsOf: [
-            // Right side
-            (NSRect(
-                x: elementRect.maxX + spacing,
-                y: elementRect.midY - labelSize.height / 2,
-                width: labelSize.width,
-                height: labelSize.height), 6, .externalRight),
-            // Left side
-            (NSRect(
-                x: elementRect.minX - labelSize.width - spacing,
-                y: elementRect.midY - labelSize.height / 2,
-                width: labelSize.width,
-                height: labelSize.height), 7, .externalLeft),
-        ])
-
-        // If element is horizontally constrained, prioritize vertical positions
-        if prioritizeVertical {
-            // Move above/below positions to the front of the array
-            positions.sort { a, b in
-                let aIsVertical = a.type == .externalAbove || a.type == .externalBelow
-                let bIsVertical = b.type == .externalAbove || b.type == .externalBelow
-                if aIsVertical, !bIsVertical { return true }
-                if !aIsVertical, bIsVertical { return false }
-                return a.index < b.index
-            }
-        }
-
-        return positions
+        return LabelPlacementGeometry.candidatePositions(
+            for: element,
+            elementRect: elementRect,
+            labelSize: labelSize,
+            spacing: spacing,
+            prioritizeVertical: prioritizeVertical)
     }
 
     private func filterValidPositions(
-        candidates: [(rect: NSRect, index: Int, type: PositionType)],
+        candidates: [LabelPlacementCandidate],
         element: DetectedElement,
         existingLabels: [(rect: NSRect, element: DetectedElement)],
         allElements: [(element: DetectedElement, rect: NSRect)],
         allowBoundaryOverflow: Bool = false,
-        logRejections: Bool = false) -> [(rect: NSRect, index: Int, type: PositionType)]
+        logRejections: Bool = false) -> [LabelPlacementCandidate]
     {
         candidates.filter { candidate in
             // Check if within image bounds (with optional relaxation)
@@ -372,8 +269,8 @@ final class SmartLabelPlacer {
     }
 
     private func scorePositions(
-        _ positions: [(rect: NSRect, index: Int, type: PositionType)],
-        elementRect: NSRect) -> [(rect: NSRect, index: Int, type: PositionType, score: Float)]
+        _ positions: [LabelPlacementCandidate],
+        elementRect: NSRect) -> [ScoredLabelPlacementCandidate]
     {
         positions.map { position in
             // Convert from drawing coordinates to image coordinates for analysis
@@ -389,7 +286,7 @@ final class SmartLabelPlacer {
             // NOTE: this is a critical tweak—by sampling beyond the label bounds we detect noisy
             // backgrounds that would otherwise not register, which is what keeps labels from
             // covering “interesting” UI areas (graphs, text blocks, etc.).
-            let scoringRect = Self.clampedRect(
+            let scoringRect = LabelPlacementGeometry.clampedRect(
                 imageRect.insetBy(dx: -self.scoreRegionPadding, dy: -self.scoreRegionPadding),
                 within: NSRect(origin: .zero, size: self.imageSize))
 
@@ -481,59 +378,6 @@ final class SmartLabelPlacer {
             height: labelSize.height)
 
         return (labelRect: centerRect, connectionPoint: nil)
-    }
-
-    private func calculateConnectionPoint(
-        for positionIndex: Int,
-        elementRect: NSRect,
-        isExternal: Bool) -> NSPoint?
-    {
-        guard isExternal else { return nil }
-
-        // Connection points for external positions
-        // Updated to match new position indices
-        switch positionIndex {
-        case 0: // Above
-            return NSPoint(x: elementRect.midX, y: elementRect.maxY)
-        case 1: // Below
-            return NSPoint(x: elementRect.midX, y: elementRect.minY)
-        case 2, 3, 4, 5: // Corner positions
-            return NSPoint(x: elementRect.midX, y: elementRect.midY)
-        case 6: // Right
-            return NSPoint(x: elementRect.maxX, y: elementRect.midY)
-        case 7: // Left
-            return NSPoint(x: elementRect.minX, y: elementRect.midY)
-        default:
-            return nil
-        }
-    }
-
-    // MARK: - Types
-
-    private enum PositionType: String {
-        case externalTopLeft
-        case externalTopRight
-        case externalBottomLeft
-        case externalBottomRight
-        case externalLeft
-        case externalRight
-        case externalAbove
-        case externalBelow
-        case internalTopLeft
-        case internalTopRight
-        case internalCenter
-    }
-}
-
-extension SmartLabelPlacer {
-    /// Returns a rect clamped to the provided bounds. If there is no overlap,
-    /// it returns the original rect to avoid zero-sized inputs.
-    private static func clampedRect(_ rect: NSRect, within bounds: NSRect) -> NSRect {
-        let intersection = rect.intersection(bounds)
-        if intersection.isNull {
-            return rect
-        }
-        return intersection
     }
 }
 

@@ -109,6 +109,7 @@
 - Split `peekaboo window move`, `resize`, and `set-bounds` implementations into a focused geometry-action file.
 - Split `peekaboo window focus` and `list` implementations into focused command files, leaving the main window command as a thin shell.
 - Split interaction snapshot invalidation into a focused shared helper, keeping observation resolution separate from mutation cleanup.
+- Split observation label placement geometry and candidate generation into a focused helper, keeping label scoring/orchestration smaller.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.
