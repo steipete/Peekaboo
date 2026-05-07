@@ -67,6 +67,7 @@ Landed:
 - ScreenCaptureKit frame-source internals now keep stream handler/session types in a focused companion while the frame source owns request orchestration.
 - MCP image capture now separates tool entrypoint, capture orchestration, and request/format types into focused files.
 - MCP list output now keeps parsing and formatting helpers in a focused companion file.
+- MCP type tooling now keeps request/target types and response/action formatting in focused companions while `TypeTool` owns schema, validation, and execution flow.
 - Legacy area capture through the legacy capture operator.
 - Dedicated ScreenCaptureKit and legacy capture operator files.
 - Screen capture operation gating/metrics and capture execution orchestration are split out of the primary `ScreenCaptureService`.

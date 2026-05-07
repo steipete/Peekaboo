@@ -1,0 +1,49 @@
+import PeekabooAutomation
+import PeekabooFoundation
+
+struct TypeRequest {
+    let text: String?
+    let elementId: String?
+    let snapshotId: String?
+    let delay: Int
+    let profile: TypingProfile
+    let wordsPerMinute: Int?
+    let clearField: Bool
+    let pressReturn: Bool
+    let tabCount: Int?
+    let pressEscape: Bool
+    let pressDelete: Bool
+
+    static let defaultHumanWPM = 140
+
+    var hasActions: Bool {
+        self.text != nil ||
+            self.tabCount != nil ||
+            self.pressEscape ||
+            self.pressDelete ||
+            self.pressReturn ||
+            self.clearField
+    }
+
+    var cadence: TypingCadence {
+        switch self.profile {
+        case .human:
+            let wpm = self.wordsPerMinute ?? Self.defaultHumanWPM
+            return .human(wordsPerMinute: wpm)
+        case .linear:
+            return .fixed(milliseconds: self.delay)
+        }
+    }
+}
+
+struct TypeToolValidationError: Error {
+    let message: String
+    init(_ message: String) {
+        self.message = message
+    }
+}
+
+struct TargetElementContext {
+    let snapshot: UISnapshot
+    let element: UIElement
+}
