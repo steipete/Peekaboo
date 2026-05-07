@@ -41,6 +41,8 @@ public final class ElementDetectionService {
     private let applicationService: ApplicationService
     private let windowIdentityService = WindowIdentityService()
     private let windowManagementService = WindowManagementService()
+    // AX trees are expensive to rebuild, but UI can mutate immediately after automation actions.
+    // Keep the cache short-lived so back-to-back `see` calls benefit without hiding fresh state.
     private let axTreeCacheTTL: TimeInterval = 1.5
     private var axTreeCache: [AXTreeCacheKey: AXTreeCacheEntry] = [:]
 

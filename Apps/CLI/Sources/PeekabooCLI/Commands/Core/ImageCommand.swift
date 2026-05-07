@@ -554,6 +554,13 @@ extension ImageCommand {
     }
 
     private func resolveWindow(for identifier: String) async throws -> ServiceWindowInfo? {
+        // `try?` is intentional: an explicit title/index miss on the CG-only list should fall back
+        // to the existing AX-enriched path so users keep the detailed selector error behavior.
+        if let fastWindows = Self.fastCGWindows(for: identifier),
+           let fastWindow = try? self.selectWindow(from: fastWindows, appIdentifier: identifier) {
+            return fastWindow
+        }
+
         do {
             let windows = try await WindowServiceBridge.listWindows(
                 windows: self.services.windows,
@@ -583,6 +590,96 @@ extension ImageCommand {
             )
             return nil
         }
+    }
+
+    private static func fastCGWindows(for appIdentifier: String) -> [ServiceWindowInfo]? {
+        guard let app = self.fastRunningApplication(for: appIdentifier),
+              let windowList = CGWindowListCopyWindowInfo(
+                  [.optionAll, .excludeDesktopElements],
+                  kCGNullWindowID
+              ) as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        var index = 0
+        let windows = windowList.compactMap { windowInfo -> ServiceWindowInfo? in
+            guard self.pidValue(windowInfo[kCGWindowOwnerPID as String]) == app.processIdentifier,
+                  let windowID = self.intValue(windowInfo[kCGWindowNumber as String]),
+                  let bounds = self.bounds(from: windowInfo[kCGWindowBounds as String])
+            else {
+                return nil
+            }
+
+            defer { index += 1 }
+
+            let layer = self.intValue(windowInfo[kCGWindowLayer as String]) ?? 0
+            let alpha = self.cgFloatValue(windowInfo[kCGWindowAlpha as String]) ?? 1.0
+            let isOnScreen = self.boolValue(windowInfo[kCGWindowIsOnscreen as String]) ?? true
+            let sharingState = self.intValue(windowInfo[kCGWindowSharingState as String])
+                .flatMap(WindowSharingState.init(rawValue:))
+            let title = windowInfo[kCGWindowName as String] as? String ?? ""
+
+            // Screenshot selection only needs CG window ids and geometry. Avoid the full window service here:
+            // it may enrich untitled helper windows through AX, which is expensive for Electron/Tauri apps.
+            return ServiceWindowInfo(
+                windowID: windowID,
+                title: title,
+                bounds: bounds,
+                isMinimized: bounds.origin.x < -10000 || bounds.origin.y < -10000,
+                isMainWindow: index == 0,
+                windowLevel: layer,
+                alpha: alpha,
+                index: index,
+                layer: layer,
+                isOnScreen: isOnScreen,
+                sharingState: sharingState
+            )
+        }
+
+        return windows.isEmpty ? nil : windows
+    }
+
+    private static func bounds(from value: Any?) -> CGRect? {
+        // CoreGraphics window dictionaries are CF-backed; accepting NSNumber plus native Swift
+        // numeric bridges keeps this fast path resilient across OS releases.
+        guard let dictionary = value as? [String: Any],
+              let x = self.cgFloatValue(dictionary["X"]),
+              let y = self.cgFloatValue(dictionary["Y"]),
+              let width = self.cgFloatValue(dictionary["Width"]),
+              let height = self.cgFloatValue(dictionary["Height"])
+        else {
+            return nil
+        }
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
+    private static func pidValue(_ value: Any?) -> pid_t? {
+        self.intValue(value).map(pid_t.init)
+    }
+
+    private static func intValue(_ value: Any?) -> Int? {
+        if let int = value as? Int {
+            return int
+        }
+        return (value as? NSNumber)?.intValue
+    }
+
+    private static func cgFloatValue(_ value: Any?) -> CGFloat? {
+        if let cgFloat = value as? CGFloat {
+            return cgFloat
+        }
+        if let double = value as? Double {
+            return CGFloat(double)
+        }
+        return (value as? NSNumber).map { CGFloat($0.doubleValue) }
+    }
+
+    private static func boolValue(_ value: Any?) -> Bool? {
+        if let bool = value as? Bool {
+            return bool
+        }
+        return (value as? NSNumber)?.boolValue
     }
 
     private func selectWindow(from windows: [ServiceWindowInfo], appIdentifier: String) throws -> ServiceWindowInfo? {
