@@ -1,4 +1,3 @@
-import AppKit
 import Commander
 import Foundation
 import PeekabooCore
@@ -78,7 +77,7 @@ extension AppCommand {
                     }
                 }
 
-                var quitApps: [(String, NSRunningApplication)] = []
+                var quitApps: [AppQuitTarget] = []
 
                 if self.all {
                     // Get all apps except system/excluded ones
@@ -87,31 +86,21 @@ extension AppCommand {
                     )
                     let systemApps = Set(["Finder", "Dock", "SystemUIServer", "WindowServer"])
 
-                    let runningApps = NSWorkspace.shared.runningApplications
+                    let runningApps = try await self.services.applications.listApplications().data.applications
                     for runningApp in runningApps {
-                        guard let name = runningApp.localizedName,
-                              runningApp.activationPolicy == .regular,
-                              !systemApps.contains(name),
-                              !excluded.contains(name) else { continue }
+                        guard runningApp.activationPolicy ?? .regular == .regular,
+                              !systemApps.contains(runningApp.name),
+                              !excluded.contains(runningApp.name) else { continue }
 
-                        quitApps.append((name, runningApp))
+                        quitApps.append(AppQuitTarget(appInfo: runningApp))
                     }
                 } else if let appName = app {
                     // Find specific app
                     let appInfo = try await resolveApplication(appName, services: self.services)
-                    let runningApps = NSWorkspace.shared.runningApplications
-                    if let runningApp = runningApps
-                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
-                        quitApps.append((appInfo.name, runningApp))
-                    } else {
-                        throw NotFoundError.application(appName)
-                    }
+                    quitApps.append(AppQuitTarget(appInfo: appInfo))
                 } else if let pid = self.pid {
-                    guard let runningApp = NSRunningApplication(processIdentifier: pid),
-                          let name = runningApp.localizedName else {
-                        throw NotFoundError.application("pid \(pid)")
-                    }
-                    quitApps.append((name, runningApp))
+                    let appInfo = try await self.services.applications.findApplication(identifier: "PID:\(pid)")
+                    quitApps.append(AppQuitTarget(appInfo: appInfo))
                 } else {
                     throw ValidationError("Either --app, --pid, or --all must be specified")
                 }
@@ -124,11 +113,14 @@ extension AppCommand {
                 }
 
                 var results: [AppQuitInfo] = []
-                for (name, runningApp) in quitApps {
-                    let success = self.force ? runningApp.forceTerminate() : runningApp.terminate()
+                for target in quitApps {
+                    let success = await (try? self.services.applications.quitApplication(
+                        identifier: target.identifier,
+                        force: self.force
+                    )) ?? false
                     results.append(AppQuitInfo(
-                        app_name: name,
-                        pid: runningApp.processIdentifier,
+                        app_name: target.name,
+                        pid: target.pid,
                         success: success
                     ))
 
@@ -139,7 +131,7 @@ extension AppCommand {
                             logger
                                 .debug(
                                     """
-                                    Quit failed for \(name) (PID: \(runningApp.processIdentifier)). \
+                                    Quit failed for \(target.name) (PID: \(target.pid)). \
                                     The app may have unsaved changes or be showing a dialog. \
                                     Try --force to force quit.
                                     """
@@ -148,7 +140,7 @@ extension AppCommand {
                             logger
                                 .debug(
                                     """
-                                    Force quit failed for \(name) (PID: \(runningApp.processIdentifier)). \
+                                    Force quit failed for \(target.name) (PID: \(target.pid)). \
                                     The app may be unresponsive or protected.
                                     """
                                 )
@@ -195,6 +187,18 @@ extension AppCommand {
                 throw ExitCode(1)
             }
         }
+    }
+}
+
+private struct AppQuitTarget {
+    let name: String
+    let pid: Int32
+    let identifier: String
+
+    init(appInfo: ServiceApplicationInfo) {
+        self.name = appInfo.name
+        self.pid = appInfo.processIdentifier
+        self.identifier = "PID:\(appInfo.processIdentifier)"
     }
 }
 

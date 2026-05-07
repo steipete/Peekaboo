@@ -194,6 +194,102 @@ struct AppCommandLaunchFlowTests {
         #expect(automation.hotkeyCalls.map(\.holdDuration) == [0])
     }
 
+    @Test
+    func `Quit command uses application service target PID`() async throws {
+        let application = ServiceApplicationInfo(
+            processIdentifier: 123,
+            bundleIdentifier: "com.example.notes",
+            name: "Notes"
+        )
+        let applicationService = RecordingApplicationService(applications: [application])
+
+        var command = AppCommand.QuitSubcommand()
+        command.app = "Notes"
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: ServicesWithApplicationStub(applications: applicationService)
+        )
+        try await command.run(using: runtime)
+
+        #expect(applicationService.quitCalls == [.init(identifier: "PID:123", force: false)])
+    }
+
+    @Test
+    func `Quit all keeps accessory apps out of termination set`() async throws {
+        let regularApplication = ServiceApplicationInfo(
+            processIdentifier: 123,
+            bundleIdentifier: "com.example.editor",
+            name: "Editor",
+            activationPolicy: .regular
+        )
+        let accessoryApplication = ServiceApplicationInfo(
+            processIdentifier: 456,
+            bundleIdentifier: "com.example.menu",
+            name: "Menu Extra",
+            activationPolicy: .accessory
+        )
+        let applicationService = RecordingApplicationService(applications: [
+            accessoryApplication,
+            regularApplication,
+        ])
+
+        var command = AppCommand.QuitSubcommand()
+        command.all = true
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: ServicesWithApplicationStub(applications: applicationService)
+        )
+        try await command.run(using: runtime)
+
+        #expect(applicationService.quitCalls == [.init(identifier: "PID:123", force: false)])
+    }
+
+    @Test
+    func `Relaunch command quits through service and launches through launcher`() async throws {
+        let launcher = StubApplicationLauncher()
+        launcher.launchResponses = [
+            StubRunningApplication(
+                localizedName: "Example",
+                bundleIdentifier: "com.example.app",
+                processIdentifier: 456,
+                readyAfterChecks: 1
+            ),
+        ]
+        let resolver = StubApplicationURLResolver()
+        resolver.bundleMap["com.example.app"] = URL(fileURLWithPath: "/Applications/Example.app")
+
+        let originalLauncher = AppCommand.RelaunchSubcommand.launcher
+        let originalResolver = AppCommand.RelaunchSubcommand.resolver
+        AppCommand.RelaunchSubcommand.launcher = launcher
+        AppCommand.RelaunchSubcommand.resolver = resolver
+        defer {
+            AppCommand.RelaunchSubcommand.launcher = originalLauncher
+            AppCommand.RelaunchSubcommand.resolver = originalResolver
+        }
+
+        let application = ServiceApplicationInfo(
+            processIdentifier: 123,
+            bundleIdentifier: "com.example.app",
+            name: "Example"
+        )
+        let applicationService = RecordingApplicationService(applications: [application])
+
+        var command = AppCommand.RelaunchSubcommand()
+        command.app = "Example"
+        command.wait = 0
+        let runtime = CommandRuntime(
+            configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
+            services: ServicesWithApplicationStub(applications: applicationService)
+        )
+        try await command.run(using: runtime)
+
+        #expect(applicationService.quitCalls == [.init(identifier: "PID:123", force: false)])
+        #expect(launcher.launchCalls == [.init(
+            appURL: URL(fileURLWithPath: "/Applications/Example.app"),
+            activates: true
+        )])
+    }
+
     private func makeRuntime() -> CommandRuntime {
         CommandRuntime(
             configuration: .init(verbose: false, jsonOutput: true, logLevel: nil),
@@ -305,10 +401,18 @@ private final class RecordingHotkeyAutomationService: MockAutomationService {
 @MainActor
 private final class RecordingApplicationService: ApplicationServiceProtocol {
     private let applications: [ServiceApplicationInfo]
+    private var runningPIDs: Set<Int32>
     private(set) var activateCalls: [String] = []
+    private(set) var quitCalls: [QuitCall] = []
 
     init(applications: [ServiceApplicationInfo]) {
         self.applications = applications
+        self.runningPIDs = Set(applications.map(\.processIdentifier))
+    }
+
+    struct QuitCall: Equatable {
+        let identifier: String
+        let force: Bool
     }
 
     func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
@@ -320,7 +424,15 @@ private final class RecordingApplicationService: ApplicationServiceProtocol {
     }
 
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        if let match = self.applications.first(where: { $0.name == identifier || $0.bundleIdentifier == identifier }) {
+        if let pid = Self.parsePID(identifier),
+           let match = self.applications
+               .first(where: { $0.processIdentifier == pid && self.runningPIDs.contains(pid) }) {
+            return match
+        }
+        if let match = self.applications.first(where: {
+            self.runningPIDs.contains($0.processIdentifier) &&
+                ($0.name == identifier || $0.bundleIdentifier == identifier)
+        }) {
             return match
         }
         throw PeekabooError.appNotFound(identifier)
@@ -349,19 +461,27 @@ private final class RecordingApplicationService: ApplicationServiceProtocol {
     }
 
     func isApplicationRunning(identifier: String) async -> Bool {
-        self.applications.contains { $0.name == identifier || $0.bundleIdentifier == identifier }
+        await (try? self.findApplication(identifier: identifier)) != nil
     }
 
     func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
         try await self.findApplication(identifier: identifier)
     }
 
-    func quitApplication(identifier _: String, force _: Bool) async throws -> Bool {
-        true
+    func quitApplication(identifier: String, force: Bool) async throws -> Bool {
+        self.quitCalls.append(.init(identifier: identifier, force: force))
+        let app = try await self.findApplication(identifier: identifier)
+        self.runningPIDs.remove(app.processIdentifier)
+        return true
     }
 
     func hideApplication(identifier _: String) async throws {}
     func unhideApplication(identifier _: String) async throws {}
     func hideOtherApplications(identifier _: String) async throws {}
     func showAllApplications() async throws {}
+
+    private static func parsePID(_ identifier: String) -> Int32? {
+        guard identifier.uppercased().hasPrefix("PID:") else { return nil }
+        return Int32(identifier.dropFirst(4))
+    }
 }

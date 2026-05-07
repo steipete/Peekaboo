@@ -220,7 +220,23 @@ extension ApplicationService {
             bundlePath: app.bundleURL?.path,
             isActive: app.isActive,
             isHidden: app.isHidden,
-            windowCount: self.getWindowCount(for: app))
+            windowCount: self.getWindowCount(for: app),
+            activationPolicy: Self.serviceActivationPolicy(from: app.activationPolicy))
+    }
+
+    private static func serviceActivationPolicy(
+        from policy: NSApplication.ActivationPolicy) -> ServiceApplicationActivationPolicy
+    {
+        switch policy {
+        case .regular:
+            .regular
+        case .accessory:
+            .accessory
+        case .prohibited:
+            .prohibited
+        @unknown default:
+            .unknown
+        }
     }
 
     @MainActor

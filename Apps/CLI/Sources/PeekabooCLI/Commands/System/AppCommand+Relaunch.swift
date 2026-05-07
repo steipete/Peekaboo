@@ -1,4 +1,3 @@
-import AppKit
 import Commander
 import Foundation
 import PeekabooCore
@@ -10,6 +9,11 @@ extension AppCommand {
 
     @MainActor
     struct RelaunchSubcommand {
+        @MainActor
+        static var launcher: any ApplicationLaunching = ApplicationLaunchEnvironment.launcher
+        @MainActor
+        static var resolver: any ApplicationURLResolving = ApplicationURLResolverEnvironment.resolver
+
         static let commandDescription = CommandDescription(
             commandName: "relaunch",
             abstract: "Quit and relaunch an application"
@@ -68,14 +72,13 @@ extension AppCommand {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier, services: self.services)
                 let originalPID = appInfo.processIdentifier
+                let processIdentifier = "PID:\(originalPID)"
 
                 // Step 1: Quit the app
-                let runningApps = NSWorkspace.shared.runningApplications
-                guard let runningApp = runningApps.first(where: { $0.processIdentifier == originalPID }) else {
-                    throw NotFoundError.application(self.app)
-                }
-
-                let quitSuccess = self.force ? runningApp.forceTerminate() : runningApp.terminate()
+                let quitSuccess = try await self.services.applications.quitApplication(
+                    identifier: processIdentifier,
+                    force: self.force
+                )
 
                 if !quitSuccess {
                     throw PeekabooError
@@ -85,15 +88,7 @@ extension AppCommand {
                 }
 
                 // Wait for the app to actually terminate
-                var terminateWaitTime = 0.0
-                while runningApp.isTerminated == false && terminateWaitTime < 5.0 {
-                    try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                    terminateWaitTime += 0.1
-                }
-
-                if !runningApp.isTerminated {
-                    throw PeekabooError.timeout("App \(appInfo.name) did not terminate within 5 seconds")
-                }
+                try await self.waitUntilTerminated(identifier: processIdentifier, appName: appInfo.name)
 
                 // Step 2: Wait the specified duration
                 if self.wait > 0 {
@@ -101,37 +96,12 @@ extension AppCommand {
                 }
 
                 // Step 3: Launch the app
-                let workspace = NSWorkspace.shared
-                let newApp: NSRunningApplication?
-
-                if let bundleId = appInfo.bundleIdentifier {
-                    let config = NSWorkspace.OpenConfiguration()
-                    config.activates = true
-                    if let url = workspace.urlForApplication(withBundleIdentifier: bundleId) {
-                        newApp = try await workspace.openApplication(at: url, configuration: config)
-                    } else {
-                        throw NotFoundError.application("Could not find application URL for bundle ID: \(bundleId)")
-                    }
-                } else if let bundlePath = appInfo.bundlePath {
-                    let url = URL(fileURLWithPath: bundlePath)
-                    let config = NSWorkspace.OpenConfiguration()
-                    config.activates = true
-                    newApp = try await workspace.openApplication(at: url, configuration: config)
-                } else {
-                    throw PeekabooError.commandFailed("No bundle ID or path available to relaunch \(appInfo.name)")
-                }
-
-                guard let launchedApp = newApp else {
-                    throw PeekabooError.commandFailed("Failed to launch application")
-                }
+                let appURL = try self.resolveLaunchURL(for: appInfo)
+                let launchedApp = try await Self.launcher.launchApplication(at: appURL, activates: true)
 
                 // Wait until ready if requested
                 if self.waitUntilReady {
-                    var readyWaitTime = 0.0
-                    while !launchedApp.isFinishedLaunching && readyWaitTime < 10.0 {
-                        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                        readyWaitTime += 0.1
-                    }
+                    try await self.waitUntilReady(launchedApp)
                 }
 
                 struct RelaunchResult: Codable {
@@ -167,6 +137,37 @@ extension AppCommand {
             } catch {
                 handleError(error)
                 throw ExitCode(1)
+            }
+        }
+
+        private func waitUntilTerminated(identifier: String, appName: String) async throws {
+            var terminateWaitTime = 0.0
+            while await self.services.applications.isApplicationRunning(identifier: identifier),
+                  terminateWaitTime < 5.0 {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                terminateWaitTime += 0.1
+            }
+
+            if await self.services.applications.isApplicationRunning(identifier: identifier) {
+                throw PeekabooError.timeout("App \(appName) did not terminate within 5 seconds")
+            }
+        }
+
+        private func resolveLaunchURL(for appInfo: ServiceApplicationInfo) throws -> URL {
+            if let bundleID = appInfo.bundleIdentifier {
+                return try Self.resolver.resolveBundleIdentifier(bundleID)
+            }
+            if let bundlePath = appInfo.bundlePath {
+                return URL(fileURLWithPath: bundlePath)
+            }
+            throw PeekabooError.commandFailed("No bundle ID or path available to relaunch \(appInfo.name)")
+        }
+
+        private func waitUntilReady(_ app: any RunningApplicationHandle) async throws {
+            var readyWaitTime = 0.0
+            while !app.isFinishedLaunching && readyWaitTime < 10.0 {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                readyWaitTime += 0.1
             }
         }
     }

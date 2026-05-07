@@ -86,6 +86,9 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
     /// Number of windows
     public var windowCount: Int
 
+    /// macOS activation policy, when known.
+    public let activationPolicy: ServiceApplicationActivationPolicy?
+
     public init(
         processIdentifier: Int32,
         bundleIdentifier: String?,
@@ -93,7 +96,8 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
         bundlePath: String? = nil,
         isActive: Bool = false,
         isHidden: Bool = false,
-        windowCount: Int = 0)
+        windowCount: Int = 0,
+        activationPolicy: ServiceApplicationActivationPolicy? = nil)
     {
         self.processIdentifier = processIdentifier
         self.bundleIdentifier = bundleIdentifier
@@ -102,7 +106,15 @@ public struct ServiceApplicationInfo: Sendable, Codable, Equatable {
         self.isActive = isActive
         self.isHidden = isHidden
         self.windowCount = windowCount
+        self.activationPolicy = activationPolicy
     }
+}
+
+public enum ServiceApplicationActivationPolicy: String, Sendable, Codable, Equatable {
+    case regular
+    case accessory
+    case prohibited
+    case unknown
 }
 
 /// Information about a window for service layer
