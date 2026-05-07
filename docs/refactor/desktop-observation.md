@@ -121,6 +121,7 @@ Landed:
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
+- Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 
 Still incomplete:
 
@@ -154,6 +155,9 @@ DesktopObservationService.swift: 427 lines
 DesktopObservationDiagnosticsBuilder.swift: 97 lines
 DesktopObservationTraceRecorder.swift: 33 lines
 ElementDetectionService.swift: 207 lines
+ObservationTargetResolver.swift: 168 lines
+ObservationTargetResolver+MenuBar.swift: 131 lines
+ObservationTargetResolver+WindowSelection.swift: 159 lines
 ObservationLabelPlacer.swift: 425 lines
 ObservationLabelPlacementGeometry.swift: 183 lines
 WindowCommand.swift: 66 lines
