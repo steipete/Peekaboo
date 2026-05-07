@@ -125,6 +125,7 @@
 - Routed `peekaboo click` coordinate focus verification through the application service boundary instead of command-local `NSWorkspace` frontmost-app reads.
 - Routed `peekaboo menu click/list` frontmost-app fallback through the application service boundary instead of command-local `NSWorkspace` reads.
 - Removed stale `AppKit` imports from command utility, menubar, open, and space command files where only Foundation/CoreGraphics APIs are used.
+- Removed the stale `AppKit` dependency from the menu-bar popover detector helper.
 - Split observation target menu-bar resolution and window-selection scoring into focused resolver extension files.
 - Split desktop observation target, request, and result DTOs into focused model files.
 - Split `DesktopObservationService` capture, detection/OCR, and output-writing plumbing into focused extension files.
