@@ -18,8 +18,14 @@
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
+- MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
+- MCP `analyze` now honors configured AI providers and per-call `provider_config` model overrides instead of hardcoding the default OpenAI model.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
+- Window capture on macOS 26 now resolves native Retina scale from the backing display before falling back to ScreenCaptureKit display ratios.
+- `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
+- `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank or auxiliary-window captures in multi-window Chromium-style apps.
 - Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
+- Peekaboo.app now signs with the AppleEvents automation entitlement so macOS can prompt for Automation permission.
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
 - Custom OpenAI-compatible and Anthropic-compatible AI providers now forward configured proxy headers during generation and streaming.
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
