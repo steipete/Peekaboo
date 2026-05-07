@@ -34,6 +34,7 @@ extension PeekabooServiceProviding {
             screenCapture: self.screenCapture,
             automation: self.automation,
             applications: self.applications,
+            menu: self.menu,
             screens: self.screens,
             snapshotManager: self.snapshots)
     }

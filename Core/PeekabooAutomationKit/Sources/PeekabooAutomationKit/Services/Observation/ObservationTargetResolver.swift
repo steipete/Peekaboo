@@ -11,13 +11,16 @@ public protocol ObservationTargetResolving: Sendable {
 @MainActor
 public final class ObservationTargetResolver: ObservationTargetResolving {
     private let applications: any ApplicationServiceProtocol
+    private let menu: (any MenuServiceProtocol)?
     private let screens: (any ScreenServiceProtocol)?
 
     public init(
         applications: any ApplicationServiceProtocol,
+        menu: (any MenuServiceProtocol)? = nil,
         screens: (any ScreenServiceProtocol)? = nil)
     {
         self.applications = applications
+        self.menu = menu
         self.screens = screens
     }
 
@@ -50,8 +53,8 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         case .menubar:
             try self.resolveMenuBar()
 
-        case let .menubarPopover(hints):
-            try self.resolveMenuBarPopover(hints: hints)
+        case let .menubarPopover(hints, openIfNeeded):
+            try await self.resolveMenuBarPopover(hints: hints, openIfNeeded: openIfNeeded)
         }
     }
 
@@ -256,7 +259,20 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             captureScaleHint: screen.scaleFactor)
     }
 
-    private func resolveMenuBarPopover(hints: [String]) throws -> ResolvedObservationTarget {
+    private func resolveMenuBarPopover(
+        hints: [String],
+        openIfNeeded: MenuBarPopoverOpenOptions?) async throws -> ResolvedObservationTarget
+    {
+        do {
+            return try self.resolveOpenMenuBarPopover(hints: hints)
+        } catch DesktopObservationError.targetNotFound(_) where openIfNeeded != nil {
+            return try await self.openAndResolveMenuBarPopover(
+                hints: hints,
+                options: openIfNeeded ?? MenuBarPopoverOpenOptions())
+        }
+    }
+
+    private func resolveOpenMenuBarPopover(hints: [String]) throws -> ResolvedObservationTarget {
         guard let screens = self.screens?.listScreens(), !screens.isEmpty else {
             throw DesktopObservationError.targetNotFound("menu bar popover screens")
         }
@@ -293,6 +309,57 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             window: window,
             bounds: popover.bounds,
             detectionContext: context)
+    }
+
+    private func openAndResolveMenuBarPopover(
+        hints: [String],
+        options: MenuBarPopoverOpenOptions) async throws -> ResolvedObservationTarget
+    {
+        guard let menu else {
+            throw DesktopObservationError.targetNotFound("menu bar popover menu service")
+        }
+        guard let hint = self.menuBarPopoverClickHint(from: hints, options: options) else {
+            throw DesktopObservationError.targetNotFound("menu bar popover click hint")
+        }
+
+        let clickResult = try await menu.clickMenuBarItem(named: hint)
+        if options.settleDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: options.settleDelayNanoseconds)
+        }
+
+        if let target = try? self.resolveOpenMenuBarPopover(hints: hints) {
+            return target
+        }
+
+        if options.useClickLocationAreaFallback,
+           let preferredX = clickResult.location?.x,
+           let screens = self.screens?.listScreens(),
+           let bounds = ObservationMenuBarPopoverOCRSelector.popoverAreaRect(
+               preferredX: preferredX,
+               screens: screens)
+        {
+            let context = WindowContext(
+                applicationName: hint,
+                windowTitle: hint,
+                windowBounds: bounds)
+            return ResolvedObservationTarget(
+                kind: .menubarPopover,
+                app: ApplicationIdentity(processIdentifier: -1, bundleIdentifier: nil, name: hint),
+                bounds: bounds,
+                detectionContext: context)
+        }
+
+        throw DesktopObservationError.targetNotFound("menu bar popover")
+    }
+
+    private func menuBarPopoverClickHint(
+        from hints: [String],
+        options: MenuBarPopoverOpenOptions) -> String?
+    {
+        let candidates = [options.clickHint] + hints.map(Optional.some)
+        return candidates
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty }
     }
 
     public nonisolated static func menuBarBounds(for screen: ScreenInfo) -> CGRect {

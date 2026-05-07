@@ -476,7 +476,11 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
     private func observationTargetForCaptureWithDetectionIfPossible() throws -> DesktopObservationTargetRequest? {
         if self.menubar {
-            return .menubarPopover(hints: MenuBarPopoverResolverContext.normalizedHints([self.menuBarAppHint()]))
+            let hint = self.menuBarAppHint()
+            return .menubarPopover(
+                hints: MenuBarPopoverResolverContext.normalizedHints([hint]),
+                openIfNeeded: MenuBarPopoverOpenOptions(clickHint: hint)
+            )
         }
 
         switch self.determineMode() {

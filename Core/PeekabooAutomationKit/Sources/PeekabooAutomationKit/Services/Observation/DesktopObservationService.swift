@@ -20,13 +20,14 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
         applications: any ApplicationServiceProtocol,
+        menu: (any MenuServiceProtocol)? = nil,
         screens: any ScreenServiceProtocol = ScreenService(),
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         ocrRecognizer: any OCRRecognizing = OCRService())
     {
         self.screenCapture = screenCapture
         self.automation = automation
-        self.targetResolver = ObservationTargetResolver(applications: applications, screens: screens)
+        self.targetResolver = ObservationTargetResolver(applications: applications, menu: menu, screens: screens)
         self.outputWriter = ObservationOutputWriter(snapshotManager: snapshotManager)
         self.stateSnapshotProvider = DesktopStateSnapshotProvider(applications: applications)
         self.ocrRecognizer = ocrRecognizer

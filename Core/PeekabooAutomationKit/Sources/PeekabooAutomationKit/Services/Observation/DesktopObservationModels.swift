@@ -23,7 +23,23 @@ public enum DesktopObservationTargetRequest: Sendable, Equatable {
     case windowID(CGWindowID)
     case area(CGRect)
     case menubar
-    case menubarPopover(hints: [String])
+    case menubarPopover(hints: [String], openIfNeeded: MenuBarPopoverOpenOptions? = nil)
+}
+
+public struct MenuBarPopoverOpenOptions: Sendable, Equatable {
+    public var clickHint: String?
+    public var settleDelayNanoseconds: UInt64
+    public var useClickLocationAreaFallback: Bool
+
+    public init(
+        clickHint: String? = nil,
+        settleDelayNanoseconds: UInt64 = 350_000_000,
+        useClickLocationAreaFallback: Bool = true)
+    {
+        self.clickHint = clickHint
+        self.settleDelayNanoseconds = settleDelayNanoseconds
+        self.useClickLocationAreaFallback = useClickLocationAreaFallback
+    }
 }
 
 public enum ResolvedObservationKind: Sendable, Equatable {

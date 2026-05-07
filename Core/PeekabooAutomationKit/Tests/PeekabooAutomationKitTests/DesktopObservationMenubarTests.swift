@@ -84,6 +84,24 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(candidate?.ownerPID, 200)
     }
 
+    func testPopoverResolverRejectsUnmatchedHints() {
+        let screen = Self.primaryScreen()
+        let windows = [
+            Self.windowInfo(
+                id: 1,
+                ownerPID: 100,
+                ownerName: "Other",
+                bounds: CGRect(x: 100, y: 940, width: 260, height: 120)),
+        ]
+
+        let candidate = ObservationMenuBarPopoverResolver.resolve(
+            hints: ["Definitely Not Open Menu Extra For Test"],
+            windowList: windows,
+            screens: [screen])
+
+        XCTAssertNil(candidate)
+    }
+
     func testPopoverOCRSelectorMatchesCandidateWindow() async throws {
         let capture = MenuBarRecordingScreenCaptureService()
         let ocr = MenuBarRecordingOCRRecognizer(text: "Battery Sound")
@@ -119,6 +137,35 @@ final class DesktopObservationMenubarTests: XCTestCase {
             screens: [screen]))
         XCTAssertEqual(capture.capturedAreas, [expected])
         XCTAssertEqual(match?.bounds, expected)
+    }
+
+    func testPopoverObservationCanOpenMenuExtraAndCaptureClickAreaFallback() async throws {
+        let capture = MenuBarRecordingScreenCaptureService()
+        let menu = MenuBarRecordingMenuService(location: CGPoint(x: 1600, y: 1098))
+        let screen = Self.primaryScreen()
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: MenuBarRecordingAutomationService(),
+            applications: UnusedApplicationService(),
+            menu: menu,
+            screens: MenuBarRecordingScreenService(screens: [screen]),
+            ocrRecognizer: MenuBarRecordingOCRRecognizer(text: "Definitely Not Open Menu Extra For Test"))
+        let expected = try XCTUnwrap(ObservationMenuBarPopoverOCRSelector.popoverAreaRect(
+            preferredX: 1600,
+            screens: [screen]))
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .menubarPopover(
+                hints: ["Definitely Not Open Menu Extra For Test"],
+                openIfNeeded: MenuBarPopoverOpenOptions(
+                    clickHint: "Definitely Not Open Menu Extra For Test",
+                    settleDelayNanoseconds: 0)),
+            detection: DesktopDetectionOptions(mode: .none)))
+
+        XCTAssertEqual(menu.clickedNames, ["Definitely Not Open Menu Extra For Test"])
+        XCTAssertEqual(capture.capturedAreas, [expected])
+        XCTAssertEqual(result.target.kind, .menubarPopover)
+        XCTAssertEqual(result.target.bounds, expected)
     }
 
     private static func windowInfo(
@@ -277,6 +324,80 @@ private final class MenuBarRecordingAutomationService: UIAutomationServiceProtoc
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         DetectedElement(id: "B1", type: .button, bounds: .zero)
+    }
+}
+
+@MainActor
+private final class MenuBarRecordingScreenService: ScreenServiceProtocol {
+    private let screens: [ScreenInfo]
+
+    init(screens: [ScreenInfo]) {
+        self.screens = screens
+    }
+
+    var primaryScreen: ScreenInfo? {
+        self.screens.first(where: \.isPrimary) ?? self.screens.first
+    }
+
+    func listScreens() -> [ScreenInfo] {
+        self.screens
+    }
+
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        self.screens.first { $0.frame.intersects(bounds) }
+    }
+
+    func screen(at index: Int) -> ScreenInfo? {
+        self.screens.first { $0.index == index }
+    }
+}
+
+@MainActor
+private final class MenuBarRecordingMenuService: MenuServiceProtocol {
+    private let location: CGPoint
+    var clickedNames: [String] = []
+
+    init(location: CGPoint) {
+        self.location = location
+    }
+
+    func listMenus(for _: String) async throws -> MenuStructure {
+        fatalError("unused")
+    }
+
+    func listFrontmostMenus() async throws -> MenuStructure {
+        fatalError("unused")
+    }
+
+    func clickMenuItem(app _: String, itemPath _: String) async throws {}
+
+    func clickMenuItemByName(app _: String, itemName _: String) async throws {}
+
+    func clickMenuExtra(title _: String) async throws {}
+
+    func isMenuExtraMenuOpen(title _: String, ownerPID _: pid_t?) async throws -> Bool {
+        false
+    }
+
+    func menuExtraOpenMenuFrame(title _: String, ownerPID _: pid_t?) async throws -> CGRect? {
+        nil
+    }
+
+    func listMenuExtras() async throws -> [MenuExtraInfo] {
+        []
+    }
+
+    func listMenuBarItems(includeRaw _: Bool) async throws -> [MenuBarItemInfo] {
+        []
+    }
+
+    func clickMenuBarItem(named name: String) async throws -> ClickResult {
+        self.clickedNames.append(name)
+        return ClickResult(elementDescription: name, location: self.location)
+    }
+
+    func clickMenuBarItem(at _: Int) async throws -> ClickResult {
+        fatalError("unused")
     }
 }
 

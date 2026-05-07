@@ -31,30 +31,6 @@ extension SeeCommand {
         }
     }
 
-    func captureMenuBarPopoverByArea(
-        preferredX: CGFloat,
-        hints: [String]
-    ) async throws -> MenuBarPopoverCapture? {
-        let matcher = self.menuBarAreaOCRMatcher()
-        guard let match = try await matcher(preferredX, hints) else { return nil }
-        guard let captureResult = match.captureResult,
-              let bounds = match.bounds else {
-            return nil
-        }
-        self.logger.verbose(
-            "Selected menu bar popover via area capture",
-            category: "Capture",
-            metadata: [
-                "rect": "\(bounds)"
-            ]
-        )
-        return MenuBarPopoverCapture(
-            captureResult: captureResult,
-            windowBounds: bounds,
-            windowId: nil
-        )
-    }
-
     func captureMenuBarPopoverFromOpenMenu(
         openExtra: MenuExtraInfo?,
         appHint: String?

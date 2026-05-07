@@ -81,39 +81,6 @@ extension SeeCommand {
                 )
             }
 
-            if let appHint = self.menuBarAppHint() {
-                self.logger.verbose("Attempting to open menu extra for capture", category: "Capture", metadata: [
-                    "app": appHint
-                ])
-                let clickResult = try? await MenuServiceBridge.clickMenuBarItem(
-                    named: appHint,
-                    menu: self.services.menu
-                )
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                if let preferredX = clickResult?.location?.x,
-                   let quickAreaCapture = try await self.captureMenuBarPopoverByArea(
-                       preferredX: preferredX,
-                       hints: MenuBarPopoverResolverContext.normalizedHints([appHint])
-                   ) {
-                    return CaptureContext(
-                        captureResult: quickAreaCapture.captureResult,
-                        captureBounds: quickAreaCapture.windowBounds,
-                        prefersOCR: true,
-                        ocrMethod: "OCR",
-                        windowIdOverride: quickAreaCapture.windowId
-                    )
-                }
-                if let popover = try await self.captureMenuBarPopover(allowAreaFallback: true) {
-                    return CaptureContext(
-                        captureResult: popover.captureResult,
-                        captureBounds: popover.windowBounds,
-                        prefersOCR: true,
-                        ocrMethod: "OCR",
-                        windowIdOverride: popover.windowId
-                    )
-                }
-            }
-
             self.logger.verbose("No menu bar popover detected; capturing menu bar area", category: "Capture")
             let rect = try self.menuBarRect()
             let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)

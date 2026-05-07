@@ -91,6 +91,10 @@ enum ObservationMenuBarPopoverResolver {
         guard !candidates.isEmpty else { return nil }
 
         let hintedCandidates = Self.filterByHints(candidates: candidates, hints: hints)
+        if !hints.isEmpty, hintedCandidates.isEmpty {
+            return nil
+        }
+
         let ranked = Self.rank(candidates: hintedCandidates.isEmpty ? candidates : hintedCandidates)
         return ranked.first
     }
