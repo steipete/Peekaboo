@@ -161,6 +161,7 @@ Landed:
 - File-dialog handling now keeps orchestration, navigation/focus, filename entry, and save verification in focused service files.
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
+- Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -283,6 +284,11 @@ ProcessService+CaptureCommands.swift: 119 lines
 ProcessService+InteractionCommands.swift: 287 lines
 ProcessService+SystemCommands.swift: 382 lines
 ProcessService+ParameterParsing.swift: 197 lines
+ApplicationService.swift: 72 lines
+ApplicationService+Discovery.swift: 246 lines
+ApplicationService+Lifecycle.swift: 385 lines
+ApplicationService+WindowListing.swift: 470 lines
+ApplicationServiceWindowsWorkaround.swift: 198 lines
 MenuService+Extras.swift: 296 lines
 MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines

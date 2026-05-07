@@ -65,6 +65,7 @@
 - `peekaboo dialog` click, input, file, dismiss, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
+- Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.

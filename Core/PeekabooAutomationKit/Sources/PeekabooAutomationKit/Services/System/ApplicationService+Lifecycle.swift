@@ -1,0 +1,385 @@
+import AppKit
+import AXorcist
+import Foundation
+import os.log
+import PeekabooFoundation
+
+@MainActor
+extension ApplicationService {
+    public func launchApplication(identifier: String) async throws -> ServiceApplicationInfo {
+        self.logger.info("Launching application: \(identifier)")
+
+        // First check if already running
+        do {
+            let existingApp = try await findApplication(identifier: identifier)
+            self.logger.debug("Application already running: \(existingApp.name)")
+            return existingApp
+        } catch {
+            self.logger.debug("Application not currently running: \(identifier), will try to launch")
+        }
+
+        // Try to launch by bundle ID
+        // Find the app URL
+        let appURL: URL
+        // Already on main thread due to @MainActor on class
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identifier) {
+            self.logger.debug("Found app by bundle ID at: \(url.path)")
+            appURL = url
+        } else if let url = findApplicationByName(identifier) {
+            self.logger.debug("Found app by name at: \(url.path)")
+            appURL = url
+        } else {
+            self.logger.error("Application not found in system: \(identifier)")
+            throw PeekabooError.appNotFound(identifier)
+        }
+
+        // Launch the application
+        let config = NSWorkspace.OpenConfiguration()
+        config.activates = true
+
+        self.logger.debug("Launching app from URL: \(appURL.path)")
+
+        // Extract app name and icon path
+        let appName = appURL.lastPathComponent.replacingOccurrences(of: ".app", with: "")
+        let iconPath = appURL.appendingPathComponent("Contents/Resources/AppIcon.icns").path
+        let hasIcon = FileManager.default.fileExists(atPath: iconPath)
+
+        // Show app launch animation
+        _ = await self.feedbackClient.showAppLaunch(appName: appName, iconPath: hasIcon ? iconPath : nil)
+
+        // Already on main thread due to @MainActor on class
+        let runningApp = try await NSWorkspace.shared.openApplication(at: appURL, configuration: config)
+
+        // Wait a bit for the app to fully launch
+        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+        let launchMessage =
+            "Successfully launched: \(runningApp.localizedName ?? "Unknown") (PID: \(runningApp.processIdentifier))"
+        self.logger.info("\(launchMessage)")
+        return self.createApplicationInfo(from: runningApp)
+    }
+
+    public func activateApplication(identifier: String) async throws {
+        self.logger.info("Activating application: \(identifier)")
+        let app = try await findApplication(identifier: identifier)
+
+        // Create NSRunningApplication
+        let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
+        guard let runningApp else {
+            throw PeekabooError.operationError(
+                message: "Failed to activate application: Could not find running application process")
+        }
+
+        let activated = runningApp.activate(options: [])
+
+        if !activated {
+            self.logger.error("Failed to activate application: \(app.name). Continuing without activation.")
+            return
+        }
+
+        self.logger.info("Successfully activated: \(app.name)")
+        // Wait for activation to complete
+        try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+    }
+
+    public func quitApplication(identifier: String, force: Bool = false) async throws -> Bool {
+        self.logger.info("Quitting application: \(identifier) (force: \(force))")
+        let app = try await findApplication(identifier: identifier)
+
+        // Create NSRunningApplication
+        let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
+        guard let runningApp else {
+            throw PeekabooError.appNotFound(identifier)
+        }
+
+        // Try to get app icon path for animation
+        var iconPath: String?
+        if let bundleURL = runningApp.bundleURL {
+            let potentialIconPath = bundleURL.appendingPathComponent("Contents/Resources/AppIcon.icns").path
+            if FileManager.default.fileExists(atPath: potentialIconPath) {
+                iconPath = potentialIconPath
+            }
+        }
+
+        // Show app quit animation
+        _ = await self.feedbackClient.showAppQuit(appName: app.name, iconPath: iconPath)
+
+        self.logger.debug("Sending \(force ? "force terminate" : "terminate") signal to \(app.name)")
+        let success = force ? runningApp.forceTerminate() : runningApp.terminate()
+
+        // Wait a bit for the termination to complete
+        if success {
+            self.logger.info("Successfully quit: \(app.name)")
+            try await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
+        } else {
+            self.logger.error("Failed to quit: \(app.name)")
+        }
+
+        return success
+    }
+
+    public func hideApplication(identifier: String) async throws {
+        self.logger.info("Hiding application: \(identifier)")
+        let app = try await findApplication(identifier: identifier)
+
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
+
+        do {
+            try appElement.performAction(Attribute<String>("AXHide"))
+            self.logger.debug("Hidden via AX action: \(app.name)")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX hide action failed for \(app.name)")
+            // Fallback to NSRunningApplication method
+            self.logger.debug("Using NSRunningApplication fallback")
+            let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
+            if let runningApp {
+                runningApp.hide()
+                self.logger.debug("Hidden via NSRunningApplication: \(app.name)")
+            }
+        }
+    }
+
+    public func unhideApplication(identifier: String) async throws {
+        self.logger.info("Unhiding application: \(identifier)")
+        let app = try await findApplication(identifier: identifier)
+
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
+
+        do {
+            try appElement.performAction(Attribute<String>("AXUnhide"))
+            self.logger.debug("Unhidden via AX action: \(app.name)")
+        } catch {
+            _ = error.asPeekabooError(context: "AX unhide action failed for \(app.name)")
+            self.logger.debug("Using activate fallback")
+            let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier)
+            if let runningApp {
+                runningApp.activate()
+                self.logger.debug("Activated as fallback: \(app.name)")
+            }
+        }
+    }
+
+    public func hideOtherApplications(identifier: String) async throws {
+        self.logger.info("Hiding other applications except: \(identifier)")
+        let app = try await findApplication(identifier: identifier)
+
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+            throw NotFoundError.application(identifier)
+        }
+        let appElement = AXApp(runningApp).element
+
+        do {
+            // Use custom attribute for hide others action
+            try appElement.performAction(Attribute<String>("AXHideOthers"))
+            self.logger.debug("Hidden others via AX action")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX hide others action failed")
+            // Fallback: hide each app individually
+            self.logger.debug("Hiding apps individually")
+            // Already on main thread due to @MainActor on class
+            let apps = NSWorkspace.shared.runningApplications
+            var hiddenCount = 0
+            for runningApp in apps {
+                if runningApp.processIdentifier != app.processIdentifier,
+                   runningApp.activationPolicy == .regular,
+                   runningApp.bundleIdentifier != "com.apple.finder"
+                {
+                    runningApp.hide()
+                    hiddenCount += 1
+                }
+            }
+            // Return value already computed
+            self.logger.debug("Hidden \(hiddenCount) other applications")
+        }
+    }
+
+    public func showAllApplications() async throws {
+        self.logger.info("Showing all applications")
+        let systemWide = Element.systemWide()
+
+        do {
+            // Use custom attribute for show all action
+            try systemWide.performAction(Attribute<String>("AXShowAll"))
+            self.logger.debug("Shown all via AX action")
+        } catch {
+            // Log the error but use fallback
+            _ = error.asPeekabooError(context: "AX show all action failed")
+            // Fallback: unhide each hidden app
+            self.logger.debug("Unhiding apps individually")
+            // Already on main thread due to @MainActor on class
+            let apps = NSWorkspace.shared.runningApplications
+            var unhiddenCount = 0
+            for runningApp in apps {
+                if runningApp.isHidden, runningApp.activationPolicy == .regular {
+                    runningApp.unhide()
+                    unhiddenCount += 1
+                }
+            }
+            // Return value already computed
+            self.logger.debug("Unhidden \(unhiddenCount) applications")
+        }
+    }
+
+    private func findApplicationByName(_ name: String) -> URL? {
+        self.logger.debug("Searching for application by name: \(name)")
+
+        // First, try exact name in common directories
+        let searchPaths = [
+            "/Applications",
+            "/System/Applications",
+            "/Applications/Utilities",
+            "~/Applications",
+        ].map { NSString(string: $0).expandingTildeInPath }
+
+        let fileManager = FileManager.default
+
+        for path in searchPaths {
+            let searchName = name.hasSuffix(".app") ? name : "\(name).app"
+            let fullPath = (path as NSString).appendingPathComponent(searchName)
+
+            if fileManager.fileExists(atPath: fullPath) {
+                self.logger.debug("Found app at: \(fullPath)")
+                return URL(fileURLWithPath: fullPath)
+            }
+        }
+
+        // Try NSWorkspace API with bundle ID
+        // Already on main thread due to @MainActor on class
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name) {
+            self.logger.debug("Found app via bundle identifier: \(url.path)")
+            return url
+        }
+
+        // Use Spotlight search for more flexible app discovery
+        if let url = searchApplicationWithSpotlight(name) {
+            self.logger.debug("Found app via Spotlight: \(url.path)")
+            return url
+        }
+
+        self.logger.debug("Application not found by name: \(name)")
+        return nil
+    }
+
+    @MainActor
+    private func searchApplicationWithSpotlight(_ name: String) -> URL? {
+        SpotlightApplicationSearcher(logger: self.logger, name: name).search()
+    }
+}
+
+@MainActor
+private struct SpotlightApplicationSearcher {
+    let logger: Logger
+    let name: String
+
+    func search() -> URL? {
+        self.logger.debug("Using Spotlight to search for: \(self.name)")
+        let query = self.makeQuery()
+        query.start()
+        self.waitForResults(query)
+        query.stop()
+        self.logger.debug("Spotlight query completed with \(query.resultCount) results")
+
+        guard let match = bestMatch(in: query) else {
+            return nil
+        }
+
+        let resultMessage = "Spotlight found app: \(match.url.path) (score: \(match.score))"
+        self.logger.debug("\(resultMessage)")
+        return match.url
+    }
+
+    private func makeQuery() -> NSMetadataQuery {
+        let query = NSMetadataQuery()
+        let predicateFormat =
+            "(kMDItemContentType == 'com.apple.application-bundle' || kMDItemContentType == 'com.apple.application')" +
+            " && (kMDItemDisplayName CONTAINS[cd] %@ || kMDItemFSName CONTAINS[cd] %@)"
+        query.predicate = NSPredicate(format: predicateFormat, self.name, self.name)
+        query.searchScopes = [
+            NSMetadataQueryIndexedLocalComputerScope,
+            NSMetadataQueryIndexedNetworkScope,
+        ]
+        return query
+    }
+
+    private func waitForResults(_ query: NSMetadataQuery) {
+        let startTime = Date()
+        while query.isGathering, Date().timeIntervalSince(startTime) < 2.0 {
+            RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.1))
+        }
+    }
+
+    private func bestMatch(in query: NSMetadataQuery) -> (url: URL, score: Int)? {
+        var bestMatch: (url: URL, score: Int)?
+        let searchTerm = self.name.lowercased()
+
+        for index in 0..<query.resultCount {
+            guard let item = query.result(at: index) as? NSMetadataItem,
+                  let path = item.value(forAttribute: NSMetadataItemPathKey) as? String
+            else {
+                continue
+            }
+
+            let appURL = URL(fileURLWithPath: path)
+            let displayName = (item.value(forAttribute: NSMetadataItemDisplayNameKey) as? String) ?? ""
+            let fsName = appURL.lastPathComponent
+
+            let spotlightMessage =
+                "Spotlight found: \(path), displayName: '\(displayName)', fsName: '\(fsName)'"
+            self.logger.debug("\(spotlightMessage)")
+
+            let score = score(for: displayName, fsName: fsName, path: path, searchTerm: searchTerm)
+            if score > (bestMatch?.score ?? 0) {
+                bestMatch = (appURL, score)
+            }
+
+            if score >= 100 {
+                break
+            }
+        }
+
+        return bestMatch
+    }
+
+    private func score(
+        for displayName: String,
+        fsName: String,
+        path: String,
+        searchTerm: String) -> Int
+    {
+        var score = 0
+        let fsNameNoExt = fsName.hasSuffix(".app") ? String(fsName.dropLast(4)) : fsName
+        let displayLower = displayName.lowercased()
+        let fsLower = fsNameNoExt.lowercased()
+
+        if displayLower == searchTerm ||
+            fsLower == searchTerm ||
+            fsName.lowercased() == "\(searchTerm).app"
+        {
+            score = 100
+        } else if displayLower.hasPrefix(searchTerm) || fsLower.hasPrefix(searchTerm) {
+            score = 80
+        } else if displayLower.contains(searchTerm) || fsLower.contains(searchTerm) {
+            score = 50
+        }
+
+        if path.hasPrefix("/Applications/") {
+            score += 10
+        } else if path.hasPrefix("/System/Applications/") {
+            score += 5
+        }
+
+        if path.contains("/DerivedData/"), path.contains("/Debug/") {
+            score += 15
+        }
+
+        return score
+    }
+}
