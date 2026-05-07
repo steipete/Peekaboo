@@ -4,12 +4,28 @@ import PeekabooFoundation
 
 @MainActor
 
-struct CommanderCommand: ParsableCommand {
-    @Flag(names: [.long, .customShort("v", allowingJoined: false)], help: "Enable verbose logging for diagnostics")
-    var verbose = false
+struct CommanderCommand: OutputFormattable, RuntimeOptionsConfigurable {
+    @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
-    @Flag(name: .long, help: "Emit machine-readable JSON output")
-    var json = false
+    private var resolvedRuntime: CommandRuntime {
+        guard let runtime else {
+            preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+        }
+        return runtime
+    }
+
+    private var logger: Logger {
+        self.resolvedRuntime.logger
+    }
+
+    var outputLogger: Logger {
+        self.logger
+    }
+
+    var jsonOutput: Bool {
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
+    }
 
     static var commandDescription: CommandDescription {
         CommandDescription(
@@ -20,11 +36,12 @@ struct CommanderCommand: ParsableCommand {
     }
 
     @MainActor
-    mutating func run() async throws {
+    mutating func run(using runtime: CommandRuntime) async throws {
+        self.runtime = runtime
+        self.logger.setJsonOutputMode(self.jsonOutput)
+
         let summaries = CommanderRegistryBuilder.buildCommandSummaries()
         let outputStruct = CommanderDiagnostics(commands: summaries)
-        let runtimeOptions = CommandRuntimeOptions(verbose: verbose, jsonOutput: json)
-        let runtime = await CommandRuntime.makeDefaultAsync(options: runtimeOptions)
         CommanderDiagnosticsReporter(runtime: runtime).report(outputStruct)
     }
 }
@@ -38,12 +55,8 @@ struct CommanderDiagnosticsReporter {
     let runtime: CommandRuntime
 
     func report(_ diagnostics: CommanderDiagnostics) {
-        if self.runtime.configuration.jsonOutput, let jsonData = try? JSONEncoder.pretty.encode(diagnostics),
-           let jsonString = String(
-               data: jsonData,
-               encoding: .utf8
-           ) {
-            print(jsonString)
+        if self.runtime.configuration.jsonOutput {
+            outputSuccessCodable(data: diagnostics, logger: self.runtime.logger)
         } else {
             for command in diagnostics.commands {
                 self.runtime.logger.info("\(command.name): \(command.abstract)")
@@ -59,17 +72,20 @@ struct CommanderDiagnosticsReporter {
     }
 }
 
-extension JSONEncoder {
-    fileprivate static var pretty: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
+@MainActor
+extension CommanderCommand: ParsableCommand {}
+extension CommanderCommand: AsyncRuntimeCommand {}
+
+extension CommanderCommand: CommanderSignatureProviding {
+    static func commanderSignature() -> CommandSignature {
+        CommandSignature()
     }
 }
 
+@MainActor
 extension CommanderCommand: CommanderBindableCommand {
+    /// Runtime flags are handled by the shared binder; this diagnostics command has no command-specific arguments.
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.verbose = values.flag("verbose")
-        self.json = values.flag("json")
+        _ = values
     }
 }

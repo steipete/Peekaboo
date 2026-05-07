@@ -65,6 +65,7 @@ enum CommandRegistry {
         .init(type: VisualizerCommand.self, category: .system),
         .init(type: ClipboardCommand.self, category: .system),
         .init(type: CompletionsCommand.self, category: .core),
+        .init(type: CommanderCommand.self, category: .core),
         .init(type: AgentCommand.self, category: .ai),
         .init(type: MCPCommand.self, category: .mcp),
     ]

@@ -1169,6 +1169,7 @@ CLI JSON envelope sweep, May 7, 2026:
 ./Apps/CLI/.build/debug/peekaboo space list --json
 ./Apps/CLI/.build/debug/peekaboo window list --app Finder --json
 ./Apps/CLI/.build/debug/peekaboo tools --json
+./Apps/CLI/.build/debug/peekaboo commander --json
 ./Apps/CLI/.build/debug/peekaboo sleep 1 --json
 ./Apps/CLI/.build/debug/peekaboo image --app frontmost --path /tmp/peekaboo-sweep-frontmost.png --json
 ./Apps/CLI/.build/debug/peekaboo see --app frontmost --path /tmp/peekaboo-sweep-see.png --json
@@ -1177,6 +1178,7 @@ CLI JSON envelope sweep, May 7, 2026:
 Results:
 
 - `list apps`, `list screens`, and `list windows --app Finder` now use the standard top-level `success/data/debug_logs` envelope instead of the old `data/metadata/summary` shape;
+- the documented experimental `commander` diagnostics command is registered again and returns command metadata inside the standard JSON envelope;
 - read-only command wall times were `115-235ms` on this host, except `dialog list` returned the expected structured no-dialog error in `164ms`;
 - `image --app frontmost` captured successfully in `565ms`; `see --app frontmost` captured and detected successfully in `847ms`.
 
