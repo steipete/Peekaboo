@@ -99,6 +99,8 @@ Landed:
 - `peekaboo window focus --snapshot` now focuses the captured window context while preserving explicit snapshots during focus-cache invalidation.
 - Element-targeted `click`, `move`, `scroll`, `drag`, and `swipe` JSON results now report target-point diagnostics with original snapshot point, resolved point, snapshot ID, and moved-window adjustment.
 - `ElementDetectionService` now owns only detection/result building; snapshot persistence moved up to orchestration.
+- Exact CoreGraphics window-ID metadata lookup now lives in `WindowCGInfoLookup`, keeping `WindowManagementService` focused on window operations and fallback orchestration.
+- Shared `peekaboo window` target, display-name, action-result, and snapshot-invalidation helpers now live in `WindowCommand+Support`, leaving the primary command file focused on subcommand wiring.
 
 Still incomplete:
 
@@ -116,7 +118,11 @@ ScreenCaptureEngineSupport.swift: 207 lines
 ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
+WindowManagementService.swift: 819 lines
+WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
+WindowCommand.swift: 1221 lines
+WindowCommand+Support.swift: 189 lines
 SeeCommand.swift: 306 lines
 SeeCommand+CapturePipeline.swift: 225 lines
 SeeCommand+DetectionPipeline.swift: 160 lines
