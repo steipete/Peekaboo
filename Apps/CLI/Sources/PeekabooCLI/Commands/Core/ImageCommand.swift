@@ -469,6 +469,9 @@ extension ImageCommand {
         case .background:
             return
         case .auto:
+            if self.windowTitle == nil, Self.isAlreadyFrontmost(appIdentifier: appIdentifier) {
+                return
+            }
             let focusIdentifier = await self.resolveFocusIdentifier(appIdentifier: appIdentifier)
             let options = FocusOptions(autoFocus: true, spaceSwitch: false, bringToCurrentSpace: false)
             try await ensureFocused(
@@ -489,13 +492,65 @@ extension ImageCommand {
         }
     }
 
+    private static func isAlreadyFrontmost(appIdentifier: String) -> Bool {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication,
+              let target = fastRunningApplication(for: appIdentifier)
+        else {
+            return false
+        }
+
+        return frontmost.processIdentifier == target.processIdentifier
+    }
+
     private func resolveFocusIdentifier(appIdentifier: String) async -> String {
-        do {
-            let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
-            return "PID:\(appInfo.processIdentifier)"
-        } catch {
+        guard let app = Self.fastRunningApplication(for: appIdentifier) else {
             return appIdentifier
         }
+        return "PID:\(app.processIdentifier)"
+    }
+
+    private static func fastRunningApplication(for identifier: String) -> NSRunningApplication? {
+        let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let runningApps = NSWorkspace.shared.runningApplications.filter { !$0.isTerminated }
+
+        if let pid = Self.parsePID(trimmedIdentifier) {
+            return runningApps.first { $0.processIdentifier == pid }
+        }
+
+        if let bundleMatch = runningApps.first(where: { $0.bundleIdentifier == trimmedIdentifier }) {
+            return bundleMatch
+        }
+
+        if let exactName = runningApps.first(where: {
+            guard let name = $0.localizedName else { return false }
+            return name.compare(trimmedIdentifier, options: .caseInsensitive) == .orderedSame
+        }) {
+            return exactName
+        }
+
+        return runningApps.compactMap { app -> (app: NSRunningApplication, score: Int)? in
+            guard app.activationPolicy != .prohibited,
+                  let name = app.localizedName,
+                  name.localizedCaseInsensitiveContains(trimmedIdentifier)
+            else { return nil }
+
+            var score = 0
+            if name.lowercased().hasPrefix(trimmedIdentifier.lowercased()) {
+                score += 100
+            }
+            if app.activationPolicy == .regular {
+                score += 50
+            }
+            score -= name.count
+            return (app, score)
+        }
+        .max(by: { $0.score < $1.score })?
+        .app
+    }
+
+    private static func parsePID(_ identifier: String) -> Int32? {
+        guard identifier.uppercased().hasPrefix("PID:") else { return nil }
+        return Int32(identifier.dropFirst(4))
     }
 
     private func resolveWindow(for identifier: String) async throws -> ServiceWindowInfo? {

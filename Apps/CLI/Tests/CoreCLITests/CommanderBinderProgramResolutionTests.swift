@@ -14,12 +14,14 @@ struct CommanderBinderProgramResolutionTests {
             "--app", "Safari",
             "--window-title", "Inbox",
             "--mode", "screen",
+            "--capture-engine", "cg",
             "--path", "/tmp/sample.png"
         ])
         let values = invocation.parsedValues
         #expect(values.options["app"] == ["Safari"])
         #expect(values.options["windowTitle"] == ["Inbox"])
         #expect(values.options["mode"] == ["screen"])
+        #expect(values.options["captureEngine"] == ["cg"])
         #expect(values.options["path"] == ["/tmp/sample.png"])
     }
 

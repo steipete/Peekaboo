@@ -45,6 +45,11 @@ extension ImageCommand: CommanderSignatureProviding {
                     long: "screen-index"
                 ),
                 .commandOption(
+                    "captureEngine",
+                    help: "Capture engine: auto|classic|cg|modern|sckit (defaults to auto)",
+                    long: "capture-engine"
+                ),
+                .commandOption(
                     "format",
                     help: "Image format (png or jpg)",
                     long: "format"

@@ -113,7 +113,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             applicationResolver: (any ApplicationResolving)? = nil,
             metricsObserver: (any ScreenCaptureMetricsObserving)? = nil) -> Dependencies
         {
-            let resolver = applicationResolver ?? PeekabooApplicationResolver(applicationService: ApplicationService())
+            let resolver = applicationResolver ?? PeekabooApplicationResolver()
             let captureObserver: (@Sendable (String, ScreenCaptureAPI, TimeInterval, Bool, (any Error)?) -> Void)? =
                 if let metricsObserver {
                     { operation, api, duration, success, error in

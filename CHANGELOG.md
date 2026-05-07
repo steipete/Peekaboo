@@ -24,6 +24,7 @@
 - Window capture on macOS 26 now resolves native Retina scale from the backing display before falling back to ScreenCaptureKit display ratios.
 - `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank or auxiliary-window captures in multi-window Chromium-style apps.
+- `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
 - Peekaboo.app now signs with the AppleEvents automation entitlement so macOS can prompt for Automation permission.
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
@@ -35,6 +36,7 @@
 ### Performance
 - Menu bar listing is faster by avoiding redundant accessibility work.
 - Dialog discovery and visualizer dispatch now fail fast when their target UI is unavailable instead of waiting through slow default paths.
+- `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!
