@@ -93,7 +93,11 @@ Current size pressure:
 
 ```text
 ScreenCaptureService.swift: 494 lines
-ScreenCaptureService+Support.swift: 610 lines
+ScreenCaptureService+Support.swift: 19 lines
+ScreenCaptureScaleResolver.swift: 115 lines
+ScreenCaptureEngineSupport.swift: 207 lines
+ScreenCaptureApplicationResolver.swift: 75 lines
+ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
 SeeCommand.swift: 1168 lines
@@ -613,8 +617,8 @@ Work:
 - done: remove command-local ScreenCaptureKit display enumeration from `see` all-screens capture;
 - done: verify CLI sources no longer import `ScreenCaptureKit`;
 - done: remove capture-facing command `AppKit`, `NSScreen`, `NSWorkspace`, and `NSRunningApplication` dependencies from AI/Core command sources;
+- done: split `ScreenCaptureService+Support.swift` into focused scale, engine fallback, app resolving, and ScreenCaptureKit gate helpers;
 - in progress: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind observation/menu services;
-- finish splitting capture output helpers from `ScreenCaptureService+Support.swift`;
 - ensure forced engine and fallback behavior is covered in pure tests;
 - add diagnostics for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
@@ -622,9 +626,8 @@ Work:
 Recommended order:
 
 1. Move `SeeCommand+MenuBarCandidates` remaining CGWindow candidate work into observation, preserving current popover diagnostics.
-2. Split `ScreenCaptureService+Support.swift` into focused scale, timeout/shareable-content, fallback, and result-metadata helpers.
-3. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
-4. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+2. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
+3. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
 
 Gate:
 
