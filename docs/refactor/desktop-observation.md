@@ -75,10 +75,12 @@ Landed:
 - CLI `see --annotate` uses observation output and the shared observation annotation renderer for observation-backed captures.
 - Observation output reports artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
 - Desktop observation now has first-class OCR results, a `detection.ocr` timing span, OCR-only detection for `preferOCR`, and shared OCR-to-element mapping used by menu-bar helpers.
+- CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 
 Still incomplete:
 
-- Menu-bar popover OCR and click-to-open behavior under observation.
+- Menu-bar popover click-to-open behavior under observation.
+- Popover-specific OCR candidate selection under observation.
 - Further capture-service file splitting and cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
 - Interaction commands reusing observation state instead of repeating lookup work.
@@ -557,6 +559,7 @@ Purpose: make menubar capture/OCR/click-open behavior one observation sub-pipeli
 Work:
 
 - done: move generic OCR timing/output and OCR-to-element conversion into observation;
+- done: route already-open `see --menubar` popovers through observation OCR before legacy fallback;
 - move popover-specific OCR selection into observation;
 - move popover click-to-open preflight behind a typed option or interaction helper;
 - ensure `.menubar` and `.menubarPopover(hints:)` share diagnostics;

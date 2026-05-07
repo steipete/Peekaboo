@@ -422,24 +422,31 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         let mode = self.determineMode()
         self.logger.operationStart("capture_phase", metadata: ["mode": mode.rawValue])
 
-        let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
-            target: target,
-            capture: DesktopCaptureOptions(
-                engine: self.observationCaptureEnginePreference,
-                scale: .logical1x,
-                visualizerMode: .screenshotFlash
-            ),
-            detection: DesktopDetectionOptions(
-                mode: .accessibility,
-                allowWebFocusFallback: !self.noWebFocus
-            ),
-            output: DesktopObservationOutputOptions(
-                path: self.screenshotOutputPath(),
-                saveRawScreenshot: true,
-                saveAnnotatedScreenshot: self.annotate,
-                saveSnapshot: true
-            )
-        ))
+        let observation: DesktopObservationResult
+        do {
+            observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
+                target: target,
+                capture: DesktopCaptureOptions(
+                    engine: self.observationCaptureEnginePreference,
+                    scale: .logical1x,
+                    visualizerMode: .screenshotFlash
+                ),
+                detection: self.observationDetectionOptions(for: target),
+                output: DesktopObservationOutputOptions(
+                    path: self.screenshotOutputPath(),
+                    saveRawScreenshot: true,
+                    saveAnnotatedScreenshot: self.annotate,
+                    saveSnapshot: true
+                )
+            ))
+        } catch DesktopObservationError.targetNotFound(_) where self.menubar {
+            self.logger.verbose("No observation-backed menu bar popover found; falling back", category: "Capture")
+            self.logger.operationComplete("capture_phase", success: false, metadata: [
+                "mode": mode.rawValue,
+                "fallback": "legacy_menubar",
+            ])
+            return nil
+        }
 
         self.logger.operationComplete("capture_phase", metadata: [
             "mode": mode.rawValue
@@ -468,8 +475,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
     }
 
     private func observationTargetForCaptureWithDetectionIfPossible() throws -> DesktopObservationTargetRequest? {
-        guard !self.menubar else {
-            return nil
+        if self.menubar {
+            return .menubarPopover(hints: MenuBarPopoverResolverContext.normalizedHints([self.menuBarAppHint()]))
         }
 
         switch self.determineMode() {
@@ -504,6 +511,22 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
         case .screen, .multi, .area:
             return nil
+        }
+    }
+
+    private func observationDetectionOptions(for target: DesktopObservationTargetRequest) -> DesktopDetectionOptions {
+        switch target {
+        case .menubarPopover:
+            DesktopDetectionOptions(
+                mode: .none,
+                allowWebFocusFallback: false,
+                preferOCR: true
+            )
+        default:
+            DesktopDetectionOptions(
+                mode: .accessibility,
+                allowWebFocusFallback: !self.noWebFocus
+            )
         }
     }
 
