@@ -91,6 +91,7 @@
 - Bridge client adapters now keep status, capture, interaction, window/app, menu/dock/dialog, snapshot, and socket transport code in focused files.
 - Bridge protocol models now keep operation policy, payload DTOs, and request/response envelopes in focused files.
 - Dialog service no longer carries stale duplicate file-dialog navigation, filename, save-verification, and key-mapping helpers in its main implementation file.
+- File-dialog handling now keeps orchestration, navigation/focus, filename entry, and save verification in focused service files.
 - `peekaboo config` custom-provider management commands now live in a focused companion file instead of the add-provider implementation file.
 - `peekaboo list screens` implementation and screen payload models now live outside the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` now live in focused companion files instead of the primary list command shell.
