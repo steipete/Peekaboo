@@ -60,6 +60,96 @@ Still intentionally incomplete:
 
 The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.
 
+## Working Roadmap
+
+This is the live execution order. Keep this section updated as the lower-level plan changes.
+
+### Track A: Observation Becomes The Product Surface
+
+Goal: `DesktopObservationService.observe` is the only behavioral path for desktop inspection.
+
+Next slices:
+
+1. Add a request-scoped `DesktopStateSnapshot` and pass it through target resolution, capture planning, and diagnostics.
+2. Finish moving app/window ranking out of command and MCP adapters.
+3. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
+4. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
+5. Export structured observation diagnostics in CLI and MCP JSON.
+
+Stop when:
+
+- `see`, `image`, MCP `see`, and MCP `image` all construct a `DesktopObservationRequest`;
+- command code only parses flags and renders output;
+- equivalent targets resolve to the same app/window in every frontend.
+
+### Track B: Capture Becomes Plan Plus Operators
+
+Goal: `ScreenCaptureService` remains the public facade, but contains almost no policy.
+
+Next slices:
+
+1. Extract a pure `ScreenCapturePlanner` that owns engine choice, fallback policy, scale preference, focus policy, and permission intent.
+2. Extract `ScreenCapturePermissionGate` so each capture path does one authoritative Screen Recording check.
+3. Split ScreenCaptureKit and CoreGraphics work into operators that execute an already-built plan.
+4. Move image format conversion and metadata assembly into output helpers.
+5. Remove command-level imports of ScreenCaptureKit and AppKit capture details.
+
+Stop when:
+
+- scale, engine, fallback, and permission behavior have pure tests;
+- `ScreenCaptureService.swift` is under about 500 lines;
+- `image --retina` and non-retina output can be reasoned about without live display capture.
+
+### Track C: Element Detection Becomes Policy Plus Readers
+
+Goal: `ElementDetectionService` remains the facade, but AX traversal is no longer a large implicit algorithm hidden in one type.
+
+Next slices:
+
+1. Extract `ElementDetectionCache` for short-lived immutable AX tree results.
+2. Extract `AXTreeCollector` for traversal only.
+3. Extract `AXDescriptorReader` for batched attribute/action reads.
+4. Extract `ElementClassifier` for role, label, interactability, and element type mapping.
+5. Extract `WebFocusFallback` so Chromium/Tauri sparse-tree behavior has isolated tests.
+6. Build `ElementDetectionResultBuilder` for grouping, metadata, snapshot result assembly, and warnings.
+
+Stop when:
+
+- direct detection callers have enforced timeouts and cancellation;
+- sparse web trees can still trigger focus fallback;
+- rich native trees skip fallback;
+- `ElementDetectionService.swift` is under about 500 lines.
+
+### Track D: Interaction Reuses Observation
+
+Goal: action commands consume observation state instead of repeating lookup work.
+
+Next slices:
+
+1. Make post-action cache invalidation explicit for click, type, scroll, drag, hotkey, and window focus.
+2. Teach interaction commands to reuse a fresh snapshot when one is supplied.
+3. Add observe-if-needed behavior for element IDs that are missing or stale.
+4. Emit target-point diagnostics for click and move without re-running a full desktop scan.
+
+Stop when:
+
+- `see -> click -> type` does not perform avoidable full AX traversals;
+- action commands invalidate only the affected observation cache entries;
+- stale element failures explain the stale snapshot/window identity.
+
+### Track E: Module Extraction Last
+
+Goal: split packages only after behavior boundaries are boring.
+
+Order:
+
+1. `PeekabooObservation`
+2. `PeekabooCapture`
+3. `PeekabooElementDetection`
+4. CLI command support package, if still useful
+
+Do not extract modules while command, capture, and detection code still disagree about target semantics.
+
 ## Grande Refactor Shape
 
 The final architecture should look like this:
