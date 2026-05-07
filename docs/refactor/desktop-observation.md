@@ -116,6 +116,7 @@ Landed:
 - Interaction snapshot invalidation now lives in `InteractionObservationInvalidator`, leaving `InteractionObservationContext` focused on snapshot selection and refresh.
 - Observation label placement geometry and candidate generation now live in `ObservationLabelPlacementGeometry`, leaving `ObservationLabelPlacer` focused on scoring/orchestration.
 - Desktop observation target diagnostics and trace timing now live in focused helpers, leaving `DesktopObservationService` focused on the observe pipeline.
+- `peekaboo move` result and movement-resolution types now live in `MoveCommand+Types`.
 
 Still incomplete:
 
@@ -176,7 +177,8 @@ ClickCommand.swift: 428 lines
 ClickCommand+FocusVerification.swift: 148 lines
 ClickCommand+Output.swift: 30 lines
 TypeCommand.swift: 428 lines
-MoveCommand.swift: 450 lines
+MoveCommand.swift: 437 lines
+MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
 DragCommand.swift: 403 lines
 SwipeCommand.swift: 343 lines

@@ -375,45 +375,6 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     }
 }
 
-// MARK: - JSON Output Structure
-
-struct MoveResult: Codable {
-    let success: Bool
-    let targetLocation: [String: Double]
-    let targetDescription: String
-    let fromLocation: [String: Double]
-    let distance: Double
-    let duration: Int
-    let smooth: Bool
-    let profile: String
-    let targetPoint: InteractionTargetPointDiagnostics?
-    let executionTime: TimeInterval
-
-    init(
-        success: Bool,
-        targetLocation: CGPoint,
-        targetDescription: String,
-        fromLocation: CGPoint,
-        distance: Double,
-        duration: Int,
-        smooth: Bool,
-        profile: String,
-        targetPoint: InteractionTargetPointDiagnostics? = nil,
-        executionTime: TimeInterval
-    ) {
-        self.success = success
-        self.targetLocation = ["x": targetLocation.x, "y": targetLocation.y]
-        self.targetDescription = targetDescription
-        self.fromLocation = ["x": fromLocation.x, "y": fromLocation.y]
-        self.distance = distance
-        self.duration = duration
-        self.smooth = smooth
-        self.profile = profile
-        self.targetPoint = targetPoint
-        self.executionTime = executionTime
-    }
-}
-
 // MARK: - Conformances
 
 @MainActor
@@ -473,23 +434,4 @@ extension MoveCommand: CommanderBindableCommand {
         self.profile = values.singleOption("profile")
         self.focusOptions = try values.makeFocusOptions()
     }
-}
-
-private enum MovementProfileSelection: String {
-    case linear
-    case human
-}
-
-private struct MovementParameters {
-    let profile: MouseMovementProfile
-    let duration: Int
-    let steps: Int
-    let smooth: Bool
-    let profileName: String
-}
-
-private struct MoveTargetResolution {
-    let location: CGPoint
-    let description: String
-    let diagnostics: InteractionTargetPointDiagnostics?
 }
