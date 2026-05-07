@@ -295,9 +295,11 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             return DesktopObservationFiles(rawScreenshotPath: capture.savedPath)
         }
 
-        return try await tracer.span("output.write") {
+        let output = try await tracer.span("output.write") {
             try await self.outputWriter.write(capture: capture, elements: elements, options: options)
         }
+        tracer.append(output.spans)
+        return output.files
     }
 
     private static func windowContext(from capture: CaptureResult) -> WindowContext? {
@@ -346,6 +348,10 @@ final class DesktopObservationTraceRecorder {
 
     func timings() -> ObservationTimings {
         ObservationTimings(spans: self.spans)
+    }
+
+    func append(_ spans: [ObservationSpan]) {
+        self.spans.append(contentsOf: spans)
     }
 
     private func record(_ name: String, start: ContinuousClock.Instant, metadata: [String: String] = [:]) {

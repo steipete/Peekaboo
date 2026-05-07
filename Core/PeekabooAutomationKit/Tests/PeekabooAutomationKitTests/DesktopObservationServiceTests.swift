@@ -172,6 +172,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "target.resolve",
             "capture.window",
             "output.write",
+            "output.raw.write",
         ])
     }
 
@@ -229,6 +230,8 @@ final class DesktopObservationServiceTests: XCTestCase {
             "capture.window",
             "detection.ax",
             "output.write",
+            "output.raw.write",
+            "annotation.render",
         ])
 
         try? FileManager.default.removeItem(at: outputURL)
@@ -278,6 +281,7 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(storedSnapshot?.applicationBundleId, "com.example.fixture")
         XCTAssertEqual(storedSnapshot?.windowTitle, "Snapshot")
         XCTAssertEqual(storedSnapshot?.windowBounds, window.bounds)
+        XCTAssertTrue(result.timings.spans.map(\.name).contains("snapshot.write"))
 
         try? FileManager.default.removeItem(at: outputURL)
     }

@@ -323,6 +323,16 @@ public struct DesktopObservationFiles: Sendable, Codable, Equatable {
     }
 }
 
+public struct DesktopObservationOutputWriteResult: Sendable, Equatable {
+    public let files: DesktopObservationFiles
+    public let spans: [ObservationSpan]
+
+    public init(files: DesktopObservationFiles, spans: [ObservationSpan] = []) {
+        self.files = files
+        self.spans = spans
+    }
+}
+
 public struct DesktopObservationDiagnostics: Sendable, Codable, Equatable {
     public let warnings: [String]
     public let stateSnapshot: DesktopStateSnapshotSummary?

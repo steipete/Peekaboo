@@ -73,6 +73,7 @@ Landed:
 - MCP `see` uses observation-produced annotated screenshots before falling back to its local renderer.
 - Observation-backed CLI `see` registers raw screenshots and detection results through observation output.
 - CLI `see --annotate` uses observation output and the shared observation annotation renderer for observation-backed captures.
+- Observation output reports artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
 
 Still incomplete:
 
@@ -437,9 +438,6 @@ Goal: every desktop inspection frontend constructs `DesktopObservationRequest` a
 
 Remaining work:
 
-- finish annotation rendering through `ObservationOutputWriter`;
-- move CLI rich annotation rendering under observation or split reusable annotation placement into AutomationKit;
-- move snapshot registration under observation output;
 - move menu-bar popover OCR under observation;
 - move menu-bar click-to-open into either observation preflight or the future interaction pipeline;
 - delete command-level capture/detection bridge code once all supported targets are observation-backed.
@@ -530,11 +528,11 @@ Purpose: make observation own screenshot-derived artifacts.
 
 Work:
 
-- render annotated screenshots in `ObservationOutputWriter`;
-- route MCP annotated screenshots through observation first;
-- move CLI rich annotation placement into AutomationKit or provide a reusable annotation renderer;
-- add output spans for `annotation.render` and `snapshot.write`;
-- add tests for raw+annotated output files.
+- done: render annotated screenshots in `ObservationOutputWriter`;
+- done: route MCP annotated screenshots through observation first;
+- done: move CLI rich annotation placement into AutomationKit through `ObservationAnnotationRenderer`;
+- done: add output spans for `output.raw.write`, `annotation.render`, and `snapshot.write`;
+- done: add tests for raw+annotated output files and snapshot registration.
 
 Gate:
 

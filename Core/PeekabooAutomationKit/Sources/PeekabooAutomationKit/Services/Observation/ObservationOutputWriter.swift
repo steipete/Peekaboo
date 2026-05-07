@@ -7,7 +7,7 @@ public protocol ObservationOutputWriting: Sendable {
     func write(
         capture: CaptureResult,
         elements: ElementDetectionResult?,
-        options: DesktopObservationOutputOptions) async throws -> DesktopObservationFiles
+        options: DesktopObservationOutputOptions) async throws -> DesktopObservationOutputWriteResult
 }
 
 @MainActor
@@ -26,24 +26,38 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
     public func write(
         capture: CaptureResult,
         elements: ElementDetectionResult?,
-        options: DesktopObservationOutputOptions) async throws -> DesktopObservationFiles
+        options: DesktopObservationOutputOptions) async throws -> DesktopObservationOutputWriteResult
     {
-        let rawPath = try self.writeRawScreenshotIfNeeded(capture: capture, options: options)
+        var spans: [ObservationSpan] = []
+        let rawPath = try self.record("output.raw.write", into: &spans) {
+            try self.writeRawScreenshotIfNeeded(capture: capture, options: options)
+        }
         let effectiveRawPath = rawPath ?? capture.savedPath
-        let annotatedPath = try self.writeAnnotatedScreenshotIfNeeded(
-            rawPath: effectiveRawPath,
-            capture: capture,
-            elements: elements,
-            options: options)
-        try await self.writeSnapshotIfNeeded(
-            rawPath: effectiveRawPath,
-            annotatedPath: annotatedPath,
-            capture: capture,
-            elements: elements,
-            options: options)
-        return DesktopObservationFiles(
-            rawScreenshotPath: effectiveRawPath,
-            annotatedScreenshotPath: annotatedPath)
+        let annotatedPath: String? = if options.saveAnnotatedScreenshot {
+            try self.record("annotation.render", into: &spans) {
+                try self.writeAnnotatedScreenshotIfNeeded(
+                    rawPath: effectiveRawPath,
+                    elements: elements,
+                    options: options)
+            }
+        } else {
+            nil
+        }
+        if options.saveSnapshot {
+            try await self.record("snapshot.write", into: &spans) {
+                try await self.writeSnapshotIfNeeded(
+                    rawPath: effectiveRawPath,
+                    annotatedPath: annotatedPath,
+                    capture: capture,
+                    elements: elements,
+                    options: options)
+            }
+        }
+        return DesktopObservationOutputWriteResult(
+            files: DesktopObservationFiles(
+                rawScreenshotPath: effectiveRawPath,
+                annotatedScreenshotPath: annotatedPath),
+            spans: spans)
     }
 
     public nonisolated static func annotatedScreenshotPath(forRawScreenshotPath rawPath: String) -> String {
@@ -113,7 +127,6 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
 
     private func writeAnnotatedScreenshotIfNeeded(
         rawPath: String?,
-        capture: CaptureResult,
         elements: ElementDetectionResult?,
         options: DesktopObservationOutputOptions) throws -> String?
     {
@@ -128,6 +141,49 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
             originalPath: rawPath,
             detectionResult: elements,
             annotatedPath: Self.annotatedScreenshotPath(forRawScreenshotPath: rawPath))
+    }
+
+    private func record<T>(
+        _ name: String,
+        into spans: inout [ObservationSpan],
+        operation: () throws -> T) throws -> T
+    {
+        let start = ContinuousClock.now
+        do {
+            let value = try operation()
+            spans.append(Self.span(name, start: start))
+            return value
+        } catch {
+            spans.append(Self.span(name, start: start, metadata: ["success": "false"]))
+            throw error
+        }
+    }
+
+    private func record<T>(
+        _ name: String,
+        into spans: inout [ObservationSpan],
+        operation: () async throws -> T) async throws -> T
+    {
+        let start = ContinuousClock.now
+        do {
+            let value = try await operation()
+            spans.append(Self.span(name, start: start))
+            return value
+        } catch {
+            spans.append(Self.span(name, start: start, metadata: ["success": "false"]))
+            throw error
+        }
+    }
+
+    private static func span(
+        _ name: String,
+        start: ContinuousClock.Instant,
+        metadata: [String: String] = [:]) -> ObservationSpan
+    {
+        let duration = start.duration(to: ContinuousClock.now)
+        let milliseconds = Double(duration.components.seconds * 1000)
+            + Double(duration.components.attoseconds) / 1_000_000_000_000_000
+        return ObservationSpan(name: name, durationMS: milliseconds, metadata: metadata)
     }
 
     private func outputURL(path: String?, format: ImageFormat) -> URL {

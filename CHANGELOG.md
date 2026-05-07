@@ -35,6 +35,7 @@
 - Observation-backed MCP `see` annotations now render through the shared observation output writer before falling back to the MCP-local renderer.
 - Observation-backed CLI `see` captures now register raw screenshots and detection snapshots through the shared observation output writer.
 - CLI `see --annotate` now uses the shared observation annotation renderer for observation-backed captures, with the smart label placer moved out of command code.
+- Observation timings now include artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!
