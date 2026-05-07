@@ -231,6 +231,7 @@ Landed:
 - Gesture service internals now keep path generation and humanized mouse-movement synthesis in a focused companion while swipe/drag/move orchestration stays in the primary service.
 - Snapshot management now keeps screenshot persistence, element lookup, and the JSON storage actor in focused support files while the primary manager owns lifecycle, listing, cleanup, and detection-result conversion.
 - `peekaboo image` capture orchestration now keeps saved-file/path planning and app-focus policy in focused command-support files.
+- `peekaboo capture live` now keeps scope resolution, option normalization, output rendering, focus policy, and Commander binding in focused command-support files.
 - `InMemorySnapshotManager` now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files; writes now enforce the LRU cap immediately and artifact cleanup also applies to pruned entries.
 - Agent desktop context gathering now reads focused application/window state, cursor position, and recent apps through application/window/automation service boundaries instead of direct `NSWorkspace`/CoreGraphics event/window scans.
 - MCP app cycling and move-center resolution now use injected automation/screen services instead of direct AXorcist/AppKit calls.
