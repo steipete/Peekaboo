@@ -49,6 +49,7 @@
 - `peekaboo see` batches per-element Accessibility descriptor reads and avoids action/editability probes when the role already determines behavior, reducing local Playground element detection from about 205ms to 176ms.
 - `peekaboo see` limits expensive AX action and keyboard-shortcut probes to roles that can use them, reducing Playground element detection from about 286ms to roughly 180-190ms in local testing.
 - `peekaboo see` skips a redundant CLI-side screen-recording preflight and relies on the capture service's permission check, shaving a fixed TCC probe from screenshot-plus-AX runs.
+- `peekaboo see` now keeps AX traversal scoped to the captured window and skips web-content focus probing once a rich native AX tree is already visible, avoiding sibling-window elements and cutting native Playground detection from about 220ms to 130ms.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

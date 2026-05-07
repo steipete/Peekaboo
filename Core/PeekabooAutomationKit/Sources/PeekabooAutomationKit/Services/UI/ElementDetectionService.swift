@@ -235,6 +235,7 @@ extension ElementDetectionService {
     private static let maxElementCount = 400
     private static let maxChildrenPerNode = 50
     private static let maxWebFocusAttempts = 2
+    private static let maxElementsBeforeWebFocusFallback = 20
     private static let actionableRoles: Set<String> = [
         "axbutton", "axpopupbutton", "axtextfield", "axlink", "axweblink",
         "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
@@ -262,6 +263,20 @@ extension ElementDetectionService {
         AXAttributeNames.kAXEnabledAttribute,
         AXAttributeNames.kAXPlaceholderValueAttribute,
     ]
+
+    @_spi(Testing)
+    public static func shouldAttemptWebFocusFallback(
+        attempt: Int,
+        allowWebFocus: Bool,
+        detectedElementCount: Int,
+        hasTextField: Bool) -> Bool
+    {
+        guard !hasTextField else { return false }
+
+        return attempt < self.maxWebFocusAttempts
+            && allowWebFocus
+            && detectedElementCount <= self.maxElementsBeforeWebFocusFallback
+    }
 
     // MARK: - Helper Methods
 
@@ -626,6 +641,8 @@ extension ElementDetectionService {
             detectedElements.removeAll(keepingCapacity: true)
 
             var visitedElements = Set<Element>()
+            // Traverse only the captured window. Walking the app root also visits sibling windows,
+            // which makes `see --app` slower and returns elements outside the screenshot.
             self.processElement(
                 window,
                 depth: 0,
@@ -634,35 +651,20 @@ extension ElementDetectionService {
                 elementIdMap: &elementIdMap,
                 visitedElements: &visitedElements)
 
-            self.processElement(
-                appElement,
-                depth: 0,
-                deadline: deadline,
-                detectedElements: &detectedElements,
-                elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
-
-            if let focusedElement = appElement.focusedUIElement() {
-                self.processElement(
-                    focusedElement,
-                    depth: 0,
-                    deadline: deadline,
-                    detectedElements: &detectedElements,
-                    elementIdMap: &elementIdMap,
-                    visitedElements: &visitedElements)
-            }
-
             if appIsActive, let menuBar = appElement.menuBar() {
                 self.processMenuBar(menuBar, elements: &detectedElements, elementIdMap: &elementIdMap)
             }
 
-            if detectedElements.contains(where: { $0.type == .textField }) {
-                break
-            }
+            let hasTextField = detectedElements.contains(where: { $0.type == .textField })
 
-            guard attempt < Self.maxWebFocusAttempts,
-                  allowWebFocus,
-                  self.focusWebContentIfNeeded(window: window, appElement: appElement)
+            // Web focus fallback walks the AX tree looking for AXWebArea. Only pay that cost when
+            // the first pass is sparse enough to suggest hidden Chromium/Tauri content.
+            guard Self.shouldAttemptWebFocusFallback(
+                attempt: attempt,
+                allowWebFocus: allowWebFocus,
+                detectedElementCount: detectedElements.count,
+                hasTextField: hasTextField),
+                self.focusWebContentIfNeeded(window: window, appElement: appElement)
             else {
                 break
             }
