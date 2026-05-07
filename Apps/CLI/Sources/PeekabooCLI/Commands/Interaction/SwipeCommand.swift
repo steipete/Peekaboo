@@ -167,6 +167,12 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
             // Small delay to ensure swipe is processed
             try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "swipe"
+            )
 
             let outputPayload = SwipeResult(
                 success: true,

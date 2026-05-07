@@ -146,6 +146,12 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             )
 
             try await Task.sleep(nanoseconds: 100_000_000)
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "drag"
+            )
 
             let result = DragResult(
                 success: true,

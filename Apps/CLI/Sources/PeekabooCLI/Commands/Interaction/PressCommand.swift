@@ -103,6 +103,13 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 }
             }
 
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "press"
+            )
+
             // Output results
             let pressResult = PressResult(
                 success: true,

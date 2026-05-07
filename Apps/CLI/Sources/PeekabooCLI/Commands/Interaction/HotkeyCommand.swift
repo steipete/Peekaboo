@@ -127,6 +127,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 targetPID = nil
             }
 
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "hotkey"
+            )
+
             // Output results
             let result = HotkeyResult(
                 success: true,

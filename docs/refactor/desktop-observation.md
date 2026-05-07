@@ -87,12 +87,13 @@ Landed:
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
+- `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.
 
 Still incomplete:
 
 - Further capture-service cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
-- Finish interaction observe-if-needed, stale-window diagnostics, target-point diagnostics, and post-action cache invalidation.
+- Finish interaction observe-if-needed, stale-window diagnostics, target-point diagnostics, and explicit/focus-cache invalidation policy.
 - Optional module extraction after boundaries are stable.
 
 Current size pressure:
@@ -239,7 +240,8 @@ Deliverables:
 - `ObservationSnapshotStore` facade over the current snapshot manager;
 - action commands accept fresh observation context or snapshot ID;
 - missing/stale element IDs can observe-if-needed or fail with target/window diagnostics;
-- click/move/type/scroll/drag/swipe/hotkey/press/focus invalidate affected request caches;
+- click/type/scroll/drag/swipe invalidate implicitly reused latest snapshots after mutations;
+- hotkey/press/focus invalidation policy is explicit once they consume fresh observation context;
 - action results include target-point and stale-snapshot diagnostics.
 
 Exit criteria:
@@ -854,10 +856,11 @@ Work:
 
 - done: define shared explicit/latest snapshot selection and focus snapshot policy in `InteractionObservationContext`;
 - done: teach click/type/move/scroll/drag/swipe/hotkey/press to resolve snapshot context through the shared helper;
+- done: centralize post-action invalidation for implicitly reused latest snapshots after click/type/scroll/drag/swipe;
 - define stale-window diagnostics;
 - teach focus commands to accept fresh observation context where available;
 - add observe-if-needed for missing/stale element IDs;
-- centralize post-action invalidation;
+- define explicit-snapshot and focus-command invalidation policy;
 - add target-point diagnostics.
 
 Gate:

@@ -111,6 +111,12 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             self.warnIfFocusUnknown(snapshotId: observation.snapshotId)
             try await self.focusIfNeeded(snapshotId: observation.focusSnapshotId(for: self.target))
             let typeResult = try await self.executeTypeActions(actions: actions, snapshotId: observation.snapshotId)
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "type"
+            )
             self.renderResult(typeResult, startTime: startTime)
         } catch {
             self.handleError(error)

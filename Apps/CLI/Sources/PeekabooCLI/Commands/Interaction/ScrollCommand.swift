@@ -131,6 +131,13 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 CGEvent(source: nil)?.location ?? .zero
             }
 
+            await InteractionObservationInvalidator.invalidateAfterMutation(
+                observation,
+                snapshots: self.services.snapshots,
+                logger: self.logger,
+                reason: "scroll"
+            )
+
             // Output results
             let outputPayload = ScrollResult(
                 success: true,

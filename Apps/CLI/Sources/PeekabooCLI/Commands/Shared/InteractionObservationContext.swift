@@ -46,6 +46,16 @@ struct InteractionObservationContext {
         return try await SnapshotValidation.requireDetectionResult(snapshotId: snapshotId, snapshots: snapshots)
     }
 
+    @discardableResult
+    func invalidateAfterMutation(using snapshots: any SnapshotManagerProtocol) async throws -> String? {
+        guard self.source == .latest, let snapshotId else {
+            return nil
+        }
+
+        try await snapshots.cleanSnapshot(snapshotId: snapshotId)
+        return snapshotId
+    }
+
     static func resolve(
         explicitSnapshot rawSnapshot: String?,
         fallbackToLatest: Bool,
@@ -77,5 +87,27 @@ struct InteractionObservationContext {
     private static func normalizedSnapshotId(_ snapshotId: String?) -> String? {
         let trimmed = snapshotId?.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed?.isEmpty == false ? trimmed : nil
+    }
+}
+
+@MainActor
+enum InteractionObservationInvalidator {
+    static func invalidateAfterMutation(
+        _ observation: InteractionObservationContext,
+        snapshots: any SnapshotManagerProtocol,
+        logger: Logger,
+        reason: String
+    ) async {
+        do {
+            if let invalidatedSnapshotId = try await observation.invalidateAfterMutation(using: snapshots) {
+                logger.debug(
+                    "Invalidated implicit latest snapshot '\(invalidatedSnapshotId)' after \(reason)"
+                )
+            }
+        } catch {
+            logger.warn(
+                "Failed to invalidate implicit latest snapshot after \(reason): \(error.localizedDescription)"
+            )
+        }
     }
 }

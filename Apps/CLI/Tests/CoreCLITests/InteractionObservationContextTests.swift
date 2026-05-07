@@ -68,6 +68,43 @@ struct InteractionObservationContextTests {
         #expect(latestContext.focusSnapshotId(for: target) == nil)
         #expect(explicitContext.focusSnapshotId(for: target) == "explicit")
     }
+
+    @Test
+    func `Latest snapshot invalidates after mutation`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let latest = try await snapshots.createSnapshot()
+
+        let context = await InteractionObservationContext.resolve(
+            explicitSnapshot: nil,
+            fallbackToLatest: true,
+            snapshots: snapshots
+        )
+
+        let invalidated = try await context.invalidateAfterMutation(using: snapshots)
+
+        #expect(invalidated == latest)
+        #expect(await snapshots.getMostRecentSnapshot() == nil)
+        #expect(try await snapshots.listSnapshots().isEmpty)
+    }
+
+    @Test
+    func `Explicit snapshot stays available after mutation`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let explicit = try await snapshots.createSnapshot(id: "explicit-snapshot")
+
+        let context = await InteractionObservationContext.resolve(
+            explicitSnapshot: "explicit-snapshot",
+            fallbackToLatest: true,
+            snapshots: snapshots
+        )
+
+        let invalidated = try await context.invalidateAfterMutation(using: snapshots)
+
+        #expect(explicit == "explicit-snapshot")
+        #expect(invalidated == nil)
+        #expect(await snapshots.getMostRecentSnapshot() == "explicit-snapshot")
+        #expect(try await snapshots.listSnapshots().map(\.id) == ["explicit-snapshot"])
+    }
 }
 
 private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked Sendable {
@@ -76,7 +113,10 @@ private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked
     private var mostRecentSnapshotId: String?
 
     func createSnapshot() async throws -> String {
-        let snapshotId = UUID().uuidString
+        try await self.createSnapshot(id: UUID().uuidString)
+    }
+
+    func createSnapshot(id snapshotId: String) async throws -> String {
         let now = Date()
         self.snapshotInfos[snapshotId] = SnapshotInfo(
             id: snapshotId,

@@ -218,6 +218,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             let clickTarget: ClickTarget
             let waitResult: WaitForElementResult
             let activeSnapshotId: String
+            var observationForInvalidation: InteractionObservationContext?
 
             // Check if we're clicking by coordinates (doesn't need snapshot)
             if let coordString = coords {
@@ -245,6 +246,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     snapshots: self.services.snapshots
                 )
                 try await observation.validateIfExplicit(using: self.services.snapshots)
+                observationForInvalidation = observation
                 activeSnapshotId = observation.snapshotId ?? ""
 
                 try await self.focusApplicationIfNeeded(snapshotId: observation.focusSnapshotId(for: self.target))
@@ -322,6 +324,15 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
 
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
+
+            if let observationForInvalidation {
+                await InteractionObservationInvalidator.invalidateAfterMutation(
+                    observationForInvalidation,
+                    snapshots: self.services.snapshots,
+                    logger: self.logger,
+                    reason: "click"
+                )
+            }
 
             // Get the frontmost app after clicking
             let frontmostApp = NSWorkspace.shared.frontmostApplication
