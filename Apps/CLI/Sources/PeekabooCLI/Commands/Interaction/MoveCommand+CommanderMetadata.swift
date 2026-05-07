@@ -22,8 +22,13 @@ extension MoveCommand: CommanderSignatureProviding {
                     long: "to"
                 ),
                 .commandOption(
+                    "on",
+                    help: "Element ID to move to (e.g., B1, T2)",
+                    long: "on"
+                ),
+                .commandOption(
                     "id",
-                    help: "Move to element by ID",
+                    help: "Element ID to move to (alias for --on)",
                     long: "id"
                 ),
                 .commandOption(

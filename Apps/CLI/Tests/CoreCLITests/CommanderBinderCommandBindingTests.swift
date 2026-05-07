@@ -626,6 +626,22 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `Move command binding with --on`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "on": ["B1"],
+                "snapshot": ["sess-1"]
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)
+        #expect(command.on == "B1")
+        #expect(command.id == nil)
+        #expect(command.snapshot == "sess-1")
+    }
+
+    @Test
     func `Move command requires a target (validation)`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         var command = try CommanderCLIBinder.instantiateCommand(ofType: MoveCommand.self, parsedValues: parsed)

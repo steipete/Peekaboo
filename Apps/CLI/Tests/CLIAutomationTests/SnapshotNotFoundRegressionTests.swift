@@ -24,14 +24,14 @@ struct SnapshotNotFoundRegressionTests {
     }
 
     @Test
-    func `move --id --snapshot errors when snapshot was cleaned`() async throws {
+    func `move --on --snapshot errors when snapshot was cleaned`() async throws {
         let context = await MainActor.run { TestServicesFactory.makeAutomationTestContext() }
 
         let snapshotId = try await self.makeSnapshot(with: context.snapshots)
         try await context.snapshots.cleanSnapshot(snapshotId: snapshotId)
 
         let result = try await InProcessCommandRunner.run(
-            ["move", "--id", "B1", "--snapshot", snapshotId, "--json"],
+            ["move", "--on", "B1", "--snapshot", snapshotId, "--json"],
             services: context.services
         )
 

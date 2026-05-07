@@ -18,7 +18,10 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     @Option(help: "Move to element by text/label")
     var to: String?
 
-    @Option(help: "Move to element by ID (e.g., B1, T2)")
+    @Option(help: "Element ID to move to (e.g., B1, T2)")
+    var on: String?
+
+    @Option(name: .customLong("id"), help: "Element ID to move to (alias for --on)")
     var id: String?
 
     @OptionGroup var target: InteractionTargetOptions
@@ -76,15 +79,16 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             self.center ? 1 : 0,
             self.resolvedCoordinates == nil ? 0 : 1,
             self.to == nil ? 0 : 1,
+            self.on == nil ? 0 : 1,
             self.id == nil ? 0 : 1,
         ].reduce(0, +)
 
         guard targetCount >= 1 else {
-            throw ValidationError("Specify coordinates, --coords, --to, --id, or --center")
+            throw ValidationError("Specify coordinates, --coords, --to, --on/--id, or --center")
         }
 
         guard targetCount == 1 else {
-            throw ValidationError("Specify exactly one target: coordinates, --coords, --to, --id, or --center")
+            throw ValidationError("Specify exactly one target: coordinates, --coords, --to, --on/--id, or --center")
         }
 
         // Validate coordinates format if provided
@@ -144,7 +148,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetLocation = CGPoint(x: x, y: y)
                 targetDescription = "Coordinates (\(Int(x)), \(Int(y)))"
 
-            } else if let elementId = id {
+            } else if let elementId = on ?? id {
                 // Move to element by ID
                 let snapshotId: String? = if let providedSnapshot = snapshot {
                     providedSnapshot
@@ -226,7 +230,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 targetDescription = self.formatElementInfo(element)
 
             } else {
-                throw ValidationError("Specify coordinates, --coords, --to, --id, or --center")
+                throw ValidationError("Specify coordinates, --coords, --to, --on/--id, or --center")
             }
 
             // Get current mouse location for distance calculation
@@ -397,7 +401,7 @@ extension MoveCommand: ParsableCommand {
                     EXAMPLES:
                       peekaboo move 100,200                 # Move to coordinates
                       peekaboo move --to "Submit Button"    # Move to element by text
-                      peekaboo move --id B3                 # Move to element by ID
+                      peekaboo move --on B3                 # Move to element by ID
                       peekaboo move 500,300 --smooth        # Smooth movement
                       peekaboo move --center                # Move to screen center
 
@@ -425,6 +429,7 @@ extension MoveCommand: CommanderBindableCommand {
         self.coordinates = try values.decodeOptionalPositional(0, label: "coordinates")
         self.coords = values.singleOption("coords")
         self.to = values.singleOption("to")
+        self.on = values.singleOption("on")
         self.id = values.singleOption("id")
         self.target = try values.makeInteractionTargetOptions()
         self.center = values.flag("center")

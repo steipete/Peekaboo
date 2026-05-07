@@ -86,7 +86,7 @@ read_when:
 | `scroll` | Scroll Fixture window | `Scroll` | `polter peekaboo -- scroll --direction down --amount 8 --on vertical-scroll --snapshot <id>` | Verified – scroll offsets logged (2025-12-18) | `.artifacts/playground-tools/20251218-012323-scroll.log` |
 | `swipe` | Scroll Fixture gesture area | `Gesture` | `polter peekaboo -- swipe --from-coords <x,y> --to-coords <x,y>` | Verified – swipe direction + distance logged (2025-12-18), plus long-press hold | `.artifacts/playground-tools/20251218-012323-gesture.log` |
 | `drag` | Drag Fixture window | `Drag` | `polter peekaboo -- drag --from <elem> --to <elem> --snapshot <id>` | Verified – item dropped into zone (2025-12-18) | `.artifacts/playground-tools/20251218-002005-drag.log` |
-| `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --id <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
+| `move` | Click Fixture mouse probe | `Control` | `polter peekaboo -- move --on <elem> --snapshot <id> --smooth` | Verified – cursor movement emits deterministic probe logs (2025-12-17) | `.artifacts/playground-tools/20251217-153107-control.log` |
 
 ### Windows, Menus, Apps
 | Tool | Playground validation target | Log category | Sample CLI | Status | Latest log |

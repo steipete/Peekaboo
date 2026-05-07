@@ -66,7 +66,7 @@ struct MoveCommandTests {
         try await context.snapshots.storeDetectionResult(snapshotId: "snapshot-id", result: detection)
 
         let result = try await self.runMove(
-            arguments: ["--id", "B1", "--snapshot", "snapshot-id", "--json"],
+            arguments: ["--on", "B1", "--snapshot", "snapshot-id", "--json"],
             context: context
         )
 
@@ -76,6 +76,35 @@ struct MoveCommandTests {
         #expect(call.destination.x == element.bounds.midX)
         #expect(call.destination.y == element.bounds.midY)
         #expect(call.profile == .linear)
+    }
+
+    @Test
+    func `Move by element ID accepts id alias`() async throws {
+        let context = await self.makeContext()
+        let element = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "Submit",
+            bounds: CGRect(x: 50, y: 70, width: 120, height: 40)
+        )
+        let detection = ElementDetectionResult(
+            snapshotId: "snapshot-id",
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
+        )
+        try await context.snapshots.storeDetectionResult(snapshotId: "snapshot-id", result: detection)
+
+        let result = try await self.runMove(
+            arguments: ["--id", "B1", "--snapshot", "snapshot-id", "--json"],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let moveCalls = await self.automationState(context) { $0.moveMouseCalls }
+        let call = try #require(moveCalls.first)
+        #expect(call.destination.x == element.bounds.midX)
+        #expect(call.destination.y == element.bounds.midY)
     }
 
     @Test
