@@ -199,6 +199,7 @@ Landed:
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal no longer pays an unused `defaults read` before running AppleScript.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
+- Script process execution now keeps window and clipboard commands in focused companions, leaving system commands to app/menu/dock routing.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps delegated detection/click/typing/scroll/hotkey/gesture operations, focus/wait lookup, and search-policy limits in focused companion files; the primary file keeps initialization only.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
@@ -375,7 +376,9 @@ DialogService+FileDialogFilename.swift: 94 lines
 ProcessService.swift: 224 lines
 ProcessService+CaptureCommands.swift: 119 lines
 ProcessService+InteractionCommands.swift: 287 lines
-ProcessService+SystemCommands.swift: 382 lines
+ProcessService+SystemCommands.swift: 129 lines
+ProcessService+WindowCommands.swift: 138 lines
+ProcessService+ClipboardCommands.swift: 127 lines
 ProcessService+ParameterParsing.swift: 197 lines
 ProcessCommandTypes.swift: 59 lines
 ProcessCommandInteractionParameters.swift: 161 lines
