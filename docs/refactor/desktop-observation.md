@@ -71,7 +71,7 @@ Landed:
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
 - Observation-backed menu-bar strip capture for CLI `image --app menubar` and MCP `image`.
 - Observation-backed menu-bar popover window-list resolution and capture.
-- MCP `see` uses observation-produced annotated screenshots before falling back to its local renderer.
+- MCP `see` uses observation-produced annotated screenshots and no longer carries its own annotation renderer.
 - Observation-backed CLI `see` registers raw screenshots and detection results through observation output.
 - CLI `see --annotate` uses observation output and the shared observation annotation renderer for observation-backed captures.
 - Observation output reports artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
@@ -138,6 +138,7 @@ Landed:
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
 - `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
+- MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
 
 Current status:
 

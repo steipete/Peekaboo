@@ -33,7 +33,7 @@
 - Routed image/MCP menu bar strip captures through desktop observation target resolution.
 - Added observation-backed menu bar popover window resolution and capture.
 - Centralized CLI/MCP annotated screenshot companion-path planning in the observation output writer.
-- Observation-backed MCP `see` annotations now render through the shared observation output writer before falling back to the MCP-local renderer.
+- Observation-backed MCP `see` annotations now render through the shared observation output writer, removing the MCP-local AppKit renderer fallback.
 - Observation-backed CLI `see` captures now register raw screenshots and detection snapshots through the shared observation output writer.
 - CLI `see --annotate` now uses the shared observation annotation renderer for observation-backed captures, with the smart label placer moved out of command code.
 - Observation timings now include artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.

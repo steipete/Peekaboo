@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import MCP
 import os.log
@@ -10,128 +9,6 @@ import PeekabooVisualizer
 
 private typealias AutomationDetectedElement = PeekabooAutomation.DetectedElement
 import TachikomaMCP
-
-// MARK: - Annotated Screenshot Rendering Helper
-
-private struct AnnotatedScreenshotRenderer {
-    let logger: os.Logger
-
-    func render(originalPath: String, elements: [UIElement]) throws -> String {
-        guard let originalImage = NSImage(contentsOfFile: originalPath) else {
-            self.logger.warning("Failed to load image for annotation, returning original")
-            return originalPath
-        }
-
-        let annotatedImage = self.makeAnnotatedImage(from: originalImage, elements: elements)
-        let annotatedPath = ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: originalPath)
-
-        guard let pngData = self.makePNGData(from: annotatedImage) else {
-            self.logger.warning("Failed to generate PNG data for annotation, returning original")
-            return originalPath
-        }
-
-        do {
-            try pngData.write(to: URL(fileURLWithPath: annotatedPath))
-            self.logger.info("Generated annotated screenshot at: \(annotatedPath)")
-            return annotatedPath
-        } catch {
-            self.logger.error("Failed to save annotated screenshot: \(error)")
-            return originalPath
-        }
-    }
-
-    private func makeAnnotatedImage(from originalImage: NSImage, elements: [UIElement]) -> NSImage {
-        let annotatedImage = NSImage(size: originalImage.size)
-        annotatedImage.lockFocus()
-        defer { annotatedImage.unlockFocus() }
-
-        originalImage.draw(
-            at: .zero,
-            from: NSRect(origin: .zero, size: originalImage.size),
-            operation: .copy,
-            fraction: 1.0)
-
-        let screenHeight = NSScreen.main?.frame.height ?? originalImage.size.height
-        for element in elements {
-            guard let rect = self.elementRect(for: element, screenHeight: screenHeight) else { continue }
-            self.drawElement(id: element.id, rect: rect)
-        }
-
-        return annotatedImage
-    }
-
-    private func elementRect(for element: UIElement, screenHeight: CGFloat) -> NSRect? {
-        guard element.frame.width > 0, element.frame.height > 0 else { return nil }
-        let flippedY = screenHeight - element.frame.minY - element.frame.height
-        return NSRect(
-            x: element.frame.minX,
-            y: flippedY,
-            width: element.frame.width,
-            height: element.frame.height)
-    }
-
-    private func drawElement(id: String, rect: NSRect) {
-        self.fillColor.setFill()
-        NSBezierPath(rect: rect).fill()
-
-        self.strokeColor.setStroke()
-        let borderPath = NSBezierPath(rect: rect)
-        borderPath.lineWidth = 2.0
-        borderPath.stroke()
-
-        self.drawLabel(id: id, rect: rect)
-    }
-
-    private func drawLabel(id: String, rect: NSRect) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: self.labelFont,
-            .foregroundColor: NSColor.white,
-            .backgroundColor: self.textBackgroundColor,
-        ]
-
-        let label = id as NSString
-        let labelSize = label.size(withAttributes: attributes)
-
-        let labelRect = NSRect(
-            x: rect.minX,
-            y: rect.maxY + 4,
-            width: labelSize.width + 8,
-            height: labelSize.height + 4)
-
-        self.textBackgroundColor.setFill()
-        NSBezierPath(roundedRect: labelRect, xRadius: 4, yRadius: 4).fill()
-
-        label.draw(
-            in: NSRect(
-                x: labelRect.minX + 4,
-                y: labelRect.minY + 2,
-                width: labelSize.width,
-                height: labelSize.height),
-            withAttributes: attributes)
-    }
-
-    private func makePNGData(from image: NSImage) -> Data? {
-        guard let tiffData = image.tiffRepresentation else { return nil }
-        guard let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
-        return bitmap.representation(using: .png, properties: [:])
-    }
-
-    private var fillColor: NSColor {
-        NSColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 0.15)
-    }
-
-    private var strokeColor: NSColor {
-        NSColor(red: 0.2, green: 0.6, blue: 1.0, alpha: 0.9)
-    }
-
-    private var labelFont: NSFont {
-        NSFont.monospacedSystemFont(ofSize: 11, weight: .medium)
-    }
-
-    private var textBackgroundColor: NSColor {
-        NSColor(calibratedWhite: 0.1, alpha: 0.85)
-    }
-}
 
 /// MCP tool for capturing UI state and element detection
 public struct SeeTool: MCPTool {
@@ -274,11 +151,9 @@ public struct SeeTool: MCPTool {
         snapshot: UISnapshot) async throws -> String?
     {
         guard annotate else { return nil }
-        guard let screenshotPath = observation.files.rawScreenshotPath else {
-            throw OperationError.captureFailed(reason: "Observation did not produce a screenshot path")
+        guard let annotated = observation.files.annotatedScreenshotPath else {
+            throw OperationError.captureFailed(reason: "Observation did not produce an annotated screenshot path")
         }
-        let annotated = try observation.files.annotatedScreenshotPath
-            ?? self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
         await self.emitAnnotatedScreenshotVisualizer(
             annotatedPath: annotated,
             detectedElements: detectedElements,
@@ -376,15 +251,6 @@ public struct SeeTool: MCPTool {
     }
 
     // Removed getRolePrefix - no longer needed after refactoring to use main UIElement struct
-
-    private func generateAnnotatedScreenshot(
-        originalPath: String,
-        elements: [UIElement]) throws -> String
-    {
-        try AnnotatedScreenshotRenderer(logger: self.logger).render(
-            originalPath: originalPath,
-            elements: elements)
-    }
 
     private func emitElementDetectionVisualizer(from detected: [AutomationDetectedElement]) async {
         guard !detected.isEmpty else { return }
