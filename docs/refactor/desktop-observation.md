@@ -157,6 +157,7 @@ Landed:
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
+- `peekaboo clipboard` Commander binding and output DTOs are split from clipboard action logic.
 - `peekaboo capture video` is split out of the primary capture command file.
 - `peekaboo agent permission` status and request flows are split into focused companion files.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
@@ -229,6 +230,9 @@ ListCommand.swift: 211 lines
 ListCommand+Apps.swift: 81 lines
 ListCommand+Windows.swift: 187 lines
 ListCommand+Screens.swift: 173 lines
+ClipboardCommand.swift: 394 lines
+ClipboardCommand+Commander.swift: 43 lines
+ClipboardCommand+Types.swift: 17 lines
 AgentChatUI.swift: 340 lines
 AgentChatUI+Components.swift: 85 lines
 AgentChatEventDelegate.swift: 175 lines
