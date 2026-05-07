@@ -115,6 +115,7 @@ Landed:
 - `peekaboo window focus` and `list` implementations now live in `WindowCommand+Focus` and `WindowCommand+List`, leaving `WindowCommand.swift` as the command shell.
 - Interaction snapshot invalidation now lives in `InteractionObservationInvalidator`, leaving `InteractionObservationContext` focused on snapshot selection and refresh.
 - Observation label placement geometry and candidate generation now live in `ObservationLabelPlacementGeometry`, leaving `ObservationLabelPlacer` focused on scoring/orchestration.
+- Desktop observation target diagnostics and trace timing now live in focused helpers, leaving `DesktopObservationService` focused on the observe pipeline.
 
 Still incomplete:
 
@@ -144,6 +145,9 @@ WindowManagementService+Resolution.swift: 197 lines
 WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
+DesktopObservationService.swift: 427 lines
+DesktopObservationDiagnosticsBuilder.swift: 97 lines
+DesktopObservationTraceRecorder.swift: 33 lines
 ElementDetectionService.swift: 207 lines
 ObservationLabelPlacer.swift: 425 lines
 ObservationLabelPlacementGeometry.swift: 183 lines
