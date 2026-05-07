@@ -118,6 +118,7 @@ Landed:
 - Desktop observation target diagnostics and trace timing now live in focused helpers, leaving `DesktopObservationService` focused on the observe pipeline.
 - `peekaboo move` result and movement-resolution types now live in `MoveCommand+Types`.
 - `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
+- Drag destination-app/Dock AX lookup now lives in a focused CLI helper, `swipe` no longer carries stale platform imports, and `move --center` uses the shared screen service instead of command-local AppKit.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
@@ -198,14 +199,15 @@ ClickCommand+Output.swift: 30 lines
 TypeCommand.swift: 337 lines
 TypeCommand+TextProcessing.swift: 60 lines
 TypeCommand+Types.swift: 11 lines
-MoveCommand.swift: 323 lines
+MoveCommand.swift: 322 lines
 MoveCommand+CommanderMetadata.swift: 134 lines
 MoveCommand+Movement.swift: 58 lines
 MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
-DragCommand.swift: 362 lines
+DragCommand.swift: 295 lines
 DragCommand+Types.swift: 15 lines
-SwipeCommand.swift: 297 lines
+DragDestinationResolver.swift: 87 lines
+SwipeCommand.swift: 295 lines
 SwipeCommand+Types.swift: 15 lines
 HotkeyCommand.swift: 272 lines
 PressCommand.swift: 231 lines
@@ -981,6 +983,7 @@ Work:
 - started: split large `see` support into focused files (`SeeCommand+Types.swift`, `SeeCommand+Output.swift`, `SeeCommand+Screens.swift`);
 - done: move the remaining legacy capture/detection fallback body out of `SeeCommand.swift` into `SeeCommand+DetectionPipeline.swift`;
 - done: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
+- done: split drag destination-app/Dock lookup out of `DragCommand.swift` and remove stale platform imports from `swipe`/`move`;
 - done: archive stale refactor notes behind the current refactor index;
 - done: update command docs for changed diagnostics/timings;
 - done: split interaction target-point diagnostics out of `InteractionObservationContext.swift`;

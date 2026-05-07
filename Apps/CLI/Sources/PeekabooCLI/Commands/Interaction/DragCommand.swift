@@ -1,5 +1,3 @@
-import AppKit
-import AXorcist
 import Commander
 import CoreGraphics
 import Foundation
@@ -51,7 +49,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         return runtime
     }
 
-    private var services: any PeekabooServiceProviding {
+    var services: any PeekabooServiceProviding {
         self.resolvedRuntime.services
     }
 
@@ -111,7 +109,9 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
 
             let endResolution: InteractionTargetPointResolution = if let targetApp = toApp {
                 try await InteractionTargetPointResolver.coordinate(
-                    self.findApplicationPoint(targetApp),
+                    DragDestinationResolver(services: self.services).destinationPoint(
+                        forApplicationNamed: targetApp
+                    ),
                     source: .application
                 )
             } else {
@@ -238,74 +238,6 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             ),
             services: self.services
         )
-    }
-
-    private func findApplicationPoint(_ appName: String) async throws -> CGPoint {
-        if appName.lowercased() == "trash" {
-            return try await self.findTrashPoint()
-        }
-
-        let appInfo = try await self.resolveApplication(appName, services: self.services)
-
-        // Prefer the window listing service path so tests (and window-server based flows) do not
-        // require a real NSRunningApplication or accessibility introspection to locate the window.
-        do {
-            let windowList = try await self.services.applications.listWindows(for: appInfo.name, timeout: nil)
-            if let window = windowList.data.windows.first(where: { $0.isMainWindow })
-                ?? windowList.data.windows.first {
-                return CGPoint(x: window.bounds.midX, y: window.bounds.midY)
-            }
-        } catch {
-            // Fall back to AX-based window discovery below.
-        }
-
-        return try await Task { @MainActor in
-            guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
-                throw PeekabooError.appNotFound(appName)
-            }
-
-            let axApp = AXApp(runningApp)
-            guard let windowElement = axApp.element.focusedWindow() ?? axApp.element.windows()?.first else {
-                throw PeekabooError.windowNotFound(
-                    criteria: "No accessible window for \(appInfo.name)"
-                )
-            }
-
-            guard let frame = windowElement.frame() else {
-                throw PeekabooError.windowNotFound(
-                    criteria: "Window bounds unavailable for \(appInfo.name)"
-                )
-            }
-
-            return CGPoint(x: frame.midX, y: frame.midY)
-        }.value
-    }
-
-    private func findTrashPoint() async throws -> CGPoint {
-        guard let dock = await self.findDockApplication(),
-              let list = dock.children()?.first(where: { $0.role() == "AXList" })
-        else {
-            throw PeekabooError.elementNotFound("Dock not found")
-        }
-
-        let items = list.children() ?? []
-        if let trash = items.first(where: { $0.label()?.lowercased() == "trash" }) {
-            if let position = trash.position(), let size = trash.size() {
-                return CGPoint(x: position.x + size.width / 2, y: position.y + size.height / 2)
-            }
-        }
-
-        throw PeekabooError.elementNotFound("Trash not found in Dock")
-    }
-
-    private func findDockApplication() async -> Element? {
-        await MainActor.run {
-            let apps = NSWorkspace.shared.runningApplications
-            guard let dockApp = apps.first(where: { $0.bundleIdentifier == "com.apple.dock" }) else {
-                return nil
-            }
-            return AXApp(dockApp).element
-        }
     }
 }
 

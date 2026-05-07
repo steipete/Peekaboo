@@ -1,4 +1,3 @@
-import AppKit
 import Commander
 import CoreGraphics
 import Foundation
@@ -179,7 +178,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
     private func resolveTarget() async throws -> MoveTargetResolution {
         if self.center {
             try await self.focusForCoordinateTarget()
-            guard let mainScreen = NSScreen.main else {
+            guard let mainScreen = self.services.screens.primaryScreen else {
                 throw ValidationError("No main screen found")
             }
             let screenFrame = mainScreen.frame
