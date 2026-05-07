@@ -98,7 +98,7 @@ extension ListCommand {
                 let output = try await self.services.applications.listApplications()
 
                 if self.jsonOutput {
-                    try print(output.toJSON())
+                    outputSuccessCodable(data: output.data, logger: self.outputLogger)
                 } else {
                     print(CLIFormatter.format(output))
                 }
@@ -177,8 +177,7 @@ extension ListCommand {
 
                 if self.jsonOutput {
                     let detailOptions = self.parseIncludeDetails()
-                    let payload = try self.renderJSON(from: output, detailOptions: detailOptions)
-                    print(payload)
+                    self.renderJSON(from: output, detailOptions: detailOptions)
                 } else {
                     print(CLIFormatter.format(output))
                 }
@@ -219,9 +218,10 @@ extension ListCommand {
         private func renderJSON(
             from output: UnifiedToolOutput<ServiceWindowListData>,
             detailOptions: Set<WindowDetailOption>
-        ) throws -> String {
+        ) {
             guard !detailOptions.isEmpty else {
-                return try output.toJSON()
+                outputSuccessCodable(data: output.data, logger: self.outputLogger)
+                return
             }
 
             struct FilteredWindowListData: Codable {
@@ -241,12 +241,6 @@ extension ListCommand {
                 let targetApplication: ServiceApplicationInfo?
             }
 
-            struct FilteredOutput: Codable {
-                let data: FilteredWindowListData
-                let summary: UnifiedToolOutput<ServiceWindowListData>.Summary
-                let metadata: UnifiedToolOutput<ServiceWindowListData>.Metadata
-            }
-
             let windows = output.data.windows.map { window in
                 FilteredWindowListData.Window(
                     index: window.index,
@@ -261,19 +255,12 @@ extension ListCommand {
                 )
             }
 
-            let filteredOutput = FilteredOutput(
-                data: FilteredWindowListData(
-                    windows: windows,
-                    targetApplication: output.data.targetApplication
-                ),
-                summary: output.summary,
-                metadata: output.metadata
+            let filteredOutput = FilteredWindowListData(
+                windows: windows,
+                targetApplication: output.data.targetApplication
             )
 
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let jsonData = try encoder.encode(filteredOutput)
-            return String(data: jsonData, encoding: .utf8) ?? "{}"
+            outputSuccessCodable(data: filteredOutput, logger: self.outputLogger)
         }
     }
 
@@ -419,23 +406,18 @@ extension ListCommand {
             self.runtime = runtime
             self.logger.setJsonOutputMode(self.jsonOutput)
 
-            do {
-                let screens = self.services.screens.listScreens()
-                let screenListData = self.buildScreenListData(from: screens)
-                let output = UnifiedToolOutput(
-                    data: screenListData,
-                    summary: self.buildScreenSummary(for: screens),
-                    metadata: self.buildScreenMetadata()
-                )
+            let screens = self.services.screens.listScreens()
+            let screenListData = self.buildScreenListData(from: screens)
+            let output = UnifiedToolOutput(
+                data: screenListData,
+                summary: self.buildScreenSummary(for: screens),
+                metadata: self.buildScreenMetadata()
+            )
 
-                if self.jsonOutput {
-                    try Swift.print(output.toJSON())
-                } else {
-                    self.displayScreenDetails(screens, count: screens.count)
-                }
-            } catch {
-                self.handleError(error)
-                throw ExitCode(1)
+            if self.jsonOutput {
+                outputSuccessCodable(data: output.data, logger: self.outputLogger)
+            } else {
+                self.displayScreenDetails(screens, count: screens.count)
             }
         }
 

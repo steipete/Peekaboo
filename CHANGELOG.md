@@ -74,6 +74,7 @@
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
+- `peekaboo list apps`, `list screens`, and `list windows --json` now emit the same standard top-level `success/data/debug_logs` envelope as sibling CLI commands.
 - MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
 - MCP `image` and `see` now route app/PID/frontmost targets through the desktop observation resolver, so multi-window apps use the same visible-window selection as the CLI.
 - MCP `analyze` now honors configured AI providers and per-call `provider_config` model overrides instead of hardcoding the default OpenAI model.

@@ -26,6 +26,13 @@ struct CLIRuntimeSmokeTests {
 
         if result.status == .exited(0) {
             #expect(result.standardOutput.contains("\"applications\""))
+            let object = try JSONSerialization.jsonObject(with: Data(result.standardOutput.utf8))
+            guard let json = object as? [String: Any] else {
+                Issue.record("Expected JSON object output from list apps.")
+                return
+            }
+            #expect(json["success"] as? Bool == true)
+            #expect(json["data"] is [String: Any])
             return
         }
 

@@ -1156,6 +1156,30 @@ Results:
 - Chrome `see --app --annotate` produced `59` elements and `54` interactables in `1.02s`; spans included `capture.window=191ms`, `detection.ax=97ms`, `annotation.render=269ms`;
 - screenshots were inspected with local image vision; no blank captures observed.
 
+CLI JSON envelope sweep, May 7, 2026:
+
+```bash
+./Apps/CLI/.build/debug/peekaboo permissions status --json
+./Apps/CLI/.build/debug/peekaboo list apps --json
+./Apps/CLI/.build/debug/peekaboo list screens --json
+./Apps/CLI/.build/debug/peekaboo list menubar --json
+./Apps/CLI/.build/debug/peekaboo list windows --app Finder --json
+./Apps/CLI/.build/debug/peekaboo dock list --json
+./Apps/CLI/.build/debug/peekaboo dialog list --json
+./Apps/CLI/.build/debug/peekaboo space list --json
+./Apps/CLI/.build/debug/peekaboo window list --app Finder --json
+./Apps/CLI/.build/debug/peekaboo tools --json
+./Apps/CLI/.build/debug/peekaboo sleep 1 --json
+./Apps/CLI/.build/debug/peekaboo image --app frontmost --path /tmp/peekaboo-sweep-frontmost.png --json
+./Apps/CLI/.build/debug/peekaboo see --app frontmost --path /tmp/peekaboo-sweep-see.png --json
+```
+
+Results:
+
+- `list apps`, `list screens`, and `list windows --app Finder` now use the standard top-level `success/data/debug_logs` envelope instead of the old `data/metadata/summary` shape;
+- read-only command wall times were `115-235ms` on this host, except `dialog list` returned the expected structured no-dialog error in `164ms`;
+- `image --app frontmost` captured successfully in `565ms`; `see --app frontmost` captured and detected successfully in `847ms`.
+
 ### Performance Budgets
 
 Budgets are manual benchmark targets, not flaky unit-test thresholds.

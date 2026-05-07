@@ -41,7 +41,8 @@ struct ListCommandCLIHarnessTests {
         #expect(result.exitStatus == 0)
 
         let data = try #require(self.output(from: result).data(using: .utf8))
-        let payload = try JSONDecoder().decode(UnifiedToolOutput<ServiceApplicationListData>.self, from: data)
+        let payload = try JSONDecoder().decode(CodableJSONResponse<ServiceApplicationListData>.self, from: data)
+        #expect(payload.success == true)
         #expect(payload.data.applications.count == 2)
         #expect(payload.data.applications.first?.name == "AlphaApp")
     }
