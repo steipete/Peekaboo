@@ -45,6 +45,7 @@
 - `peekaboo see` no longer carries legacy window/frontmost capture fallback code; those targets now fail during observation target mapping if invalid.
 - `peekaboo see --capture-engine`, `peekaboo image --capture-engine`, and `peekaboo see --timeout-seconds` now bind through the Commander CLI path instead of being ignored.
 - `peekaboo image --mode area --region x,y,width,height` now captures explicit desktop regions through desktop observation.
+- `peekaboo image --help` now lists the supported `multi` and `area` capture modes instead of the stale mode set.
 - `peekaboo capture live --region x,y,width,height` now infers area mode, `--mode area` is the canonical name, invalid modes fail clearly, and zero-sized regions are rejected.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.

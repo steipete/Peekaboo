@@ -18,7 +18,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Output path for saved image")
     var path: String?
 
-    @Option(name: .long, help: "Capture mode (screen, window, frontmost)")
+    @Option(name: .long, help: "Capture mode (screen, window, frontmost, multi, area)")
     var mode: PeekabooCore.CaptureMode?
 
     @Option(name: .long, help: "Capture window with specific title")

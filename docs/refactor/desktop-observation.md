@@ -95,6 +95,7 @@ Landed:
 - CLI `see` no longer carries legacy window/frontmost capture fallback code; observation-backed targets now own those paths, and the remaining fallback handles only all-screen/multi capture plus menu-bar popover recovery.
 - Commander binding now wires `see --capture-engine`, `image --capture-engine`, and `see --timeout-seconds` into the command structs that build observation requests.
 - CLI `image --mode area --region x,y,width,height` now routes explicit desktop-region capture through observation-backed area targets.
+- CLI `image --help` now advertises the full observation-backed mode set, including `multi` and `area`.
 - CLI `capture live --region x,y,width,height` now infers area mode, `--mode area` is canonical, `region` remains an alias, and invalid mode/region inputs fail before capture starts.
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.

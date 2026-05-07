@@ -21,7 +21,7 @@ extension ImageCommand: CommanderSignatureProviding {
                 ),
                 .commandOption(
                     "mode",
-                    help: "Capture mode (auto, screen, window, frontmost)",
+                    help: "Capture mode (screen, window, frontmost, multi, area)",
                     long: "mode"
                 ),
                 .commandOption(

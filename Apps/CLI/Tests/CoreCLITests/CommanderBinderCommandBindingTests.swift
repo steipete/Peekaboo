@@ -631,6 +631,14 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `Image command mode help lists all supported modes`() {
+        let signature = ImageCommand.commanderSignature()
+        let modeOption = signature.options.first { $0.label == "mode" }
+        #expect(modeOption?.help?.contains("multi") == true)
+        #expect(modeOption?.help?.contains("area") == true)
+    }
+
+    @Test
     func `Move command binding with coordinates`() throws {
         let parsed = ParsedValues(
             positional: ["100,200"],
