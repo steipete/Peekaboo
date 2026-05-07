@@ -70,6 +70,7 @@ Landed:
 - ScreenCaptureKit display/area capture, window capture, and shared frame-source support are split out of the primary operator.
 - Watch capture lifecycle, loop/diff cadence, and frame/video persistence are split across focused session companions.
 - Application window listing keeps service facade/output assembly separate from hybrid CGWindowList/AX enumeration policy.
+- Capture models now keep image primitives, live session options, frame metadata, and session-result summaries in focused files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -285,6 +286,10 @@ CaptureCommand+Live.swift: 378 lines
 CaptureCommand+Video.swift: 207 lines
 CaptureCommand+WatchAlias.swift: 28 lines
 CaptureCommand+CommanderMetadata.swift: 87 lines
+Capture.swift: 67 lines
+CaptureSessionOptions.swift: 90 lines
+CaptureFrameModels.swift: 138 lines
+CaptureSessionResult.swift: 165 lines
 ConfigurationManager.swift: 140 lines
 ConfigurationManager+Parsing.swift: 220 lines
 ConfigurationManager+Credentials.swift: 98 lines
