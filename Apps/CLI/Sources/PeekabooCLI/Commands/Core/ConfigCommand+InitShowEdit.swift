@@ -29,8 +29,10 @@ extension ConfigCommand {
             let path = self.configPath
             try self.ensureWritableConfig(at: path)
             try self.createConfiguration(at: path)
-            let reporter = ProviderStatusReporter(timeoutSeconds: self.timeoutSeconds)
-            await reporter.printSummary()
+            if !self.jsonOutput {
+                let reporter = ProviderStatusReporter(timeoutSeconds: self.timeoutSeconds)
+                await reporter.printSummary()
+            }
         }
 
         private func ensureWritableConfig(at path: String) throws {
@@ -89,20 +91,21 @@ extension ConfigCommand {
             }
 
             try self.showEffectiveConfiguration()
-            let reporter = ProviderStatusReporter(timeoutSeconds: self.timeoutSeconds)
-            await reporter.printSummary()
+            if !self.jsonOutput {
+                let reporter = ProviderStatusReporter(timeoutSeconds: self.timeoutSeconds)
+                await reporter.printSummary()
+            }
         }
 
         private func showRawConfiguration() throws {
             guard FileManager.default.fileExists(atPath: self.configPath) else {
                 if self.jsonOutput {
-                    let errorOutput = ErrorOutput(
-                        error: true,
-                        code: "FILE_IO_ERROR",
+                    outputError(
                         message: "No configuration file found",
-                        details: "Path: \(self.configPath). Run 'peekaboo config init' to create one."
+                        code: .FILE_IO_ERROR,
+                        details: "Path: \(self.configPath). Run 'peekaboo config init' to create one.",
+                        logger: self.logger
                     )
-                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("No configuration file found at: \(self.configPath)")
                     print("Run 'peekaboo config init' to create one.")
@@ -114,34 +117,29 @@ extension ConfigCommand {
                 let contents = try String(contentsOfFile: self.configPath, encoding: .utf8)
                 if self.jsonOutput {
                     guard let config = self.configManager.loadConfiguration() else {
-                        let errorOutput = ErrorOutput(
-                            error: true,
-                            code: "FILE_IO_ERROR",
+                        outputError(
                             message: "Failed to parse configuration file",
-                            details: nil
+                            code: .FILE_IO_ERROR,
+                            logger: self.logger
                         )
-                        outputJSON(errorOutput, logger: self.logger)
                         throw ExitCode.failure
                     }
 
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                    let data = try encoder.encode(config)
-                    if let json = String(data: data, encoding: .utf8) {
-                        print(json)
-                    }
+                    outputSuccessCodable(data: config, logger: self.logger)
                 } else {
                     print(contents)
                 }
             } catch {
+                if error is ExitCode {
+                    throw error
+                }
+
                 if self.jsonOutput {
-                    let errorOutput = ErrorOutput(
-                        error: true,
-                        code: "FILE_IO_ERROR",
+                    outputError(
                         message: error.localizedDescription,
-                        details: nil
+                        code: .FILE_IO_ERROR,
+                        logger: self.logger
                     )
-                    outputJSON(errorOutput, logger: self.logger)
                 } else {
                     print("Failed to read configuration file: \(error)")
                 }

@@ -80,6 +80,30 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo config show effective emits only JSON in JSON mode`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo([
+            "config",
+            "show",
+            "--effective",
+            "--json",
+            "--no-remote",
+        ])
+        #expect(result.status == .exited(0))
+
+        let data = Data(result.standardOutput.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any] else {
+            Issue.record("Expected JSON object output from config show --effective.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == true)
+        #expect(json["data"] is [String: Any])
+        #expect(result.standardOutput.contains("Providers:") == false)
+    }
+
+    @Test
     func `peekaboo list menubar emits standard JSON envelope`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["list", "menubar", "--json", "--no-remote"])

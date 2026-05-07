@@ -12,8 +12,8 @@ read_when:
 ## Subcommands
 | Subcommand | Purpose | Key flags |
 | --- | --- | --- |
-| `init` | Create a default `config.json` (respects `--force`) and print provider readiness (env / credentials / OAuth). | `--force` overwrites an existing file; `--timeout` (sec) to bound live checks (default 30). |
-| `show` | Print either the raw file or the fully merged “effective” view (config + env + credentials) and live-validate providers. | `--effective` switches to the merged view; `--timeout` (sec) bounds validation; JSON mode emits a sorted object. |
+| `init` | Create a default `config.json` (respects `--force`) and print provider readiness (env / credentials / OAuth) in human mode. | `--force` overwrites an existing file; `--timeout` (sec) to bound live checks (default 30). |
+| `show` | Print either the raw file or the fully merged “effective” view (config + env + credentials); human `--effective` also live-validates providers. | `--effective` switches to the merged view; `--timeout` (sec) bounds validation; JSON mode emits a standard `{ success, data }` object with no appended text. |
 | `edit` | Opens the config in `$EDITOR` (or the `--editor` you pass) and validates the result after you quit. | `--editor` overrides the detected editor. |
 | `validate` | Parses the config without writing anything and surfaces syntax/errors. | None. |
 | `add` | Store a provider credential and validate it immediately. | `add openai|anthropic|grok|gemini <secret>`; `--timeout` (sec, default 30). |
@@ -29,7 +29,7 @@ read_when:
 - The underlying auth/config plumbing lives in the shared Tachikoma library and the `tachikoma config` CLI; Peekaboo sets `TachikomaConfiguration.profileDirectoryName = ".peekaboo"` so both tools read/write the same `~/.peekaboo/credentials` without copying environment variables.
 - Configuration files are JSON-with-comments: the loader strips `//` / `/* */` comments and interpolates `${VAR}` placeholders before merging with credentials and environment variables (same logic the CLI uses on startup).
 - `add`/`login`/`set-credential` write through `ConfigurationManager.shared`, so they use macOS file permissions + atomic temp-file renames; partial writes won’t corrupt the store even if the process crashes.
-- Provider readiness in `init`/`show` is live-validated with per-provider pings (OpenAI/Codex, Anthropic, Grok/xai, Gemini). Timeouts default to 30s and are caller overridable.
+- Provider readiness in human `init`/`show --effective` output is live-validated with per-provider pings (OpenAI/Codex, Anthropic, Grok/xai, Gemini). Timeouts default to 30s and are caller overridable. JSON mode skips appended readiness text so stdout remains parseable.
 - Provider management commands share the same validation helpers: IDs must match `^[A-Za-z0-9-_]+$`, and provider types are limited to `.openai` or `.anthropic`. Headers passed via `--headers KEY:VALUE,…` are parsed into a `[String:String]` dictionary before being serialized back to disk.
 - `test-provider` and `models` invoke the actual HTTP client stack (respecting proxy, TLS, and custom headers) rather than mocking responses, which is why they run on the main actor and surface real latencies.
 - All subcommands are `RuntimeOptionsConfigurable`, so global `--json` or `--verbose` flags work uniformly (handy when you script config changes).
