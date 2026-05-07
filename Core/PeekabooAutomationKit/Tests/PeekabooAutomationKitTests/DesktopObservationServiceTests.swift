@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import PeekabooFoundation
 import XCTest
@@ -186,6 +187,54 @@ final class DesktopObservationServiceTests: XCTestCase {
             "relative_annotated.png")
     }
 
+    func testObservationOutputWriterSavesAnnotatedScreenshotWhenRequested() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 88, title: "Output", bounds: CGRect(x: 10, y: 20, width: 100, height: 80))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-annotated-test-\(UUID().uuidString).png")
+        let capture = try RecordingScreenCaptureService(
+            result: Self.captureResult(
+                imageData: Self.testPNGData(size: window.bounds.size),
+                app: app,
+                window: window))
+        let automation = RecordingUIAutomationService(elements: DetectedElements(buttons: [
+            DetectedElement(
+                id: "B1",
+                type: .button,
+                label: "OK",
+                bounds: CGRect(x: 20, y: 30, width: 40, height: 20),
+                isEnabled: true),
+        ]))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: automation,
+            applications: applications)
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .accessibility),
+            output: DesktopObservationOutputOptions(
+                path: outputURL.path,
+                saveRawScreenshot: true,
+                saveAnnotatedScreenshot: true)))
+
+        let annotatedPath = try XCTUnwrap(result.files.annotatedScreenshotPath)
+        XCTAssertEqual(annotatedPath, outputURL.deletingPathExtension().path + "_annotated.png")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: annotatedPath))
+        XCTAssertGreaterThan(try (FileManager.default.attributesOfItem(atPath: annotatedPath)[.size] as? Int) ?? 0, 0)
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "detection.ax",
+            "output.write",
+        ])
+
+        try? FileManager.default.removeItem(at: outputURL)
+        try? FileManager.default.removeItem(atPath: annotatedPath)
+    }
+
     func testObservationForwardsCaptureEnginePreferenceWhenSupported() async throws {
         let app = Self.app()
         let window = Self.window(id: 99, title: "Engine", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
@@ -285,6 +334,22 @@ final class DesktopObservationServiceTests: XCTestCase {
                 mode: .window,
                 applicationInfo: app,
                 windowInfo: window))
+    }
+
+    private static func testPNGData(size: CGSize) throws -> Data {
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(origin: .zero, size: size).fill()
+        image.unlockFocus()
+
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else {
+            throw DesktopObservationError.targetNotFound("test image")
+        }
+        return png
     }
 }
 
@@ -435,12 +500,14 @@ EngineAwareScreenCaptureServiceProtocol {
 @MainActor
 private final class RecordingUIAutomationService: UIAutomationServiceProtocol {
     private let delay: TimeInterval
+    private let elements: DetectedElements
     var detectCalls = 0
     var lastSnapshotID: String?
     var lastWindowContext: WindowContext?
 
-    init(delay: TimeInterval = 0) {
+    init(delay: TimeInterval = 0, elements: DetectedElements = DetectedElements()) {
         self.delay = delay
+        self.elements = elements
     }
 
     func detectElements(
@@ -457,7 +524,7 @@ private final class RecordingUIAutomationService: UIAutomationServiceProtocol {
         return ElementDetectionResult(
             snapshotId: snapshotId ?? "generated",
             screenshotPath: "/tmp/fake.png",
-            elements: DetectedElements(),
+            elements: self.elements,
             metadata: DetectionMetadata(detectionTime: 0, elementCount: 0, method: "fake"))
     }
 

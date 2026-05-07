@@ -195,6 +195,7 @@ public struct SeeTool: MCPTool {
             let observation = try await self.observeDesktop(
                 target: target,
                 path: request.path,
+                annotate: request.annotate,
                 snapshot: snapshot)
             let screenshotPath = try await self.registerObservationScreenshot(
                 observation,
@@ -204,7 +205,7 @@ public struct SeeTool: MCPTool {
                 snapshot: snapshot)
             let annotatedPath = try await self.generateAnnotationIfNeeded(
                 annotate: request.annotate,
-                screenshotPath: screenshotPath,
+                observation: observation,
                 elements: elements,
                 detectedElements: detectedElements,
                 snapshot: snapshot)
@@ -276,6 +277,7 @@ public struct SeeTool: MCPTool {
     private func observeDesktop(
         target: CaptureTarget,
         path: String?,
+        annotate: Bool,
         snapshot: UISnapshot) async throws -> DesktopObservationResult
     {
         try await self.context.desktopObservation.observe(DesktopObservationRequest(
@@ -284,6 +286,7 @@ public struct SeeTool: MCPTool {
             output: DesktopObservationOutputOptions(
                 path: path,
                 saveRawScreenshot: true,
+                saveAnnotatedScreenshot: annotate,
                 snapshotID: snapshot.id)))
     }
 
@@ -300,13 +303,17 @@ public struct SeeTool: MCPTool {
 
     private func generateAnnotationIfNeeded(
         annotate: Bool,
-        screenshotPath: String,
+        observation: DesktopObservationResult,
         elements: [UIElement],
         detectedElements: [AutomationDetectedElement],
         snapshot: UISnapshot) async throws -> String?
     {
         guard annotate else { return nil }
-        let annotated = try self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
+        guard let screenshotPath = observation.files.rawScreenshotPath else {
+            throw OperationError.captureFailed(reason: "Observation did not produce a screenshot path")
+        }
+        let annotated = try observation.files.annotatedScreenshotPath
+            ?? self.generateAnnotatedScreenshot(originalPath: screenshotPath, elements: elements)
         await self.emitAnnotatedScreenshotVisualizer(
             annotatedPath: annotated,
             detectedElements: detectedElements,

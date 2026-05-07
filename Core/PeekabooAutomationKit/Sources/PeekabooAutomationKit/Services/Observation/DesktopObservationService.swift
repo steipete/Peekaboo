@@ -65,6 +65,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             tracer: tracer)
         let files = try await self.writeOutputIfNeeded(
             capture: capture,
+            elements: elements,
             options: request.output,
             tracer: tracer)
 
@@ -285,6 +286,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
 
     private func writeOutputIfNeeded(
         capture: CaptureResult,
+        elements: ElementDetectionResult?,
         options: DesktopObservationOutputOptions,
         tracer: DesktopObservationTraceRecorder) async throws -> DesktopObservationFiles
     {
@@ -293,7 +295,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         }
 
         return try await tracer.span("output.write") {
-            try await self.outputWriter.write(capture: capture, options: options)
+            try await self.outputWriter.write(capture: capture, elements: elements, options: options)
         }
     }
 

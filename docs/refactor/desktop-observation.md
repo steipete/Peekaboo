@@ -1,858 +1,109 @@
 ---
-summary: 'Grand refactor plan for unifying Peekaboo screenshot, AX detection, and desktop observation architecture.'
+summary: 'Grand refactor plan for unifying Peekaboo screenshot, AX detection, OCR, annotations, and desktop observation architecture.'
 read_when:
   - 'planning major refactors to see, image, capture, or element detection'
   - 'changing screenshot performance, AX traversal, or capture target selection'
   - 'splitting ScreenCaptureService or ElementDetectionService'
   - 'moving CLI capture behavior into AutomationKit'
+  - 'debugging app-window selection, Retina scale, or annotation output'
 ---
 
 # Desktop Observation Refactor
 
 ## Thesis
 
-Peekaboo has several commands that all ask the same question in slightly different ways:
+Peekaboo should have one product-level answer to this question:
 
-> What is visible on the desktop, where did it come from, and what can I do with it?
+> What is visible on the desktop, where did it come from, what pixels represent it, and what can I do with it?
 
-Today that behavior is spread across:
+Today that answer is still spread across command code, MCP tools, capture services, element detection, menu-bar helpers, annotation renderers, and snapshot writers. The grand refactor is to make `DesktopObservationService.observe(_:)` the single behavioral pipeline for desktop inspection, then make CLI/MCP/agent tools thin adapters.
 
-- `SeeCommand`
-- `ImageCommand`
-- MCP `SeeTool`
-- MCP `ImageTool`
-- `ScreenCaptureService`
-- `ElementDetectionService`
-- CLI-only bridges such as `ScreenCaptureBridge` and `AutomationServiceBridge`
-- ad hoc target selection helpers such as `WindowFilterHelper`
-
-That split makes performance work fragile. A fix for `peekaboo see --app` may not help `image`, MCP, or agent flows. It also forces CLI code to import AppKit, AXorcist, CoreGraphics, and ScreenCaptureKit just to express a user-facing command.
-
-The refactor should make desktop observation a first-class service in `PeekabooAutomationKit`, then make CLI and MCP commands thin adapters.
-
-## Status: May 7, 2026
-
-This plan is now active, not speculative.
-
-Landed:
-
-- `DesktopObservationRequest`, target, capture, detection, output, timeout, timing, and result models.
-- `DesktopObservationService` facade in `PeekabooAutomationKit`.
-- `ObservationTargetResolver` for core targets.
-- `ObservationOutputWriter` for raw screenshot persistence.
-- `see`, `image`, MCP `see`, and MCP `image` have first observation-backed paths.
-- Request-scoped capture engine preference now flows through observation to `ScreenCaptureService`.
-- Observation detection timeout budget is being enforced in the facade.
-- Screen capture scale planning is now centralized and unit-tested for logical 1x versus native Retina output.
-- Direct `ElementDetectionService` timeout racing is now enforced by `ElementDetectionTimeoutRunner`.
-- AX traversal limits and sparse-web fallback thresholds now live in `AXTraversalPolicy`.
-- AX tree cache state now lives in `ElementDetectionCache`.
-- AX role mapping, actionability policy, shortcut role policy, and attribute assembly now live in `ElementClassifier`.
-- Batched AX descriptor reading and AX value coercion now live in `AXDescriptorReader`.
-- Element grouping and detection metadata assembly now live in `ElementDetectionResultBuilder`.
-- Sparse Chromium/Tauri web focus recovery now lives in `WebFocusFallback`.
-- Generic-group text-field recovery now lives in `ElementTypeAdjuster`.
-- Application menu-bar detection now lives in `MenuBarElementCollector`.
-- Accessibility tree traversal now lives in `AXTreeCollector`.
-- Detection app/window fallback selection now lives in `ElementDetectionWindowResolver`.
-- Capture frame-source policy and display-local source rectangle planning now live in `ScreenCapturePlanner`.
-- Screen Recording enforcement now lives in `ScreenCapturePermissionGate`.
-- Logical-1x capture downscaling now lives in `ScreenCaptureImageScaler`.
-- Legacy area capture now executes through the legacy capture operator instead of facade helper code.
-- ScreenCaptureKit and legacy capture operators now live in dedicated files.
-- Request-scoped `DesktopStateSnapshot` now feeds observation target resolution and diagnostics.
-- CLI and MCP observation-backed outputs now expose structured observation timings and diagnostics.
-- Remaining CLI app-window filtering for `image`, live `capture`, and `window list` now uses observation target selection.
-- Menu bar strip capture for CLI `image --app menubar` and MCP `image` now runs through observation.
-- Menu bar popover window-list resolution and capture now runs through observation.
-- CLI/MCP annotated screenshot companion-path planning now lives in `ObservationOutputWriter`.
-
-Still intentionally incomplete:
-
-- menu bar popover OCR and click-to-open behavior under observation;
-- annotation rendering and snapshot registration under the observation writer;
-- OCR as a first-class observation enhancement;
-- further extraction of `ScreenCaptureService` internals;
-- extraction of `ElementDetectionService` internals;
-- moving traversal and cache invalidation into dedicated collaborators;
-- command cleanup after the bridge paths disappear.
-
-The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.
-
-## Working Roadmap
-
-This is the live execution order. Keep this section updated as the lower-level plan changes.
-
-### Track A: Observation Becomes The Product Surface
-
-Goal: `DesktopObservationService.observe` is the only behavioral path for desktop inspection.
-
-Next slices:
-
-1. Move CLI menu bar popover OCR/click-to-open behavior into observation instead of keeping it as `see` special cases.
-2. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
-3. Keep shrinking legacy command-level capture code after bridge paths disappear.
-
-Stop when:
-
-- `see`, `image`, MCP `see`, and MCP `image` all construct a `DesktopObservationRequest`;
-- command code only parses flags and renders output;
-- equivalent targets resolve to the same app/window in every frontend.
-
-### Track B: Capture Becomes Plan Plus Operators
-
-Goal: `ScreenCaptureService` remains the public facade, but contains almost no policy.
-
-Next slices:
-
-1. Extract a pure `ScreenCapturePlanner` that owns engine choice, fallback policy, scale preference, focus policy, and permission intent.
-2. Extract `ScreenCapturePermissionGate` so each capture path does one authoritative Screen Recording check.
-3. Split ScreenCaptureKit and CoreGraphics work into operators that execute an already-built plan.
-4. Move image format conversion and metadata assembly into output helpers.
-5. Remove command-level imports of ScreenCaptureKit and AppKit capture details.
-
-Stop when:
-
-- scale, engine, fallback, and permission behavior have pure tests;
-- `ScreenCaptureService.swift` is under about 500 lines;
-- `image --retina` and non-retina output can be reasoned about without live display capture.
-
-### Track C: Element Detection Becomes Policy Plus Readers
-
-Goal: `ElementDetectionService` remains the facade, but AX traversal is no longer a large implicit algorithm hidden in one type.
-
-Next slices:
-
-1. Extract `ElementDetectionCache` for short-lived immutable AX tree results.
-2. Extract `AXTreeCollector` for traversal only.
-3. Extract `AXDescriptorReader` for batched attribute/action reads.
-4. Extract `ElementClassifier` for role, label, interactability, and element type mapping.
-5. Extract `WebFocusFallback` so Chromium/Tauri sparse-tree behavior has isolated tests.
-6. Build `ElementDetectionResultBuilder` for grouping, metadata, snapshot result assembly, and warnings.
-
-Stop when:
-
-- direct detection callers have enforced timeouts and cancellation;
-- sparse web trees can still trigger focus fallback;
-- rich native trees skip fallback;
-- `ElementDetectionService.swift` is under about 500 lines.
-
-### Track D: Interaction Reuses Observation
-
-Goal: action commands consume observation state instead of repeating lookup work.
-
-Next slices:
-
-1. Make post-action cache invalidation explicit for click, type, scroll, drag, hotkey, and window focus.
-2. Teach interaction commands to reuse a fresh snapshot when one is supplied.
-3. Add observe-if-needed behavior for element IDs that are missing or stale.
-4. Emit target-point diagnostics for click and move without re-running a full desktop scan.
-
-Stop when:
-
-- `see -> click -> type` does not perform avoidable full AX traversals;
-- action commands invalidate only the affected observation cache entries;
-- stale element failures explain the stale snapshot/window identity.
-
-### Track E: Module Extraction Last
-
-Goal: split packages only after behavior boundaries are boring.
-
-Order:
-
-1. `PeekabooObservation`
-2. `PeekabooCapture`
-3. `PeekabooElementDetection`
-4. CLI command support package, if still useful
-
-Do not extract modules while command, capture, and detection code still disagree about target semantics.
-
-## Grande Refactor Shape
-
-The final architecture should look like this:
+The desired shape is:
 
 ```text
-CLI / MCP / Agent tools
-  parse user input
-  map flags or wire input to DesktopObservationRequest
-  render typed DesktopObservationResult
-
-PeekabooAutomationKit / Observation
-  DesktopObservationService
-  ObservationTargetResolver
-  CapturePlanner
-  CaptureExecutor
-  ObservationOutputWriter
-  ElementObservationService
-  ObservationTracer
-
-PeekabooAutomationKit / Capture
-  ScreenCaptureService facade
-  ScreenCapturePermissionGate
-  ScreenCaptureTargetResolver
-  ScreenCapturePlanner
-  ScreenCaptureKitOperator
-  LegacyScreenCaptureOperator
-  ScreenCaptureFallbackRunner
-  CaptureImageWriter
-
-PeekabooAutomationKit / Element Detection
-  ElementDetectionService facade
-  AXTreeCollector
-  AXTraversalPolicy
-  AXDescriptorReader
-  ElementClassifier
-  WebFocusFallback
-  MenuBarElementCollector
-  ElementDetectionCache
-  ElementDetectionResultBuilder
-```
-
-Command files should become boring adapters. The important policy should move downward into typed services:
-
-- target ranking and window selection live in observation target resolution;
-- capture engine, scale, permission, and fallback policy live in capture planning/execution;
-- AX traversal, focus fallback, and sparse-web heuristics live in element detection policy;
-- file writing, snapshot registration, and annotation output live in observation output;
-- JSON/text rendering stays in CLI/MCP layers.
-
-## Architectural Decisions
-
-### Observation Owns User-Visible Target Semantics
-
-`see --app Foo`, `image --app Foo`, MCP `see`, and MCP `image` must resolve to the same window unless the caller explicitly asks otherwise.
-
-This is the right place for:
-
-- visible-window ranking;
-- largest non-offscreen window fallback;
-- non-empty title preference;
-- explicit `--window-id` precedence;
-- app name, bundle ID, and PID lookup;
-- menubar target resolution.
-
-It is the wrong place for:
-
-- raw ScreenCaptureKit enumeration quirks;
-- CLI-specific validation strings;
-- output JSON shape.
-
-### Capture Owns Pixels
-
-`ScreenCaptureService` remains the public capture facade while internals are split. Observation can request pixels but should not know whether they came from ScreenCaptureKit, CGWindowList, persistent streams, or a bridge.
-
-Important invariants:
-
-- one screen recording permission check per capture operation;
-- one engine preference per request;
-- no silent fallback when the user explicitly forced an engine;
-- all scale decisions are testable without live display capture;
-- `image --retina` maps to native display scale, not to whatever output writer happens to do.
-
-### Detection Owns Accessibility Policy
-
-Observation decides whether detection is needed. Detection decides how AX is traversed.
-
-Move these out of command code and into detection collaborators:
-
-- sparse tree detection;
-- web focus fallback thresholds;
-- maximum depth and child budgets;
-- descriptor batching;
-- role classification;
-- menu bar element collection;
-- cache invalidation.
-
-### Output Writer Owns Files
-
-Commands should not rebuild screenshot paths, raw/annotated path pairs, or snapshot side effects.
-
-Observation output should produce:
-
-- raw screenshot path;
-- annotated screenshot path;
-- snapshot ID/path metadata;
-- image format metadata;
-- warnings for skipped output.
-
-Formatting remains outside the writer.
-
-## End-State Blueprint
-
-The full refactor is not just "move code out of commands". The end state is a desktop observation subsystem with explicit state, policies, and diagnostics.
-
-### Canonical Pipeline
-
-Every command or tool that needs to inspect the desktop should use this shape:
-
-```text
-User input
-  -> request adapter
+CLI / MCP / agent request
   -> DesktopObservationRequest
+  -> request-scoped DesktopStateSnapshot
   -> ObservationTargetResolver
-  -> DesktopStateSnapshot
   -> CapturePlan
   -> CaptureExecutor
   -> ElementObservationService
   -> ObservationOutputWriter
   -> DesktopObservationResult
-  -> CLI/MCP/agent renderer
+  -> CLI / MCP / agent renderer
 ```
 
-Rules:
-
-- request adapters are allowed to validate user-facing flag combinations;
-- adapters are not allowed to rank windows, probe AX, infer capture scale, or write screenshot paths;
-- service layers are allowed to return typed diagnostics;
-- renderers are allowed to choose JSON/text wording, but not behavior.
-
-### Desktop State Snapshot
-
-Add a request-scoped snapshot object that contains all expensive desktop enumeration results for one observation.
-
-```swift
-public struct DesktopStateSnapshot: Sendable {
-    public var capturedAt: Date
-    public var displays: [DisplayIdentity]
-    public var runningApplications: [ApplicationIdentity]
-    public var windows: [WindowIdentity]
-    public var frontmostApplication: ApplicationIdentity?
-    public var frontmostWindow: WindowIdentity?
-}
-```
-
-This snapshot should be built once per `DesktopObservationService.observe` call and passed to target resolution, capture planning, and diagnostics.
-
-Do not make it a long-lived global cache at first. Most correctness bugs here come from stale windows and stale AX references. Start with request-scoped reuse, then add short TTL caches only where measurements prove value.
-
-### Cache Policy
-
-Use three cache tiers:
-
-- request cache: always allowed, cleared after one observation;
-- short TTL cache: allowed for app/window lists and AX trees after live benchmarking;
-- persistent cache: only for static metadata such as bundle IDs or command docs, never for live windows/elements.
-
-Initial TTL recommendations:
-
-```text
-window inventory: 150-300 ms
-frontmost app/window: no TTL unless measured safe
-AX element tree: 250-500 ms, keyed by pid + windowID + focus epoch
-OCR output: no cache in the first refactor
-screenshot pixels: no cache
-```
-
-AX cache invalidation triggers:
-
-- different target PID or window ID;
-- window bounds changed;
-- frontmost app changed;
-- click/type/scroll/drag executed;
-- focus fallback executed;
-- detection options changed, especially web focus fallback and menu bar inclusion;
-- timeout/cancellation occurred before traversal completed.
-
-The cache should store immutable detection outputs, not live `AXUIElement` handles. Live AX handles can become invalid and can accidentally keep old UI state alive.
-
-### Desktop Identity Model
-
-Identity types should become explicit enough that CLI/MCP JSON can explain what happened.
-
-```swift
-public struct ApplicationIdentity: Sendable, Codable, Equatable, Hashable {
-    public var processID: pid_t
-    public var bundleIdentifier: String?
-    public var name: String
-    public var path: String?
-}
-
-public struct WindowIdentity: Sendable, Codable, Equatable, Hashable {
-    public var windowID: CGWindowID?
-    public var index: Int?
-    public var ownerPID: pid_t?
-    public var ownerName: String?
-    public var title: String
-    public var bounds: CGRect
-    public var layer: Int
-    public var alpha: Double
-    public var isOnScreen: Bool
-}
-```
-
-The same identity should flow through:
-
-- `list windows`;
-- `image --app`;
-- `image --window-id`;
-- `see --app`;
-- `see --window-id`;
-- MCP `image`;
-- MCP `see`;
-- snapshots and annotations.
-
-### Target Selection Contract
-
-Automatic app window selection must be deterministic:
-
-1. discard offscreen/minimized/helper-only windows when a renderable alternative exists;
-2. prefer explicit `windowID`, then title, then index;
-3. for automatic selection, prefer visible titled windows;
-4. prefer larger renderable area;
-5. break ties by stable CoreGraphics ordering;
-6. emit diagnostics for skipped helper windows when verbose/JSON diagnostics are enabled.
-
-This fixes the Tauri/Electron/CEF class of bugs where an app has many toolbar or helper windows and the command grabs a 2560x30 offscreen surface.
-
-### Capture Contract
-
-Capture should have a pure planning layer and a small execution layer.
-
-Pure planner inputs:
-
-- resolved target;
-- requested engine;
-- requested scale;
-- display/window geometry;
-- permission intent;
-- output format.
-
-Pure planner outputs:
-
-- operation kind;
-- engine preference;
-- fallback policy;
-- native scale;
-- output scale;
-- expected output pixel size when knowable;
-- diagnostics.
-
-Execution owns:
-
-- permission check;
-- focus work, if requested;
-- ScreenCaptureKit call;
-- legacy CoreGraphics call;
-- fallback sequencing;
-- image conversion.
-
-Hard rules:
-
-- `--retina` means native display scale;
-- no command-local scale math;
-- no silent engine fallback when the caller forced an engine;
-- every capture result reports engine, scale source, native scale, output scale, and final pixel size;
-- `screencapture -l <windowID>` remains the behavioral reference for native window capture where macOS allows it.
-
-### Detection Contract
-
-Element detection should become a policy-driven pipeline:
-
-```text
-Resolved target
-  -> AX root selection
-  -> AX traversal policy
-  -> descriptor reader
-  -> classifier
-  -> web focus fallback, if policy says sparse
-  -> result builder
-  -> snapshot writer
-```
-
-Detection should never re-decide app/window selection from scratch when observation already resolved a window. It may resolve AX roots for that window, but the source of truth for target identity is `ResolvedObservationTarget`.
-
-Timeout and cancellation must be real at every public entry point:
-
-- observation callers;
-- direct `ElementDetectionService` callers;
-- interaction commands that wait for elements;
-- MCP calls.
-
-### Interaction Integration
-
-Click/type/scroll/drag are outside the first desktop-observation refactor, but they should consume observation outputs later.
-
-Future shape:
-
-```text
-Interaction request
-  -> element query
-  -> snapshot lookup or observe-if-needed
-  -> target point planner
-  -> focus/permission guard
-  -> action executor
-  -> post-action invalidation
-```
-
-This makes action commands invalidate AX caches and avoids repeated full-tree scans when a user does `see`, then `click B12`, then `type`.
-
-### Performance Budgets
-
-Budgets are targets, not flaky unit-test thresholds. Record them in manual benchmark notes and structured timings.
-
-Warm local command budget on a normal desktop:
-
-```text
-permissions status: <100 ms
-list windows --app: <250 ms
-image --window-id: <500 ms
-image --app: <700 ms
-see --window-id, native AX tree: <1500 ms
-see --app, native AX tree: <1800 ms
-see sparse Chromium/Tauri with focus fallback: <2500 ms
-```
-
-Performance failures to treat as bugs:
-
-- `image` instantiates or traverses element detection;
-- `see --window-id` traverses all windows for an app when a direct window context exists;
-- local commands probe bridge or remote endpoints by default;
-- permission checks happen twice in one command;
-- fallback focus runs after a rich native tree was already found;
-- command runtime spends meaningful time formatting JSON compared with capture/detection.
-
-### CLI Consistency Contract
-
-The refactor should remove CLI drift. For equivalent flags:
-
-- `image --app X` and `see --app X` resolve the same target;
-- `image --window-id N` and `see --window-id N` report the same window identity;
-- CLI and MCP share target resolution;
-- JSON uses the same identity names for app/window metadata;
-- errors use the same typed reason for target-not-found, permission-denied, unsupported-target, and timeout;
-- `--verbose` reveals diagnostics without changing behavior.
-
-Backwards compatibility is not sacred for inconsistent behavior. If old behavior selected helper windows, ignored `--retina`, or hid timeouts, fix it and call it out in the changelog.
-
-### Module Boundary Contract
-
-Do not split packages until the behavior boundary is stable. When extraction is ready, the dependency direction should be:
-
-```text
-PeekabooCLI
-  -> PeekabooAgentRuntime
-  -> PeekabooObservation
-  -> PeekabooCapture
-  -> PeekabooElementDetection
-  -> PeekabooFoundation
-```
-
-No lower-level module should depend on CLI, MCP, Tachikoma, Commander, or renderer-specific JSON.
-
-## Ship Groups
-
-### Group 0: Stabilize Current Observation Slice
-
-Purpose: make the already-landed facade hard to regress.
-
-Work:
-
-- finish detection timeout enforcement;
-- add focused tests for engine preference, output path writing, and detection timeout;
-- ensure `see`, `image`, MCP `see`, and MCP `image` all use the observation path for supported targets;
-- keep unsupported targets explicit instead of silently falling back.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooAutomationKit --filter DesktopObservationServiceTests
-pnpm run lint
-pnpm run test:safe
-```
-
-### Group 1: Target Resolver Becomes Canonical
-
-Purpose: kill duplicate target/window selection behavior.
-
-Work:
-
-- migrate remaining app/window ranking from `ImageCommand`, `SeeCommand`, and MCP tools into `ObservationTargetResolver`;
-- add ranking tests for Tauri/Electron-style auxiliary windows;
-- prefer largest visible non-offscreen window when no title/index/window ID is supplied;
-- preserve explicit title/index/window ID behavior;
-- expose diagnostics when automatic selection skips helper windows.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooAutomationKit --filter ObservationTargetResolverTests
-pnpm run test:safe
-```
-
-Manual checks:
-
-```bash
-peekaboo list windows --app "Zephyr Agency" --json-output
-peekaboo image --app "Zephyr Agency" --path /tmp/zephyr.png --json-output
-peekaboo see --app "Zephyr Agency" --json-output
-```
-
-Expected: `image --app` and `see --app` choose the same main window, not a 2560x30 auxiliary window.
-
-### Group 2: Retina and Scale Policy
-
-Purpose: make 1x versus native scale impossible to drift.
-
-Work:
-
-- move scale planning into a pure planner;
-- test logical 1x versus native scale at planner level;
-- verify `image --retina` produces native pixels for window capture;
-- verify `image` without `--retina` keeps logical output where intended;
-- add diagnostics for actual output pixel size and scale source.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooCore --filter ScreenCaptureServiceFlowTests
-swift test --package-path Core/PeekabooCore --filter CaptureEngineResolverTests
-pnpm run test:safe
-```
-
-Manual check:
-
-```bash
-peekaboo image --window-id <id> --path /tmp/no-retina.png --json-output
-peekaboo image --window-id <id> --retina --path /tmp/retina.png --json-output
-sips -g pixelWidth -g pixelHeight /tmp/no-retina.png /tmp/retina.png
-```
-
-Expected: native capture is 2x on Retina displays when the backing display scale is 2.0.
-
-### Group 3: Menubar Observation
-
-Purpose: remove the last special-case capture island from `see`.
-
-Work:
-
-- support `.menubar` in `ObservationTargetResolver`;
-- support `.menubarPopover(hints:)`;
-- route existing menubar area capture through observation;
-- route menubar OCR through observation output/timing;
-- keep click-to-open behavior outside observation unless it becomes a formal interaction pipeline.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooAutomationKit --filter DesktopObservationServiceTests
-pnpm run test:safe
-```
-
-Manual checks:
-
-```bash
-peekaboo see --mode menubar --json-output --verbose
-peekaboo see --mode menu --app Finder --json-output --verbose
-```
-
-### Group 4: Annotation and OCR Output
-
-Purpose: unify screenshot-derived artifacts.
-
-Work:
-
-- add observation output options for annotations and OCR;
-- move raw/annotated file pair creation into `ObservationOutputWriter`;
-- attach annotation/OCR timings to `ObservationTimings`;
-- keep Tachikoma/AI analysis above AutomationKit unless dependencies are split first.
-
-Gate:
-
-```bash
-pnpm run test:safe
-```
-
-Manual checks:
-
-```bash
-peekaboo see --window-id <id> --annotate --path /tmp/see.png --json-output
-peekaboo see --window-id <id> --json-output --verbose
-```
-
-### Group 5: Split Capture Internals
-
-Purpose: make capture fast, testable, and small enough to reason about.
-
-Work:
-
-- extract permission gate;
-- extract capture planner;
-- extract target resolver helpers;
-- extract scale resolver if not already isolated;
-- split ScreenCaptureKit and legacy operators;
-- keep `ScreenCaptureService` as a facade;
-- remove direct `ScreenCaptureKit` imports from command files.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooCore --filter ScreenCaptureService
-swift test --package-path Core/PeekabooCore --filter CaptureEngineResolverTests
-pnpm run test:safe
-```
-
-Acceptance:
-
-- `ScreenCaptureService.swift` under about 500 lines;
-- planner tests do not need screen recording permission;
-- capture engine forcing is covered by tests;
-- no command imports `ScreenCaptureKit`.
-
-### Group 6: Split Element Detection Internals
-
-Purpose: isolate AX traversal policy and performance-sensitive code.
-
-Work:
-
-- extract `AXTraversalPolicy`;
-- extract `AXTreeCollector`;
-- extract `AXDescriptorReader`;
-- extract `ElementClassifier`;
-- extract `WebFocusFallback`;
-- extract `MenuBarElementCollector`;
-- add pure tests for fallback thresholds;
-- add cancellation/timeout tests for direct detection callers.
-
-Gate:
-
-```bash
-swift test --package-path Core/PeekabooAutomationKit --filter ElementDetectionServiceTests
-pnpm run test:safe
-```
-
-Acceptance:
-
-- `ElementDetectionService.swift` under about 500 lines;
-- rich native trees skip web focus fallback;
-- sparse Chromium/Tauri trees can still trigger fallback;
-- direct `ElementDetectionService` callers have a real timeout, not just observation callers.
-
-### Group 7: Structured Timings Everywhere
-
-Purpose: performance debugging without scraping log prose.
-
-Work:
-
-- expose `ObservationTimings` in CLI JSON for `see` and `image`;
-- expose the same spans in MCP metadata;
-- add metadata for engine, target kind, window ID, output scale, and element count;
-- standardize span names;
-- add lightweight manual benchmark docs.
-
-Gate:
-
-```bash
-pnpm run test:safe
-```
-
-Manual benchmark:
-
-```bash
-/usr/bin/time -p peekaboo image --window-id <id> --path /tmp/image.png --json-output
-/usr/bin/time -p peekaboo see --window-id <id> --json-output --verbose
-```
-
-### Group 8: Command Cleanup and Module Boundaries
-
-Purpose: make CLI/MCP boring and prepare later module extraction.
-
-Work:
-
-- delete obsolete bridge helpers from command files;
-- move request mapping into small command support types;
-- keep command files below target sizes;
-- archive old refactor notes that no longer apply;
-- update command docs for changed diagnostics/timing fields.
-
-Gate:
-
-```bash
-pnpm run lint
-pnpm run format
-pnpm run test:safe
-```
-
-Acceptance:
-
-- `SeeCommand.swift` under about 400 lines;
-- `ImageCommand.swift` under about 400 lines;
-- command files do not import `AXorcist` or `ScreenCaptureKit`;
-- `see`, `image`, MCP `see`, and MCP `image` share target resolution and output metadata.
-
-## Goals
-
-- One canonical pipeline for screenshot capture plus optional AX detection.
-- One canonical target model for screen, window, app, PID, frontmost, area, menubar, and window ID.
-- One canonical target resolver shared by CLI, MCP, and agent tools.
-- One canonical timing/trace model, no parsing human log lines to benchmark.
-- Keep hot paths fast: no extra bridge probes, TCC probes, AX tree walks, or app focus work.
-- Keep behavior observable and testable without launching the full CLI.
-- Split large services behind stable facades instead of rewriting everything at once.
-- Move platform details out of command files.
-- Preserve existing public command behavior unless a behavior is clearly inconsistent or buggy.
-
-## Non-Goals
-
-- Do not start with package/module extraction. Behavioral boundaries must be cleaned up first.
-- Do not redesign all automation actions. Click/type/scroll can consume observation results later.
-- Do not move Peekaboo-specific heuristics into AXorcist. AXorcist stays a lean AX toolkit.
-- Do not add an async abstraction layer around every AX call. Use async only around real waits and cancellation.
-- Do not make the CLI the source of truth for capture or detection policy.
-
-## Current Problems
-
-### Command-Level Orchestration
-
-`SeeCommand` currently owns target interpretation, capture mode selection, menu bar special cases, screenshot saving, AX detection, annotation, timeout handling, and output shaping.
-
-`ImageCommand` repeats a similar capture target flow, but with different output and scale behavior.
-
-MCP tools perform their own target parsing and context creation again.
-
-This creates three failure modes:
-
-- performance fixes land in one path only;
-- command options drift from service capabilities;
-- tests target adapters instead of the shared behavior.
-
-### Large Service Types
-
-The largest service files are doing too many jobs:
-
-- `ScreenCaptureService.swift`: capture planning, permissions, app/window resolution, engine fallback, focus handling, file output details, and engine-specific work.
-- `ElementDetectionService.swift`: app/window resolution, AX traversal, descriptor reads, role classification, fallback focus policy, caching, menu bar extraction, and snapshot output.
-
-These services should remain the public facades, but their internals need extracted collaborators.
-
-### Target Selection Is Duplicated
-
-The same concepts appear as command options, MCP strings, service method overloads, `CaptureTarget`, `WindowContext`, `WindowFilterHelper`, and CoreGraphics window IDs.
-
-There should be one request type and one resolved target type.
-
-### Timings Are Not Structured
-
-The CLI logs useful timings, but benchmarking currently requires scraping debug log strings such as `Timer 'element_detection' completed`.
-
-The observation pipeline should produce structured spans:
-
-```swift
-public struct ObservationTimings: Sendable, Codable, Equatable {
-    public var spans: [ObservationSpan]
-}
-
-public struct ObservationSpan: Sendable, Codable, Equatable {
-    public var name: String
-    public var durationMS: Double
-    public var metadata: [String: String]
-}
-```
+Command files should parse flags and render typed results. They should not rank windows, infer Retina scale, traverse AX, choose focus fallback behavior, build screenshot companion paths, or decide where snapshots live.
+
+## Status: May 7, 2026
+
+This plan is active and partially landed.
+
+Landed:
+
+- `DesktopObservationRequest`, target, capture, detection, output, timeout, timing, diagnostic, and result models.
+- `DesktopObservationService` facade in `PeekabooAutomationKit`.
+- `ObservationTargetResolver` for core targets.
+- Request-scoped `DesktopStateSnapshot` for target resolution and diagnostics.
+- `ObservationOutputWriter` for raw screenshot persistence, annotated companion-path planning, and basic annotation rendering.
+- Observation-backed paths for CLI `see`, CLI `image`, MCP `see`, and MCP `image`.
+- Request-scoped capture engine preference through observation.
+- Observation detection timeout enforcement.
+- Central screen capture scale planning for logical 1x versus native Retina output.
+- Direct `ElementDetectionService` timeout racing through `ElementDetectionTimeoutRunner`.
+- AX traversal policy extraction into `AXTraversalPolicy`.
+- AX tree cache state extraction into `ElementDetectionCache`.
+- AX role/actionability/shortcut/attribute policy extraction into `ElementClassifier`.
+- Batched AX descriptor reads and AX value coercion through `AXDescriptorReader`.
+- Element grouping and metadata assembly through `ElementDetectionResultBuilder`.
+- Sparse Chromium/Tauri web focus recovery through `WebFocusFallback`.
+- Generic-group text-field recovery through `ElementTypeAdjuster`.
+- Application menu-bar element collection through `MenuBarElementCollector`.
+- Accessibility tree traversal through `AXTreeCollector`.
+- Detection app/window fallback selection through `ElementDetectionWindowResolver`.
+- Capture frame-source policy and display-local source-rectangle planning through `ScreenCapturePlanner`.
+- Screen Recording enforcement through `ScreenCapturePermissionGate`.
+- Logical 1x capture downscaling through `ScreenCaptureImageScaler`.
+- Legacy area capture through the legacy capture operator.
+- Dedicated ScreenCaptureKit and legacy capture operator files.
+- Observation-backed CLI/MCP structured timings and diagnostics.
+- Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
+- Observation-backed menu-bar strip capture for CLI `image --app menubar` and MCP `image`.
+- Observation-backed menu-bar popover window-list resolution and capture.
+- MCP `see` uses observation-produced annotated screenshots before falling back to its local renderer.
+
+Still incomplete:
+
+- CLI rich annotation renderer and snapshot registration under observation.
+- Menu-bar popover OCR and click-to-open behavior under observation.
+- OCR as a first-class observation enhancement.
+- Further capture-service file splitting and cleanup after command bridges disappear.
+- Further element-detection cleanup after extracted collaborators fully own policy.
+- Interaction commands reusing observation state instead of repeating lookup work.
+- Optional module extraction after boundaries are stable.
+
+## Non-Negotiable Invariants
+
+- Equivalent targets resolve the same way in CLI and MCP.
+- `image --app X` and `see --app X` choose the same app window.
+- `image --window-id N` and `see --window-id N` report the same window identity.
+- `--window-id` beats title, title beats index, index beats automatic selection.
+- Automatic app-window selection skips helper/offscreen/minimized windows when a renderable alternative exists.
+- Automatic app-window selection prefers visible titled windows, then larger renderable area, then stable CoreGraphics ordering.
+- `--retina` means native display scale; non-retina capture means logical 1x only where explicitly requested.
+- Capture engine forcing never silently falls back to another engine.
+- Screen Recording permission is checked once per capture operation.
+- `image` never instantiates or runs element detection.
+- A window-targeted `see` never traverses all app windows when a direct window context is available.
+- Rich native AX trees skip Chromium/Tauri web focus fallback.
+- Sparse Chromium/Tauri AX trees can still trigger web focus fallback.
+- Request caches may reuse expensive enumeration inside one observation call; persistent caches must not hold live windows/elements.
+- Output writing can create files and snapshots, but output formatting stays in CLI/MCP layers.
+- Timings are structured spans, not prose logs that tests or benchmarks scrape.
 
 ## Target Architecture
 
-### New Facade
-
-Add a high-level service in `PeekabooAutomationKit`:
+### Public Facade
 
 ```swift
 @MainActor
@@ -866,19 +117,27 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
 }
 ```
 
-This service becomes the single owner of:
+`DesktopObservationService` owns:
 
+- request-scoped desktop inventory;
 - target resolution;
 - capture planning;
 - capture execution;
-- optional file persistence;
 - optional element detection;
-- optional OCR preference;
-- optional annotation metadata;
-- timing collection;
+- optional OCR;
+- optional annotation rendering;
+- optional snapshot registration;
+- structured timings;
+- typed diagnostics;
 - capture/detection timeout policy.
 
-The service should not format CLI output. It returns typed data.
+It does not own:
+
+- Commander option declarations;
+- MCP wire wording;
+- CLI text or JSON rendering;
+- AI provider calls that depend on Tachikoma;
+- long-lived automation action orchestration.
 
 ### Request Model
 
@@ -892,7 +151,7 @@ public struct DesktopObservationRequest: Sendable, Equatable {
 }
 ```
 
-### Target Request
+Target requests:
 
 ```swift
 public enum DesktopObservationTargetRequest: Sendable, Equatable {
@@ -915,30 +174,7 @@ public enum WindowSelection: Sendable, Equatable {
 }
 ```
 
-Keep `CGWindowID` here only if the module already imports CoreGraphics. If this becomes a pure model module later, wrap it as:
-
-```swift
-public struct WindowID: RawRepresentable, Sendable, Codable, Equatable, Hashable {
-    public var rawValue: UInt32
-}
-```
-
-### Resolved Target
-
-```swift
-public struct ResolvedObservationTarget: Sendable, Equatable {
-    public var kind: ResolvedObservationKind
-    public var app: ApplicationIdentity?
-    public var window: WindowIdentity?
-    public var bounds: CGRect?
-    public var detectionContext: WindowContext?
-    public var captureScaleHint: CGFloat?
-}
-```
-
-The resolved target is the only place where app/window selection policy should live.
-
-### Capture Options
+Capture options:
 
 ```swift
 public struct DesktopCaptureOptions: Sendable, Equatable {
@@ -950,9 +186,7 @@ public struct DesktopCaptureOptions: Sendable, Equatable {
 }
 ```
 
-This should reuse existing enums where possible.
-
-### Detection Options
+Detection options:
 
 ```swift
 public struct DesktopDetectionOptions: Sendable, Equatable {
@@ -970,14 +204,7 @@ public enum DetectionMode: Sendable, Equatable {
 }
 ```
 
-Default behavior:
-
-- `image`: `.none`
-- `see`: `.accessibility`
-- menubar popover capture: `.accessibilityAndOCR` or OCR-preferred when AX is not meaningful
-- analyze-only image flow: `.none` unless the caller asks for UI map
-
-### Output Options
+Output options:
 
 ```swift
 public struct DesktopObservationOutputOptions: Sendable, Equatable {
@@ -985,631 +212,628 @@ public struct DesktopObservationOutputOptions: Sendable, Equatable {
     public var format: ImageFormat
     public var saveRawScreenshot: Bool
     public var saveAnnotatedScreenshot: Bool
+    public var saveSnapshot: Bool
     public var snapshotID: String?
 }
 ```
 
-The service may save files and snapshots, but it should not print.
-
-### Result Model
+Result:
 
 ```swift
 public struct DesktopObservationResult: Sendable {
     public var target: ResolvedObservationTarget
     public var capture: CaptureResult
     public var elements: ElementDetectionResult?
+    public var ocr: OCRResult?
     public var files: DesktopObservationFiles
     public var timings: ObservationTimings
     public var diagnostics: DesktopObservationDiagnostics
 }
 ```
 
-`CaptureResult` can stay as-is initially. Later, flatten it into a more explicit `CapturedImage` if needed.
+### Identity Model
 
-## Internal Pipeline
-
-`DesktopObservationService.observe` should be explicit and boring:
+Every frontend should use the same identity vocabulary.
 
 ```swift
-public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
-    try await self.tracer.trace("desktop.observe") {
-        let target = try await self.targetResolver.resolve(request.target)
-        let plan = try self.capturePlanner.plan(target: target, options: request.capture)
-        let capture = try await self.captureExecutor.capture(plan)
-        let files = try await self.outputWriter.write(capture, options: request.output)
-        let elements = try await self.detectIfNeeded(capture, target: target, options: request.detection)
-        return self.resultBuilder.build(...)
-    }
+public struct ApplicationIdentity: Sendable, Codable, Equatable, Hashable {
+    public var processID: pid_t
+    public var bundleIdentifier: String?
+    public var name: String
+    public var path: String?
+}
+
+public struct WindowIdentity: Sendable, Codable, Equatable, Hashable {
+    public var windowID: CGWindowID?
+    public var index: Int?
+    public var ownerPID: pid_t?
+    public var ownerName: String?
+    public var title: String
+    public var bounds: CGRect
+    public var layer: Int
+    public var alpha: Double
+    public var isOnScreen: Bool
 }
 ```
 
-Keep each step separately testable.
+These identities must flow through:
 
-## New Collaborators
+- `list windows`;
+- `image --app`;
+- `image --window-id`;
+- `see --app`;
+- `see --window-id`;
+- MCP `image`;
+- MCP `see`;
+- snapshot metadata;
+- annotation metadata;
+- interaction diagnostics.
+
+### Request-Scoped Desktop State
+
+Observation should build one request-scoped desktop inventory and pass it through the pipeline.
+
+```swift
+public struct DesktopStateSnapshot: Sendable {
+    public var capturedAt: Date
+    public var displays: [DisplayIdentity]
+    public var runningApplications: [ApplicationIdentity]
+    public var windows: [WindowIdentity]
+    public var frontmostApplication: ApplicationIdentity?
+    public var frontmostWindow: WindowIdentity?
+}
+```
+
+Cache tiers:
+
+```text
+request cache: always allowed, discarded after one observation
+short TTL cache: allowed after benchmarks prove it helps
+persistent cache: static metadata only, never live windows/elements/pixels
+```
+
+Initial TTL guidance:
+
+```text
+window inventory: 150-300 ms
+frontmost app/window: no TTL unless measured safe
+AX element tree: 250-500 ms, keyed by pid + windowID + focus epoch
+OCR output: no cache initially
+screenshot pixels: no cache
+```
+
+AX cache invalidation triggers:
+
+- target PID or window ID changed;
+- window bounds changed;
+- frontmost app changed;
+- click/type/scroll/drag/hotkey/focus executed;
+- focus fallback executed;
+- detection options changed;
+- timeout/cancellation occurred before traversal completed.
+
+The cache stores immutable detection outputs, not live `AXUIElement` handles.
+
+## Internal Collaborators
 
 ### `ObservationTargetResolver`
 
-Owns target lookup and ranking:
-
-- app name, bundle ID, `PID:123`, explicit PID;
-- frontmost app/window;
-- `--window-id`;
-- window title/index;
-- largest visible window fallback;
-- menubar and menu extra popover windows;
-- offscreen/minimized/window-level filtering.
-
-Input:
-
-```swift
-DesktopObservationTargetRequest
-```
-
-Output:
-
-```swift
-ResolvedObservationTarget
-```
-
-Existing logic to migrate:
-
-- `ImageCommand.determineMode`
-- `ImageCommand.captureApplicationWindow`
-- `ImageCommand.captureAllApplicationWindows`
-- `SeeCommand.performStandardCapture`
-- `SeeTool.parseCaptureTarget`
-- `SeeTool.windowContext`
-- `WindowFilterHelper.filter`
-- CoreGraphics-only window fast path recently added for `image --app`
-
-### `CapturePlanner`
-
-Converts a resolved target plus capture options into a concrete engine plan:
-
-```swift
-public struct CapturePlan: Sendable {
-    public var operation: CaptureOperation
-    public var target: ResolvedObservationTarget
-    public var engine: CaptureEnginePreference
-    public var scale: CaptureScalePreference
-    public var focus: CaptureFocus
-    public var permissionMode: CapturePermissionMode
-}
-```
-
-This is where duplicate TCC preflights must stay eliminated.
-
-### `CaptureExecutor`
-
-Calls the existing `ScreenCaptureService` facade at first. After the facade is split, it can call lower-level engines directly.
-
-Do not make this type format paths or output JSON.
-
-### `ObservationOutputWriter`
-
 Owns:
 
-- default screenshot paths;
-- format conversion;
-- raw screenshot path;
-- annotated screenshot path handoff;
-- snapshot path registration.
+- app name, bundle ID, and PID lookup;
+- `frontmost`;
+- `windowID`;
+- window title/index selection;
+- largest visible fallback;
+- menubar strip;
+- menubar popover windows;
+- offscreen/minimized/helper filtering;
+- diagnostics for skipped candidates.
 
-It should replace duplicated file path generation in `image`, `see`, and MCP.
+Migrates behavior out of:
+
+- `ImageCommand`;
+- `SeeCommand`;
+- MCP `SeeTool` and `ImageTool`;
+- `WindowFilterHelper`;
+- command-level CoreGraphics helpers.
+
+### `ScreenCapturePlanner`
+
+Owns pure capture policy:
+
+- engine choice;
+- forced-engine behavior;
+- fallback eligibility;
+- focus policy;
+- display-local source rectangle planning;
+- scale source and output scale;
+- expected pixel dimensions when knowable.
+
+Planner tests must not need Screen Recording permission.
+
+### Capture Operators
+
+Execution types own platform calls only:
+
+- `ScreenCaptureKitOperator`;
+- `LegacyScreenCaptureOperator`;
+- `ScreenCaptureFallbackRunner`;
+- `ScreenCapturePermissionGate`;
+- `ScreenCaptureImageScaler`;
+- `CaptureImageWriter`.
+
+Hard rule: `ScreenCaptureService` remains the public facade, but should become mostly orchestration.
 
 ### `ElementObservationService`
 
-Thin wrapper around `ElementDetectionService` that accepts capture metadata and detection options.
+Thin observation adapter over detection.
 
-It should be responsible for:
+Owns:
 
-- passing `WindowContext`;
-- deciding whether AX detection should run;
-- preserving `allowWebFocusFallback`;
-- attaching timings;
-- returning nil for `.none`.
+- whether detection runs;
+- `WindowContext` handoff;
+- detection timeout budget;
+- `allowWebFocusFallback`;
+- menu-bar element inclusion;
+- OCR preference handoff.
 
-### `ObservationTracer`
+It should not re-resolve app/window target identity from scratch.
 
-Structured timings:
+### Element Detection Internals
 
-```swift
-public protocol ObservationTracing: Sendable {
-    func span<T>(
-        _ name: String,
-        metadata: [String: String],
-        operation: () async throws -> T
-    ) async rethrows -> T
-}
-```
+`ElementDetectionService` remains the facade, backed by:
 
-Implementation can be a tiny actor or a main-actor object because most work is main-actor bound.
+- `AXTreeCollector`: traversal only;
+- `AXTraversalPolicy`: depth, child count, skip rules, sparse-tree thresholds;
+- `AXDescriptorReader`: batched attributes and actions;
+- `ElementClassifier`: role, label, type, enabled, actionable, shortcut policy;
+- `WebFocusFallback`: Chromium/Tauri sparse-tree focus recovery;
+- `ElementTypeAdjuster`: post-classification corrections;
+- `MenuBarElementCollector`: app menu-bar elements;
+- `ElementDetectionWindowResolver`: fallback AX root/window selection;
+- `ElementDetectionCache`: immutable detection caches and invalidation;
+- `ElementDetectionResultBuilder`: grouping, metadata, warnings, snapshot result assembly.
+
+### `ObservationOutputWriter`
+
+Owns file and artifact side effects:
+
+- raw screenshot path selection;
+- format conversion;
+- annotated screenshot path selection;
+- annotated screenshot rendering;
+- OCR artifact path selection;
+- snapshot ID/path registration;
+- output write warnings.
+
+It does not print.
 
 Required span names:
 
-- `target.resolve`
-- `permission.screen-recording`
-- `focus.window`
-- `capture.window`
-- `capture.screen`
-- `capture.area`
-- `capture.write-file`
-- `detection.ax`
-- `detection.ocr`
-- `snapshot.write`
-- `annotation.render`
-- `desktop.observe`
-
-## Refactor Phases
-
-### Phase 0: Baseline and Characterization
-
-Before changing architecture, capture baselines:
-
-```bash
-pnpm run lint
-pnpm run test:safe
-swift test --package-path Core/PeekabooCore --filter ElementDetectionTraversalPolicyTests
+```text
+target.resolve
+desktop.snapshot
+permission.screen-recording
+focus.window
+capture.plan
+capture.window
+capture.screen
+capture.area
+capture.write-file
+detection.ax
+detection.ocr
+snapshot.write
+annotation.render
+desktop.observe
 ```
 
-Live performance baselines:
+## Refactor Tracks
+
+### Track A: Observation Is The Product Surface
+
+Goal: every desktop inspection frontend constructs `DesktopObservationRequest` and receives `DesktopObservationResult`.
+
+Remaining work:
+
+- finish annotation rendering through `ObservationOutputWriter`;
+- move CLI rich annotation rendering under observation or split reusable annotation placement into AutomationKit;
+- move snapshot registration under observation output;
+- move menu-bar popover OCR under observation;
+- move menu-bar click-to-open into either observation preflight or the future interaction pipeline;
+- delete command-level capture/detection bridge code once all supported targets are observation-backed.
+
+Done when:
+
+- `see`, `image`, MCP `see`, and MCP `image` have no independent target-resolution behavior;
+- command code only maps flags and renders output;
+- unsupported targets fail explicitly instead of silently taking legacy paths.
+
+### Track B: Capture Is Plan Plus Operators
+
+Goal: `ScreenCaptureService` is a facade over pure planning plus small execution operators.
+
+Remaining work:
+
+- audit `ScreenCaptureService.swift` for residual policy;
+- extract any remaining output-writing or target-selection policy;
+- make native/logical scale decisions fully reportable in JSON diagnostics;
+- keep `screencapture -l <windowID>` as the behavioral reference for native window capture where macOS permits it;
+- remove direct command imports of ScreenCaptureKit/AppKit capture details.
+
+Done when:
+
+- scale, engine, fallback, and permission behavior have pure tests;
+- `ScreenCaptureService.swift` is under about 500 lines;
+- no command imports `ScreenCaptureKit`;
+- `image --retina` and non-retina output can be reasoned about without live display capture.
+
+### Track C: Element Detection Is Policy Plus Readers
+
+Goal: `ElementDetectionService` facade contains orchestration, not a hidden mega-algorithm.
+
+Remaining work:
+
+- finish moving fallback thresholds into `AXTraversalPolicy`;
+- audit direct detection callers for real timeout/cancellation;
+- ensure rich native trees skip web focus fallback;
+- ensure sparse Chromium/Tauri trees can still trigger fallback;
+- isolate any remaining snapshot write behavior from detection;
+- reduce service file size and tighten collaborator tests.
+
+Done when:
+
+- `ElementDetectionService.swift` is under about 500 lines;
+- traversal policy has pure unit coverage;
+- descriptor reader/classifier/result builder are independently testable;
+- direct detection callers cannot hang forever.
+
+### Track D: Interactions Reuse Observation
+
+Goal: click/type/scroll/drag/hotkey reuse observation state when available and invalidate it when they mutate UI.
+
+Future work:
+
+- create an `ObservationSnapshotStore` facade over current snapshot manager behavior;
+- make action commands accept a fresh observation result or snapshot ID;
+- add observe-if-needed behavior for stale or missing element IDs;
+- add target-point diagnostics for click/move without a full desktop scan;
+- add explicit cache invalidation after click/type/scroll/drag/hotkey/focus.
+
+Done when:
+
+- `see -> click -> type` avoids avoidable full AX traversals;
+- stale element failures explain stale snapshot/window identity;
+- action commands invalidate only affected observation cache entries.
+
+### Track E: Module Extraction Last
+
+Goal: split packages only after behavior boundaries are boring.
+
+Order:
+
+1. `PeekabooObservation`
+2. `PeekabooCapture`
+3. `PeekabooElementDetection`
+4. optional CLI command-support package
+
+Do not extract modules while command, capture, and detection code still disagree about target semantics.
+
+## Ship Groups
+
+Each group should be shippable. Update this section after each commit lands.
+
+### Group 1: Finish Observation Artifacts
+
+Purpose: make observation own screenshot-derived artifacts.
+
+Work:
+
+- render annotated screenshots in `ObservationOutputWriter`;
+- route MCP annotated screenshots through observation first;
+- move CLI rich annotation placement into AutomationKit or provide a reusable annotation renderer;
+- add output spans for `annotation.render` and `snapshot.write`;
+- add tests for raw+annotated output files.
+
+Gate:
 
 ```bash
-Apps/CLI/.build/debug/peekaboo list windows --app Playground --json-output
-Apps/CLI/.build/debug/peekaboo image --window-id <id> --path /tmp/peekaboo-window.png --json-output
-Apps/CLI/.build/debug/peekaboo see --window-id <id> --json-output --verbose
-Apps/CLI/.build/debug/peekaboo see --window-id <id> --json-output --verbose --no-web-focus
+swift test --package-path Core/PeekabooAutomationKit --filter DesktopObservationServiceTests
+swift test --package-path Core/PeekabooCore --filter MCPToolExecutionTests
+swift test --package-path Apps/CLI -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --filter SeeCommandAnnotationTests
+pnpm run test:safe
+```
+
+Manual checks:
+
+```bash
+peekaboo see --window-id <id> --annotate --path /tmp/see.png --json-output
+sips -g pixelWidth -g pixelHeight /tmp/see.png /tmp/see_annotated.png
+```
+
+### Group 2: Menubar Observation Closure
+
+Purpose: make menubar capture/OCR/click-open behavior one observation sub-pipeline.
+
+Work:
+
+- move popover OCR timing and output into observation;
+- move popover click-to-open preflight behind a typed option or interaction helper;
+- ensure `.menubar` and `.menubarPopover(hints:)` share diagnostics;
+- keep menu-extra listing behavior consistent with `list menubar`.
+
+Gate:
+
+```bash
+swift test --package-path Core/PeekabooAutomationKit --filter DesktopObservationServiceTests
+pnpm run test:safe
+```
+
+Manual checks:
+
+```bash
+peekaboo see --menubar --json-output --verbose
+peekaboo image --app menubar --path /tmp/menubar.png --json-output
+```
+
+### Group 3: Capture Service Cleanup
+
+Purpose: finish the plan/operator split and remove residual command capture policy.
+
+Work:
+
+- audit all command imports for `ScreenCaptureKit`, capture-only `AppKit`, and direct CoreGraphics window work;
+- finish splitting capture output helpers;
+- ensure forced engine and fallback behavior is covered;
+- add diagnostics for output scale, native scale, final pixel size, engine, and fallback reason;
+- keep `ScreenCaptureService` under target size.
+
+Gate:
+
+```bash
+swift test --package-path Core/PeekabooCore --filter ScreenCaptureService
+swift test --package-path Core/PeekabooCore --filter CaptureEngineResolverTests
+pnpm run test:safe
+```
+
+Manual Retina check:
+
+```bash
+peekaboo image --window-id <id> --path /tmp/no-retina.png --json-output
+peekaboo image --window-id <id> --retina --path /tmp/retina.png --json-output
+sips -g pixelWidth -g pixelHeight /tmp/no-retina.png /tmp/retina.png
+```
+
+### Group 4: Detection Service Cleanup
+
+Purpose: finish isolating AX traversal, fallback, and result policy.
+
+Work:
+
+- move any remaining sparse-tree thresholds into `AXTraversalPolicy`;
+- remove snapshot/file-writing behavior from detection internals;
+- add cancellation tests for direct detection calls;
+- add unit tests for rich-tree versus sparse-web fallback;
+- keep `ElementDetectionService` under target size.
+
+Gate:
+
+```bash
+swift test --package-path Core/PeekabooAutomationKit --filter ElementDetectionServiceTests
+swift test --package-path Core/PeekabooAutomationKit --filter ElementDetectionTraversalPolicyTests
+pnpm run test:safe
+```
+
+### Group 5: Interaction Integration
+
+Purpose: make action commands consume observation state and invalidate caches.
+
+Work:
+
+- define snapshot freshness and stale-window diagnostics;
+- teach click/type/scroll/drag to accept fresh observation context where available;
+- add observe-if-needed for missing/stale element IDs;
+- centralize post-action invalidation;
+- add target-point diagnostics.
+
+Gate:
+
+```bash
+swift test --package-path Apps/CLI -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --filter ClickCommandTests
+swift test --package-path Apps/CLI -Xswiftc -DPEEKABOO_SKIP_AUTOMATION --filter TypeCommandTests
+pnpm run test:safe
+```
+
+Manual checks:
+
+```bash
+peekaboo see --app TextEdit --json-output --path /tmp/textedit.png
+peekaboo click --snapshot <snapshot-id> --on <element-id> --json-output
+peekaboo type "observation smoke test" --snapshot <snapshot-id> --json-output
+```
+
+### Group 6: Command and Module Cleanup
+
+Purpose: make CLI/MCP boring and prepare package extraction.
+
+Work:
+
+- delete obsolete bridge helpers;
+- move request mapping into small command-support adapters;
+- archive stale refactor notes;
+- update command docs for changed diagnostics/timings;
+- only then consider module extraction.
+
+Gate:
+
+```bash
+pnpm run format
+pnpm run lint
+pnpm run test:safe
+```
+
+Acceptance:
+
+- `SeeCommand.swift` under about 400 lines;
+- `ImageCommand.swift` under about 400 lines;
+- command files do not import `AXorcist` or `ScreenCaptureKit`;
+- CLI and MCP share observation request mapping.
+
+## Testing Strategy
+
+### Pure Tests
+
+Add or keep tests for:
+
+- target resolver ranking;
+- offscreen/minimized/helper filtering;
+- largest visible window fallback;
+- `windowID` precedence;
+- `--retina` to native scale mapping;
+- logical 1x scale planning;
+- forced engine behavior;
+- no fallback when engine is forced;
+- detection mode selection;
+- web focus fallback policy;
+- output path planning;
+- annotation rendering path;
+- structured span emission.
+
+### Stubbed Integration Tests
+
+Use fake services for:
+
+- app/window inventory;
+- capture output;
+- element detection;
+- OCR;
+- output writing.
+
+Verify:
+
+- `see` requests detection;
+- `image` does not request detection;
+- MCP `see` and CLI `see` map equivalent targets;
+- MCP `image` and CLI `image` map equivalent targets;
+- menubar capture sets OCR preference;
+- annotation requests create annotation output;
+- timeout settings flow to capture/detection.
+
+### Live E2E
+
+Run only when Screen Recording and Accessibility are granted.
+
+```bash
+peekaboo permissions status --json-output
+peekaboo list windows --app TextEdit --json-output
+peekaboo image --window-id <id> --path /tmp/textedit.png --json-output
+peekaboo image --window-id <id> --retina --path /tmp/textedit-retina.png --json-output
+peekaboo see --window-id <id> --annotate --path /tmp/textedit-see.png --json-output --verbose
+peekaboo see --app "Google Chrome" --json-output --verbose
+peekaboo see --app "Peekaboo Inspector" --json-output --verbose
 ```
 
 Record:
 
-- process wall time;
-- structured command timer if available;
-- capture duration;
-- detection duration;
-- element count;
-- interactable count;
-- screenshot pixel dimensions.
-
-Acceptance:
-
-- no code changes;
-- numbers added to the PR description or a temporary local note;
-- no new tests yet.
-
-### Phase 1: Introduce Observation Models and Facade
-
-Add files under:
-
-```text
-Core/PeekabooAutomationKit/Sources/PeekabooAutomationKit/Services/Observation/
-```
-
-Suggested files:
-
-```text
-DesktopObservationService.swift
-DesktopObservationModels.swift
-DesktopObservationTracing.swift
-ObservationTargetResolver.swift
-CapturePlanner.swift
-ObservationOutputWriter.swift
-ElementObservationService.swift
-```
-
-Initial implementation may delegate back to existing services.
-
-Rules:
-
-- no command behavior changes;
-- no broad file moves;
-- keep old public service APIs;
-- add tests for request mapping and target resolution policy.
-
-Acceptance:
-
-- `DesktopObservationService.observe` can execute a window screenshot with detection in tests using stubs;
-- no CLI command uses it yet;
-- `pnpm run test:safe` passes.
-
-### Phase 2: Port `see` to `DesktopObservationService`
-
-Rewrite `SeeCommand` so it:
-
-- parses CLI flags;
-- creates `DesktopObservationRequest`;
-- calls `services.desktopObservation.observe(request)`;
-- formats the result.
-
-Move these out of `SeeCommand`:
-
-- `ScreenCaptureBridge`;
-- standard capture selection;
-- detection timeout calculation if it is service policy;
-- `WindowContext` construction;
-- raw screenshot output path handling.
-
-Keep in `SeeCommand`:
-
-- Commander option declarations;
-- JSON/text output;
-- analyze prompt handling if it remains CLI-specific;
-- annotation presentation flags, until annotation is moved.
-
-Acceptance:
-
-- existing `SeeCommand` tests pass;
-- live `see --window-id` output is equivalent;
-- live `see --app Playground` does not include sibling-window elements;
-- performance is no worse than baseline by more than 5 percent after warmup.
-
-### Phase 3: Port `image` to the Same Pipeline
-
-Rewrite `ImageCommand` around `DesktopObservationRequest` with `detection.mode = .none`.
-
-Move these out of `ImageCommand`:
-
-- `determineMode`;
-- per-target capture methods;
-- app/window selection;
-- screenshot file writing;
-- scale selection beyond mapping `--retina` to `.native`.
-
-Keep in `ImageCommand`:
-
-- output formatting;
-- AI image analysis prompt;
-- command validation messages.
-
-Acceptance:
-
-- `image --window-id` works;
-- `image --app` uses the same largest-visible-window policy as `see`;
-- `--retina` behavior stays explicit and tested;
-- `image` and `see` target the same window for the same app/window flags.
-
-### Phase 4: Port MCP `SeeTool` and `ImageTool`
-
-Replace MCP target parsing with `DesktopObservationTargetRequest`.
-
-Do not keep a separate MCP target grammar unless the wire protocol requires it. If the MCP input format is string-based, parse once into the shared request type.
-
-Acceptance:
-
-- MCP `see` and CLI `see` produce equivalent target resolution;
-- MCP `image` and CLI `image` produce equivalent target resolution;
-- no MCP-only screenshot code remains except response formatting.
-
-### Phase 5: Split `ScreenCaptureService`
-
-Keep `ScreenCaptureService` as the public facade, but extract implementation:
-
-```text
-Services/Capture/Planning/
-  ScreenCapturePermissionGate.swift
-  ScreenCapturePlanner.swift
-  ScreenCaptureTargetResolver.swift
-  CaptureScaleResolver.swift
-
-Services/Capture/Engines/
-  ScreenCaptureKitOperator.swift
-  LegacyScreenCaptureOperator.swift
-  ScreenCaptureFallbackRunner.swift
-
-Services/Capture/Output/
-  CaptureImageWriter.swift
-  CaptureMetadataBuilder.swift
-```
-
-Current nested/private logic should become small internal types with focused tests.
-
-Hard rules:
-
-- permission checks happen exactly once per capture operation;
-- engine fallback remains controlled by `PEEKABOO_CAPTURE_ENGINE`;
-- no command imports ScreenCaptureKit directly;
-- `ScreenCaptureService` stays source-compatible while the migration happens.
-
-Acceptance:
-
-- `ScreenCaptureService.swift` drops below about 500 lines;
-- public protocol remains stable or changes in one deliberate migration;
-- capture tests cover planner decisions without screen permissions;
-- live capture performance remains within baseline.
-
-### Phase 6: Split `ElementDetectionService`
-
-Keep `ElementDetectionService` as facade, extract:
-
-```text
-Services/UI/ElementDetection/
-  AXTreeCollector.swift
-  AXTraversalPolicy.swift
-  AXDescriptorReader.swift
-  ElementClassifier.swift
-  ElementDetectionCache.swift
-  WebFocusFallback.swift
-  MenuBarElementCollector.swift
-  ElementDetectionResultBuilder.swift
-```
-
-Ownership:
-
-- `AXTreeCollector`: tree walk only;
-- `AXTraversalPolicy`: depth, child count, fallback thresholds, role skip policy;
-- `AXDescriptorReader`: batched AX attribute reads;
-- `ElementClassifier`: role, label, enabled/actionable/interactable;
-- `WebFocusFallback`: Chromium/Tauri focus probing;
-- `ElementDetectionCache`: TTL and invalidation;
-- `ResultBuilder`: snapshot and element ID map.
-
-The recent fallback policy should move from `ElementDetectionService.shouldAttemptWebFocusFallback` into `AXTraversalPolicy`.
-
-Acceptance:
-
-- `ElementDetectionService.swift` drops below about 500 lines;
-- traversal policy has pure unit tests;
-- descriptor reader has tests for batched reads with fake elements if feasible;
-- live Playground detection remains around current baseline;
-- Tauri/Chromium sparse tree fallback remains covered by a targeted test or manual repro note.
-
-### Phase 7: Unify Annotation and OCR
-
-Today annotation and OCR are partly command behavior. Move their pipeline decisions under observation, while keeping output formatting in commands.
-
-Add:
-
-```swift
-public enum ObservationEnhancement: Sendable, Equatable {
-    case annotation
-    case ocr
-    case aiAnalysis(prompt: String)
-}
-```
-
-AI analysis may stay above AutomationKit if it pulls in Tachikoma. If so, observation should expose clean screenshot and OCR inputs for the agent layer.
-
-Acceptance:
-
-- `see --annotate` is backed by result metadata, not command-local capture assumptions;
-- menubar OCR uses the same output writer and trace spans;
-- no duplicate coordinate conversion logic.
-
-### Phase 8: Module Extraction After Boundaries Are Stable
-
-Only after phases 1-7 should module splitting resume.
-
-Recommended extraction order:
-
-1. `PeekabooObservation` or `PeekabooDesktopObservation`
-2. `PeekabooCapture`
-3. `PeekabooElementDetection`
-4. command package split
-
-Do not extract modules while behavior is still duplicated. It will freeze the wrong boundaries.
-
-## CLI Migration Shape
-
-After the migration, command files should look like this:
-
-```swift
-@MainActor
-mutating func run(using runtime: CommandRuntime) async throws {
-    self.runtime = runtime
-    let request = try self.makeObservationRequest()
-    let result = try await runtime.services.desktopObservation.observe(request)
-    try await self.render(result)
-}
-```
-
-Command files should not import:
-
-- `AXorcist`
-- `ScreenCaptureKit`
-- `CoreGraphics`, except for simple coordinate parsing until wrappers exist
-- `AppKit`, unless output code truly needs it
-
-Expected remaining imports:
-
-- `Commander`
-- `Foundation`
-- `PeekabooCore` or narrower modules after extraction
-- `PeekabooFoundation`
-
-## Service Container Changes
-
-Add observation service to `PeekabooServiceProviding`:
-
-```swift
-@MainActor
-public protocol PeekabooServiceProviding {
-    var desktopObservation: any DesktopObservationServiceProtocol { get }
-}
-```
-
-Wire it in:
-
-- `PeekabooServices`
-- `RemotePeekabooServices`, if bridge support needs a remote observation endpoint
-- tests/stubs
-
-Decision point:
-
-- Option A: expose observation over bridge as one high-level request.
-- Option B: keep bridge endpoints as capture and detect primitives.
-
-Recommendation: start with Option B to keep network/API churn low. Add high-level bridge observation only after CLI and MCP are stable.
-
-## Testing Strategy
-
-### Pure Unit Tests
-
-Add tests for:
-
-- CLI options to `DesktopObservationRequest`;
-- MCP input to `DesktopObservationRequest`;
-- target resolver ranking;
-- offscreen/minimized filtering;
-- largest visible window fallback;
-- `--window-id` precedence;
-- `--retina` to `CaptureScalePreference.native`;
-- detection mode selection;
-- web focus fallback policy;
-- trace span emission.
-
-### Stubbed Integration Tests
-
-Use fake services:
-
-- fake app/window inventory;
-- fake capture executor returning deterministic image data;
-- fake detector returning deterministic elements;
-- fake output writer returning deterministic paths.
-
-These should verify:
-
-- `see` calls detection;
-- `image` does not call detection;
-- menubar capture sets OCR preference;
-- annotations request annotation output;
-- timeout settings flow through.
-
-### Live Tests
-
-Keep a small manually runnable script or documented command set:
-
-```bash
-Apps/CLI/.build/debug/peekaboo permissions status --json-output
-Apps/CLI/.build/debug/peekaboo list windows --app Playground --json-output
-Apps/CLI/.build/debug/peekaboo image --window-id <id> --path /tmp/image.png --json-output
-Apps/CLI/.build/debug/peekaboo image --window-id <id> --retina --path /tmp/image-retina.png --json-output
-Apps/CLI/.build/debug/peekaboo see --window-id <id> --json-output --verbose
-Apps/CLI/.build/debug/peekaboo see --app Playground --json-output --verbose
-```
-
-For each live run record:
-
 - wall time;
-- structured `desktop.observe`;
+- `desktop.observe`;
+- `target.resolve`;
 - capture span;
 - detection span;
+- OCR/annotation spans if used;
 - element count;
-- screenshot dimensions;
-- target title/window ID.
+- interactable count;
+- target window ID/title;
+- screenshot dimensions.
 
-### Performance Guards
+### Performance Budgets
 
-Add a non-flaky test for policy, not absolute time:
+Budgets are manual benchmark targets, not flaky unit-test thresholds.
 
-- no bridge probe for local read-only observation unless `--bridge-socket` is set;
-- no duplicate screen recording preflight;
-- no web focus fallback when native tree is rich;
-- no app-root AX traversal for a window capture;
-- `image` does not instantiate element detection.
+Warm local desktop targets:
 
-Absolute timing belongs in manual benchmark docs or opt-in performance tests.
+```text
+permissions status: <100 ms
+list windows --app: <250 ms
+image --window-id: <500 ms
+image --app: <700 ms
+see --window-id, native AX tree: <1500 ms
+see --app, native AX tree: <1800 ms
+see sparse Chromium/Tauri with focus fallback: <2500 ms
+```
+
+Treat these as bugs:
+
+- `image` runs element detection;
+- local commands probe bridge or remote endpoints by default;
+- permission checks happen twice;
+- fallback focus runs after a rich native tree;
+- command runtime spends meaningful time formatting JSON compared with capture/detection;
+- window-targeted detection traverses the entire app when a window context exists.
 
 ## Risk Areas
 
-### Menubar Capture
-
-Menubar popovers mix window list, OCR, area fallback, and click-to-open behavior. Keep this as a sub-pipeline under observation, not as the first migrated path.
-
-Migration order:
-
-1. normal window;
-2. screen/frontmost;
-3. app/window selection;
-4. menubar area;
-5. menubar popover.
-
 ### Retina Scale
 
-`image --retina` has a concrete bug history. Add explicit tests that compare logical vs native scale decisions at the planning layer.
-
-Do not infer Retina behavior from output path code.
+`image --retina` must produce native pixels on Retina displays. Keep pure planner tests and live `sips` checks. Do not infer Retina behavior from output-path code.
 
 ### Tauri/Electron/Chromium
 
-The web focus fallback exists because some apps expose sparse AX trees until web content is focused.
+These apps often expose many helper windows and sometimes sparse AX trees. Automatic target selection should choose the main visible window; sparse-tree fallback should run only when the native tree is actually sparse.
 
-Keep the current policy:
+### Menubar Popovers
 
-- skip fallback when text fields are visible;
-- skip fallback when a rich native tree is already present;
-- allow fallback for sparse trees.
+Menubar popovers mix click-to-open behavior, window-list capture, AX, OCR, and area fallback. Keep it as a typed observation sub-pipeline with explicit diagnostics.
 
-Move thresholds into `AXTraversalPolicy`.
+### Bridge/Remote
 
-### Bridge and Remote
-
-Bridge APIs already expose capture and detect primitives. Do not force the bridge to understand the full observation request in the first pass.
-
-If local CLI uses observation but remote CLI does not, behavior can drift. Add parity tests for request mapping so a future remote observation endpoint is straightforward.
+Do not force bridge APIs to accept the full observation request until local behavior is stable. Keep request mapping parity tests so remote observation can be added later without drift.
 
 ### Snapshot Compatibility
 
-The observation result should preserve snapshot behavior:
+Preserve snapshot behavior unless deliberately migrated:
 
-- same snapshot JSON shape unless deliberately migrated;
-- same element IDs for equivalent captures as much as possible;
-- annotated screenshot paths stored the same way.
+- same snapshot JSON shape where possible;
+- stable element IDs for equivalent captures where possible;
+- annotated screenshot paths stored consistently;
+- stale snapshot failures explain target/window identity.
 
-## Rollout Plan
+## Whole-Refactor Acceptance
 
-Recommended commit grouping:
-
-1. `refactor(observation): add desktop observation models`
-2. `refactor(observation): add target resolver`
-3. `refactor(observation): add observation service facade`
-4. `refactor(see): route through desktop observation`
-5. `refactor(image): route through desktop observation`
-6. `refactor(mcp): route screenshot tools through desktop observation`
-7. `refactor(capture): split capture planning from execution`
-8. `refactor(capture): split capture output writing`
-9. `refactor(ax): extract traversal policy and collector`
-10. `refactor(ax): extract descriptor reader and classifier`
-11. `perf(observation): add structured spans`
-12. `docs(observation): document new pipeline and migration notes`
-
-Keep each commit shippable. The facade can coexist with old command code while migration is in progress.
-
-## Acceptance Criteria For The Whole Refactor
-
+- `DesktopObservationService.observe(_:)` is the only behavioral path for `see`, `image`, MCP `see`, and MCP `image`.
 - `SeeCommand.swift` is under about 400 lines.
 - `ImageCommand.swift` is under about 400 lines.
 - `ScreenCaptureService.swift` is under about 500 lines.
 - `ElementDetectionService.swift` is under about 500 lines.
 - CLI command files no longer import `AXorcist` or `ScreenCaptureKit`.
-- `see`, `image`, MCP `see`, and MCP `image` share target resolution.
-- `image` and `see` choose the same app window for equivalent target flags.
-- structured timings are available in JSON/debug output.
-- no duplicated screen recording preflight.
-- no default bridge probe for local read-only commands.
-- no app-root AX traversal for a window capture.
-- rich native AX trees skip web focus fallback.
-- sparse web AX trees can still use web focus fallback.
-- `pnpm run lint` passes.
-- `pnpm run test:safe` passes.
-- targeted Core observation tests pass.
-- live Playground benchmark is no worse than current baseline.
+- `image --app X` and `see --app X` choose the same app window.
+- `image --window-id N` and `see --window-id N` report the same window identity.
+- `--retina` produces native display scale where macOS allows it.
+- Structured timings are available in CLI JSON and MCP metadata.
+- No duplicated Screen Recording preflight.
+- No default bridge probe for local read-only commands.
+- No app-root AX traversal for a window capture.
+- Rich native AX trees skip web focus fallback.
+- Sparse web AX trees can still use web focus fallback.
+- Observation output owns raw screenshot, annotation, OCR artifact, and snapshot side effects.
+- Interaction commands can reuse observation state or explain why they cannot.
+- `pnpm run format`, `pnpm run lint`, and `pnpm run test:safe` pass.
+- Targeted Core observation, capture, and element detection tests pass.
+- Live TextEdit, Chrome, and Peekaboo Inspector E2E runs are recorded with screenshots and timings.
+
+## Changelog Discipline
+
+For each shipped group:
+
+- add a concise `CHANGELOG.md` entry;
+- mention user-visible behavior changes such as target selection, Retina scale, diagnostics, or timings;
+- mention contributor fixes when the group closes a GitHub issue or PR thread;
+- keep internal-only extraction notes short unless they change performance or behavior.
 
 ## Open Questions
 
-- Should observation become a bridge endpoint once local behavior is stable?
-- Should AI image analysis become an observation enhancement, or stay in agent/CLI layers because it depends on Tachikoma?
-- Should `CaptureTarget` be replaced by `DesktopObservationTargetRequest`, or should the new request wrap the old enum?
-- Should screenshot file writing remain in AutomationKit, or should services return image data and let apps write files?
-- Should OCR move out of CLI helpers into AutomationKit during this refactor, or wait until after `see` and `image` are unified?
-
-## Recommended First PR
-
-Start with the smallest useful architecture PR:
-
-- Add `DesktopObservationModels.swift`.
-- Add `DesktopObservationService` facade.
-- Add `ObservationTargetResolver` with only `.windowID`, `.frontmost`, `.screen`, and `.app(..., .automatic)`.
-- Add stubbed tests for request mapping and target resolution.
-- Do not port `see` yet.
-
-The second PR should port `see --window-id` only. That gives a narrow vertical slice with real capture and detection before touching the complex app and menubar paths.
+- Should observation become a bridge endpoint after local CLI/MCP behavior is stable?
+- Should AI image analysis become an observation enhancement, or stay above AutomationKit because it depends on Tachikoma?
+- Should `CaptureTarget` be fully replaced by `DesktopObservationTargetRequest`, or wrapped during module extraction?
+- Should OCR move into AutomationKit now, or wait until annotation and snapshot output are fully centralized?
+- Should annotation use one rich renderer everywhere, or keep a simple Core renderer in AutomationKit plus a richer CLI renderer until dependencies are untangled?
