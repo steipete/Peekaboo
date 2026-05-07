@@ -193,34 +193,6 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         -> CaptureResult
 }
 
-@MainActor
-@_spi(Testing) public protocol ScreenRecordingPermissionEvaluating: Sendable {
-    func hasPermission(logger: CategoryLogger) async -> Bool
-}
-
-struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
-    func hasPermission(logger: CategoryLogger) async -> Bool {
-        let preflightResult = CGPreflightScreenCaptureAccess()
-        if preflightResult {
-            return true
-        }
-
-        // CGPreflightScreenCaptureAccess is unreliable for CLI tools — it often
-        // returns false even when permission is granted (TCC tracks by code signature
-        // and the check can fail after rebuilds or for non-.app bundles).
-        // Fall back to probing ScreenCaptureKit which gives the ground-truth answer.
-        logger.debug("CGPreflightScreenCaptureAccess returned false, probing SCShareableContent")
-        do {
-            _ = try await ScreenCaptureKitCaptureGate.currentShareableContent()
-            logger.info("Screen recording permission granted (SCShareableContent probe)")
-            return true
-        } catch {
-            logger.warning("Screen recording permission not granted (SCShareableContent probe failed: \(error))")
-            return false
-        }
-    }
-}
-
 @_spi(Testing) public enum ScreenCaptureAPI: String, Sendable, CaseIterable {
     case modern
     case legacy

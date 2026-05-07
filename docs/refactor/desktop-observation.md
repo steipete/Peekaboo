@@ -56,6 +56,7 @@ Landed:
 - Accessibility tree traversal now lives in `AXTreeCollector`.
 - Detection app/window fallback selection now lives in `ElementDetectionWindowResolver`.
 - Capture frame-source policy and display-local source rectangle planning now live in `ScreenCapturePlanner`.
+- Screen Recording enforcement now lives in `ScreenCapturePermissionGate`.
 
 Still intentionally incomplete:
 

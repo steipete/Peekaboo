@@ -119,7 +119,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
 
     private let logger: CategoryLogger
     private let feedbackClient: any AutomationFeedbackClient
-    private let permissionEvaluator: any ScreenRecordingPermissionEvaluating
+    private let permissionGate: ScreenCapturePermissionGate
     private let fallbackRunner: ScreenCaptureFallbackRunner
     private let applicationResolver: any ApplicationResolving
     private let modernOperator: any ModernScreenCaptureOperating
@@ -173,7 +173,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
     {
         self.logger = loggingService.logger(category: LoggingService.Category.screenCapture)
         self.feedbackClient = dependencies.feedbackClient
-        self.permissionEvaluator = dependencies.permissionEvaluator
+        self.permissionGate = ScreenCapturePermissionGate(evaluator: dependencies.permissionEvaluator)
         self.fallbackRunner = dependencies.fallbackRunner
         self.applicationResolver = dependencies.applicationResolver
         self.modernOperator = dependencies.makeModernOperator(self.logger, self.feedbackClient)
@@ -221,11 +221,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         }
 
         if requiresPermission {
-            self.logger.debug("Checking screen recording permission", correlationId: correlationId)
-            guard await self.hasScreenRecordingPermission() else {
-                self.logger.error("Screen recording permission denied", correlationId: correlationId)
-                throw PermissionError.screenRecording()
-            }
+            try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
         }
 
         return try await body(correlationId)
@@ -480,7 +476,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
     }
 
     public func hasScreenRecordingPermission() async -> Bool {
-        await self.permissionEvaluator.hasPermission(logger: self.logger)
+        await self.permissionGate.hasPermission(logger: self.logger)
     }
 
     /// Helper function for timeout handling
