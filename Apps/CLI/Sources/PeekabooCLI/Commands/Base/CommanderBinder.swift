@@ -61,9 +61,9 @@ enum CommanderCLIBinder {
             // Agent execution should stay local by default unless explicitly overridden.
             options.preferRemote = false
         }
-        if Self.prefersLocalVisualRuntime(commandType), !values.flag("no-remote"),
+        if Self.prefersLocalFastRuntime(commandType), !values.flag("no-remote"),
            explicitBridgeSocket?.isEmpty ?? true {
-            // Visual one-shot commands are latency-sensitive and work locally; avoid bridge probes per call.
+            // Fast local commands are usually called in tight loops; avoid bridge probes unless explicitly requested.
             options.preferRemote = false
         }
         if let socketPath = explicitBridgeSocket, !socketPath.isEmpty {
@@ -72,8 +72,14 @@ enum CommanderCLIBinder {
         return options
     }
 
-    private static func prefersLocalVisualRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
-        commandType == ImageCommand.self || commandType == SeeCommand.self
+    private static func prefersLocalFastRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
+        commandType == ImageCommand.self ||
+            commandType == SeeCommand.self ||
+            commandType == ToolsCommand.self ||
+            commandType == ListCommand.AppsSubcommand.self ||
+            commandType == ListCommand.WindowsSubcommand.self ||
+            commandType == ListCommand.MenuBarSubcommand.self ||
+            commandType == ListCommand.ScreensSubcommand.self
     }
 }
 

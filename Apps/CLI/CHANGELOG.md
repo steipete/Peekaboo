@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Natural-language automation examples now use `peekaboo agent "..."`.
 
 ### Performance
+- `peekaboo tools` and read-only `peekaboo list` inventory commands now default to local execution instead of probing bridge sockets first, shaving roughly 30-35ms from warm catalog/window-list calls when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
 - `peekaboo image --app` now uses a CoreGraphics-only window selection fast path before falling back to full AX-enriched window enumeration, reducing warm Playground screenshot capture from about 350ms to 290ms.
 - `peekaboo image` now defaults to local capture instead of probing bridge sockets first, reducing default warm app screenshot calls from about 330ms to 290ms when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.

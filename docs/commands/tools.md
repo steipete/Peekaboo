@@ -18,6 +18,7 @@ read_when:
 ## Implementation notes
 - The command instantiates every native `MCPTool` manually (ImageTool, ClickTool, DialogTool, etc.) so you see the same tool set the agent runtime will use.
 - Filtering happens before formatting (`ToolFiltering.apply`), so allow/deny rules match the agent + MCP server behavior.
+- The command runs locally by default because it only reports the static native catalog; pass `--bridge-socket <path>` only when you need to inspect a specific bridge host.
 - Because the command implements `RuntimeOptionsConfigurable`, it respects global `--json`/`--verbose` flags even when invoked from other commands (e.g., `peekaboo learn` can embed the summaries verbatim).
 
 ## Examples

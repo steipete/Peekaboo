@@ -67,6 +67,39 @@ struct CommanderBinderTests {
     }
 
     @Test
+    func `Tools runtime defaults to local host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ToolsCommand.self)
+        #expect(options.preferRemote == false)
+    }
+
+    @Test
+    func `List inventory runtimes default to local host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let commandTypes: [any ParsableCommand.Type] = [
+            ListCommand.AppsSubcommand.self,
+            ListCommand.WindowsSubcommand.self,
+            ListCommand.MenuBarSubcommand.self,
+            ListCommand.ScreensSubcommand.self,
+        ]
+
+        for commandType in commandTypes {
+            let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: commandType)
+            #expect(options.preferRemote == false)
+        }
+    }
+
+    @Test
+    func `Permission inventory keeps remote host mode by default`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(
+            from: parsed,
+            commandType: ListCommand.PermissionsSubcommand.self
+        )
+        #expect(options.preferRemote == true)
+    }
+
+    @Test
     func `Image runtime honors explicit bridge socket`() throws {
         let parsed = ParsedValues(
             positional: [],

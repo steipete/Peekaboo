@@ -20,6 +20,7 @@ read_when:
 
 ## Implementation notes
 - The root command does nothing; Commander dispatches straight to the subcommand so `peekaboo list` defaults to `list apps`.
+- Read-only inventory subcommands run locally by default to keep repeated agent inventory calls fast; pass `--bridge-socket <path>` when you explicitly want a bridge host to answer.
 - `apps` and `windows` call `requireScreenRecordingPermission` before crawling AX so macOS doesn’t silently strip metadata.
 - `windows` accepts either user-friendly names or `PID:####` tokens and normalizes `--include-details` values by lowercasing + replacing `-` with `_`, so both `--include-details offscreen,bounds` and `off_screen` work.
 - Menu bar listing is powered by the same `MenuServiceBridge` used by `peekaboo menubar`, so indices reported here line up with what `menubar click --index` expects.
