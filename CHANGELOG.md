@@ -90,6 +90,7 @@
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal also avoids an unused defaults read and passes the app name to AppleScript as an argument.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Script process execution now keeps window and clipboard script commands in focused companions instead of the mixed system-command file.
+- MCP capture tooling now keeps argument normalization, request construction, path expansion, window resolution, and metadata output in focused companions.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps detection, click, typing, scroll, hotkey, and gesture operations in a focused companion file while the primary service owns initialization and AX wait/search behavior.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.

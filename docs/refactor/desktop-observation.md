@@ -201,6 +201,7 @@ Landed:
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal no longer pays an unused `defaults read` before running AppleScript.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Script process execution now keeps window and clipboard commands in focused companions, leaving system commands to app/menu/dock routing.
+- MCP capture tooling now keeps argument normalization, request construction, path expansion, window resolution, and metadata output in focused companions.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps delegated detection/click/typing/scroll/hotkey/gesture operations, focus/wait lookup, and search-policy limits in focused companion files; the primary file keeps initialization only.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
@@ -362,6 +363,12 @@ PeekabooBridgeModels.swift: 254 lines
 PeekabooBridgeOperation+Policy.swift: 121 lines
 PeekabooBridgePayloads.swift: 332 lines
 PeekabooBridgeRequestResponse.swift: 192 lines
+CaptureTool.swift: 122 lines
+CaptureTool+Arguments.swift: 91 lines
+CaptureTool+Request.swift: 231 lines
+CaptureTool+Paths.swift: 19 lines
+CaptureTool+Meta.swift: 20 lines
+CaptureTool+WindowResolution.swift: 91 lines
 AppTool.swift: 105 lines
 AppTool+Actions.swift: 408 lines
 DialogService.swift: 78 lines
