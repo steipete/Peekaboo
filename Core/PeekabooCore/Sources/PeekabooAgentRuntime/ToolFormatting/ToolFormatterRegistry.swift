@@ -40,17 +40,23 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
             .move,
         ])
 
-        // Menu and System tools
+        // Menu and dialog tools
         let menuSystemFormatter = MenuSystemToolFormatter(toolType: .menuClick)
         self.register(menuSystemFormatter, for: [
-            // Menu tools
             .menuClick, .listMenus,
-            // Dialog tools
             .dialogInput, .dialogClick,
-            // System tools
-            .shell, .wait,
-            // Dock tools
-            .dockClick,
+        ])
+
+        // System tools
+        let systemFormatter = SystemToolFormatter(toolType: .shell)
+        self.register(systemFormatter, for: [
+            .shell, .wait, .clipboard, .copyToClipboard, .pasteFromClipboard,
+        ])
+
+        // Dock tools
+        let dockFormatter = DockToolFormatter(toolType: .listDock)
+        self.register(dockFormatter, for: [
+            .listDock, .dockClick, .dockLaunch,
         ])
 
         // Window management tools (use standard for now)
@@ -101,13 +107,13 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
         case .dialog:
             MenuSystemToolFormatter(toolType: toolType)
         case .dock:
-            MenuSystemToolFormatter(toolType: toolType)
+            DockToolFormatter(toolType: toolType)
         case .element:
             ElementToolFormatter(toolType: toolType)
         case .query:
             ElementToolFormatter(toolType: toolType)
         case .system:
-            MenuSystemToolFormatter(toolType: toolType)
+            SystemToolFormatter(toolType: toolType)
         case .completion:
             CommunicationToolFormatter(toolType: toolType)
         }

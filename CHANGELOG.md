@@ -74,6 +74,7 @@
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - Core service registry now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - Window tool formatting now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
+- Menu/dialog tool formatting now keeps menu and dialog result rendering in focused companion files instead of carrying unused system/dock helpers.
 - Space management utilities now isolate private CGS API declarations and public Space models from service orchestration.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
@@ -103,6 +104,7 @@
 - `peekaboo app launch --no-focus` now also suppresses activation when launching without `--open` targets.
 - `peekaboo clipboard` now accepts the action positionally, so `peekaboo clipboard get --json` matches the documented CLI shape while `--action` remains available as an alias.
 - CLI help now uses public kebab-case placeholders from argument and option spellings, e.g. `<script-path>`, `--file-path <file-path>`, and `--action <action>` instead of internal Swift binding names.
+- Agent tool formatting now routes Dock, shell/wait, and clipboard tools through their dedicated formatters instead of the generic menu/dialog formatter.
 - CLI command utilities were split into focused error-handling, output-formatting, service-bridge, cursor-movement, and menu-bar output files.
 - `peekaboo agent` command code was split into focused terminal, session, execution, and model parsing extensions to keep the command shell smaller.
 - `peekaboo agent` output formatting helpers now live outside the event delegate so streaming and tool event handling stay focused.
