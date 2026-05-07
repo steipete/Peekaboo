@@ -72,6 +72,7 @@
 - Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, and toolset assembly in focused companion files.
 - Agent tool-call event previews now use a tested redaction helper for sensitive argument fields and inline token patterns before sending UI events.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
+- Bridge server request handling now keeps service-domain handlers in a focused companion file, leaving the primary handler file as routing plus core/capture/automation/window operations.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - Core service registry now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - Window tool formatting now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
