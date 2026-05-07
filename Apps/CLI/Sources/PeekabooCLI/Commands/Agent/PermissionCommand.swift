@@ -1,4 +1,3 @@
-import AXorcist
 import Commander
 import CoreGraphics
 import Foundation
@@ -343,7 +342,7 @@ extension PermissionCommand {
                 print("Opening System Settings to Accessibility permissions...\n")
             }
 
-            return AXPermissionHelpers.askForAccessibilityIfNeeded()
+            return self.services.permissions.requestAccessibilityPermission(interactive: true)
         }
 
         private func renderAccessibilityResult(granted: Bool) {

@@ -1,5 +1,4 @@
 import AppKit
-import AXorcist
 import Commander
 import Foundation
 import PeekabooCore
@@ -510,13 +509,7 @@ struct AppCommand: ParsableCommand {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
-                guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
-                    throw PeekabooError.appNotFound(appIdentifier)
-                }
-
-                await MainActor.run {
-                    _ = AXApp(runningApp).element.hideApplication()
-                }
+                try await self.services.applications.hideApplication(identifier: appIdentifier)
 
                 let data = [
                     "action": "hide",
@@ -596,21 +589,13 @@ struct AppCommand: ParsableCommand {
                 let appIdentifier = try self.resolveApplicationIdentifier()
                 let appInfo = try await resolveApplication(appIdentifier, services: self.services)
 
-                guard let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
-                    throw PeekabooError.appNotFound(appIdentifier)
-                }
-
-                await MainActor.run {
-                    _ = AXApp(runningApp).element.unhideApplication()
-                }
+                try await self.services.applications.unhideApplication(identifier: appIdentifier)
 
                 // Activate if requested
                 if self.activate {
-                    let runningApps = NSWorkspace.shared.runningApplications
-                    if let runningApp = runningApps
-                        .first(where: { $0.processIdentifier == appInfo.processIdentifier }) {
-                        runningApp.activate()
-                    }
+                    try await self.services.applications.activateApplication(
+                        identifier: appInfo.bundleIdentifier ?? appInfo.name
+                    )
                 }
 
                 struct UnhideResult: Codable {

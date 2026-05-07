@@ -1,5 +1,3 @@
-import AppKit
-import AXorcist
 import Commander
 import Foundation
 import PeekabooCore

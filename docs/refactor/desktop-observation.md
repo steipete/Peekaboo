@@ -884,6 +884,7 @@ Work:
 - done: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind the shared observation window catalog;
 - done: route menu-bar click verification window polling through the shared observation window catalog;
 - done: move frontmost-application capture lookup behind the shared capture application resolver;
+- done: remove stale `AXorcist` and `ScreenCaptureKit` imports from CLI command files;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:

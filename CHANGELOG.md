@@ -125,6 +125,7 @@
 - Split desktop observation target, request, and result DTOs into focused model files.
 - Split `DesktopObservationService` capture, detection/OCR, and output-writing plumbing into focused extension files.
 - Split frontmost-application capture lookup behind the shared capture application resolver so `ScreenCaptureService` no longer owns AppKit app identity conversion.
+- Removed stale `AXorcist` imports from CLI command files by routing app hide/unhide and accessibility permission prompting through shared services.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.
