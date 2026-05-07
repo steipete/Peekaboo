@@ -101,6 +101,7 @@ Landed:
 - `ElementDetectionService` now owns only detection/result building; snapshot persistence moved up to orchestration.
 - Exact CoreGraphics window-ID metadata lookup now lives in `WindowCGInfoLookup`, keeping `WindowManagementService` focused on window operations and fallback orchestration.
 - Shared `peekaboo window` target, display-name, action-result, and snapshot-invalidation helpers now live in `WindowCommand+Support`, leaving the primary command file focused on subcommand wiring.
+- Watch capture frame diffing now lives in `WatchFrameDiffer`, keeping luma scaling, bounding-box extraction, and SSIM away from session orchestration.
 
 Still incomplete:
 
@@ -117,7 +118,8 @@ ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines
 ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
-WatchCaptureSession.swift: 1091 lines
+WatchCaptureSession.swift: 852 lines
+WatchFrameDiffer.swift: 250 lines
 WindowManagementService.swift: 819 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines

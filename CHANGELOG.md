@@ -96,6 +96,7 @@
 - Split interaction target-point resolution into a focused command support file.
 - Split `ClickCommand` focus verification and output models into focused support files.
 - Split shared `peekaboo window` target, display-name, action-result, and snapshot-invalidation helpers into a focused support file.
+- Split watch-capture frame diffing, luma scaling, bounding-box extraction, and SSIM calculation into a pure `WatchFrameDiffer`.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.

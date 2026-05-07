@@ -8,9 +8,9 @@ import UniformTypeIdentifiers
 struct WatchCaptureSessionTests {
     @Test
     func `Fast diff detects change and bounding box`() {
-        let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
-        let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
-        let result = WatchCaptureSession.computeChange(
+        let prev = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
+        let curr = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
+        let result = WatchFrameDiffer.computeChange(
             using: .init(
                 strategy: .fast,
                 diffBudgetMs: nil,
@@ -26,8 +26,8 @@ struct WatchCaptureSessionTests {
 
     @Test
     func `Quality diff near-zero for identical frames`() {
-        let buffer = WatchCaptureSession.LumaBuffer(width: 4, height: 4, pixels: Array(repeating: 64, count: 16))
-        let result = WatchCaptureSession.computeChange(
+        let buffer = WatchFrameDiffer.LumaBuffer(width: 4, height: 4, pixels: Array(repeating: 64, count: 16))
+        let result = WatchFrameDiffer.computeChange(
             using: .init(
                 strategy: .quality,
                 diffBudgetMs: nil,
@@ -41,9 +41,9 @@ struct WatchCaptureSessionTests {
 
     @Test
     func `Quality diff caps at 100`() {
-        let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
-        let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [255, 255, 255, 255])
-        let result = WatchCaptureSession.computeChange(
+        let prev = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [0, 0, 0, 0])
+        let curr = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [255, 255, 255, 255])
+        let result = WatchFrameDiffer.computeChange(
             using: .init(
                 strategy: .quality,
                 diffBudgetMs: nil,
@@ -59,7 +59,7 @@ struct WatchCaptureSessionTests {
         // Two disjoint regions far apart should still report a union box that spans both.
         let width = 8
         let height = 8
-        let prev = WatchCaptureSession.LumaBuffer(
+        let prev = WatchFrameDiffer.LumaBuffer(
             width: width,
             height: height,
             pixels: Array(repeating: 0, count: width * height))
@@ -78,8 +78,8 @@ struct WatchCaptureSessionTests {
                 pixels[index(x, y)] = 255
             }
         }
-        let curr = WatchCaptureSession.LumaBuffer(width: width, height: height, pixels: pixels)
-        let result = WatchCaptureSession.computeChange(
+        let curr = WatchFrameDiffer.LumaBuffer(width: width, height: height, pixels: pixels)
+        let result = WatchFrameDiffer.computeChange(
             using: .init(
                 strategy: .fast,
                 diffBudgetMs: nil,

@@ -8,9 +8,9 @@ struct WatchHysteresisTests {
     @Test
     func `Exits active after quiet period`() {
         // Two frames: first with high delta, second identical.
-        let prev = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
-        let curr = WatchCaptureSession.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
-        let diff = WatchCaptureSession.computeChange(
+        let prev = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
+        let curr = WatchFrameDiffer.LumaBuffer(width: 2, height: 2, pixels: [0, 255, 0, 0])
+        let diff = WatchFrameDiffer.computeChange(
             using: .init(
                 strategy: .fast,
                 diffBudgetMs: nil,
