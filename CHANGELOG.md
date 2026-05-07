@@ -154,6 +154,7 @@
 - Release automation now dispatches the centralized Homebrew tap updater and waits for the matching tap workflow run. Thanks @dinakars777 for [#110](https://github.com/steipete/Peekaboo/pull/110)!
 
 ### Fixed
+- Legacy window capture now uses the private ScreenCaptureKit window-ID lookup behind `/usr/sbin/screencapture -l` before falling back to the system `screencapture` binary and public ScreenCaptureKit enumeration.
 - `peekaboo image --path .` and MCP image captures with directory-like paths now save a generated filename inside the directory instead of creating hidden `..png` artifacts.
 - `peekaboo see --path .` now uses the same directory-aware output policy for observation and legacy screen companion paths.
 - `peekaboo capture live --path ~/...`, `peekaboo capture ... --video-out ~/...`, `peekaboo capture video --path ~/...`, `peekaboo capture video ~/...`, and MCP `capture` path inputs now expand home-directory paths consistently with the rest of the CLI.

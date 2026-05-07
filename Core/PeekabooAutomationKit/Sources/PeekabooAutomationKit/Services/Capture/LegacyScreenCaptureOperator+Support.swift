@@ -1,6 +1,8 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import ImageIO
+import ObjectiveC
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
@@ -117,11 +119,141 @@ extension LegacyScreenCaptureOperator {
         windowID: CGWindowID,
         correlationId: String) async throws -> CGImage
     {
-        // PeekabooAutomationKit targets macOS 14+, where ScreenCaptureKit is always available. Current SDKs
-        // obsolete CGWindowListCreateImage, so the legacy selector funnels into the SCKit path instead.
-        try await self.captureWindowWithScreenshotManager(
-            windowID: windowID,
+        do {
+            return try await self.captureWindowWithPrivateScreenCaptureKit(
+                windowID: windowID,
+                correlationId: correlationId)
+        } catch {
+            self.logger.warning(
+                "Private ScreenCaptureKit window capture failed, falling back to system screencapture",
+                metadata: [
+                    "windowID": String(windowID),
+                    "error": String(describing: error),
+                ],
+                correlationId: correlationId)
+        }
+
+        do {
+            return try self.captureWindowWithSystemScreencapture(
+                windowID: windowID,
+                correlationId: correlationId)
+        } catch {
+            self.logger.warning(
+                "System screencapture window capture failed, falling back to SCScreenshotManager",
+                metadata: [
+                    "windowID": String(windowID),
+                    "error": String(describing: error),
+                ],
+                correlationId: correlationId)
+            return try await self.captureWindowWithScreenshotManager(
+                windowID: windowID,
+                correlationId: correlationId)
+        }
+    }
+
+    private func captureWindowWithPrivateScreenCaptureKit(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
+        let scWindow = try await self.fetchWindowWithPrivateScreenCaptureKit(windowID: windowID)
+        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+        let config = self.makeScreenshotConfiguration()
+        config.captureResolution = .best
+        config.ignoreShadowsSingleWindow = true
+        if #available(macOS 14.2, *) {
+            config.includeChildWindows = false
+        }
+
+        self.logger.debug(
+            "Capturing window via private ScreenCaptureKit window-id lookup",
+            metadata: [
+                "windowID": String(windowID),
+                "windowFrame": "\(scWindow.frame)",
+            ],
             correlationId: correlationId)
+
+        return try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: config)
+    }
+
+    private func fetchWindowWithPrivateScreenCaptureKit(windowID: CGWindowID) async throws -> SCWindow {
+        guard let privateWindowID = UInt32(exactly: windowID) else {
+            throw OperationError.captureFailed(reason: "Window ID \(windowID) is outside UInt32 range")
+        }
+
+        let selector = NSSelectorFromString("fetchWindowForWindowID:withCompletionHandler:")
+        guard let method = class_getClassMethod(SCShareableContent.self, selector) else {
+            throw OperationError.captureFailed(
+                reason: "Private SCShareableContent.fetchWindowForWindowID selector is unavailable")
+        }
+
+        let implementation = method_getImplementation(method)
+        typealias Completion = @convention(block) (AnyObject?) -> Void
+        typealias FetchWindow = @convention(c) (AnyClass, Selector, UInt32, Completion) -> Void
+        let fetchWindow = unsafeBitCast(implementation, to: FetchWindow.self)
+        let result = PrivateScreenCaptureKitWindowFetchResult()
+
+        // Private API, intentionally isolated: Hopper shows `/usr/sbin/screencapture -l` resolving a
+        // WindowServer ID through `SCShareableContent` before building a desktop-independent window filter.
+        // Public `SCShareableContent.windows` enumeration can miss windows that this lookup still captures.
+        // If Apple removes this selector, callers fall back to `/usr/sbin/screencapture -l` and then public SCK.
+        let completion: Completion = { object in
+            guard let window = object as? SCWindow else {
+                result.finish(.failure(OperationError.captureFailed(
+                    reason: "Private SCShareableContent lookup did not return window \(windowID)")))
+                return
+            }
+            result.finish(.success(window))
+        }
+        fetchWindow(SCShareableContent.self, selector, privateWindowID, completion)
+
+        return try await Task.detached(priority: .userInitiated) {
+            try result.wait(timeout: .now() + 1.0)
+        }.value
+    }
+
+    private func captureWindowWithSystemScreencapture(
+        windowID: CGWindowID,
+        correlationId: String) throws -> CGImage
+    {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("peekaboo-window-\(windowID)-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        // Match Apple's native window capture path; Hopper shows `screencapture -l` using
+        // private window-id lookup before building its SCScreenshotManager content filter.
+        process.arguments = [
+            "-l",
+            String(windowID),
+            "-o",
+            "-x",
+            url.path,
+        ]
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw OperationError.captureFailed(reason: "screencapture exited with \(process.terminationStatus)")
+        }
+
+        let data = try Data(contentsOf: url)
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            throw OperationError.captureFailed(reason: "Failed to decode screencapture output")
+        }
+
+        self.logger.debug(
+            "Captured window via system screencapture",
+            metadata: [
+                "windowID": String(windowID),
+                "imageSize": "\(image.width)x\(image.height)",
+            ],
+            correlationId: correlationId)
+        return image
     }
 
     nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
@@ -223,5 +355,36 @@ extension LegacyScreenCaptureOperator {
         configuration.showsCursor = false
         configuration.capturesAudio = false
         return configuration
+    }
+}
+
+private final class PrivateScreenCaptureKitWindowFetchResult: @unchecked Sendable {
+    private let lock = NSLock()
+    private let semaphore = DispatchSemaphore(value: 0)
+    private var result: Result<SCWindow, any Error>?
+
+    func finish(_ result: Result<SCWindow, any Error>) {
+        self.lock.lock()
+        guard self.result == nil else {
+            self.lock.unlock()
+            return
+        }
+        self.result = result
+        self.lock.unlock()
+        self.semaphore.signal()
+    }
+
+    func wait(timeout: DispatchTime) throws -> SCWindow {
+        guard self.semaphore.wait(timeout: timeout) == .success else {
+            throw OperationError.timeout(operation: "SCShareableContent.fetchWindowForWindowID", duration: 1.0)
+        }
+
+        self.lock.lock()
+        let result = self.result
+        self.lock.unlock()
+        guard let result else {
+            throw OperationError.captureFailed(reason: "Private SCShareableContent lookup returned no result")
+        }
+        return try result.get()
     }
 }
