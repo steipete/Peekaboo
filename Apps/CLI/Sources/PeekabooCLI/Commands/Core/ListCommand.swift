@@ -312,17 +312,10 @@ extension ListCommand {
             let permissions = await PermissionHelpers.getCurrentPermissions(services: runtime.services)
 
             if self.jsonOutput {
-                struct Payload: Codable {
-                    let permissions: [PermissionHelpers.PermissionInfo]
-                }
-
-                let payload = Payload(permissions: permissions)
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let data = try encoder.encode(payload)
-                if let json = String(data: data, encoding: .utf8) {
-                    Swift.print(json)
-                }
+                outputSuccessCodable(
+                    data: PermissionsStatusPayload(permissions: permissions),
+                    logger: self.outputLogger
+                )
             } else {
                 Swift.print("Peekaboo Permissions:")
                 Swift.print("---------------------")
@@ -334,6 +327,10 @@ extension ListCommand {
                 }
             }
         }
+    }
+
+    private struct PermissionsStatusPayload: Codable {
+        let permissions: [PermissionHelpers.PermissionInfo]
     }
 
     // MARK: - Menu Bar

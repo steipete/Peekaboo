@@ -23,7 +23,7 @@ read_when:
 - `apps` and `windows` call `requireScreenRecordingPermission` before crawling AX so macOS doesn’t silently strip metadata.
 - `windows` accepts either user-friendly names or `PID:####` tokens and normalizes `--include-details` values by lowercasing + replacing `-` with `_`, so both `--include-details offscreen,bounds` and `off_screen` work.
 - Menu bar listing is powered by the same `MenuServiceBridge` used by `peekaboo menubar`, so indices reported here line up with what `menubar click --index` expects.
-- Screen inventory uses `services.screens.listScreens()` and returns a `UnifiedToolOutput<ScreenListData>` payload, which is why JSON mode includes refresh timestamps and display UUIDs.
+- App/window/screen inventory uses `UnifiedToolOutput` payloads, which include `data`, `summary`, and `metadata`. `list permissions --json` mirrors `permissions status --json` with the standard `{ success, data }` envelope.
 
 ## Examples
 ```bash

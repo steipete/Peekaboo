@@ -127,6 +127,24 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo list permissions emits standard JSON envelope`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo(["list", "permissions", "--json", "--no-remote"])
+        #expect(result.status == .exited(0))
+
+        let data = Data(result.standardOutput.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any] else {
+            Issue.record("Expected JSON object output from list permissions command.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == true)
+        let dataPayload = json["data"] as? [String: Any]
+        #expect(dataPayload?["permissions"] is [[String: Any]])
+    }
+
+    @Test
     func `peekaboo dialog list emits structured JSON success or error`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["dialog", "list", "--json", "--no-remote"])
