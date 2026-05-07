@@ -15,10 +15,15 @@ public struct ObservationMenuBarPopoverSnapshot: Sendable {
 }
 
 public enum ObservationMenuBarWindowCatalog {
-    public static func currentPopoverSnapshot(screens: [ScreenInfo]) -> ObservationMenuBarPopoverSnapshot {
+    public static func currentPopoverSnapshot(
+        screens: [ScreenInfo],
+        ownerPID: pid_t? = nil,
+        includeOffscreen: Bool = false) -> ObservationMenuBarPopoverSnapshot
+    {
         self.snapshot(
-            windowList: self.currentWindowList(),
-            screens: screens)
+            windowList: self.currentWindowList(includeOffscreen: includeOffscreen),
+            screens: screens,
+            ownerPID: ownerPID)
     }
 
     public static func currentBandCandidates(
@@ -31,14 +36,34 @@ public enum ObservationMenuBarWindowCatalog {
             screens: screens)
     }
 
+    public static func currentWindowIDs(ownerPID: pid_t) -> [Int] {
+        self.windowIDsForPID(
+            ownerPID: ownerPID,
+            windowList: self.currentWindowList(includeOffscreen: true))
+    }
+
+    public static func currentWindowIDs(matchingOwnerNameOrTitle name: String) -> [Int] {
+        self.windowIDsMatchingOwnerNameOrTitle(
+            name,
+            windowList: self.currentWindowList(includeOffscreen: true))
+    }
+
     static func snapshot(
         windowList: [[String: Any]],
-        screens: [ScreenInfo]) -> ObservationMenuBarPopoverSnapshot
+        screens: [ScreenInfo],
+        ownerPID: pid_t? = nil) -> ObservationMenuBarPopoverSnapshot
     {
-        ObservationMenuBarPopoverSnapshot(
-            candidates: ObservationMenuBarPopoverResolver.candidates(
-                windowList: windowList,
-                screens: screens),
+        let candidates = ObservationMenuBarPopoverResolver.candidates(
+            windowList: windowList,
+            screens: screens)
+        let filteredCandidates = if let ownerPID {
+            candidates.filter { $0.ownerPID == ownerPID }
+        } else {
+            candidates
+        }
+
+        return ObservationMenuBarPopoverSnapshot(
+            candidates: filteredCandidates,
             windowInfoByID: self.windowInfoByID(from: windowList))
     }
 
@@ -80,9 +105,35 @@ public enum ObservationMenuBarWindowCatalog {
         return candidates
     }
 
-    private static func currentWindowList() -> [[String: Any]] {
-        CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
+    static func windowIDsForPID(ownerPID: pid_t, windowList: [[String: Any]]) -> [Int] {
+        windowList.compactMap { windowInfo in
+            guard self.pid(from: windowInfo[kCGWindowOwnerPID as String]) == ownerPID else {
+                return nil
+            }
+            return Int(self.windowID(from: windowInfo[kCGWindowNumber as String]))
+        }
+        .filter { $0 != 0 }
+    }
+
+    static func windowIDsMatchingOwnerNameOrTitle(_ name: String, windowList: [[String: Any]]) -> [Int] {
+        let normalized = name.lowercased()
+        return windowList.compactMap { windowInfo in
+            let ownerName = (windowInfo[kCGWindowOwnerName as String] as? String)?.lowercased() ?? ""
+            let title = (windowInfo[kCGWindowName as String] as? String)?.lowercased() ?? ""
+            guard ownerName.contains(normalized) || title.contains(normalized) else {
+                return nil
+            }
+            return Int(self.windowID(from: windowInfo[kCGWindowNumber as String]))
+        }
+        .filter { $0 != 0 }
+    }
+
+    private static func currentWindowList(includeOffscreen: Bool = false) -> [[String: Any]] {
+        let options: CGWindowListOption = includeOffscreen
+            ? [.optionAll, .excludeDesktopElements]
+            : [.optionOnScreenOnly, .excludeDesktopElements]
+        return CGWindowListCopyWindowInfo(
+            options,
             kCGNullWindowID) as? [[String: Any]] ?? []
     }
 

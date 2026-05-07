@@ -84,7 +84,6 @@ Landed:
 
 Still incomplete:
 
-- Remaining CLI menu-bar click verifier window polling still reads CoreGraphics windows directly; move it behind observation or the interaction pipeline before final command cleanup.
 - Further capture-service cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
 - Interaction commands reusing observation state instead of repeating lookup work.
@@ -111,7 +110,7 @@ Current command-boundary audit:
 - `see` all-screens capture no longer enumerates `SCShareableContent` directly.
 - AI/Core capture command sources no longer import `AppKit`; `see`, `image`, `list`, and menu-bar geometry now use shared screen/application services for screen inventory and app identity checks.
 - `SeeCommand+MenuBarCandidates.swift` uses the shared observation menu-bar window catalog instead of command-local `CGWindowListCopyWindowInfo`.
-- Remaining command-side `CGWindowListCopyWindowInfo` usage is limited to `MenuBarClickVerifier`; move that polling into observation/interaction cleanup.
+- Menu-bar click verification uses the shared observation window catalog instead of command-local `CGWindowListCopyWindowInfo`.
 
 Near-term rule: command code may mention `CGWindowID` as a user-facing identifier, but must not enumerate windows, displays, or ScreenCaptureKit objects directly.
 
@@ -470,7 +469,7 @@ Goal: every desktop inspection frontend constructs `DesktopObservationRequest` a
 Remaining work:
 
 - delete command-level capture/detection bridge code once all supported targets are observation-backed.
-- move the remaining menu-bar click verifier polling into observation or the future interaction pipeline.
+- move remaining legacy command helpers into observation or the future interaction pipeline.
 
 Done when:
 
@@ -622,6 +621,7 @@ Work:
 - done: add `CaptureMetadata.diagnostics` for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
 - done: cover forced engine resolution and fallback diagnostics in pure tests;
 - done: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind the shared observation window catalog;
+- done: route menu-bar click verification window polling through the shared observation window catalog;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:

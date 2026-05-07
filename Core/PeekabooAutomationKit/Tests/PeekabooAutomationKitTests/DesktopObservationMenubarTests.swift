@@ -150,6 +150,53 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(snapshot.windowInfoByID[2]?.title, "Menu")
     }
 
+    func testMenuBarWindowCatalogFiltersSnapshotByOwnerPID() {
+        let screen = Self.primaryScreen()
+        let windows = [
+            Self.windowInfo(
+                id: 1,
+                ownerPID: 100,
+                ownerName: "Other",
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180)),
+            Self.windowInfo(
+                id: 2,
+                ownerPID: 200,
+                ownerName: "Trimmy",
+                bounds: CGRect(x: 1100, y: 860, width: 300, height: 220)),
+        ]
+
+        let snapshot = ObservationMenuBarWindowCatalog.snapshot(
+            windowList: windows,
+            screens: [screen],
+            ownerPID: 200)
+
+        XCTAssertEqual(snapshot.candidates.map(\.windowID), [2])
+        XCTAssertEqual(snapshot.windowInfoByID[1]?.ownerName, "Other")
+    }
+
+    func testMenuBarWindowCatalogFindsWindowIDsByOwnerAndTitle() {
+        let windows = [
+            Self.windowInfo(
+                id: 1,
+                ownerPID: 100,
+                ownerName: "Other",
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180)),
+            Self.windowInfo(
+                id: 2,
+                ownerPID: 200,
+                ownerName: "Trimmy",
+                title: "Battery Menu",
+                bounds: CGRect(x: 1100, y: 860, width: 300, height: 220)),
+        ]
+
+        XCTAssertEqual(ObservationMenuBarWindowCatalog.windowIDsForPID(
+            ownerPID: 200,
+            windowList: windows), [2])
+        XCTAssertEqual(ObservationMenuBarWindowCatalog.windowIDsMatchingOwnerNameOrTitle(
+            "battery",
+            windowList: windows), [2])
+    }
+
     func testMenuBarWindowCatalogBandCandidatesUsePreferredX() {
         let screen = Self.primaryScreen()
         let windows = [
