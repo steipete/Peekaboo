@@ -79,6 +79,7 @@
 - `peekaboo image` capture orchestration now keeps saved-file/path planning and app-focus policy in focused command-support files.
 - `peekaboo capture live` now keeps scope resolution, option normalization, output rendering, focus policy, and Commander binding in focused command-support files.
 - `peekaboo capture live` now applies the resolution cap consistently to live frames whose source images lack reusable color-space metadata.
+- `peekaboo see --mode screen --json` now emits parseable JSON without human screen-summary lines.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
 - Exact `--window-id` observation metadata now resolves through a dedicated window metadata catalog instead of doing CoreGraphics lookup inside target-resolution orchestration.

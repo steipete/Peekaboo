@@ -20,7 +20,7 @@ extension SeeCommand {
             self.logger.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
             let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
 
-            if let displayInfo = result.metadata.displayInfo {
+            if !self.jsonOutput, let displayInfo = result.metadata.displayInfo {
                 self.printScreenDisplayInfo(index: index, displayInfo: displayInfo)
             }
 
@@ -39,14 +39,16 @@ extension SeeCommand {
             throw CaptureError.captureFailure("Failed to capture any screens")
         }
 
-        print("📸 Captured \(results.count) screen(s):")
+        if !self.jsonOutput {
+            print("📸 Captured \(results.count) screen(s):")
+        }
 
         for (index, result) in results.indexed() {
             if index > 0 {
                 let screenPath = self.screenOutputPath(for: index)
                 try result.imageData.write(to: URL(fileURLWithPath: screenPath))
 
-                if let displayInfo = result.metadata.displayInfo {
+                if !self.jsonOutput, let displayInfo = result.metadata.displayInfo {
                     let fileSize = self.getFileSize(screenPath) ?? 0
                     let suffix = "\(screenPath) (\(self.formatFileSize(Int64(fileSize))))"
                     self.printScreenDisplayInfo(
@@ -56,7 +58,7 @@ extension SeeCommand {
                         suffix: suffix
                     )
                 }
-            } else if let displayInfo = result.metadata.displayInfo {
+            } else if !self.jsonOutput, let displayInfo = result.metadata.displayInfo {
                 self.printScreenDisplayInfo(
                     index: index,
                     displayInfo: displayInfo,

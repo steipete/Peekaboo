@@ -248,6 +248,71 @@ struct SeeCommandRuntimeTests {
         }
     }
 
+    @Test
+    func `See screen JSON does not include human screen summary`() async throws {
+        let fixture = Self.makeSeeCommandRuntimeFixture()
+        let automation = StubAutomationService()
+        automation.nextDetectionResult = fixture.detectionResult
+
+        let screen = ScreenInfo(
+            index: 0,
+            name: "Primary",
+            frame: CGRect(x: 0, y: 0, width: 320, height: 240),
+            visibleFrame: CGRect(x: 0, y: 0, width: 320, height: 240),
+            isPrimary: true,
+            scaleFactor: 1,
+            displayID: 1
+        )
+        let screenCapture = StubScreenCaptureService(permissionGranted: true)
+        screenCapture.captureScreenHandler = { _, _ in
+            CaptureResult(
+                imageData: Data(repeating: 0xCD, count: 16),
+                metadata: CaptureMetadata(
+                    size: screen.frame.size,
+                    mode: .screen,
+                    displayInfo: DisplayInfo(
+                        index: screen.index,
+                        name: screen.name,
+                        bounds: screen.frame,
+                        scaleFactor: screen.scaleFactor
+                    )
+                )
+            )
+        }
+
+        try await self.withTempConfigEnv { _ in
+            let context = TestServicesFactory.makeAutomationTestContext(
+                automation: automation,
+                screens: [screen],
+                screenCapture: screenCapture
+            )
+            let outputURL = FileManager.default
+                .temporaryDirectory
+                .appendingPathComponent("peekaboo-see-screen-json.png")
+            defer { try? FileManager.default.removeItem(at: outputURL) }
+
+            let result = try await InProcessCommandRunner.run(
+                [
+                    "see",
+                    "--mode", "screen",
+                    "--path", outputURL.path,
+                    "--json",
+                ],
+                services: context.services
+            )
+
+            let data = try #require(result.stdout.data(using: .utf8))
+            let response = try JSONDecoder().decode(
+                CodableJSONResponse<SeeResult>.self,
+                from: data
+            )
+
+            #expect(response.success == true)
+            #expect(!result.stdout.contains("Captured 1 screen"))
+            #expect(!result.stdout.contains("[scrn]"))
+        }
+    }
+
     private func withTempConfigEnv<T>(
         _ body: @escaping (URL) async throws -> T
     ) async throws -> T {
