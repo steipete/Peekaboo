@@ -41,6 +41,7 @@
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
 - `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
 - `peekaboo see` avoids recursive AX child-text lookups for elements whose labels cannot use them, reducing Playground element detection from about 201ms to 134ms in local testing.
+- `peekaboo see` batches per-element Accessibility descriptor reads and avoids action/editability probes when the role already determines behavior, reducing local Playground element detection from about 205ms to 176ms.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

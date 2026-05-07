@@ -233,6 +233,25 @@ extension ElementDetectionService {
     private static let maxElementCount = 400
     private static let maxChildrenPerNode = 50
     private static let maxWebFocusAttempts = 2
+    private static let actionableRoles: Set<String> = [
+        "axbutton", "axpopupbutton", "axtextfield", "axlink",
+        "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
+        "axslider", "axtab",
+    ]
+    private static let descriptorAttributeNames: [String] = [
+        AXAttributeNames.kAXPositionAttribute,
+        AXAttributeNames.kAXSizeAttribute,
+        AXAttributeNames.kAXRoleAttribute,
+        AXAttributeNames.kAXTitleAttribute,
+        "AXLabel",
+        AXAttributeNames.kAXValueAttribute,
+        AXAttributeNames.kAXDescriptionAttribute,
+        AXAttributeNames.kAXHelpAttribute,
+        AXAttributeNames.kAXRoleDescriptionAttribute,
+        AXAttributeNames.kAXIdentifierAttribute,
+        AXAttributeNames.kAXEnabledAttribute,
+        AXAttributeNames.kAXPlaceholderValueAttribute,
+    ]
 
     // MARK: - Helper Methods
 
@@ -704,21 +723,107 @@ extension ElementDetectionService {
     }
 
     private func describeElement(_ element: Element) -> ElementDescriptor? {
-        let frame = element.frame() ?? .zero
+        guard let attributes = self.copyDescriptorAttributes(for: element) else {
+            let frame = element.frame() ?? .zero
+            guard frame.width > 5, frame.height > 5 else { return nil }
+
+            return ElementDescriptor(
+                frame: frame,
+                role: element.role() ?? "Unknown",
+                title: element.title(),
+                label: element.label(),
+                value: element.stringValue(),
+                description: element.descriptionText(),
+                help: element.help(),
+                roleDescription: element.roleDescription(),
+                identifier: element.identifier(),
+                isEnabled: element.isEnabled() ?? false,
+                placeholder: element.placeholderValue())
+        }
+
+        let frame = CGRect(origin: attributes.position ?? .zero, size: attributes.size ?? .zero)
         guard frame.width > 5, frame.height > 5 else { return nil }
 
         return ElementDescriptor(
             frame: frame,
-            role: element.role() ?? "Unknown",
-            title: element.title(),
-            label: element.label(),
-            value: element.stringValue(),
-            description: element.descriptionText(),
-            help: element.help(),
-            roleDescription: element.roleDescription(),
-            identifier: element.identifier(),
-            isEnabled: element.isEnabled() ?? false,
-            placeholder: element.placeholderValue())
+            role: attributes.role ?? "Unknown",
+            title: attributes.title,
+            label: attributes.label,
+            value: attributes.value,
+            description: attributes.description,
+            help: attributes.help,
+            roleDescription: attributes.roleDescription,
+            identifier: attributes.identifier,
+            isEnabled: attributes.isEnabled ?? false,
+            placeholder: attributes.placeholder)
+    }
+
+    private func copyDescriptorAttributes(for element: Element) -> AXDescriptorAttributes? {
+        var rawValues: CFArray?
+        let error = AXUIElementCopyMultipleAttributeValues(
+            element.underlyingElement,
+            Self.descriptorAttributeNames as CFArray,
+            [],
+            &rawValues)
+        guard error == .success,
+              let values = rawValues as? [Any],
+              values.count == Self.descriptorAttributeNames.count
+        else {
+            return nil
+        }
+
+        let valueByName = Dictionary(uniqueKeysWithValues: zip(Self.descriptorAttributeNames, values))
+        // `AXUIElementCopyMultipleAttributeValues` turns missing attributes into AXError-valued
+        // AXValues. The typed readers below treat those as nil while keeping this pass to one AX round-trip.
+        return AXDescriptorAttributes(
+            position: self.cgPointValue(valueByName[AXAttributeNames.kAXPositionAttribute]),
+            size: self.cgSizeValue(valueByName[AXAttributeNames.kAXSizeAttribute]),
+            role: self.stringValue(valueByName[AXAttributeNames.kAXRoleAttribute]),
+            title: self.stringValue(valueByName[AXAttributeNames.kAXTitleAttribute]),
+            label: self.stringValue(valueByName["AXLabel"]),
+            value: self.stringValue(valueByName[AXAttributeNames.kAXValueAttribute]),
+            description: self.stringValue(valueByName[AXAttributeNames.kAXDescriptionAttribute]),
+            help: self.stringValue(valueByName[AXAttributeNames.kAXHelpAttribute]),
+            roleDescription: self.stringValue(valueByName[AXAttributeNames.kAXRoleDescriptionAttribute]),
+            identifier: self.stringValue(valueByName[AXAttributeNames.kAXIdentifierAttribute]),
+            isEnabled: self.boolValue(valueByName[AXAttributeNames.kAXEnabledAttribute]),
+            placeholder: self.stringValue(valueByName[AXAttributeNames.kAXPlaceholderValueAttribute]))
+    }
+
+    private func stringValue(_ value: Any?) -> String? {
+        value as? String
+    }
+
+    private func boolValue(_ value: Any?) -> Bool? {
+        if let bool = value as? Bool {
+            return bool
+        }
+        return (value as? NSNumber)?.boolValue
+    }
+
+    private func cgPointValue(_ value: Any?) -> CGPoint? {
+        guard let axValue = self.axValue(value),
+              AXValueGetType(axValue) == .cgPoint
+        else { return nil }
+        var point = CGPoint.zero
+        guard AXValueGetValue(axValue, .cgPoint, &point) else { return nil }
+        return point
+    }
+
+    private func cgSizeValue(_ value: Any?) -> CGSize? {
+        guard let axValue = self.axValue(value),
+              AXValueGetType(axValue) == .cgSize
+        else { return nil }
+        var size = CGSize.zero
+        guard AXValueGetValue(axValue, .cgSize, &size) else { return nil }
+        return size
+    }
+
+    private func axValue(_ value: Any?) -> AXValue? {
+        guard let value else { return nil }
+        let cfValue = value as CFTypeRef
+        guard CFGetTypeID(cfValue) == AXValueGetTypeID() else { return nil }
+        return unsafeDowncast(cfValue, to: AXValue.self)
     }
 
     private func processChildren(
@@ -827,7 +932,7 @@ extension ElementDetectionService {
         let roleInfo = ElementRoleInfo(
             role: descriptor.role,
             roleDescription: descriptor.roleDescription,
-            isEditable: element.isEditable() ?? false)
+            isEditable: baseType == .group && element.isEditable() == true)
         let resolved = ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
 
         let loweredTitle = descriptor.title?.lowercased()
@@ -910,19 +1015,12 @@ extension ElementDetectionService {
     }
 
     private func isElementActionable(_ element: Element, role: String) -> Bool {
-        // Check if element has press action
-        if let actions = element.supportedActions(), actions.contains("AXPress") {
+        if Self.actionableRoles.contains(role.lowercased()) {
             return true
         }
 
-        // Check by role
-        let actionableRoles = [
-            "axbutton", "axpopupbutton", "axtextfield", "axlink",
-            "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
-            "axslider", "axtab",
-        ]
-
-        return actionableRoles.contains(role.lowercased())
+        // Action lookup is another AX round-trip; only pay it for roles we cannot classify cheaply.
+        return element.supportedActions()?.contains("AXPress") == true
     }
 
     @MainActor
@@ -1064,6 +1162,21 @@ private struct ElementDescriptor {
     let roleDescription: String?
     let identifier: String?
     let isEnabled: Bool
+    let placeholder: String?
+}
+
+private struct AXDescriptorAttributes {
+    let position: CGPoint?
+    let size: CGSize?
+    let role: String?
+    let title: String?
+    let label: String?
+    let value: String?
+    let description: String?
+    let help: String?
+    let roleDescription: String?
+    let identifier: String?
+    let isEnabled: Bool?
     let placeholder: String?
 }
 
