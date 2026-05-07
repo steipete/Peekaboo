@@ -112,51 +112,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         }
     }
 
-    private let logger: CategoryLogger
-    private let feedbackClient: any AutomationFeedbackClient
-    private let permissionGate: ScreenCapturePermissionGate
-    private let fallbackRunner: ScreenCaptureFallbackRunner
-    private let applicationResolver: any ApplicationResolving
-    private let modernOperator: any ModernScreenCaptureOperating
-    private let legacyOperator: any LegacyScreenCaptureOperating
-    @TaskLocal private static var captureEnginePreference: CaptureEnginePreference = .auto
-
-    private typealias Metadata = [String: Any]
-
-    private enum CaptureOperation {
-        case screen
-        case window
-        case frontmost
-        case area
-
-        var metricName: String {
-            switch self {
-            case .screen: "captureScreen"
-            case .window: "captureWindow"
-            case .frontmost: "captureFrontmost"
-            case .area: "captureArea"
-            }
-        }
-
-        var logLabel: String {
-            switch self {
-            case .screen: "screen capture"
-            case .window: "window capture"
-            case .frontmost: "frontmost window capture"
-            case .area: "area capture"
-            }
-        }
-    }
-
-    private struct WindowCaptureOptions {
-        let visualizerMode: CaptureVisualizerMode
-        let scale: CaptureScalePreference
-    }
-
-    private struct CaptureInvocationContext {
-        let operation: CaptureOperation
-        let correlationId: String
-    }
+    let logger: CategoryLogger
+    let feedbackClient: any AutomationFeedbackClient
+    let permissionGate: ScreenCapturePermissionGate
+    let fallbackRunner: ScreenCaptureFallbackRunner
+    let applicationResolver: any ApplicationResolving
+    let modernOperator: any ModernScreenCaptureOperating
+    let legacyOperator: any LegacyScreenCaptureOperating
+    @TaskLocal static var captureEnginePreference: CaptureEnginePreference = .auto
 
     public convenience init(loggingService: any LoggingServiceProtocol) {
         self.init(loggingService: loggingService, dependencies: .live())
@@ -192,139 +155,28 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         try await Self.$captureEnginePreference.withValue(engine, operation: operation)
     }
 
-    private func performOperation<T: Sendable>(
-        _ operation: CaptureOperation,
-        metadata: Metadata = [:],
-        requiresPermission: Bool = true,
-        body: @escaping @MainActor @Sendable (_ correlationId: String) async throws -> T) async throws -> T
-    {
-        let correlationId = UUID().uuidString
-        self.logger.info(
-            "Starting \(operation.logLabel)",
-            metadata: metadata,
-            correlationId: correlationId)
-
-        // Start the logger's perf counter so tools can emit duration metrics even if we bail early.
-        // Must capture the opaque ID up front—endPerformanceMeasurement needs the exact token.
-        let measurementId = self.logger.startPerformanceMeasurement(
-            operation: operation.metricName,
-            correlationId: correlationId)
-        defer {
-            logger.endPerformanceMeasurement(
-                measurementId: measurementId,
-                metadata: metadata)
-        }
-
-        if requiresPermission {
-            try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
-        }
-
-        return try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
-            operationName: operation.metricName)
-        {
-            try await body(correlationId)
-        }
-    }
-
     public func captureScreen(
         displayIndex: Int?,
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
-        let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
-        return try await self.performOperation(.screen, metadata: metadata) { correlationId in
-            try await self.fallbackRunner.runCapture(
-                operationName: CaptureOperation.screen.metricName,
-                logger: self.logger,
-                correlationId: correlationId,
-                apis: apis)
-            { api in
-                switch api {
-                case .modern:
-                    try await self.modernOperator.captureScreen(
-                        displayIndex: displayIndex,
-                        correlationId: correlationId,
-                        visualizerMode: visualizerMode,
-                        scale: scale)
-                case .legacy:
-                    try await self.legacyOperator.captureScreen(
-                        displayIndex: displayIndex,
-                        correlationId: correlationId,
-                        visualizerMode: visualizerMode,
-                        scale: scale)
-                }
-            }
-        }
+        try await self.captureScreenImpl(
+            displayIndex: displayIndex,
+            visualizerMode: visualizerMode,
+            scale: scale)
     }
 
-    /**
-     * Capture a specific application window with precise targeting.
-     *
-     * - Parameters:
-     *   - appIdentifier: Application identifier (name, bundle ID, or "PID:1234" format)
-     *   - windowIndex: Window index within app (nil for frontmost window, 0-based indexing)
-     * - Returns: `CaptureResult` containing image data, metadata, and optional saved path
-     * - Throws: `PeekabooError` if application not found, window index invalid, or capture fails
-     *
-     * ## Window Selection
-     * - `windowIndex: nil` - Captures the frontmost/active window of the application
-     * - `windowIndex: 0` - Captures the first window (topmost in window list)
-     * - `windowIndex: 1` - Captures the second window, etc.
-     *
-     * ## Examples
-     * ```swift
-     * // Capture Safari's frontmost window
-     * let result = try await captureService.captureWindow(
-     *     appIdentifier: "Safari",
-     *     windowIndex: nil
-     * )
-     *
-     * // Capture specific Chrome window by index
-     * let chromeWindow = try await captureService.captureWindow(
-     *     appIdentifier: "com.google.Chrome",
-     *     windowIndex: 1
-     * )
-     *
-     * // Capture by process ID
-     * let processWindow = try await captureService.captureWindow(
-     *     appIdentifier: "PID:1234",
-     *     windowIndex: 0
-     * )
-     * ```
-     */
     public func captureWindow(
         appIdentifier: String,
         windowIndex: Int?,
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let metadata: Metadata = [
-            "appIdentifier": appIdentifier,
-            "windowIndex": windowIndex ?? "frontmost",
-        ]
-
-        return try await self.performOperation(.window, metadata: metadata) { correlationId in
-            self.logger.debug(
-                "Finding application",
-                metadata: ["identifier": appIdentifier],
-                correlationId: correlationId)
-            let app = try await self.findApplication(matching: appIdentifier)
-            self.logger.debug(
-                "Found application",
-                metadata: [
-                    "name": app.name,
-                    "pid": app.processIdentifier,
-                    "bundleId": app.bundleIdentifier ?? "unknown",
-                ],
-                correlationId: correlationId)
-
-            return try await self.captureWindow(
-                app: app,
-                windowIndex: windowIndex,
-                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
-                context: CaptureInvocationContext(operation: .window, correlationId: correlationId))
-        }
+        try await self.captureWindowImpl(
+            appIdentifier: appIdentifier,
+            windowIndex: windowIndex,
+            visualizerMode: visualizerMode,
+            scale: scale)
     }
 
     public func captureWindow(
@@ -332,109 +184,19 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let metadata: Metadata = [
-            "windowID": Int(windowID),
-        ]
-
-        return try await self.performOperation(.window, metadata: metadata) { correlationId in
-            try await self.captureWindow(
-                windowID: windowID,
-                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
-                context: CaptureInvocationContext(operation: .window, correlationId: correlationId))
-        }
-    }
-
-    private func captureWindow(
-        app: ServiceApplicationInfo,
-        windowIndex: Int?,
-        options: WindowCaptureOptions,
-        context: CaptureInvocationContext) async throws -> CaptureResult
-    {
-        try await self.fallbackRunner.runCapture(
-            operationName: context.operation.metricName,
-            logger: self.logger,
-            correlationId: context.correlationId,
-            apis: self.fallbackRunner.apis(for: Self.captureEnginePreference))
-        { api in
-            switch api {
-            case .modern:
-                self.logger.debug(
-                    "Using ScreenCaptureKit window capture path",
-                    correlationId: context.correlationId)
-                return try await self.modernOperator.captureWindow(
-                    app: app,
-                    windowIndex: windowIndex,
-                    correlationId: context.correlationId,
-                    visualizerMode: options.visualizerMode,
-                    scale: options.scale)
-            case .legacy:
-                self.logger.debug("Using legacy CGWindowList API", correlationId: context.correlationId)
-                return try await self.legacyOperator.captureWindow(
-                    app: app,
-                    windowIndex: windowIndex,
-                    correlationId: context.correlationId,
-                    visualizerMode: options.visualizerMode,
-                    scale: options.scale)
-            }
-        }
-    }
-
-    private func captureWindow(
-        windowID: CGWindowID,
-        options: WindowCaptureOptions,
-        context: CaptureInvocationContext) async throws -> CaptureResult
-    {
-        try await self.fallbackRunner.runCapture(
-            operationName: context.operation.metricName,
-            logger: self.logger,
-            correlationId: context.correlationId,
-            apis: self.fallbackRunner.apis(for: Self.captureEnginePreference))
-        { api in
-            switch api {
-            case .modern:
-                self.logger.debug(
-                    "Using ScreenCaptureKit window-id capture path",
-                    correlationId: context.correlationId)
-                return try await self.modernOperator.captureWindow(
-                    windowID: windowID,
-                    correlationId: context.correlationId,
-                    visualizerMode: options.visualizerMode,
-                    scale: options.scale)
-            case .legacy:
-                self.logger.debug(
-                    "Using legacy CGWindowList API window-id capture path",
-                    correlationId: context.correlationId)
-                return try await self.legacyOperator.captureWindow(
-                    windowID: windowID,
-                    correlationId: context.correlationId,
-                    visualizerMode: options.visualizerMode,
-                    scale: options.scale)
-            }
-        }
+        try await self.captureWindowImpl(
+            windowID: windowID,
+            visualizerMode: visualizerMode,
+            scale: scale)
     }
 
     public func captureFrontmost(
         visualizerMode: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        try await self.performOperation(.frontmost) { correlationId in
-            let serviceApp = try await self.frontmostApplication()
-
-            self.logger.debug(
-                "Found frontmost application",
-                metadata: [
-                    "name": serviceApp.name,
-                    "bundleId": serviceApp.bundleIdentifier ?? "none",
-                    "pid": serviceApp.processIdentifier,
-                ],
-                correlationId: correlationId)
-
-            return try await self.captureWindow(
-                app: serviceApp,
-                windowIndex: nil,
-                options: WindowCaptureOptions(visualizerMode: visualizerMode, scale: scale),
-                context: CaptureInvocationContext(operation: .frontmost, correlationId: correlationId))
-        }
+        try await self.captureFrontmostImpl(
+            visualizerMode: visualizerMode,
+            scale: scale)
     }
 
     public func captureArea(
@@ -442,50 +204,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         visualizerMode _: CaptureVisualizerMode = .screenshotFlash,
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
-        let metadata: Metadata = [
-            "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
-        ]
-        let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
-
-        return try await self.performOperation(.area, metadata: metadata) { correlationId in
-            try await self.fallbackRunner.runCapture(
-                operationName: CaptureOperation.area.metricName,
-                logger: self.logger,
-                correlationId: correlationId,
-                apis: apis)
-            { api in
-                switch api {
-                case .modern:
-                    try await self.modernOperator.captureArea(
-                        rect,
-                        correlationId: correlationId,
-                        scale: scale)
-                case .legacy:
-                    try await self.legacyOperator.captureArea(
-                        rect,
-                        correlationId: correlationId,
-                        scale: scale)
-                }
-            }
-        }
+        try await self.captureAreaImpl(rect, scale: scale)
     }
 
     public func hasScreenRecordingPermission() async -> Bool {
-        await self.permissionGate.hasPermission(logger: self.logger)
-    }
-
-    // MARK: - Private Helpers
-
-    private func findApplication(matching identifier: String) async throws -> ServiceApplicationInfo {
-        try await self.applicationResolver.findApplication(identifier: identifier)
-    }
-
-    private func frontmostApplication() async throws -> ServiceApplicationInfo {
-        do {
-            return try await self.applicationResolver.frontmostApplication()
-        } catch {
-            self.logger.error("No frontmost application found")
-            throw error
-        }
+        await self.hasScreenRecordingPermissionImpl()
     }
 }

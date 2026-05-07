@@ -66,6 +66,7 @@ Landed:
 - Logical 1x capture downscaling through `ScreenCaptureImageScaler`.
 - Legacy area capture through the legacy capture operator.
 - Dedicated ScreenCaptureKit and legacy capture operator files.
+- Screen capture operation gating/metrics and capture execution orchestration are split out of the primary `ScreenCaptureService`.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -205,7 +206,9 @@ Current status:
 Current size pressure:
 
 ```text
-ScreenCaptureService.swift: 491 lines
+ScreenCaptureService.swift: 213 lines
+ScreenCaptureService+Captures.swift: 210 lines
+ScreenCaptureService+Operations.swift: 92 lines
 ScreenCaptureService+Support.swift: 19 lines
 ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines

@@ -46,6 +46,7 @@
 - CLI `see` screen capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
 - CLI `see`, `image`, and `list` capture paths now avoid command-local AppKit screen/application queries and use shared services for screen inventory and app identity checks.
 - Screen capture support internals are now split into focused scale, engine fallback, application resolving, and ScreenCaptureKit gate helpers.
+- Screen capture orchestration now keeps public protocol witnesses in `ScreenCaptureService`, with operation gating/metrics and capture execution paths split into focused companions.
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
