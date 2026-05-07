@@ -84,6 +84,43 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(candidate?.ownerPID, 200)
     }
 
+    func testPopoverOCRSelectorMatchesCandidateWindow() async throws {
+        let capture = MenuBarRecordingScreenCaptureService()
+        let ocr = MenuBarRecordingOCRRecognizer(text: "Battery Sound")
+        let selector = ObservationMenuBarPopoverOCRSelector(
+            screenCapture: capture,
+            screens: [Self.primaryScreen()],
+            ocrRecognizer: ocr)
+        let bounds = CGRect(x: 1000, y: 880, width: 320, height: 220)
+
+        let match = try await selector.matchCandidate(
+            windowID: 42,
+            bounds: bounds,
+            hints: ["battery"])
+
+        XCTAssertEqual(capture.capturedWindowIDs, [42])
+        XCTAssertEqual(match?.bounds, bounds)
+        XCTAssertEqual(match?.windowID, CGWindowID(42))
+    }
+
+    func testPopoverOCRSelectorCapturesPreferredArea() async throws {
+        let capture = MenuBarRecordingScreenCaptureService()
+        let ocr = MenuBarRecordingOCRRecognizer(text: "Wi-Fi Bluetooth")
+        let screen = Self.primaryScreen()
+        let selector = ObservationMenuBarPopoverOCRSelector(
+            screenCapture: capture,
+            screens: [screen],
+            ocrRecognizer: ocr)
+
+        let match = try await selector.matchArea(preferredX: 1600, hints: ["bluetooth"])
+
+        let expected = try XCTUnwrap(ObservationMenuBarPopoverOCRSelector.popoverAreaRect(
+            preferredX: 1600,
+            screens: [screen]))
+        XCTAssertEqual(capture.capturedAreas, [expected])
+        XCTAssertEqual(match?.bounds, expected)
+    }
+
     private static func windowInfo(
         id: Int,
         ownerPID: Int,
@@ -107,6 +144,17 @@ final class DesktopObservationMenubarTests: XCTestCase {
                 "Height": bounds.height,
             ],
         ]
+    }
+
+    private static func primaryScreen() -> ScreenInfo {
+        ScreenInfo(
+            index: 0,
+            name: "Main",
+            frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1728, height: 1080),
+            isPrimary: true,
+            scaleFactor: 2,
+            displayID: 1)
     }
 }
 
@@ -229,5 +277,25 @@ private final class MenuBarRecordingAutomationService: UIAutomationServiceProtoc
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         DetectedElement(id: "B1", type: .button, bounds: .zero)
+    }
+}
+
+@MainActor
+private final class MenuBarRecordingOCRRecognizer: OCRRecognizing {
+    private let text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    func recognizeText(in _: Data) throws -> OCRTextResult {
+        OCRTextResult(
+            observations: [
+                OCRTextObservation(
+                    text: self.text,
+                    confidence: 0.98,
+                    boundingBox: CGRect(x: 0.1, y: 0.1, width: 0.8, height: 0.2)),
+            ],
+            imageSize: CGSize(width: 320, height: 220))
     }
 }
