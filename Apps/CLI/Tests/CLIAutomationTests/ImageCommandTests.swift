@@ -379,6 +379,7 @@ struct ImageCommandTests {
         #expect(command.windowTitle == nil)
         #expect(command.windowIndex == nil)
         #expect(command.screenIndex == nil)
+        #expect(command.region == nil)
         #expect(command.captureFocus == .auto)
         #expect(command.jsonOutput == false)
         #expect(command.analyze == nil)

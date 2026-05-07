@@ -36,6 +36,9 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Screen index for screen captures")
     var screenIndex: Int?
 
+    @Option(name: .long, help: "Region for area captures as x,y,width,height in global display coordinates")
+    var region: String?
+
     @Flag(name: .long, help: "Capture at native Retina scale (default stores 1x logical resolution)")
     var retina: Bool = false
 
@@ -156,6 +159,7 @@ extension ImageCommand: CommanderBindableCommand {
         self.windowIndex = try values.decodeOption("windowIndex", as: Int.self)
         self.windowId = try values.decodeOption("windowId", as: Int.self)
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
+        self.region = values.singleOption("region")
         self.captureEngine = values.singleOption("captureEngine")
         let parsedFormat: ImageFormat? = try values.decodeOptionEnum("format")
         if let parsedFormat {

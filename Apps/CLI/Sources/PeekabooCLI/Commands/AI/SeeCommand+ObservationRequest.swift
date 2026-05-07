@@ -69,7 +69,8 @@ extension SeeCommand {
 
         case .area:
             throw ValidationError(
-                "Area capture mode is not supported by `see`; use `image --mode area` or a window/screen target."
+                "Area capture mode is not supported by `see`; use `image --mode area --region x,y,width,height` " +
+                    "or a window/screen target."
             )
         }
     }

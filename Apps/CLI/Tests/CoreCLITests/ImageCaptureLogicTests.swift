@@ -1,4 +1,5 @@
 import AppKit
+import Commander
 import Foundation
 import PeekabooCore
 import Testing
@@ -134,6 +135,36 @@ struct ImageCaptureLogicTests {
 
         #expect(command.mode == .screen)
         #expect(command.screenIndex == 1)
+    }
+
+    @Test(.tags(.fast))
+    func `Area targeting by region`() throws {
+        let command = try ImageCommand.parse([
+            "--mode", "area",
+            "--region", "10, 20, 300, 200",
+        ])
+
+        #expect(command.mode == .area)
+        #expect(command.region == "10, 20, 300, 200")
+        #expect(try command.areaCaptureRect() == CGRect(x: 10, y: 20, width: 300, height: 200))
+    }
+
+    @Test(.tags(.fast))
+    func `Area region validation`() throws {
+        let missing = try ImageCommand.parse(["--mode", "area"])
+        #expect(throws: ValidationError.self) {
+            _ = try missing.areaCaptureRect()
+        }
+
+        let invalid = try ImageCommand.parse(["--mode", "area", "--region", "1,2,3"])
+        #expect(throws: ValidationError.self) {
+            _ = try invalid.areaCaptureRect()
+        }
+
+        let empty = try ImageCommand.parse(["--mode", "area", "--region", "1,2,0,4"])
+        #expect(throws: ValidationError.self) {
+            _ = try empty.areaCaptureRect()
+        }
     }
 
     @Test(

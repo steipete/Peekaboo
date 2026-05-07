@@ -20,8 +20,9 @@ If you need a longer-running, change-aware capture (idle/active FPS, contact she
 | Flag | Description |
 | --- | --- |
 | `--app`, `--pid`, `--window-title`, `--window-index` | Resolve a window target; accepts bundle IDs, `PID:1234`, or friendly names. |
-| `--mode screen|window|frontmost|multi` | Override the auto mode picker (defaults to `window` when a target is given, otherwise `frontmost`). `multi` grabs every window for the target app or, if no app is set, every display. |
+| `--mode screen|window|frontmost|multi|area` | Override the auto mode picker (defaults to `window` when a target is given, `area` when `--region` is set, otherwise `frontmost`). `multi` grabs every window for the target app or, if no app is set, every display. |
 | `--screen-index <n>` | Limit screen captures to a single 0-based display. |
+| `--region x,y,width,height` | Capture an explicit desktop region when using `--mode area`; coordinates are global display points. |
 | `--path <file>` | Force the output path; if omitted, filenames land in the CWD using sanitized app/window names plus an ISO8601 timestamp. |
 | `--retina` | Store captures at native Retina scale (2x on HiDPI). Omit for the default 1x logical resolution to save space and speed. |
 | `--format png|jpg` | Emit PNG (default) or re-encode to JPEG at ~92% quality. |
@@ -29,12 +30,11 @@ If you need a longer-running, change-aware capture (idle/active FPS, contact she
 | `--analyze "prompt"` | Send the saved file to the configured AI provider and include `{provider,model,text}` in the output payload. |
 
 ## Implementation notes
-- Screen recording permission is enforced up front via `requireScreenRecordingPermission`; failures bail before any files are touched.
 - Special `--app menubar` captures just the status-bar strip, while `--app frontmost` triggers a targeted foreground grab without needing bundle info.
-- Window captures run through `ApplicationResolvable` and `ensureFocused` before calling `screenCapture.captureWindow`, so transient focus issues (Spaces, multiple monitors) are handled consistently with `see`.
+- Window, screen, menu bar, and area captures build desktop observation requests so target resolution, scale metadata, diagnostics, and file output follow the shared pipeline.
 - Multi-screen runs enumerate `services.screens.listScreens()` and save each display sequentially; filenames include the display index (`screen0`, `screen1`, …) so automated diffing scripts can glob reliably.
 - Saved metadata (label, bundle, window index) is embedded in the `SavedFile` records that print to stdout/JSON, which means follow-up tooling can decide which attachment represents which surface without parsing filenames.
-- Screen/area captures now default to a persistent ScreenCaptureKit stream; logs include wait + frame-age timings for profiling.
+- Area captures use `--region x,y,width,height` and are clamped/validated by the shared capture service against the containing display.
 
 ## Examples
 ```bash
@@ -46,6 +46,9 @@ peekaboo image --mode screen --analyze "Summarize the key UI differences between
 
 # Snapshot only the menu bar icons without stealing focus from the active Space
 peekaboo image --app menubar --capture-focus background
+
+# Capture a fixed desktop region in global display coordinates
+peekaboo image --mode area --region 100,120,640,360 --path /tmp/region.png
 ```
 
 ## Troubleshooting

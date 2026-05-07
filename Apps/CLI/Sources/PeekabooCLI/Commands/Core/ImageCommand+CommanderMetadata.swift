@@ -45,6 +45,11 @@ extension ImageCommand: CommanderSignatureProviding {
                     long: "screen-index"
                 ),
                 .commandOption(
+                    "region",
+                    help: "Region for area captures as x,y,width,height in global display coordinates",
+                    long: "region"
+                ),
+                .commandOption(
                     "captureEngine",
                     help: "Capture engine: auto|classic|cg|modern|sckit (defaults to auto)",
                     long: "capture-engine"

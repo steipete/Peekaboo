@@ -42,7 +42,7 @@ extension ImageCommand {
         case .frontmost:
             results = try await self.captureFrontmost()
         case .area:
-            throw ValidationError("Area capture mode is not implemented. Use --mode screen or --mode window instead.")
+            results = try await self.captureArea()
         }
 
         return results
@@ -51,6 +51,10 @@ extension ImageCommand {
     private func determineMode() -> PeekabooCore.CaptureMode {
         if let mode {
             return mode
+        }
+
+        if self.region != nil {
+            return .area
         }
 
         if self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowIndex != nil || self
@@ -185,6 +189,48 @@ extension ImageCommand {
                 windowIndex: nil
             ),
         ]
+    }
+
+    private func captureArea() async throws -> [ImageCapturedFile] {
+        let rect = try self.areaCaptureRect()
+        let observation = try await self.captureObservation(
+            target: .area(rect),
+            preferredName: "area",
+            index: nil
+        )
+        return try [
+            self.capturedFile(
+                from: observation,
+                preferredName: "area",
+                windowIndex: nil
+            ),
+        ]
+    }
+
+    func areaCaptureRect() throws -> CGRect {
+        guard let region = self.region?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !region.isEmpty
+        else {
+            throw ValidationError("Region must be provided when using --mode area")
+        }
+
+        let values = region
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard values.count == 4,
+              let x = Double(values[0]),
+              let y = Double(values[1]),
+              let width = Double(values[2]),
+              let height = Double(values[3])
+        else {
+            throw ValidationError("Region must be x,y,width,height")
+        }
+
+        guard width > 0, height > 0 else {
+            throw ValidationError("Region width and height must be greater than zero")
+        }
+
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     private func captureMenuBar() async throws -> [ImageCapturedFile] {

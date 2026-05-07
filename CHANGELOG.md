@@ -44,6 +44,7 @@
 - `peekaboo see --mode area` now fails during command binding instead of entering the legacy capture bridge and failing later.
 - `peekaboo see` no longer carries legacy window/frontmost capture fallback code; those targets now fail during observation target mapping if invalid.
 - `peekaboo see --capture-engine`, `peekaboo image --capture-engine`, and `peekaboo see --timeout-seconds` now bind through the Commander CLI path instead of being ignored.
+- `peekaboo image --mode area --region x,y,width,height` now captures explicit desktop regions through desktop observation.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.
 - Desktop observation diagnostics now report shared target resolution metadata for menu bar strip and popover captures, including source, bounds, hints, and click-open fallback status.

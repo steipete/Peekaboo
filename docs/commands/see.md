@@ -28,7 +28,7 @@ peekaboo see --app "Google Chrome" --window-title "Login"
 | Flag | Description |
 | --- | --- |
 | `--app`, `--window-title`, `--pid` | Limit capture to a known app/window/process. |
-| `--mode screen|window|frontmost|multi` | Override the auto target picker. `area` is intentionally rejected because `see` does not expose rectangle coordinates. |
+| `--mode screen|window|frontmost|multi` | Override the auto target picker. `area` is intentionally rejected because `see` does not expose rectangle coordinates; use `peekaboo image --mode area --region x,y,width,height` for raw region screenshots. |
 | `--annotate` | Overlay element bounds/IDs on the output image. |
 | `--path <file>` | Save the screenshot/annotation to disk. |
 | `--json` | Emit structured metadata (recommended for scripting). |
