@@ -51,6 +51,7 @@
 - Watch capture sessions now separate lifecycle/result assembly from capture-loop cadence/diffing and frame/video persistence helpers.
 - Application window listing now isolates hybrid CGWindowList/AX enumeration policy in a dedicated context object.
 - Capture models now separate image primitives, live session options, frame metadata, and session-result summaries into focused files.
+- UI automation now keeps focus lookup, wait/search logic, and search-policy limits out of the primary service initializer file.
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.

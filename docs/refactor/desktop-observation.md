@@ -71,6 +71,7 @@ Landed:
 - Watch capture lifecycle, loop/diff cadence, and frame/video persistence are split across focused session companions.
 - Application window listing keeps service facade/output assembly separate from hybrid CGWindowList/AX enumeration policy.
 - Capture models now keep image primitives, live session options, frame metadata, and session-result summaries in focused files.
+- UI automation keeps service initialization, delegated operations, focus/wait lookup, and search-policy limits in focused files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -168,7 +169,7 @@ Landed:
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal no longer pays an unused `defaults read` before running AppleScript.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
-- UI automation orchestration now keeps delegated detection, click, typing, scroll, hotkey, and gesture operations in `UIAutomationService+Operations`; the primary file keeps initialization, focus, and AX wait/search behavior.
+- UI automation orchestration now keeps delegated detection/click/typing/scroll/hotkey/gesture operations, focus/wait lookup, and search-policy limits in focused companion files; the primary file keeps initialization only.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in `SnapshotManager+Helpers`.
 - Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, and toolset assembly in focused companion files; tool-call argument previews now have tested sensitive-value redaction.
@@ -329,8 +330,10 @@ ApplicationService+Lifecycle.swift: 385 lines
 ApplicationService+WindowListing.swift: 197 lines
 ApplicationWindowEnumerationContext.swift: 278 lines
 ApplicationServiceWindowsWorkaround.swift: 198 lines
-UIAutomationService.swift: 458 lines
-UIAutomationService+Operations.swift: 430 lines
+UIAutomationService.swift: 139 lines
+UIAutomationService+Operations.swift: 431 lines
+UIAutomationService+ElementLookup.swift: 307 lines
+UIAutomationSearchPolicy.swift: 21 lines
 VisualizerCoordinator.swift: 204 lines
 VisualizerCoordinator+AnimationAPI.swift: 200 lines
 VisualizerCoordinator+InputDisplays.swift: 286 lines
