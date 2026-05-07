@@ -233,7 +233,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
                 return match.index
             }
-            if let preferred = ImageCommand.preferredWindow(from: renderable) { return preferred.index }
+            if let preferred = ObservationTargetResolver.bestWindow(from: renderable) { return preferred.index }
             return renderable.first?.index
         } catch { return nil }
     }

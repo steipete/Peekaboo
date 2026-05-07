@@ -37,6 +37,24 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(selected?.windowID, 12)
     }
 
+    func testBestWindowPrefersMainTitledWindowOverLargerUntitledWindow() {
+        let auxiliary = Self.window(
+            id: 20,
+            title: "",
+            bounds: CGRect(x: 100, y: 100, width: 1000, height: 700),
+            index: 0)
+        let main = Self.window(
+            id: 21,
+            title: "Document",
+            bounds: CGRect(x: 200, y: 200, width: 500, height: 360),
+            isMainWindow: true,
+            index: 1)
+
+        let selected = ObservationTargetResolver.bestWindow(from: [auxiliary, main])
+
+        XCTAssertEqual(selected?.windowID, 21)
+    }
+
     func testObservationWithoutDetectionCapturesResolvedWindowID() async throws {
         let imageData = Data([1, 2, 3])
         let app = Self.app()
@@ -166,6 +184,7 @@ final class DesktopObservationServiceTests: XCTestCase {
         title: String,
         bounds: CGRect,
         isMinimized: Bool = false,
+        isMainWindow: Bool = false,
         index: Int = 0) -> ServiceWindowInfo
     {
         ServiceWindowInfo(
@@ -173,7 +192,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             title: title,
             bounds: bounds,
             isMinimized: isMinimized,
-            isMainWindow: false,
+            isMainWindow: isMainWindow,
             windowLevel: 0,
             alpha: 1,
             index: index,

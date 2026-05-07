@@ -117,25 +117,48 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         }
     }
 
-    static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
-        let visible = windows.filter { window in
-            !window.isMinimized
-                && !window.isOffScreen
-                && window.isOnScreen
-                && window.layer == 0
-                && window.alpha > 0
-                && window.isShareableWindow
-                && !window.isExcludedFromWindowsMenu
-        }
+    public static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
+        let visible = windows.filter { WindowFiltering.isRenderable($0, mode: .capture) }
 
         return visible.max { lhs, rhs in
-            let lhsArea = lhs.bounds.width * lhs.bounds.height
-            let rhsArea = rhs.bounds.width * rhs.bounds.height
-            if lhsArea == rhsArea {
+            let lhsScore = self.windowScore(lhs)
+            let rhsScore = self.windowScore(rhs)
+            if lhsScore == rhsScore {
                 return lhs.index > rhs.index
             }
-            return lhsArea < rhsArea
+            return lhsScore < rhsScore
         }
+    }
+
+    private static func windowScore(_ window: ServiceWindowInfo) -> Double {
+        var score = 0.0
+
+        if window.isMainWindow {
+            score += 2000
+        }
+
+        if window.windowLevel == 0 {
+            score += 500
+        }
+
+        if window.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            score -= 500
+        } else {
+            score += 2500
+        }
+
+        if !window.isMinimized {
+            score += 300
+        }
+
+        let area = window.bounds.width * window.bounds.height
+        if area > .zero {
+            score += min(Double(area) / 150.0, 4000)
+        }
+
+        score += max(0, 600 - Double(window.index) * 40)
+
+        return score
     }
 }
 

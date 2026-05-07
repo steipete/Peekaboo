@@ -54,6 +54,10 @@ public enum WindowFiltering {
         mode: Mode = .capture) -> String?
     {
         let thresholds = mode.thresholds
+        if mode.requireOnScreen, window.isMinimized {
+            return "window minimized"
+        }
+
         if window.layer != 0 {
             return "layer != 0"
         }
