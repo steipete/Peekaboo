@@ -170,6 +170,7 @@ Landed:
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - `PeekabooServices` now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
 - `WindowToolFormatter` now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
+- `SpaceUtilities` now keeps private CGS API declarations and public Space models/errors in focused files.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -327,6 +328,9 @@ PeekabooServices+Automation.swift: 136 lines
 WindowToolFormatter.swift: 128 lines
 WindowToolFormatter+WindowResults.swift: 379 lines
 WindowToolFormatter+SpaceResults.swift: 129 lines
+SpaceUtilities.swift: 443 lines
+SpaceCGSPrivateAPI.swift: 121 lines
+SpaceModels.swift: 68 lines
 MenuService+Extras.swift: 296 lines
 MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines
