@@ -41,21 +41,7 @@ public final class ElementDetectionService {
     private let applicationService: ApplicationService
     private let windowIdentityService = WindowIdentityService()
     private let windowManagementService = WindowManagementService()
-    // AX trees are expensive to rebuild, but UI can mutate immediately after automation actions.
-    // Keep the cache short-lived so back-to-back `see` calls benefit without hiding fresh state.
-    private let axTreeCacheTTL: TimeInterval = 1.5
-    private var axTreeCache: [AXTreeCacheKey: AXTreeCacheEntry] = [:]
-
-    private struct AXTreeCacheKey: Hashable {
-        let windowID: Int
-        let processID: pid_t
-        let allowWebFocus: Bool
-    }
-
-    private struct AXTreeCacheEntry {
-        let cachedAt: Date
-        let elements: [DetectedElement]
-    }
+    private let axTreeCache = ElementDetectionCache()
 
     public init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
@@ -96,11 +82,11 @@ public final class ElementDetectionService {
         let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
         let detectedElements: [DetectedElement]
         let usedCache: Bool
-        let cacheKey = self.axTreeCacheKey(
+        let cacheKey = self.axTreeCache.key(
             windowID: resolvedWindowID,
             processID: targetApp.processIdentifier,
             allowWebFocus: allowWebFocus)
-        if let cacheKey, let cached = self.cachedElements(for: cacheKey) {
+        if let cacheKey, let cached = self.axTreeCache.elements(for: cacheKey) {
             self.logger.debug("Using cached AX tree for window \(cacheKey.windowID)")
             detectedElements = cached
             usedCache = true
@@ -112,7 +98,7 @@ public final class ElementDetectionService {
                 allowWebFocus: allowWebFocus,
                 elementIdMap: &elementIdMap)
             if let cacheKey {
-                self.storeCachedElements(detectedElements, for: cacheKey)
+                self.axTreeCache.store(detectedElements, for: cacheKey)
             }
             usedCache = false
         }
@@ -172,24 +158,6 @@ extension ElementDetectionService {
 }
 
 extension ElementDetectionService {
-    private func axTreeCacheKey(windowID: Int?, processID: pid_t, allowWebFocus: Bool) -> AXTreeCacheKey? {
-        guard let windowID else { return nil }
-        return AXTreeCacheKey(windowID: windowID, processID: processID, allowWebFocus: allowWebFocus)
-    }
-
-    private func cachedElements(for key: AXTreeCacheKey) -> [DetectedElement]? {
-        guard let entry = self.axTreeCache[key] else { return nil }
-        if Date().timeIntervalSince(entry.cachedAt) <= self.axTreeCacheTTL {
-            return entry.elements
-        }
-        self.axTreeCache.removeValue(forKey: key)
-        return nil
-    }
-
-    private func storeCachedElements(_ elements: [DetectedElement], for key: AXTreeCacheKey) {
-        self.axTreeCache[key] = AXTreeCacheEntry(cachedAt: Date(), elements: elements)
-    }
-
     private func groupDetectedElements(_ elements: [DetectedElement]) -> DetectedElements {
         DetectedElements(
             buttons: elements.filter { $0.type == .button },

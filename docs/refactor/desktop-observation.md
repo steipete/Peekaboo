@@ -46,6 +46,7 @@ Landed:
 - Screen capture scale planning is now centralized and unit-tested for logical 1x versus native Retina output.
 - Direct `ElementDetectionService` timeout racing is now enforced by `ElementDetectionTimeoutRunner`.
 - AX traversal limits and sparse-web fallback thresholds now live in `AXTraversalPolicy`.
+- AX tree cache state now lives in `ElementDetectionCache`.
 
 Still intentionally incomplete:
 
@@ -55,7 +56,7 @@ Still intentionally incomplete:
 - structured timing export in all user-facing JSON;
 - extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
-- moving AX traversal policy, descriptor reading, and cache invalidation into dedicated collaborators;
+- moving descriptor reading and cache invalidation into dedicated collaborators;
 - command cleanup after the bridge paths disappear.
 
 The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.

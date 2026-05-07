@@ -305,6 +305,69 @@ struct ElementDetectionTimeoutRunnerTests {
     }
 }
 
+@Suite(.tags(.fast))
+struct ElementDetectionCacheTests {
+    @Test
+    func `Cache returns stored elements before TTL expires`() {
+        var now = Date(timeIntervalSince1970: 1000)
+        let cache = ElementDetectionCache(ttl: 1.0) { now }
+        let key = ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: true)
+
+        cache.store([Self.element(id: "elem_1")], for: key)
+        now.addTimeInterval(0.5)
+
+        #expect(cache.elements(for: key)?.map(\.id) == ["elem_1"])
+    }
+
+    @Test
+    func `Cache expires stale elements`() {
+        var now = Date(timeIntervalSince1970: 1000)
+        let cache = ElementDetectionCache(ttl: 1.0) { now }
+        let key = ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: true)
+
+        cache.store([Self.element(id: "elem_1")], for: key)
+        now.addTimeInterval(1.1)
+
+        #expect(cache.elements(for: key) == nil)
+        #expect(cache.elements(for: key) == nil)
+    }
+
+    @Test
+    func `Cache key requires a window id`() {
+        let cache = ElementDetectionCache()
+
+        #expect(cache.key(windowID: nil, processID: pid_t(42), allowWebFocus: true) == nil)
+        #expect(
+            cache.key(windowID: 7, processID: pid_t(42), allowWebFocus: false) ==
+                ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: false))
+    }
+
+    @Test
+    func `Cache key separates web focus policy`() {
+        let cache = ElementDetectionCache()
+        let focusedKey = ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: true)
+        let unfocusedKey = ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: false)
+
+        cache.store([Self.element(id: "focused")], for: focusedKey)
+        cache.store([Self.element(id: "unfocused")], for: unfocusedKey)
+
+        #expect(cache.elements(for: focusedKey)?.map(\.id) == ["focused"])
+        #expect(cache.elements(for: unfocusedKey)?.map(\.id) == ["unfocused"])
+    }
+
+    private static func element(id: String) -> DetectedElement {
+        DetectedElement(
+            id: id,
+            type: .button,
+            label: "Button",
+            value: nil,
+            bounds: CGRect(x: 0, y: 0, width: 10, height: 10),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: [:])
+    }
+}
+
 extension ElementDetectionServiceTests {
     private func assertBasicElementCollections(
         _ elements: DetectedElements,

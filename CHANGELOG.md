@@ -12,6 +12,7 @@
 - Centralized automatic app-window ranking in desktop observation so screenshot commands prefer normal titled windows over auxiliary capture surfaces.
 - Centralized screen capture scale planning so logical 1x versus native Retina output uses the same tested policy across ScreenCaptureKit and legacy capture paths.
 - Added `AXTraversalPolicy` as the first extracted element-detection policy collaborator.
+- Added `ElementDetectionCache` as the dedicated short-lived AX tree cache used by element detection.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!
