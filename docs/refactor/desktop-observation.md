@@ -154,6 +154,7 @@ Landed:
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
+- `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 
 Current status:
 
