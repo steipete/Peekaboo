@@ -83,7 +83,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 autoclean: WatchAutocleanConfig(minutes: self.autocleanMinutes ?? 120, managed: self.path == nil),
                 sourceKind: .video,
                 videoIn: videoURL.path,
-                videoOut: self.videoOut,
+                videoOut: CaptureCommandPathResolver.filePath(from: self.videoOut),
                 keepAllFrames: self.noDiff,
                 videoOptions: CaptureVideoOptionsSnapshot(
                     sampleFps: self.everyMs == nil ? self.sampleFps ?? 2.0 : nil,

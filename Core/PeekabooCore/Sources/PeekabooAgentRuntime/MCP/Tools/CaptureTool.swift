@@ -150,7 +150,7 @@ private struct CaptureRequest {
             diffBudget: diffBudget)
 
         let outputDir = if let dir = input.output_dir {
-            URL(fileURLWithPath: dir, isDirectory: true)
+            CaptureToolPathResolver.outputDirectory(from: dir)
         } else {
             URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
                 .appendingPathComponent("peekaboo/capture-sessions/capture-\(UUID().uuidString)", isDirectory: true)
@@ -158,7 +158,7 @@ private struct CaptureRequest {
         self.outputDirectory = outputDir
         self.autocleanMinutes = input.autocleanMinutes ?? 120
         self.usesDefaultOutput = input.output_dir == nil
-        self.videoOut = input.videoOut
+        self.videoOut = CaptureToolPathResolver.filePath(from: input.videoOut)
 
         switch self.source {
         case .live:
@@ -176,7 +176,7 @@ private struct CaptureRequest {
             guard let inputPath = input.input else {
                 throw PeekabooError.invalidInput("input is required when source=video")
             }
-            let videoURL = URL(fileURLWithPath: inputPath)
+            let videoURL = CaptureToolPathResolver.fileURL(from: inputPath)
             let sampleFps = input.sampleFps
             let everyMs = input.everyMs
             if sampleFps != nil, everyMs != nil {
@@ -203,6 +203,24 @@ private struct CaptureRequest {
             let opts = CaptureRequest.buildVideoOptions(constraints: constraints)
             self.options = opts
         }
+    }
+}
+
+enum CaptureToolPathResolver {
+    static func outputDirectory(from path: String) -> URL {
+        URL(fileURLWithPath: self.expandedPath(path), isDirectory: true)
+    }
+
+    static func fileURL(from path: String) -> URL {
+        URL(fileURLWithPath: self.expandedPath(path))
+    }
+
+    static func filePath(from path: String?) -> String? {
+        path.map(self.expandedPath)
+    }
+
+    private static func expandedPath(_ path: String) -> String {
+        (path as NSString).expandingTildeInPath
     }
 }
 

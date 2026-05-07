@@ -100,7 +100,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                 autoclean: WatchAutocleanConfig(minutes: self.autocleanMinutes ?? 120, managed: self.path == nil),
                 sourceKind: .live,
                 videoIn: nil,
-                videoOut: self.videoOut,
+                videoOut: CaptureCommandPathResolver.filePath(from: self.videoOut),
                 keepAllFrames: false
             )
             let session = WatchCaptureSession(dependencies: deps, configuration: config)

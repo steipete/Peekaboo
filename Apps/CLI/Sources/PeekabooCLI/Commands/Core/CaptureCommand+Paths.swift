@@ -15,6 +15,10 @@ enum CaptureCommandPathResolver {
         URL(fileURLWithPath: self.expandedPath(path))
     }
 
+    static func filePath(from path: String?) -> String? {
+        path.map(self.expandedPath)
+    }
+
     private static func expandedPath(_ path: String) -> String {
         (path as NSString).expandingTildeInPath
     }
