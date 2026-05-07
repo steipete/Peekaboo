@@ -197,6 +197,7 @@ Landed:
 - Dialog service cleanup removed stale duplicate file-dialog navigation, filename, save-verification, and key-mapping helpers from the main implementation file; the active file-dialog path stays in `DialogService+FileDialogs`.
 - File-dialog handling now keeps orchestration, navigation/focus, filename entry, and save verification in focused service files.
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
+- Dialog resolution now keeps application lookup, file-dialog recursion, visibility assists, and CoreGraphics window fallback in focused companions.
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal no longer pays an unused `defaults read` before running AppleScript.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Script process execution now keeps window and clipboard commands in focused companions, leaving system commands to app/menu/dock routing.
@@ -367,7 +368,11 @@ DialogService.swift: 78 lines
 DialogService+Operations.swift: 215 lines
 DialogService+ButtonActions.swift: 155 lines
 DialogService+Elements.swift: 224 lines
-DialogService+Resolution.swift: 418 lines
+DialogService+Resolution.swift: 218 lines
+DialogService+ApplicationLookup.swift: 22 lines
+DialogService+FileDialogResolution.swift: 40 lines
+DialogService+Visibility.swift: 115 lines
+DialogService+CGWindowResolution.swift: 45 lines
 DialogService+Classification.swift: 96 lines
 DialogService+FileDialogs.swift: 177 lines
 DialogService+FileDialogVerification.swift: 302 lines

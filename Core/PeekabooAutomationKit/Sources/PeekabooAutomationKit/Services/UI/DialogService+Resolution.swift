@@ -1,6 +1,5 @@
 import AppKit
 import AXorcist
-import CoreGraphics
 import Foundation
 
 @MainActor
@@ -44,23 +43,6 @@ extension DialogService {
         }
 
         return resolved
-    }
-
-    func runningApplication(matching identifier: String) -> NSRunningApplication? {
-        let lowered = identifier.lowercased()
-        return NSWorkspace.shared.runningApplications.first {
-            if let name = $0.localizedName?.lowercased(),
-               name == lowered || name.contains(lowered)
-            {
-                return true
-            }
-            if let bundle = $0.bundleIdentifier?.lowercased(),
-               bundle == lowered || bundle.contains(lowered)
-            {
-                return true
-            }
-            return false
-        }
     }
 
     private func findDialogElement(withTitle title: String?, appName: String?) throws -> Element {
@@ -160,142 +142,6 @@ extension DialogService {
         return app.windowsWithTimeout(timeout: timeout) ?? []
     }
 
-    private func findActiveFileDialogElement(appName: String) -> Element? {
-        guard let targetApp = self.runningApplication(matching: appName) else { return nil }
-        let appElement = AXApp(targetApp).element
-
-        let windows = appElement.windowsWithTimeout() ?? []
-        for window in windows {
-            if let candidate = self.findActiveFileDialogCandidate(in: window) {
-                return candidate
-            }
-        }
-        return nil
-    }
-
-    private func findActiveFileDialogCandidate(in element: Element) -> Element? {
-        if self.isFileDialogElement(element) {
-            return element
-        }
-
-        for sheet in self.sheetElements(for: element) {
-            if let candidate = self.findActiveFileDialogCandidate(in: sheet) {
-                return candidate
-            }
-        }
-
-        if let children = element.children() {
-            for child in children {
-                if let candidate = self.findActiveFileDialogCandidate(in: child) {
-                    return candidate
-                }
-            }
-        }
-
-        return nil
-    }
-
-    private func ensureDialogVisibility(windowTitle: String?, appName: String?) async {
-        guard windowTitle != nil || appName != nil else {
-            return
-        }
-
-        do {
-            let applications = try await self.applicationService.listApplications()
-            for app in applications.data.applications {
-                if let appName,
-                   app.name.caseInsensitiveCompare(appName) != .orderedSame,
-                   app.bundleIdentifier?.caseInsensitiveCompare(appName) != .orderedSame
-                {
-                    continue
-                }
-
-                let windowsOutput = try await self.applicationService.listWindows(for: app.name, timeout: nil)
-                if let window = windowsOutput.data.windows.first(where: {
-                    self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
-                }) {
-                    self.logger.info("Focusing dialog candidate '\(window.title)' from \(app.name)")
-                    try await self.focusService.focusWindow(
-                        windowID: CGWindowID(window.windowID),
-                        options: FocusManagementService.FocusOptions(
-                            timeout: 1.0,
-                            retryCount: 1,
-                            switchSpace: true,
-                            bringToCurrentSpace: true))
-                    try await Task.sleep(nanoseconds: 200_000_000)
-                    return
-                }
-            }
-        } catch {
-            self.logger.debug("Dialog visibility assist failed: \(String(describing: error))")
-        }
-    }
-
-    private func findDialogViaApplicationService(windowTitle: String?, appName: String?) async -> Element? {
-        guard let applications = try? await self.applicationService.listApplications() else {
-            return nil
-        }
-
-        let frontmostApp = NSWorkspace.shared.frontmostApplication
-        let frontmostBundle = frontmostApp?.bundleIdentifier?.lowercased()
-        let frontmostName = frontmostApp?.localizedName?.lowercased()
-
-        for app in applications.data.applications {
-            if let appName,
-               app.name.caseInsensitiveCompare(appName) != .orderedSame,
-               app.bundleIdentifier?.caseInsensitiveCompare(appName) != .orderedSame
-            {
-                continue
-            }
-
-            if let bundle = frontmostBundle,
-               let candidateBundle = app.bundleIdentifier?.lowercased(),
-               candidateBundle != bundle
-            {
-                continue
-            }
-
-            if frontmostBundle == nil,
-               let name = frontmostName,
-               app.name.lowercased() != name
-            {
-                continue
-            }
-
-            guard let windowsOutput = try? await self.applicationService.listWindows(for: app.name, timeout: nil) else {
-                continue
-            }
-
-            guard let windowInfo = windowsOutput.data.windows.first(where: {
-                self.matchesDialogWindowTitle($0.title, expectedTitle: windowTitle)
-            }) else {
-                continue
-            }
-
-            if let windowHandle = self.windowIdentityService.findWindow(byID: CGWindowID(windowInfo.windowID)),
-               let candidate = self.resolveDialogCandidate(
-                   in: windowHandle.element,
-                   matching: windowTitle ?? windowInfo.title)
-            {
-                return candidate
-            }
-
-            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
-            let axApp = AXApp(runningApp).element
-            guard let appWindows = axApp.windowsWithTimeout(timeout: 0.5) else { continue }
-
-            if let match = appWindows.first(where: {
-                let title = $0.title() ?? ""
-                return title == windowInfo.title ||
-                    self.matchesDialogWindowTitle(title, expectedTitle: windowTitle)
-            }) {
-                return match
-            }
-        }
-
-        return nil
-    }
-
     private func dialogIdentifier(for element: Element) -> String {
         let role = element.role() ?? "unknown"
         let subrole = element.subrole() ?? ""
@@ -343,53 +189,7 @@ extension DialogService {
         throw DialogError.noActiveDialog
     }
 
-    private func matchesDialogWindowTitle(_ title: String, expectedTitle: String?) -> Bool {
-        if let expectedTitle, !expectedTitle.isEmpty {
-            return title.localizedCaseInsensitiveContains(expectedTitle)
-        }
-        return self.dialogTitleHints.contains { title.localizedCaseInsensitiveContains($0) }
-    }
-
-    private func findDialogUsingCGWindowList(title: String?) -> Element? {
-        guard let cgWindows = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID) as? [[String: Any]]
-        else {
-            return nil
-        }
-
-        for info in cgWindows {
-            guard let ownerPid = info[kCGWindowOwnerPID as String] as? NSNumber else { continue }
-            let windowTitle = (info[kCGWindowName as String] as? String) ?? ""
-
-            if let expectedTitle = title,
-               !windowTitle.localizedCaseInsensitiveContains(expectedTitle)
-            {
-                continue
-            }
-
-            if title == nil,
-               !self.dialogTitleHints.contains(where: { windowTitle.localizedCaseInsensitiveContains($0) })
-            {
-                continue
-            }
-
-            guard let appElement = AXApp(pid: pid_t(ownerPid.intValue))?.element,
-                  let windows = appElement.windowsWithTimeout(timeout: 0.5)
-            else { continue }
-
-            if let matchingWindow = windows.first(where: {
-                let axTitle = $0.title() ?? ""
-                return axTitle == windowTitle || self.isDialogElement($0, matching: title)
-            }) {
-                return matchingWindow
-            }
-        }
-
-        return nil
-    }
-
-    private func resolveDialogCandidate(in element: Element, matching title: String?) -> Element? {
+    func resolveDialogCandidate(in element: Element, matching title: String?) -> Element? {
         if self.isDialogElement(element, matching: title) {
             return element
         }
