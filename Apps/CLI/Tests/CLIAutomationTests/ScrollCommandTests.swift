@@ -147,6 +147,24 @@ struct ScrollCommandTests {
         #expect(payload.data.totalTicks == 40) // 4 * 10 when smooth
     }
 
+    @Test
+    func `Scroll without element reports pointer location from automation service`() async throws {
+        let context = await self.makeContext { automation, _ in
+            automation.stubCurrentMouseLocation = CGPoint(x: 123, y: 456)
+        }
+
+        let result = try await self.runScroll(
+            arguments: ["--direction", "down", "--json"],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let payloadData = try #require(self.output(from: result).data(using: .utf8))
+        let payload = try JSONDecoder().decode(CodableJSONResponse<ScrollResult>.self, from: payloadData)
+        #expect(payload.data.location["x"] == 123)
+        #expect(payload.data.location["y"] == 456)
+    }
+
     @Test(arguments: [
         "up", "down", "left", "right",
     ])

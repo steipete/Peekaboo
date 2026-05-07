@@ -218,6 +218,7 @@ Landed:
 - `InMemorySnapshotManager` now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files; writes now enforce the LRU cap immediately and artifact cleanup also applies to pruned entries.
 - Agent desktop context gathering now reads focused application/window state, cursor position, and recent apps through application/window/automation service boundaries instead of direct `NSWorkspace`/CoreGraphics event/window scans.
 - MCP app cycling and move-center resolution now use injected automation/screen services instead of direct AXorcist/AppKit calls.
+- CLI move/scroll result telemetry now reads the current cursor position through the automation service boundary instead of direct CoreGraphics event calls.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - MCP `WindowTool` action handlers now live in a focused companion file, and target validation uses the tool's normal argument-error path.

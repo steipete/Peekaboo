@@ -118,8 +118,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             let targetLocation = resolvedTarget.location
             let targetDescription = resolvedTarget.description
 
-            // Get current mouse location for distance calculation
-            let currentLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
+            let currentLocation = self.services.automation.currentMouseLocation() ?? .zero
             let distance = hypot(
                 targetLocation.x - currentLocation.x,
                 targetLocation.y - currentLocation.y

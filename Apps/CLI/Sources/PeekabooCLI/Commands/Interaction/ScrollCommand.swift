@@ -133,9 +133,8 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                     InteractionTargetPointResolver.coordinate(.zero, source: .element)
                 }
             } else {
-                // Get current mouse position
                 InteractionTargetPointResolver.coordinate(
-                    CGEvent(source: nil)?.location ?? .zero,
+                    self.services.automation.currentMouseLocation() ?? .zero,
                     source: .pointer
                 )
             }

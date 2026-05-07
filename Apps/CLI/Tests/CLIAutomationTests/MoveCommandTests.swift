@@ -151,6 +151,22 @@ struct MoveCommandTests {
     }
 
     @Test
+    func `JSON output reports cursor location from automation service`() async throws {
+        let context = await self.makeContext { automation, _ in
+            automation.stubCurrentMouseLocation = CGPoint(x: 30, y: 40)
+        }
+
+        let result = try await self.runMove(arguments: ["33,44", "--json"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let data = try #require(self.output(from: result).data(using: .utf8))
+        let payload = try JSONDecoder().decode(CodableJSONResponse<MoveResult>.self, from: data)
+        #expect(payload.data.fromLocation["x"] == 30)
+        #expect(payload.data.fromLocation["y"] == 40)
+        #expect(payload.data.distance == 5)
+    }
+
+    @Test
     func `Human profile toggles movement mode`() async throws {
         let context = await self.makeContext()
         let result = try await self.runMove(arguments: ["100,200", "--profile", "human"], context: context)

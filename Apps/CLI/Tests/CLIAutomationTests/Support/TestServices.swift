@@ -197,6 +197,7 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol {
     private var waitForElementResults: [WaitTargetKey: WaitForElementResult] = [:]
     var detectElementsHandler: ((Data, String?, WindowContext?) async throws -> ElementDetectionResult)?
     var nextDetectionResult: ElementDetectionResult?
+    var stubCurrentMouseLocation: CGPoint?
 
     func setWaitForElementResult(_ result: WaitForElementResult, for target: ClickTarget) {
         self.waitForElementResults[self.key(for: target)] = result
@@ -341,6 +342,10 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol {
         self.moveMouseCalls.append(
             MoveMouseCall(destination: to, duration: duration, steps: steps, profile: profile)
         )
+    }
+
+    func currentMouseLocation() -> CGPoint? {
+        self.stubCurrentMouseLocation
     }
 
     func getFocusedElement() -> UIFocusInfo? {
