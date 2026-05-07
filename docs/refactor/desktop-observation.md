@@ -54,6 +54,7 @@ Landed:
 - Generic-group text-field recovery now lives in `ElementTypeAdjuster`.
 - Application menu-bar detection now lives in `MenuBarElementCollector`.
 - Accessibility tree traversal now lives in `AXTreeCollector`.
+- Detection app/window fallback selection now lives in `ElementDetectionWindowResolver`.
 
 Still intentionally incomplete:
 
