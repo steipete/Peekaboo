@@ -96,6 +96,7 @@ Landed:
 - `peekaboo click --on/--id`, `click <query>`, `move --on/--id`, `move --to <query>`, `scroll --on`, `drag --from/--to`, and `swipe --from/--to` now refresh the implicit observation snapshot once when cached element targets are missing.
 - `peekaboo scroll --smooth --json` now reports the actual smooth scroll tick count used by the automation service.
 - `peekaboo scroll --on --json` now reports the same moved-window-adjusted target point used by the automation service.
+- `peekaboo window focus --snapshot` now focuses the captured window context while preserving explicit snapshots during focus-cache invalidation.
 
 Still incomplete:
 
@@ -876,8 +877,8 @@ Work:
 - done: broaden observe-if-needed from element IDs to implicit latest query targets while keeping no-snapshot query actions on their direct AX path;
 - done: align smooth scroll result telemetry with the automation service tick configuration;
 - done: share moved-window target-point resolution with scroll result rendering;
-- teach focus commands to accept fresh observation context where available;
-- define explicit-snapshot and focus-command invalidation policy;
+- done: teach `window focus` to accept explicit snapshot window context;
+- done: preserve explicit snapshots while invalidating implicit latest state after focus commands;
 - add target-point diagnostics.
 
 Gate:

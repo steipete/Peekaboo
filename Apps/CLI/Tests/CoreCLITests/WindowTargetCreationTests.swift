@@ -71,4 +71,59 @@ struct WindowTargetCreationTests {
             Issue.record("Expected .windowId")
         }
     }
+
+    @Test
+    func `validation can allow snapshot-only focus target`() throws {
+        var options = WindowIdentificationOptions()
+        try options.validate(allowMissingTarget: true)
+
+        options.windowIndex = -1
+        #expect(throws: (any Error).self) {
+            try options.validate(allowMissingTarget: true)
+        }
+    }
+
+    @Test
+    func `snapshot window target prefers window id`() {
+        let snapshot = UIAutomationSnapshot(
+            applicationName: "Example",
+            applicationBundleId: "com.example.app",
+            windowTitle: "Main",
+            windowID: 42
+        )
+
+        switch windowTarget(from: snapshot) {
+        case let .windowId(windowID):
+            #expect(windowID == 42)
+        default:
+            Issue.record("Expected .windowId")
+        }
+    }
+
+    @Test
+    func `snapshot window target falls back to app and title`() {
+        let snapshot = UIAutomationSnapshot(
+            applicationName: "Example",
+            applicationBundleId: "com.example.app",
+            windowTitle: "Main"
+        )
+
+        switch windowTarget(from: snapshot) {
+        case let .applicationAndTitle(app, title):
+            #expect(app == "com.example.app")
+            #expect(title == "Main")
+        default:
+            Issue.record("Expected .applicationAndTitle")
+        }
+    }
+
+    @Test
+    func `snapshot display name prefers application name`() {
+        let snapshot = UIAutomationSnapshot(
+            applicationName: "Example",
+            applicationBundleId: "com.example.app"
+        )
+
+        #expect(windowDisplayName(from: snapshot, snapshotId: "snapshot-1") == "Example")
+    }
 }

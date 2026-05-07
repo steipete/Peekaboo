@@ -88,6 +88,7 @@
 - `peekaboo click --on/--id`, `click <query>`, `move --on/--id`, `move --to <query>`, `scroll --on`, `drag --from/--to`, and `swipe --from/--to` now refresh the implicit observation snapshot once when cached element targets are missing, avoiding stale latest-snapshot timeouts without overriding explicit `--snapshot`.
 - `peekaboo scroll --smooth --json` now reports the actual smooth scroll tick count used by the automation service (`amount * 10`) instead of the stale `amount * 3` estimate.
 - `peekaboo scroll --on --json` now reports the moved-window-adjusted target point, matching the point used by the automation service.
+- `peekaboo window focus --snapshot` can now focus the window captured by a snapshot, and explicit snapshots are preserved when focus changes invalidate implicit latest state.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
 - Concurrent `peekaboo see` calls now queue the local screenshot/detection pipeline across processes, avoiding ReplayKit/ScreenCaptureKit continuation hangs under parallel usage.

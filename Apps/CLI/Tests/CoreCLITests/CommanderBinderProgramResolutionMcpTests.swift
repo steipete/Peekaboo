@@ -67,12 +67,14 @@ struct CommanderBinderMCPWindowTests {
             "focus",
             "--app", "Safari",
             "--window-title", "Inbox",
+            "--snapshot", "snapshot-123",
             "--space-switch",
             "--bring-to-current-space"
         ])
         let values = invocation.parsedValues
         #expect(values.options["app"] == ["Safari"])
         #expect(values.options["windowTitle"] == ["Inbox"])
+        #expect(values.options["snapshot"] == ["snapshot-123"])
         #expect(values.flags.contains("spaceSwitch"))
         #expect(values.flags.contains("bringToCurrentSpace"))
     }

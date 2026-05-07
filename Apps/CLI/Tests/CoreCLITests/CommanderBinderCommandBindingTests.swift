@@ -180,6 +180,7 @@ struct CommanderBinderCommandBindingTests {
             positional: [],
             options: [
                 "app": ["Safari"],
+                "snapshot": ["snapshot-123"],
             ],
             flags: ["verify"]
         )
@@ -188,6 +189,7 @@ struct CommanderBinderCommandBindingTests {
             parsedValues: parsed
         )
         #expect(command.verify == true)
+        #expect(command.snapshot == "snapshot-123")
     }
 
     @Test

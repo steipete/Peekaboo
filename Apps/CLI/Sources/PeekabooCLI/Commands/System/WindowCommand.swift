@@ -113,13 +113,13 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
         self.windowIndex = try container.decodeIfPresent(Int.self, forKey: .windowIndex)
     }
 
-    func validate() throws {
+    func validate(allowMissingTarget: Bool = false) throws {
         if let windowId = self.windowId, windowId <= 0 {
             throw ValidationError("--window-id must be greater than 0")
         }
 
         // Ensure we have some way to identify the window
-        if self.app == nil && self.pid == nil && self.windowId == nil {
+        if self.app == nil && self.pid == nil && self.windowId == nil && !allowMissingTarget {
             throw ValidationError("Either --app, --pid, or --window-id must be specified")
         }
 
@@ -179,6 +179,25 @@ extension WindowIdentificationOptions {
         }
         return "window"
     }
+}
+
+func windowTarget(from snapshot: UIAutomationSnapshot) -> WindowTarget? {
+    if let windowID = snapshot.windowID {
+        return .windowId(Int(windowID))
+    }
+
+    guard let applicationIdentifier = snapshot.applicationBundleId ?? snapshot.applicationName else {
+        return nil
+    }
+
+    if let windowTitle = snapshot.windowTitle, !windowTitle.isEmpty {
+        return .applicationAndTitle(app: applicationIdentifier, title: windowTitle)
+    }
+    return .application(applicationIdentifier)
+}
+
+func windowDisplayName(from snapshot: UIAutomationSnapshot, snapshotId: String) -> String {
+    snapshot.applicationName ?? snapshot.applicationBundleId ?? "snapshot \(snapshotId)"
 }
 
 // MARK: - Helper Functions
@@ -495,6 +514,9 @@ extension WindowCommand {
 
         @OptionGroup var focusOptions: FocusCommandOptions
 
+        @Option(help: "Snapshot ID to focus the captured window context")
+        var snapshot: String?
+
         @Flag(help: "Verify the window is focused after the action")
         var verify = false
         @RuntimeStorage private var runtime: CommandRuntime?
@@ -531,25 +553,49 @@ extension WindowCommand {
 
             do {
                 self.logger.debug("About to validate window options")
-                try self.windowOptions.validate()
+                let observation = await InteractionObservationContext.resolve(
+                    explicitSnapshot: self.snapshot,
+                    fallbackToLatest: false,
+                    snapshots: self.services.snapshots
+                )
+                try self.windowOptions.validate(allowMissingTarget: observation.hasSnapshot)
+                try await observation.validateIfExplicit(using: self.services.snapshots)
                 self.logger.debug("Window options validated")
+                let hasWindowTarget = self.windowOptions.app != nil ||
+                    self.windowOptions.pid != nil ||
+                    self.windowOptions.windowId != nil
                 let target = self.windowOptions.createTarget()
                 self.logger.debug("Target created: \(target)")
                 let appInfo = try await self.windowOptions.resolveApplicationInfoIfNeeded(services: self.services)
 
                 // Get window info before action
-                let windows = try await WindowServiceBridge.listWindows(
-                    windows: self.services.windows,
-                    target: self.windowOptions.toWindowTarget()
-                )
-                self.logger.debug("Found \(windows.count) windows")
-                let windowInfo = self.windowOptions.selectWindow(from: windows)
-                let appName = appInfo?.name ?? self.windowOptions.displayName(windowInfo: windowInfo)
+                let windowInfo: ServiceWindowInfo?
+                let appName: String
+                let snapshotContext = try await self.resolveSnapshotContextIfNeeded(observation)
+                if hasWindowTarget {
+                    let windows = try await WindowServiceBridge.listWindows(
+                        windows: self.services.windows,
+                        target: self.windowOptions.toWindowTarget()
+                    )
+                    self.logger.debug("Found \(windows.count) windows")
+                    guard !windows.isEmpty else {
+                        let displayName = appInfo?.name ?? self.windowOptions.displayName(windowInfo: nil)
+                        throw PeekabooError.windowNotFound(criteria: "No windows found for \(displayName)")
+                    }
+                    windowInfo = self.windowOptions.selectWindow(from: windows)
+                    appName = appInfo?.name ?? self.windowOptions.displayName(windowInfo: windowInfo)
+                } else if let snapshotContext {
+                    windowInfo = await self.refetchWindowInfo(
+                        target: snapshotContext.target,
+                        context: "window-focus-snapshot"
+                    )
+                    appName = snapshotContext.appName
+                } else {
+                    throw ValidationError("Either --app, --pid, --window-id, or --snapshot must be specified")
+                }
 
                 // Check if we found any windows
-                guard !windows.isEmpty else {
-                    throw PeekabooError.windowNotFound(criteria: "No windows found for \(appName)")
-                }
+                guard hasWindowTarget || snapshotContext != nil else { preconditionFailure("validated above") }
 
                 // Use enhanced focus with space support
                 if let windowID = windowInfo?.windowID {
@@ -557,6 +603,12 @@ extension WindowCommand {
                         windowID: CGWindowID(windowID),
                         applicationName: appName,
                         windowTitle: self.windowOptions.windowTitle,
+                        options: self.focusOptions.asFocusOptions,
+                        services: self.services
+                    )
+                } else if let snapshotContext {
+                    try await ensureFocused(
+                        snapshotId: snapshotContext.snapshotId,
                         options: self.focusOptions.asFocusOptions,
                         services: self.services
                     )
@@ -579,8 +631,9 @@ extension WindowCommand {
                         expectedApp: appInfo
                     )
                 }
-                await InteractionObservationInvalidator.invalidateLatestSnapshot(
-                    using: self.services.snapshots,
+                await InteractionObservationInvalidator.invalidateAfterMutationOrLatest(
+                    observation,
+                    snapshots: self.services.snapshots,
                     logger: self.logger,
                     reason: "window focus"
                 )
@@ -608,6 +661,38 @@ extension WindowCommand {
             } catch {
                 handleError(error)
                 throw ExitCode(1)
+            }
+        }
+
+        private func resolveSnapshotContextIfNeeded(
+            _ observation: InteractionObservationContext
+        ) async throws -> (snapshotId: String, target: WindowTarget, appName: String)? {
+            guard let snapshotId = observation.snapshotId else {
+                return nil
+            }
+            guard let snapshot = try await self.services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId),
+                  let target = windowTarget(from: snapshot)
+            else {
+                throw PeekabooError.snapshotNotFound(
+                    """
+                    Snapshot '\(snapshotId)' has no window context. \
+                    Run 'peekaboo see' again against a window or provide --app/--pid/--window-id.
+                    """
+                )
+            }
+            return (snapshotId, target, windowDisplayName(from: snapshot, snapshotId: snapshotId))
+        }
+
+        private func refetchWindowInfo(target: WindowTarget, context: StaticString) async -> ServiceWindowInfo? {
+            do {
+                let refreshedWindows = try await WindowServiceBridge.listWindows(
+                    windows: self.services.windows,
+                    target: target
+                )
+                return refreshedWindows.first
+            } catch {
+                self.logger.warn("Failed to refetch window info (\(context)): \(error.localizedDescription)")
+                return nil
             }
         }
 
@@ -1268,6 +1353,7 @@ extension WindowCommand.FocusSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.windowOptions = try values.makeWindowOptions()
         self.focusOptions = try values.makeFocusOptions()
+        self.snapshot = values.singleOption("snapshot")
         self.verify = values.flag("verify")
     }
 }

@@ -64,6 +64,9 @@ extension WindowCommand.SetBoundsSubcommand: CommanderSignatureProviding {
 extension WindowCommand.FocusSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            options: [
+                .commandOption("snapshot", help: "Snapshot ID to focus the captured window context", long: "snapshot"),
+            ],
             flags: [
                 .commandFlag(
                     "verify",
