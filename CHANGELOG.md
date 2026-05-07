@@ -15,6 +15,7 @@
 - Added `ElementDetectionCache` as the dedicated short-lived AX tree cache used by element detection.
 - Added `ElementClassifier` for tested AX role mapping, actionability policy, and element attribute assembly.
 - Added `AXDescriptorReader` for tested batched accessibility descriptor reads and AX value coercion.
+- Added `ElementDetectionResultBuilder` for tested element grouping and detection metadata assembly.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!

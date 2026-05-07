@@ -437,6 +437,60 @@ struct AXDescriptorReaderTests {
     }
 }
 
+@Suite(.tags(.fast))
+struct ElementDetectionResultBuilderTests {
+    @Test
+    func `Groups flat elements by protocol type`() {
+        let elements = [
+            makeElement(id: "button", type: .button),
+            makeElement(id: "field", type: .textField),
+            makeElement(id: "menu", type: .menu),
+            makeElement(id: "other", type: .other),
+        ]
+
+        let grouped = ElementDetectionResultBuilder.group(elements)
+
+        #expect(grouped.buttons.map(\.id) == ["button"])
+        #expect(grouped.textFields.map(\.id) == ["field"])
+        #expect(grouped.menus.map(\.id) == ["menu"])
+        #expect(grouped.other.map(\.id) == ["other"])
+        #expect(grouped.all.count == 4)
+    }
+
+    @Test
+    func `Builds cache metadata and warning consistently`() {
+        let context = WindowContext(applicationName: "TextEdit", windowTitle: "Untitled", windowID: 42)
+        let result = ElementDetectionResultBuilder.makeResult(
+            snapshotId: "snapshot",
+            screenshotPath: "/tmp/screen.png",
+            elements: [self.makeElement(id: "button", type: .button)],
+            usedCache: true,
+            windowContext: context,
+            isDialog: true,
+            detectionTime: 0.25)
+
+        #expect(result.snapshotId == "snapshot")
+        #expect(result.screenshotPath == "/tmp/screen.png")
+        #expect(result.metadata.elementCount == 1)
+        #expect(result.metadata.method == "AXorcist (cached)")
+        #expect(result.metadata.warnings == ["ax_cache_hit"])
+        #expect(result.metadata.windowContext?.windowID == 42)
+        #expect(result.metadata.isDialog == true)
+    }
+
+    private func makeElement(id: String, type: ElementType) -> DetectedElement {
+        DetectedElement(
+            id: id,
+            type: type,
+            label: id,
+            value: nil,
+            bounds: CGRect(x: 0, y: 0, width: 10, height: 10),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: [:])
+    }
+}
+
 extension ElementDetectionServiceTests {
     private func assertBasicElementCollections(
         _ elements: DetectedElements,

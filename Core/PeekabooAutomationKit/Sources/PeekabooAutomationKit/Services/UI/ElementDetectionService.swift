@@ -107,21 +107,12 @@ public final class ElementDetectionService {
 
         self.logger.info("Detected \(detectedElements.count) elements")
 
-        let detectedElementsCollection = self.groupDetectedElements(detectedElements)
-
-        let metadata = DetectionMetadata(
-            detectionTime: 0.0, // Would need to track actual time
-            elementCount: detectedElements.count,
-            method: usedCache ? "AXorcist (cached)" : "AXorcist",
-            warnings: usedCache ? ["ax_cache_hit"] : [],
+        let result = ElementDetectionResultBuilder.makeResult(
+            snapshotId: effectiveSnapshotId,
+            elements: detectedElements,
+            usedCache: usedCache,
             windowContext: resolvedWindowContext,
             isDialog: windowResolution.isDialog)
-
-        let result = ElementDetectionResult(
-            snapshotId: effectiveSnapshotId,
-            screenshotPath: "", // Would need to save screenshot
-            elements: detectedElementsCollection,
-            metadata: metadata)
 
         if snapshotId != nil {
             try await self.snapshotManager.storeDetectionResult(snapshotId: effectiveSnapshotId, result: result)
@@ -154,24 +145,6 @@ extension ElementDetectionService {
         }
         elementIdMap = map
         return elements
-    }
-}
-
-extension ElementDetectionService {
-    private func groupDetectedElements(_ elements: [DetectedElement]) -> DetectedElements {
-        DetectedElements(
-            buttons: elements.filter { $0.type == .button },
-            textFields: elements.filter { $0.type == .textField },
-            links: elements.filter { $0.type == .link },
-            images: elements.filter { $0.type == .image },
-            groups: elements.filter { $0.type == .group },
-            sliders: elements.filter { $0.type == .slider },
-            checkboxes: elements.filter { $0.type == .checkbox },
-            menus: elements.filter { $0.type == .menu },
-            other: elements.filter { element in
-                ![ElementType.button, .textField, .link, .image, .group, .slider, .checkbox, .menu]
-                    .contains(element.type)
-            })
     }
 }
 
