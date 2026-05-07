@@ -1,8 +1,3 @@
-//
-//  AcceleratedTextDetector.swift
-//  PeekabooCore
-//
-
 import Accelerate
 import AppKit
 import CoreGraphics
@@ -25,13 +20,13 @@ final class AcceleratedTextDetector {
     private let sobelXKernel: [Int16] = [
         -1, 0, 1,
         -2, 0, 2,
-        -1, 0, 1
+        -1, 0, 1,
     ]
 
     private let sobelYKernel: [Int16] = [
         -1, -2, -1,
         0, 0, 0,
-        1, 2, 1
+        1, 2, 1,
     ]
 
     // Pre-allocated buffers for performance
@@ -47,11 +42,11 @@ final class AcceleratedTextDetector {
     /// Edge detection threshold (0-255 scale)
     private let edgeThreshold: UInt8 = 30
 
-    private let logger: Logger
+    private let logger: ObservationAnnotationLog
 
     // MARK: - Initialization
 
-    init(logger: Logger = Logger.shared) {
+    init(logger: ObservationAnnotationLog = .disabled) {
         self.logger = logger
         self.allocateBuffers()
     }
@@ -102,7 +97,7 @@ final class AcceleratedTextDetector {
         self.logger.verbose("Edge detection for region", category: "LabelPlacement", metadata: [
             "rect": "\(rect)",
             "density": result.density,
-            "hasText": result.hasText
+            "hasText": result.hasText,
         ])
 
         // More aggressive scoring to avoid text
@@ -161,7 +156,7 @@ final class AcceleratedTextDetector {
             CGPoint(x: rect.maxX, y: rect.minY),
             CGPoint(x: rect.midX, y: rect.midY),
             CGPoint(x: rect.minX, y: rect.maxY),
-            CGPoint(x: rect.maxX, y: rect.maxY)
+            CGPoint(x: rect.maxX, y: rect.maxY),
         ]
 
         guard let bitmap = getBitmapRep(from: image) else { return nil }
@@ -268,8 +263,7 @@ final class AcceleratedTextDetector {
             3,
             1, // Divisor
             128, // Bias (to keep values positive)
-            vImage_Flags(kvImageEdgeExtend)
-        )
+            vImage_Flags(kvImageEdgeExtend))
 
         // Apply Sobel Y kernel
         vImageConvolve_Planar8(
@@ -283,8 +277,7 @@ final class AcceleratedTextDetector {
             3,
             1, // Divisor
             128, // Bias (to keep values positive)
-            vImage_Flags(kvImageEdgeExtend)
-        )
+            vImage_Flags(kvImageEdgeExtend))
 
         return (gradX, gradY)
     }
@@ -341,7 +334,8 @@ final class AcceleratedTextDetector {
 
     private func getBitmapRep(from image: NSImage) -> NSBitmapImageRep? {
         guard let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else {
+              let bitmap = NSBitmapImageRep(data: tiffData)
+        else {
             return nil
         }
         return bitmap
@@ -352,7 +346,8 @@ final class AcceleratedTextDetector {
         let y = Int(bitmap.size.height - point.y - 1) // Flip Y coordinate
 
         guard x >= 0, x < bitmap.pixelsWide,
-              y >= 0, y < bitmap.pixelsHigh else {
+              y >= 0, y < bitmap.pixelsHigh
+        else {
             return nil
         }
 

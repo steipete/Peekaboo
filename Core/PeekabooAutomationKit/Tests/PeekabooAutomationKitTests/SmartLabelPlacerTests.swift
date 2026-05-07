@@ -1,9 +1,8 @@
 import AppKit
 import Testing
-@testable import PeekabooCLI
-@testable import PeekabooCore
+@testable import PeekabooAutomationKit
 
-@Suite(.serialized, .tags(.fast))
+@Suite(.serialized)
 @MainActor
 struct SmartLabelPlacerTests {
     @Test
@@ -16,9 +15,7 @@ struct SmartLabelPlacerTests {
             image: image,
             fontSize: 10,
             debugMode: false,
-            logger: .shared,
-            textDetector: detector
-        )
+            textDetector: detector)
 
         let element = DetectedElement.make(id: "elem-top")
         let elementRect = NSRect(x: 50, y: 50, width: 30, height: 20)
@@ -29,15 +26,13 @@ struct SmartLabelPlacerTests {
             elementRect: elementRect,
             labelSize: labelSize,
             existingLabels: [],
-            allElements: [(element: element, rect: elementRect)]
-        )
+            allElements: [(element: element, rect: elementRect)])
 
         #expect(result != nil)
 
         let expected = try Self.expectedScoringRect(
             from: #require(result?.labelRect),
-            imageSize: imageSize
-        )
+            imageSize: imageSize)
 
         #expect(detector.recordedRects.first != nil)
         Self.expect(try #require(detector.recordedRects.first), equals: expected)
@@ -53,9 +48,7 @@ struct SmartLabelPlacerTests {
             image: image,
             fontSize: 10,
             debugMode: false,
-            logger: .shared,
-            textDetector: detector
-        )
+            textDetector: detector)
 
         // Position element close enough to the bottom that the expanded sampling
         // rect would extend beyond the image bounds.
@@ -68,15 +61,13 @@ struct SmartLabelPlacerTests {
             elementRect: elementRect,
             labelSize: labelSize,
             existingLabels: [],
-            allElements: [(element: element, rect: elementRect)]
-        )
+            allElements: [(element: element, rect: elementRect)])
 
         #expect(result != nil)
 
         let expected = try Self.expectedScoringRect(
             from: #require(result?.labelRect),
-            imageSize: imageSize
-        )
+            imageSize: imageSize)
 
         #expect(detector.recordedRects.first != nil)
         Self.expect(try #require(detector.recordedRects.first), equals: expected)
@@ -101,14 +92,12 @@ extension SmartLabelPlacerTests {
             x: labelRect.origin.x,
             y: imageSize.height - labelRect.origin.y - labelRect.height,
             width: labelRect.width,
-            height: labelRect.height
-        )
+            height: labelRect.height)
 
         // Mirror the SmartLabelPlacer logic: expand by the padding and clamp to bounds.
         let expanded = imageRect.insetBy(
             dx: -SmartLabelPlacer.defaultScoreRegionPadding,
-            dy: -SmartLabelPlacer.defaultScoreRegionPadding
-        )
+            dy: -SmartLabelPlacer.defaultScoreRegionPadding)
 
         return self.clamp(expanded, within: NSRect(origin: .zero, size: imageSize))
     }
@@ -122,8 +111,7 @@ extension SmartLabelPlacerTests {
             x: minX,
             y: minY,
             width: max(0, maxX - minX),
-            height: max(0, maxY - minY)
-        )
+            height: max(0, maxY - minY))
     }
 
     fileprivate static func expect(_ lhs: NSRect, equals rhs: NSRect, accuracy: CGFloat = 0.001) {
@@ -159,7 +147,6 @@ extension DetectedElement {
             bounds: .zero,
             isEnabled: true,
             isSelected: nil,
-            attributes: [:]
-        )
+            attributes: [:])
     }
 }

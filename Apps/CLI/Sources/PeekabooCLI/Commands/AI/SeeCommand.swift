@@ -222,8 +222,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             ])
 
             // Generate annotated screenshot if requested
-            var annotatedPath: String?
-            if self.annotate {
+            var annotatedPath = captureResult.annotatedPath
+            if self.annotate, annotatedPath == nil {
                 logger.operationStart("generate_annotations")
                 annotatedPath = try await self.generateAnnotatedScreenshot(
                     snapshotId: captureResult.snapshotId,
@@ -239,6 +239,13 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 logger.operationComplete("generate_annotations", metadata: [
                     "annotatedPath": annotatedPath ?? "none",
                 ])
+            }
+            if self.annotate, annotatedPath == nil, !self.jsonOutput {
+                print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
+            } else if self.annotate, let annotatedPath, !self.jsonOutput {
+                let interactableElements = captureResult.elements.all.filter(\.isEnabled)
+                print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
+                self.logger.verbose("Annotated screenshot path: \(annotatedPath)")
             }
 
             // Perform AI analysis if requested
@@ -397,6 +404,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return CaptureAndDetectionResult(
             snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
+            annotatedPath: nil,
             elements: detectionResult.elements,
             metadata: detectionResult.metadata,
             observation: nil
@@ -428,6 +436,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             output: DesktopObservationOutputOptions(
                 path: self.screenshotOutputPath(),
                 saveRawScreenshot: true,
+                saveAnnotatedScreenshot: self.annotate,
                 saveSnapshot: true
             )
         ))
@@ -448,6 +457,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         return CaptureAndDetectionResult(
             snapshotId: detectionResult.snapshotId,
             screenshotPath: outputPath,
+            annotatedPath: observation.files.annotatedScreenshotPath,
             elements: detectionResult.elements,
             metadata: detectionResult.metadata,
             observation: SeeObservationDiagnostics(
@@ -556,6 +566,7 @@ struct MenuBarPopoverCapture {
 struct CaptureAndDetectionResult {
     let snapshotId: String
     let screenshotPath: String
+    let annotatedPath: String?
     let elements: DetectedElements
     let metadata: DetectionMetadata
     let observation: SeeObservationDiagnostics?

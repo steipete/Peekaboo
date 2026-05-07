@@ -72,10 +72,10 @@ Landed:
 - Observation-backed menu-bar popover window-list resolution and capture.
 - MCP `see` uses observation-produced annotated screenshots before falling back to its local renderer.
 - Observation-backed CLI `see` registers raw screenshots and detection results through observation output.
+- CLI `see --annotate` uses observation output and the shared observation annotation renderer for observation-backed captures.
 
 Still incomplete:
 
-- CLI rich annotation renderer under observation.
 - Menu-bar popover OCR and click-to-open behavior under observation.
 - OCR as a first-class observation enhancement.
 - Further capture-service file splitting and cleanup after command bridges disappear.

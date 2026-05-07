@@ -13,9 +13,14 @@ public protocol ObservationOutputWriting: Sendable {
 @MainActor
 public final class ObservationOutputWriter: ObservationOutputWriting {
     private let snapshotManager: (any SnapshotManagerProtocol)?
+    private let annotationRenderer: ObservationAnnotationRenderer
 
-    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil) {
+    public init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        annotationRenderer: ObservationAnnotationRenderer = ObservationAnnotationRenderer())
+    {
         self.snapshotManager = snapshotManager
+        self.annotationRenderer = annotationRenderer
     }
 
     public func write(
@@ -119,123 +124,10 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
             return nil
         }
 
-        let sourceImage = NSImage(contentsOfFile: rawPath) ?? NSImage(data: capture.imageData)
-        guard let sourceImage else {
-            throw OperationError.captureFailed(reason: "Failed to load screenshot for annotation")
-        }
-
-        let annotatedPath = Self.annotatedScreenshotPath(forRawScreenshotPath: rawPath)
-        let annotatedImage = self.annotatedImage(from: sourceImage, detectionResult: elements)
-        guard let pngData = self.pngData(from: annotatedImage) else {
-            throw OperationError.captureFailed(reason: "Failed to encode annotated screenshot")
-        }
-        try pngData.write(to: URL(fileURLWithPath: annotatedPath), options: .atomic)
-        return annotatedPath
-    }
-
-    private func annotatedImage(
-        from sourceImage: NSImage,
-        detectionResult: ElementDetectionResult) -> NSImage
-    {
-        let imageSize = sourceImage.size
-        let annotatedImage = NSImage(size: imageSize)
-        annotatedImage.lockFocus()
-        defer { annotatedImage.unlockFocus() }
-
-        sourceImage.draw(
-            at: .zero,
-            from: NSRect(origin: .zero, size: imageSize),
-            operation: .copy,
-            fraction: 1)
-
-        let windowOrigin = Self.windowOrigin(for: detectionResult)
-        for element in detectionResult.elements.all where element.isEnabled {
-            let rect = Self.drawingRect(for: element, imageSize: imageSize, windowOrigin: windowOrigin)
-            self.drawAnnotation(id: element.id, type: element.type, rect: rect)
-        }
-
-        return annotatedImage
-    }
-
-    private func drawAnnotation(id: String, type: ElementType, rect: NSRect) {
-        let color = self.color(for: type)
-        color.withAlphaComponent(0.18).setFill()
-        NSBezierPath(rect: rect).fill()
-
-        color.withAlphaComponent(0.9).setStroke()
-        let borderPath = NSBezierPath(rect: rect)
-        borderPath.lineWidth = 1.5
-        borderPath.stroke()
-
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .semibold),
-            .foregroundColor: NSColor.white,
-        ]
-        let label = id as NSString
-        let labelSize = label.size(withAttributes: attributes)
-        let labelRect = NSRect(
-            x: rect.minX,
-            y: rect.maxY + 3,
-            width: labelSize.width + 8,
-            height: labelSize.height + 4)
-
-        NSColor.black.withAlphaComponent(0.75).setFill()
-        NSBezierPath(roundedRect: labelRect, xRadius: 2, yRadius: 2).fill()
-        label.draw(
-            at: NSPoint(x: labelRect.minX + 4, y: labelRect.minY + 2),
-            withAttributes: attributes)
-    }
-
-    private func color(for type: ElementType) -> NSColor {
-        switch type {
-        case .button, .link, .menu:
-            NSColor(red: 0, green: 0.48, blue: 1, alpha: 1)
-        case .textField:
-            NSColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1)
-        default:
-            NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1)
-        }
-    }
-
-    private static func windowOrigin(for detectionResult: ElementDetectionResult) -> CGPoint {
-        if let windowBounds = detectionResult.metadata.windowContext?.windowBounds {
-            return windowBounds.origin
-        }
-
-        guard !detectionResult.elements.all.isEmpty else {
-            return .zero
-        }
-
-        let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
-        let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
-        return CGPoint(x: minX, y: minY)
-    }
-
-    private static func drawingRect(
-        for element: DetectedElement,
-        imageSize: CGSize,
-        windowOrigin: CGPoint) -> NSRect
-    {
-        let elementFrame = CGRect(
-            x: element.bounds.origin.x - windowOrigin.x,
-            y: element.bounds.origin.y - windowOrigin.y,
-            width: element.bounds.width,
-            height: element.bounds.height)
-
-        return NSRect(
-            x: elementFrame.origin.x,
-            y: imageSize.height - elementFrame.origin.y - elementFrame.height,
-            width: elementFrame.width,
-            height: elementFrame.height)
-    }
-
-    private func pngData(from image: NSImage) -> Data? {
-        guard let tiff = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff)
-        else {
-            return nil
-        }
-        return bitmap.representation(using: .png, properties: [:])
+        return try self.annotationRenderer.renderAnnotatedScreenshot(
+            originalPath: rawPath,
+            detectionResult: elements,
+            annotatedPath: Self.annotatedScreenshotPath(forRawScreenshotPath: rawPath))
     }
 
     private func outputURL(path: String?, format: ImageFormat) -> URL {

@@ -1,40 +1,7 @@
-import AppKit
 import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-
-enum SeeAnnotationCoordinateMapper {
-    static func windowOrigin(for detectionResult: ElementDetectionResult) -> CGPoint {
-        if let windowBounds = detectionResult.metadata.windowContext?.windowBounds {
-            return windowBounds.origin
-        }
-
-        guard !detectionResult.elements.all.isEmpty else {
-            return .zero
-        }
-
-        let minX = detectionResult.elements.all.map(\.bounds.minX).min() ?? 0
-        let minY = detectionResult.elements.all.map(\.bounds.minY).min() ?? 0
-        return CGPoint(x: minX, y: minY)
-    }
-
-    static func drawingRect(for element: DetectedElement, imageSize: CGSize, windowOrigin: CGPoint) -> NSRect {
-        let elementFrame = CGRect(
-            x: element.bounds.origin.x - windowOrigin.x,
-            y: element.bounds.origin.y - windowOrigin.y,
-            width: element.bounds.width,
-            height: element.bounds.height
-        )
-
-        return NSRect(
-            x: elementFrame.origin.x,
-            y: imageSize.height - elementFrame.origin.y - elementFrame.height,
-            width: elementFrame.width,
-            height: elementFrame.height
-        )
-    }
-}
 
 @MainActor
 extension SeeCommand {
@@ -109,176 +76,22 @@ extension SeeCommand {
     func generateAnnotatedScreenshot(
         snapshotId: String,
         originalPath: String
-    ) async throws -> String {
+    ) async throws -> String? {
         guard let detectionResult = try await self.services.snapshots.getDetectionResult(snapshotId: snapshotId)
         else {
             self.logger.info("No detection result found for snapshot")
-            return originalPath
+            return nil
         }
 
-        let annotatedPath = ObservationOutputWriter.annotatedScreenshotPath(forRawScreenshotPath: originalPath)
-
-        guard let nsImage = NSImage(contentsOfFile: originalPath) else {
-            throw CaptureError.fileIOError("Failed to load image from \(originalPath)")
-        }
-
-        let imageSize = nsImage.size
-
-        guard let bitmapRep = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: Int(imageSize.width),
-            pixelsHigh: Int(imageSize.height),
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .calibratedRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
+        let renderer = ObservationAnnotationRenderer(debugMode: self.verbose)
+        let annotatedPath = try renderer.renderAnnotatedScreenshot(
+            originalPath: originalPath,
+            detectionResult: detectionResult
         )
-        else {
-            throw CaptureError.captureFailure("Failed to create bitmap representation")
+        guard let annotatedPath else {
+            return nil
         }
-
-        NSGraphicsContext.saveGraphicsState()
-        guard let context = NSGraphicsContext(bitmapImageRep: bitmapRep) else {
-            self.logger.error("Failed to create graphics context")
-            throw CaptureError.captureFailure("Failed to create graphics context")
-        }
-        NSGraphicsContext.current = context
-        self.logger.verbose("Graphics context created successfully")
-
-        nsImage.draw(in: NSRect(origin: .zero, size: imageSize))
-        self.logger.verbose("Original image drawn")
-
-        let fontSize: CGFloat = 8
-        let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
-            .foregroundColor: NSColor.white,
-        ]
-
-        let roleColors: [ElementType: NSColor] = [
-            .button: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0),
-            .textField: NSColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1.0),
-            .link: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0),
-            .checkbox: NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0),
-            .slider: NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0),
-            .menu: NSColor(red: 0, green: 0.48, blue: 1.0, alpha: 1.0),
-        ]
-
-        let enabledElements = detectionResult.elements.all.filter(\.isEnabled)
-
-        if enabledElements.isEmpty {
-            self.logger.info("No enabled elements to annotate. Total elements: \(detectionResult.elements.all.count)")
-            print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
-            return originalPath
-        }
-
-        self.logger.info(
-            "Annotating \(enabledElements.count) enabled elements out of \(detectionResult.elements.all.count) total"
-        )
-        self.logger.verbose("Image size: \(imageSize)")
-
-        let windowOrigin = SeeAnnotationCoordinateMapper.windowOrigin(for: detectionResult)
-        self.logger.verbose("Using annotation window origin: \(windowOrigin)")
-
-        var elementRects: [(element: DetectedElement, rect: NSRect)] = []
-        for element in enabledElements {
-            elementRects.append((
-                element: element,
-                rect: SeeAnnotationCoordinateMapper.drawingRect(
-                    for: element,
-                    imageSize: imageSize,
-                    windowOrigin: windowOrigin
-                )
-            ))
-        }
-
-        let labelPlacer = SmartLabelPlacer(
-            image: nsImage,
-            fontSize: fontSize,
-            debugMode: self.verbose,
-            logger: self.logger
-        )
-
-        var labelPositions: [(rect: NSRect, connection: NSPoint?, element: DetectedElement)] = []
-        var placedLabels: [(rect: NSRect, element: DetectedElement)] = []
-        let allElements: [(element: DetectedElement, rect: NSRect)] = elementRects.map { ($0.element, $0.rect) }
-
-        for (element, rect) in elementRects {
-            let drawingDetails = [
-                "Drawing element: \(element.id)",
-                "type: \(element.type)",
-                "label: \(element.label ?? "")",
-                "rect: \(rect)",
-                "enabled: \(element.isEnabled)",
-                "selected: \(String(describing: element.isSelected))",
-                "windowOrigin: \(windowOrigin)",
-                "elementBounds: \(element.bounds)",
-            ]
-
-            for detail in drawingDetails {
-                self.logger.verbose(detail)
-            }
-
-            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-            color.withAlphaComponent(0.8).setStroke()
-
-            let outlinePath = NSBezierPath(rect: rect)
-            outlinePath.lineWidth = 1.5
-            outlinePath.stroke()
-
-            let label = element.id
-            let labelSize = (label as NSString).size(withAttributes: textAttributes)
-            guard let placement = labelPlacer.findBestLabelPosition(
-                for: element,
-                elementRect: rect,
-                labelSize: labelSize,
-                existingLabels: placedLabels,
-                allElements: allElements
-            ) else {
-                continue
-            }
-
-            labelPositions.append((rect: placement.labelRect, connection: placement.connectionPoint, element: element))
-            placedLabels.append((rect: placement.labelRect, element: element))
-
-            if let connectionPoint = placement.connectionPoint {
-                let linePath = NSBezierPath()
-                linePath.move(to: connectionPoint)
-                linePath.line(to: NSPoint(x: rect.midX, y: rect.midY))
-                linePath.lineWidth = 0.8
-                linePath.stroke()
-            }
-        }
-
-        for (labelRect, _, element) in labelPositions where labelRect.width > 0 {
-            NSColor.black.withAlphaComponent(0.7).setFill()
-            NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1).fill()
-
-            let color = roleColors[element.type] ?? NSColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1.0)
-            color.withAlphaComponent(0.8).setStroke()
-            let borderPath = NSBezierPath(roundedRect: labelRect, xRadius: 1, yRadius: 1)
-            borderPath.lineWidth = 0.5
-            borderPath.stroke()
-
-            let idString = NSAttributedString(string: element.id, attributes: textAttributes)
-            idString.draw(at: NSPoint(x: labelRect.origin.x + 4, y: labelRect.origin.y + 2))
-        }
-
-        NSGraphicsContext.restoreGraphicsState()
-
-        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
-            throw CaptureError.captureFailure("Failed to create PNG data")
-        }
-
-        try pngData.write(to: URL(fileURLWithPath: annotatedPath))
         self.logger.verbose("Created annotated screenshot: \(annotatedPath)")
-
-        if !self.jsonOutput {
-            let interactableElements = detectionResult.elements.all.filter(\.isEnabled)
-            print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
-        }
 
         return annotatedPath
     }

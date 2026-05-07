@@ -1,13 +1,8 @@
-//
-//  SmartLabelPlacer.swift
-//  PeekabooCore
-//
-
 import AppKit
 import Foundation
-import PeekabooCore
 import PeekabooFoundation
 
+@MainActor
 protocol SmartLabelPlacerTextDetecting: AnyObject {
     func scoreRegionForLabelPlacement(_ rect: NSRect, in image: NSImage) -> Float
     func analyzeRegion(_ rect: NSRect, in image: NSImage) -> AcceleratedTextDetector.EdgeDensityResult
@@ -16,6 +11,7 @@ protocol SmartLabelPlacerTextDetecting: AnyObject {
 extension AcceleratedTextDetector: SmartLabelPlacerTextDetecting {}
 
 /// Handles intelligent label placement for UI element annotations
+@MainActor
 final class SmartLabelPlacer {
     static let defaultScoreRegionPadding: CGFloat = 6
 
@@ -31,7 +27,7 @@ final class SmartLabelPlacer {
 
     // Label placement debugging
     private let debugMode: Bool
-    private let logger: Logger
+    private let logger: ObservationAnnotationLog
 
     // MARK: - Initialization
 
@@ -39,9 +35,9 @@ final class SmartLabelPlacer {
         image: NSImage,
         fontSize: CGFloat = 8,
         debugMode: Bool = false,
-        logger: Logger = Logger.shared,
-        textDetector: (any SmartLabelPlacerTextDetecting)? = nil
-    ) {
+        logger: ObservationAnnotationLog = .disabled,
+        textDetector: (any SmartLabelPlacerTextDetecting)? = nil)
+    {
         self.image = image
         self.imageSize = image.size
         self.textDetector = textDetector ?? AcceleratedTextDetector(logger: logger)
@@ -66,30 +62,27 @@ final class SmartLabelPlacer {
         elementRect: NSRect,
         labelSize: NSSize,
         existingLabels: [(rect: NSRect, element: DetectedElement)],
-        allElements: [(element: DetectedElement, rect: NSRect)]
-    ) -> (labelRect: NSRect, connectionPoint: NSPoint?)? {
+        allElements: [(element: DetectedElement, rect: NSRect)]) -> (labelRect: NSRect, connectionPoint: NSPoint?)?
+    {
         // Finds the best position for a label given an element's bounds
         if self.debugMode {
             self.logger.verbose(
                 "Finding position for \(element.id) (\(element.type)) with \(element.label ?? "no label")",
-                category: "LabelPlacement"
-            )
+                category: "LabelPlacement")
         }
 
         // Check if element is horizontally constrained (has neighbors on sides)
         let isHorizontallyConstrained = self.isElementHorizontallyConstrained(
             element: element,
             elementRect: elementRect,
-            allElements: allElements
-        )
+            allElements: allElements)
 
         // Generate candidate positions based on element type and constraints
         let candidates = self.generateCandidatePositions(
             for: element,
             elementRect: elementRect,
             labelSize: labelSize,
-            prioritizeVertical: isHorizontallyConstrained
-        )
+            prioritizeVertical: isHorizontallyConstrained)
 
         // Filter out positions that overlap with other elements or labels
         let validPositions = self.filterValidPositions(
@@ -97,14 +90,12 @@ final class SmartLabelPlacer {
             element: element,
             existingLabels: existingLabels,
             allElements: allElements,
-            logRejections: self.debugMode
-        )
+            logRejections: self.debugMode)
 
         if self.debugMode {
             self.logger.verbose(
                 "Found \(validPositions.count) valid external positions out of \(candidates.count) candidates",
-                category: "LabelPlacement"
-            )
+                category: "LabelPlacement")
         }
 
         // If no valid positions, try with relaxed constraints before falling back to internal
@@ -112,8 +103,7 @@ final class SmartLabelPlacer {
             if self.debugMode {
                 self.logger.verbose(
                     "No valid positions with strict constraints, trying relaxed constraints",
-                    category: "LabelPlacement"
-                )
+                    category: "LabelPlacement")
             }
 
             // Try with relaxed constraints (allow slight boundary overflow)
@@ -122,8 +112,7 @@ final class SmartLabelPlacer {
                 elementRect: elementRect,
                 labelSize: labelSize,
                 prioritizeVertical: isHorizontallyConstrained,
-                relaxedSpacing: true
-            )
+                relaxedSpacing: true)
 
             let relaxedValidPositions = self.filterValidPositions(
                 candidates: relaxedCandidates,
@@ -131,15 +120,13 @@ final class SmartLabelPlacer {
                 existingLabels: existingLabels,
                 allElements: allElements,
                 allowBoundaryOverflow: true,
-                logRejections: self.debugMode
-            )
+                logRejections: self.debugMode)
 
             if !relaxedValidPositions.isEmpty {
                 if self.debugMode {
                     self.logger.verbose(
                         "Found \(relaxedValidPositions.count) valid positions with relaxed constraints",
-                        category: "LabelPlacement"
-                    )
+                        category: "LabelPlacement")
                 }
 
                 // Score and pick best relaxed position
@@ -148,8 +135,7 @@ final class SmartLabelPlacer {
                     let connectionPoint = self.calculateConnectionPoint(
                         for: best.index,
                         elementRect: elementRect,
-                        isExternal: true
-                    )
+                        isExternal: true)
                     return (labelRect: best.rect, connectionPoint: connectionPoint)
                 }
             }
@@ -158,14 +144,12 @@ final class SmartLabelPlacer {
             if self.debugMode {
                 self.logger.info(
                     "No valid external positions even with relaxed constraints, falling back to internal placement",
-                    category: "LabelPlacement"
-                )
+                    category: "LabelPlacement")
             }
             return self.findInternalPosition(
                 for: element,
                 elementRect: elementRect,
-                labelSize: labelSize
-            )
+                labelSize: labelSize)
         }
 
         // Score each valid position using edge detection
@@ -189,17 +173,15 @@ final class SmartLabelPlacer {
                 metadata: [
                     "elementId": element.id,
                     "positionType": best.type.rawValue,
-                    "score": best.score
-                ]
-            )
+                    "score": best.score,
+                ])
         }
 
         // Calculate connection point if needed
         let connectionPoint = self.calculateConnectionPoint(
             for: best.index,
             elementRect: elementRect,
-            isExternal: best.index < candidates.count
-        )
+            isExternal: best.index < candidates.count)
 
         return (labelRect: best.rect, connectionPoint: connectionPoint)
     }
@@ -209,8 +191,8 @@ final class SmartLabelPlacer {
     private func isElementHorizontallyConstrained(
         element: DetectedElement,
         elementRect: NSRect,
-        allElements: [(element: DetectedElement, rect: NSRect)]
-    ) -> Bool {
+        allElements: [(element: DetectedElement, rect: NSRect)]) -> Bool
+    {
         // Check if there are elements close to the left and right
         let horizontalThreshold: CGFloat = 20 // pixels
 
@@ -225,10 +207,10 @@ final class SmartLabelPlacer {
             guard verticalOverlap > elementRect.height * 0.5 else { continue }
 
             // Check horizontal proximity
-            if otherRect.maxX < elementRect.minX && elementRect.minX - otherRect.maxX < horizontalThreshold {
+            if otherRect.maxX < elementRect.minX, elementRect.minX - otherRect.maxX < horizontalThreshold {
                 hasLeftNeighbor = true
             }
-            if otherRect.minX > elementRect.maxX && otherRect.minX - elementRect.maxX < horizontalThreshold {
+            if otherRect.minX > elementRect.maxX, otherRect.minX - elementRect.maxX < horizontalThreshold {
                 hasRightNeighbor = true
             }
         }
@@ -241,8 +223,8 @@ final class SmartLabelPlacer {
         elementRect: NSRect,
         labelSize: NSSize,
         prioritizeVertical: Bool = false,
-        relaxedSpacing: Bool = false
-    ) -> [(rect: NSRect, index: Int, type: PositionType)] {
+        relaxedSpacing: Bool = false) -> [(rect: NSRect, index: Int, type: PositionType)]
+    {
         var positions: [(rect: NSRect, index: Int, type: PositionType)] = []
         let spacing = relaxedSpacing ? self.labelSpacing * 2 : self.labelSpacing
 
@@ -254,15 +236,13 @@ final class SmartLabelPlacer {
                 x: elementRect.midX - labelSize.width / 2,
                 y: elementRect.maxY + spacing,
                 width: labelSize.width,
-                height: labelSize.height
-            ), 0, .externalAbove),
+                height: labelSize.height), 0, .externalAbove),
             // Below
             (NSRect(
                 x: elementRect.midX - labelSize.width / 2,
                 y: elementRect.minY - labelSize.height - spacing,
                 width: labelSize.width,
-                height: labelSize.height
-            ), 1, .externalBelow),
+                height: labelSize.height), 1, .externalBelow),
         ])
 
         // For buttons and links, add corner positions
@@ -274,29 +254,25 @@ final class SmartLabelPlacer {
                     x: elementRect.minX - labelSize.width - spacing,
                     y: elementRect.maxY - labelSize.height,
                     width: labelSize.width,
-                    height: labelSize.height
-                ), 2, .externalTopLeft),
+                    height: labelSize.height), 2, .externalTopLeft),
                 // Top-right external
                 (NSRect(
                     x: elementRect.maxX + spacing,
                     y: elementRect.maxY - labelSize.height,
                     width: labelSize.width,
-                    height: labelSize.height
-                ), 3, .externalTopRight),
+                    height: labelSize.height), 3, .externalTopRight),
                 // Bottom-left external
                 (NSRect(
                     x: elementRect.minX - labelSize.width - spacing,
                     y: elementRect.minY,
                     width: labelSize.width,
-                    height: labelSize.height
-                ), 4, .externalBottomLeft),
+                    height: labelSize.height), 4, .externalBottomLeft),
                 // Bottom-right external
                 (NSRect(
                     x: elementRect.maxX + spacing,
                     y: elementRect.minY,
                     width: labelSize.width,
-                    height: labelSize.height
-                ), 5, .externalBottomRight),
+                    height: labelSize.height), 5, .externalBottomRight),
             ])
         }
 
@@ -307,15 +283,13 @@ final class SmartLabelPlacer {
                 x: elementRect.maxX + spacing,
                 y: elementRect.midY - labelSize.height / 2,
                 width: labelSize.width,
-                height: labelSize.height
-            ), 6, .externalRight),
+                height: labelSize.height), 6, .externalRight),
             // Left side
             (NSRect(
                 x: elementRect.minX - labelSize.width - spacing,
                 y: elementRect.midY - labelSize.height / 2,
                 width: labelSize.width,
-                height: labelSize.height
-            ), 7, .externalLeft),
+                height: labelSize.height), 7, .externalLeft),
         ])
 
         // If element is horizontally constrained, prioritize vertical positions
@@ -324,8 +298,8 @@ final class SmartLabelPlacer {
             positions.sort { a, b in
                 let aIsVertical = a.type == .externalAbove || a.type == .externalBelow
                 let bIsVertical = b.type == .externalAbove || b.type == .externalBelow
-                if aIsVertical && !bIsVertical { return true }
-                if !aIsVertical && bIsVertical { return false }
+                if aIsVertical, !bIsVertical { return true }
+                if !aIsVertical, bIsVertical { return false }
                 return a.index < b.index
             }
         }
@@ -339,8 +313,8 @@ final class SmartLabelPlacer {
         existingLabels: [(rect: NSRect, element: DetectedElement)],
         allElements: [(element: DetectedElement, rect: NSRect)],
         allowBoundaryOverflow: Bool = false,
-        logRejections: Bool = false
-    ) -> [(rect: NSRect, index: Int, type: PositionType)] {
+        logRejections: Bool = false) -> [(rect: NSRect, index: Int, type: PositionType)]
+    {
         candidates.filter { candidate in
             // Check if within image bounds (with optional relaxation)
             if !allowBoundaryOverflow {
@@ -356,9 +330,8 @@ final class SmartLabelPlacer {
                             category: "LabelPlacement",
                             metadata: [
                                 "rect": "\(candidate.rect)",
-                                "imageBounds": "0,0 \(self.imageSize.width)x\(self.imageSize.height)"
-                            ]
-                        )
+                                "imageBounds": "0,0 \(self.imageSize.width)x\(self.imageSize.height)",
+                            ])
                     }
                     return false
                 }
@@ -366,16 +339,15 @@ final class SmartLabelPlacer {
 
             // Check overlap with other elements
             for (otherElement, otherRect) in allElements {
-                if otherElement.id != element.id && candidate.rect.intersects(otherRect) {
+                if otherElement.id != element.id, candidate.rect.intersects(otherRect) {
                     if logRejections {
                         self.logger.verbose(
                             "Position \(candidate.type) rejected: overlaps with element \(otherElement.id)",
                             category: "LabelPlacement",
                             metadata: [
                                 "candidateRect": "\(candidate.rect)",
-                                "elementRect": "\(otherRect)"
-                            ]
-                        )
+                                "elementRect": "\(otherRect)",
+                            ])
                     }
                     return false
                 }
@@ -389,9 +361,8 @@ final class SmartLabelPlacer {
                         category: "LabelPlacement",
                         metadata: [
                             "candidateRect": "\(candidate.rect)",
-                            "existingLabelRect": "\(existingLabel)"
-                        ]
-                    )
+                            "existingLabelRect": "\(existingLabel)",
+                        ])
                 }
                 return false
             }
@@ -402,8 +373,8 @@ final class SmartLabelPlacer {
 
     private func scorePositions(
         _ positions: [(rect: NSRect, index: Int, type: PositionType)],
-        elementRect: NSRect
-    ) -> [(rect: NSRect, index: Int, type: PositionType, score: Float)] {
+        elementRect: NSRect) -> [(rect: NSRect, index: Int, type: PositionType, score: Float)]
+    {
         positions.map { position in
             // Convert from drawing coordinates to image coordinates for analysis
             // Drawing has Y=0 at top, image has Y=0 at bottom
@@ -411,8 +382,7 @@ final class SmartLabelPlacer {
                 x: position.rect.origin.x,
                 y: self.imageSize.height - position.rect.origin.y - position.rect.height,
                 width: position.rect.width,
-                height: position.rect.height
-            )
+                height: position.rect.height)
 
             // Expand the sampled area slightly so we avoid busy regions around the label,
             // not just underneath it. This helps place annotations over calmer backgrounds.
@@ -421,8 +391,7 @@ final class SmartLabelPlacer {
             // covering “interesting” UI areas (graphs, text blocks, etc.).
             let scoringRect = Self.clampedRect(
                 imageRect.insetBy(dx: -self.scoreRegionPadding, dy: -self.scoreRegionPadding),
-                within: NSRect(origin: .zero, size: self.imageSize)
-            )
+                within: NSRect(origin: .zero, size: self.imageSize))
 
             // Score using edge detection
             var score = self.textDetector.scoreRegionForLabelPlacement(scoringRect, in: self.image)
@@ -446,9 +415,8 @@ final class SmartLabelPlacer {
                         "type": position.type.rawValue,
                         "drawingRect": "\(position.rect)",
                         "imageRect": "\(imageRect)",
-                        "score": score
-                    ]
-                )
+                        "score": score,
+                    ])
             }
 
             return (rect: position.rect, index: position.index, type: position.type, score: score)
@@ -458,8 +426,8 @@ final class SmartLabelPlacer {
     private func findInternalPosition(
         for element: DetectedElement,
         elementRect: NSRect,
-        labelSize: NSSize
-    ) -> (labelRect: NSRect, connectionPoint: NSPoint?)? {
+        labelSize: NSSize) -> (labelRect: NSRect, connectionPoint: NSPoint?)?
+    {
         let insidePositions: [NSRect] = if element.type == .button || element.type == .link {
             // For buttons, use corners with small inset
             [
@@ -468,15 +436,13 @@ final class SmartLabelPlacer {
                     x: elementRect.minX + self.cornerInset,
                     y: elementRect.maxY - labelSize.height - self.cornerInset,
                     width: labelSize.width,
-                    height: labelSize.height
-                ),
+                    height: labelSize.height),
                 // Top-right corner
                 NSRect(
                     x: elementRect.maxX - labelSize.width - self.cornerInset,
                     y: elementRect.maxY - labelSize.height - self.cornerInset,
                     width: labelSize.width,
-                    height: labelSize.height
-                ),
+                    height: labelSize.height),
             ]
         } else {
             // For other elements
@@ -486,8 +452,7 @@ final class SmartLabelPlacer {
                     x: elementRect.minX + 2,
                     y: elementRect.maxY - labelSize.height - 2,
                     width: labelSize.width,
-                    height: labelSize.height
-                ),
+                    height: labelSize.height),
             ]
         }
 
@@ -498,8 +463,7 @@ final class SmartLabelPlacer {
                 x: candidateRect.origin.x,
                 y: self.imageSize.height - candidateRect.origin.y - candidateRect.height,
                 width: candidateRect.width,
-                height: candidateRect.height
-            )
+                height: candidateRect.height)
 
             let score = self.textDetector.scoreRegionForLabelPlacement(imageRect, in: self.image)
 
@@ -514,8 +478,7 @@ final class SmartLabelPlacer {
             x: elementRect.midX - labelSize.width / 2,
             y: elementRect.midY - labelSize.height / 2,
             width: labelSize.width,
-            height: labelSize.height
-        )
+            height: labelSize.height)
 
         return (labelRect: centerRect, connectionPoint: nil)
     }
@@ -523,8 +486,8 @@ final class SmartLabelPlacer {
     private func calculateConnectionPoint(
         for positionIndex: Int,
         elementRect: NSRect,
-        isExternal: Bool
-    ) -> NSPoint? {
+        isExternal: Bool) -> NSPoint?
+    {
         guard isExternal else { return nil }
 
         // Connection points for external positions
@@ -584,8 +547,7 @@ extension SmartLabelPlacer {
             x: rect.origin.x,
             y: self.imageSize.height - rect.origin.y - rect.height,
             width: rect.width,
-            height: rect.height
-        )
+            height: rect.height)
 
         let result = self.textDetector.analyzeRegion(imageRect, in: self.image)
 
@@ -607,7 +569,7 @@ extension SmartLabelPlacer {
         let text = String(format: "%.1f%%", result.density * 100)
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: 10),
-            .foregroundColor: NSColor.white
+            .foregroundColor: NSColor.white,
         ]
         text.draw(at: NSPoint(x: 2, y: 2), withAttributes: attributes)
 

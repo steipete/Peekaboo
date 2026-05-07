@@ -81,8 +81,8 @@ struct SeeCommandAnnotationTests {
             )
         )
 
-        let windowOrigin = SeeAnnotationCoordinateMapper.windowOrigin(for: detectionResult)
-        let drawingRect = SeeAnnotationCoordinateMapper.drawingRect(
+        let windowOrigin = ObservationAnnotationCoordinateMapper.windowOrigin(for: detectionResult)
+        let drawingRect = ObservationAnnotationCoordinateMapper.drawingRect(
             for: element,
             imageSize: CGSize(width: 800, height: 600),
             windowOrigin: windowOrigin
