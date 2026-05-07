@@ -77,7 +77,7 @@ public final class WatchCaptureSession {
     private let options: CaptureOptions
     private let outputRoot: URL
     private let store: WatchCaptureSessionStore
-    private let screenService: (any ScreenServiceProtocol)?
+    private let regionValidator: WatchCaptureRegionValidator
     private let frameSource: (any CaptureFrameSource)?
     private let sourceKind: CaptureSessionResult.Source
     private let videoIn: String?
@@ -97,7 +97,7 @@ public final class WatchCaptureSession {
 
     public init(dependencies: WatchCaptureDependencies, configuration: WatchCaptureConfiguration) {
         self.screenCapture = dependencies.screenCapture
-        self.screenService = dependencies.screenService
+        self.regionValidator = WatchCaptureRegionValidator(screenService: dependencies.screenService)
         self.frameSource = dependencies.frameSource
         self.scope = configuration.scope
         self.options = configuration.options
@@ -325,9 +325,12 @@ public final class WatchCaptureSession {
             guard let rect = self.scope.region else {
                 throw PeekabooError.captureFailed(reason: "Region missing for watch capture")
             }
-            let validated = try self.validateRegion(rect)
+            let validation = try self.regionValidator.validateRegion(rect)
+            if let warning = validation.warning {
+                self.warnings.append(warning)
+            }
             result = try await self.screenCapture.captureArea(
-                validated,
+                validation.rect,
                 visualizerMode: .watchCapture,
                 scale: .logical1x)
         }
@@ -623,37 +626,6 @@ public final class WatchCaptureSession {
         if ns > elapsed {
             try await Task.sleep(nanoseconds: ns - elapsed)
         }
-    }
-
-    // MARK: - Region validation
-
-    private func validateRegion(_ rect: CGRect) throws -> CGRect {
-        let screens = self.screenCaptureScreens()
-        guard !screens.isEmpty else {
-            throw PeekabooError.invalidInput("No screens available for region capture")
-        }
-
-        // Global coords are expected; find intersection across all screens.
-        var union = CGRect.null
-        for screen in screens {
-            union = union.union(screen.frame)
-        }
-
-        guard rect.intersects(union) else {
-            throw PeekabooError.invalidInput("Region lies outside all screens")
-        }
-
-        let clamped = rect.intersection(union)
-        if clamped != rect {
-            // Clamp instead of failing when partially visible; signal to callers via warning.
-            self.warnings.append(
-                WatchWarning(code: .displayChanged, message: "Region adjusted to visible area"))
-        }
-        return clamped
-    }
-
-    private func screenCaptureScreens() -> [ScreenInfo] {
-        self.screenService?.listScreens() ?? []
     }
 }
 
