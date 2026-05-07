@@ -1,0 +1,260 @@
+import Algorithms
+import Foundation
+import MCP
+import PeekabooAutomation
+import TachikomaMCP
+
+extension SpaceTool {
+    @MainActor
+    func perform(
+        action: SpaceAction,
+        service: any SpaceManaging,
+        startTime: Date) async throws -> ToolResponse
+    {
+        switch action {
+        case let .list(detailed):
+            try await self.handleList(service: service, detailed: detailed, startTime: startTime)
+        case let .switchSpace(spaceNumber):
+            try await self.handleSwitch(service: service, spaceNumber: spaceNumber, startTime: startTime)
+        case let .moveWindow(request):
+            try await self.handleMoveWindow(service: service, request: request, startTime: startTime)
+        }
+    }
+
+    @MainActor
+    private func handleList(
+        service: any SpaceManaging,
+        detailed: Bool,
+        startTime: Date) async throws -> ToolResponse
+    {
+        let spaces = service.getAllSpaces()
+        let executionTime = Date().timeIntervalSince(startTime)
+
+        if spaces.isEmpty {
+            return ToolResponse(
+                content: [.text(text: "No Spaces found", annotations: nil, _meta: nil)],
+                meta: .object([
+                    "count": .double(0),
+                    "execution_time": .double(executionTime),
+                ]))
+        }
+
+        var output = "Found \(spaces.count) Space(s):\n\n"
+
+        for (index, space) in spaces.indexed() {
+            let spaceNumber = index + 1
+            let activeIndicator = space.isActive ? " (Active)" : ""
+
+            output += "Space \(spaceNumber)\(activeIndicator):\n"
+
+            if detailed {
+                output += "  • ID: \(space.id)\n"
+                output += "  • Type: \(space.type.rawValue)\n"
+                if let displayID = space.displayID {
+                    output += "  • Display: \(displayID)\n"
+                }
+                if let name = space.name, !name.isEmpty {
+                    output += "  • Name: \(name)\n"
+                }
+                if !space.ownerPIDs.isEmpty {
+                    let owners = space.ownerPIDs.map(String.init).joined(separator: ", ")
+                    output += "  • Owner PIDs: \(owners)\n"
+                }
+            } else {
+                output += "  • Type: \(space.type.rawValue)\n"
+            }
+
+            output += "\n"
+        }
+
+        let message = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let baseMeta: [String: Value] = [
+            "count": .double(Double(spaces.count)),
+            "execution_time": .double(executionTime),
+            "detailed": .bool(detailed),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "List Spaces",
+            notes: "\(spaces.count) spaces")
+        return ToolResponse(
+            content: [.text(text: message, annotations: nil, _meta: nil)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
+    }
+
+    @MainActor
+    private func handleSwitch(
+        service: any SpaceManaging,
+        spaceNumber: Int,
+        startTime: Date) async throws -> ToolResponse
+    {
+        let spaces = service.getAllSpaces()
+
+        guard spaceNumber > 0, spaceNumber <= spaces.count else {
+            return ToolResponse.error("Invalid space number. Available spaces: 1-\(spaces.count)")
+        }
+
+        let targetSpace = spaces[spaceNumber - 1]
+
+        if targetSpace.isActive {
+            let executionTime = Date().timeIntervalSince(startTime)
+            return ToolResponse(
+                content: [.text(text: "Already on Space \(spaceNumber)", annotations: nil, _meta: nil)],
+                meta: .object([
+                    "space_number": .double(Double(spaceNumber)),
+                    "space_id": .double(Double(targetSpace.id)),
+                    "was_already_active": .bool(true),
+                    "execution_time": .double(executionTime),
+                ]))
+        }
+
+        try await service.switchToSpace(targetSpace.id)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let message = self.successMessage("Switched to Space \(spaceNumber)", duration: executionTime)
+
+        let baseMeta: [String: Value] = [
+            "space_number": .double(Double(spaceNumber)),
+            "space_id": .double(Double(targetSpace.id)),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            actionDescription: "Switch Space",
+            notes: "Space \(spaceNumber)")
+        return ToolResponse(
+            content: [.text(text: message, annotations: nil, _meta: nil)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
+    }
+
+    @MainActor
+    private func handleMoveWindow(
+        service: any SpaceManaging,
+        request: MoveWindowRequest,
+        startTime: Date) async throws -> ToolResponse
+    {
+        let windowService = self.context.windows
+
+        let windowTarget = try self.createWindowTarget(
+            app: request.appName,
+            title: request.windowTitle,
+            index: request.windowIndex)
+        let windows = try await windowService.listWindows(target: windowTarget)
+
+        guard let windowInfo = windows.first else {
+            return ToolResponse.error("No matching window found for app '\(request.appName)'")
+        }
+
+        guard let windowID = UInt32(exactly: windowInfo.windowID) else {
+            return ToolResponse.error("Window '\(windowInfo.title)' is missing an identifier")
+        }
+
+        if request.toCurrent {
+            return try self.moveWindowToCurrentSpace(
+                service: service,
+                windowInfo: windowInfo,
+                windowID: windowID,
+                startTime: startTime)
+        }
+
+        return try await self.moveWindowToSpecificSpace(
+            service: service,
+            request: request,
+            windowInfo: windowInfo,
+            windowID: windowID,
+            startTime: startTime)
+    }
+
+    @MainActor
+    private func moveWindowToCurrentSpace(
+        service: any SpaceManaging,
+        windowInfo: ServiceWindowInfo,
+        windowID: UInt32,
+        startTime: Date) throws -> ToolResponse
+    {
+        try service.moveWindowToCurrentSpace(windowID: windowID)
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let message = self.successMessage(
+            "Moved window '\(windowInfo.title)' to current Space",
+            duration: executionTime)
+
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowID)),
+            "moved_to_current": .bool(true),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            windowTitle: windowInfo.title,
+            actionDescription: "Space Move",
+            notes: "current")
+        return ToolResponse(
+            content: [.text(text: message, annotations: nil, _meta: nil)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
+    }
+
+    @MainActor
+    private func moveWindowToSpecificSpace(
+        service: any SpaceManaging,
+        request: MoveWindowRequest,
+        windowInfo: ServiceWindowInfo,
+        windowID: UInt32,
+        startTime: Date) async throws -> ToolResponse
+    {
+        guard let targetSpaceNumber = request.targetSpaceNumber else {
+            return ToolResponse.error("Internal error: targetSpaceNumber is nil")
+        }
+
+        let spaces = service.getAllSpaces()
+        guard targetSpaceNumber > 0, targetSpaceNumber <= spaces.count else {
+            return ToolResponse.error("Invalid space number. Available spaces: 1-\(spaces.count)")
+        }
+
+        let targetSpace = spaces[targetSpaceNumber - 1]
+        try service.moveWindowToSpace(windowID: windowID, spaceID: targetSpace.id)
+
+        if request.follow {
+            try await service.switchToSpace(targetSpace.id)
+        }
+
+        let executionTime = Date().timeIntervalSince(startTime)
+        let followText = request.follow ? " and switched to Space \(targetSpaceNumber)" : ""
+        let body = "Moved window '\(windowInfo.title)' to Space \(targetSpaceNumber)\(followText)"
+        let message = self.successMessage(body, duration: executionTime)
+
+        let baseMeta: [String: Value] = [
+            "window_title": .string(windowInfo.title),
+            "window_id": .double(Double(windowID)),
+            "target_space_number": .double(Double(targetSpaceNumber)),
+            "target_space_id": .double(Double(targetSpace.id)),
+            "followed": .bool(request.follow),
+            "execution_time": .double(executionTime),
+        ]
+        let summary = ToolEventSummary(
+            windowTitle: windowInfo.title,
+            actionDescription: "Space Move",
+            notes: "space \(targetSpaceNumber)")
+        return ToolResponse(
+            content: [.text(text: message, annotations: nil, _meta: nil)],
+            meta: ToolEventSummary.merge(summary: summary, into: .object(baseMeta)))
+    }
+
+    private func createWindowTarget(app: String, title: String?, index: Int?) throws -> WindowTarget {
+        if let title {
+            return .applicationAndTitle(app: app, title: title)
+        }
+
+        if let index {
+            return .index(app: app, index: index)
+        }
+
+        return .application(app)
+    }
+
+    private func formatDuration(_ duration: TimeInterval) -> String {
+        String(format: "%.2f", duration)
+    }
+
+    private func successMessage(_ body: String, duration: TimeInterval) -> String {
+        "\(AgentDisplayTokens.Status.success) \(body) in \(self.formatDuration(duration))s"
+    }
+}

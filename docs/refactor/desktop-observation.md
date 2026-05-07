@@ -181,6 +181,7 @@ Landed:
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - MCP `WindowTool` action handlers now live in a focused companion file, and target validation uses the tool's normal argument-error path.
 - MCP `AppTool` action handlers now live in a focused companion file, leaving the primary tool file as request parsing and dispatch.
+- MCP `SpaceTool` action handlers now live in a focused companion file, leaving the primary tool file as schema, request parsing, and dispatch.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
 - `peekaboo clipboard` Commander binding and output DTOs are split from clipboard action logic.
@@ -341,6 +342,8 @@ WindowToolFormatter+SpaceResults.swift: 129 lines
 SpaceUtilities.swift: 443 lines
 SpaceCGSPrivateAPI.swift: 121 lines
 SpaceModels.swift: 68 lines
+SpaceTool.swift: 196 lines
+SpaceTool+Handlers.swift: 260 lines
 PeekabooAgentService+Tools.swift: 444 lines
 PeekabooAgentService+ToolSchema.swift: 92 lines
 AgentToolMCPBridge.swift: 93 lines

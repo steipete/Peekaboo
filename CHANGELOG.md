@@ -92,6 +92,7 @@
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of duplicating per-command refresh loops.
 - MCP `window` action handlers now live in a focused companion file, and missing window targets return the direct validation error instead of a generic action failure.
 - MCP `app` action handlers now live in a focused companion file, leaving the primary tool file as request parsing and dispatch.
+- MCP `space` action handlers now live in a focused companion file, leaving the primary tool file as schema, request parsing, and dispatch.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now invalidate implicitly reused latest snapshots after successful UI mutations so later commands do not silently target stale UI.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
