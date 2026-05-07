@@ -411,6 +411,32 @@ struct ElementClassifierTests {
     }
 }
 
+@Suite(.tags(.fast))
+struct AXDescriptorReaderTests {
+    @Test
+    func `Scalar coercion accepts expected AX attribute value shapes`() {
+        #expect(AXDescriptorReader.stringValue("Save") == "Save")
+        #expect(AXDescriptorReader.stringValue(42) == nil)
+        #expect(AXDescriptorReader.boolValue(true) == true)
+        #expect(AXDescriptorReader.boolValue(false) == false)
+        #expect(AXDescriptorReader.boolValue(NSNumber(value: true)) == true)
+        #expect(AXDescriptorReader.boolValue("true") == nil)
+    }
+
+    @Test
+    func `Geometry coercion reads matching AX value types only`() {
+        var point = CGPoint(x: 12, y: 34)
+        let pointValue = AXValueCreate(.cgPoint, &point)
+        #expect(AXDescriptorReader.cgPointValue(pointValue) == point)
+        #expect(AXDescriptorReader.cgSizeValue(pointValue) == nil)
+
+        var size = CGSize(width: 56, height: 78)
+        let sizeValue = AXValueCreate(.cgSize, &size)
+        #expect(AXDescriptorReader.cgSizeValue(sizeValue) == size)
+        #expect(AXDescriptorReader.cgPointValue(sizeValue) == nil)
+    }
+}
+
 extension ElementDetectionServiceTests {
     private func assertBasicElementCollections(
         _ elements: DetectedElements,
