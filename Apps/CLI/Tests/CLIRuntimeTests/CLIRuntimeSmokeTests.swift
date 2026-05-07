@@ -130,6 +130,7 @@ struct CLIRuntimeSmokeTests {
 
         #expect(json["success"] as? Bool == true)
         #expect(json["data"] is [String: Any])
+        #expect(json["debug_logs"] is [Any])
         #expect(result.standardOutput.contains("Providers:") == false)
     }
 

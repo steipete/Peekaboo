@@ -171,7 +171,8 @@ extension ConfigCommand {
             if self.jsonOutput {
                 let successOutput = SuccessOutput(
                     success: true,
-                    data: effectiveConfig
+                    data: effectiveConfig,
+                    debugLogs: self.logger.getDebugLogs()
                 )
                 outputJSON(successOutput, logger: self.logger)
             } else {

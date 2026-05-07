@@ -73,7 +73,11 @@ struct ConfigCommandOutput {
     func success(message: String, data: [String: Any] = [:], textLines: [String]? = nil) {
         if self.jsonOutput {
             outputJSONCodable(
-                SuccessOutput(success: true, data: self.messagePayload(message: message, data: data)),
+                SuccessOutput(
+                    success: true,
+                    data: self.messagePayload(message: message, data: data),
+                    debugLogs: self.logger.getDebugLogs()
+                ),
                 logger: self.logger
             )
             return
@@ -111,15 +115,24 @@ struct ConfigCommandOutput {
 struct SuccessOutput: Encodable {
     let success: Bool
     let data: [String: Any]
+    let debugLogs: [String]
+
+    init(success: Bool, data: [String: Any], debugLogs: [String] = []) {
+        self.success = success
+        self.data = data
+        self.debugLogs = debugLogs
+    }
 
     enum CodingKeys: String, CodingKey {
         case success, data
+        case debugLogs = "debug_logs"
     }
 
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.success, forKey: .success)
         try container.encode(JSONValue(self.data), forKey: .data)
+        try container.encode(self.debugLogs, forKey: .debugLogs)
     }
 }
 
