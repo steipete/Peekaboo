@@ -8,188 +8,12 @@ import PeekabooFoundation
 
 @MainActor
 final class ScreenCaptureKitFrameSource: CaptureFrameSource {
-    struct StreamKey: Hashable {
-        let displayID: CGDirectDisplayID
-        let scale: CaptureScalePreference
-    }
-
-    struct FrameContext {
-        let displayFrame: CGRect
-        let scaleFactor: CGFloat
-        let sourceRect: CGRect
-    }
-
-    struct Frame {
-        let image: CGImage
-        let timestamp: Date
-        let displayFrame: CGRect
-        let scaleFactor: CGFloat
-        let sourceRect: CGRect
-    }
-
-    private final class StreamFrameHandler: NSObject, SCStreamOutput, SCStreamDelegate {
-        private let context: CIContext
-        private let onFrame: @MainActor (CGImage, Date, CGRect) -> Void
-        private let onError: @MainActor (any Error) -> Void
-
-        init(
-            context: CIContext = CIContext(),
-            onFrame: @escaping @MainActor (CGImage, Date, CGRect) -> Void,
-            onError: @escaping @MainActor (any Error) -> Void)
-        {
-            self.context = context
-            self.onFrame = onFrame
-            self.onError = onError
-        }
-
-        nonisolated func stream(
-            _ stream: SCStream,
-            didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
-            of type: SCStreamOutputType)
-        {
-            guard type == .screen else { return }
-            guard let imageBuffer = sampleBuffer.imageBuffer else { return }
-
-            let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-            guard let cgImage = self.context.createCGImage(ciImage, from: ciImage.extent) else { return }
-            let timestamp = Date()
-            let rect = ciImage.extent
-
-            let onFrame = self.onFrame
-            Task { @MainActor in
-                onFrame(cgImage, timestamp, rect)
-            }
-        }
-
-        nonisolated func stream(_ stream: SCStream, didStopWithError error: any Error) {
-            let onError = self.onError
-            Task { @MainActor in
-                onError(error)
-            }
-        }
-    }
-
-    @MainActor
-    private final class StreamSession {
-        let key: StreamKey
-        let display: SCDisplay
-        let scaleFactor: CGFloat
-        let logger: CategoryLogger
-        let stream: SCStream
-        let handler: StreamFrameHandler
-        let queue: DispatchQueue
-
-        var isRunning = false
-        var currentSourceRect: CGRect
-        var currentSize: CGSize
-        var pendingError: (any Error)?
-
-        init(
-            key: StreamKey,
-            display: SCDisplay,
-            scaleFactor: CGFloat,
-            logger: CategoryLogger,
-            handler: StreamFrameHandler,
-            queue: DispatchQueue) throws
-        {
-            self.key = key
-            self.display = display
-            self.scaleFactor = scaleFactor
-            self.logger = logger
-            self.handler = handler
-            self.queue = queue
-
-            let filter = SCContentFilter(display: display, excludingWindows: [])
-            let config = SCStreamConfiguration()
-            let logicalSize = display.frame.size
-            let width = Int(logicalSize.width * scaleFactor)
-            let height = Int(logicalSize.height * scaleFactor)
-            config.width = width
-            config.height = height
-            config.sourceRect = CGRect(origin: .zero, size: logicalSize)
-            config.captureResolution = .best
-            config.showsCursor = false
-            config.capturesAudio = false
-            config.shouldBeOpaque = true
-            config.queueDepth = 1
-
-            if let fps = ScreenCaptureKitFrameSource.defaultFPS {
-                config.minimumFrameInterval = CMTime(value: 1, timescale: fps)
-            }
-
-            self.currentSourceRect = config.sourceRect
-            self.currentSize = CGSize(width: width, height: height)
-
-            let stream = SCStream(filter: filter, configuration: config, delegate: handler)
-            self.stream = stream
-            try stream.addStreamOutput(handler, type: .screen, sampleHandlerQueue: queue)
-        }
-
-        func start(correlationId: String) async throws {
-            guard !self.isRunning else { return }
-            do {
-                let stream = self.stream
-                try await withTimeout(seconds: 3.0) {
-                    try await stream.startCapture()
-                }
-                self.isRunning = true
-                self.logger.debug(
-                    "Fast stream started",
-                    metadata: [
-                        "displayID": self.display.displayID,
-                        "scaleFactor": self.scaleFactor,
-                    ],
-                    correlationId: correlationId)
-            } catch {
-                self.pendingError = error
-                throw error
-            }
-        }
-
-        func ensureConfiguration(
-            sourceRect: CGRect,
-            size: CGSize,
-            correlationId: String) async throws
-        {
-            guard self.currentSourceRect != sourceRect || self.currentSize != size else { return }
-            let config = SCStreamConfiguration()
-            config.sourceRect = sourceRect
-            config.width = Int(size.width)
-            config.height = Int(size.height)
-            config.captureResolution = .best
-            config.showsCursor = false
-            config.capturesAudio = false
-            config.shouldBeOpaque = true
-            config.queueDepth = 1
-            if let fps = ScreenCaptureKitFrameSource.defaultFPS {
-                config.minimumFrameInterval = CMTime(value: 1, timescale: fps)
-            }
-
-            let stream = self.stream
-            let start = Date()
-            try await withTimeout(seconds: 3.0) {
-                try await stream.updateConfiguration(config)
-            }
-            let duration = Date().timeIntervalSince(start)
-            self.currentSourceRect = sourceRect
-            self.currentSize = size
-
-            self.logger.debug(
-                "Fast stream config updated",
-                metadata: [
-                    "durationMs": Int(duration * 1000),
-                    "displayID": self.display.displayID,
-                ],
-                correlationId: correlationId)
-        }
-    }
-
     private let logger: CategoryLogger
     private let maxFrameAge: TimeInterval
     private let frameWaitTimeout: TimeInterval
     private let framePollInterval: TimeInterval
-    private var sessions: [StreamKey: StreamSession] = [:]
-    private var latestFrames: [StreamKey: Frame] = [:]
+    private var sessions: [SCKFrameStreamKey: SCKStreamSession] = [:]
+    private var latestFrames: [SCKFrameStreamKey: SCKFrame] = [:]
     private var currentRequest: CaptureFrameRequest?
 
     init(logger: CategoryLogger) {
@@ -239,12 +63,12 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
         let scale = request.scale
         let correlationId = request.correlationId
 
-        let key = StreamKey(displayID: display.displayID, scale: scale)
+        let key = SCKFrameStreamKey(displayID: display.displayID, scale: scale)
         let session = try self.session(for: display, scale: scale, key: key, correlationId: correlationId)
         try await session.start(correlationId: correlationId)
         let scalePlan = Self.scalePlan(for: display, preference: scale)
 
-        let context = FrameContext(
+        let context = SCKFrameContext(
             displayFrame: display.frame,
             scaleFactor: session.scaleFactor,
             sourceRect: sourceRect)
@@ -300,8 +124,8 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
     private func session(
         for display: SCDisplay,
         scale: CaptureScalePreference,
-        key: StreamKey,
-        correlationId: String) throws -> StreamSession
+        key: SCKFrameStreamKey,
+        correlationId: String) throws -> SCKStreamSession
     {
         if let existing = self.sessions[key] {
             if let error = existing.pendingError {
@@ -313,9 +137,9 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
         let scalePlan = ScreenCaptureKitFrameSource.scalePlan(for: display, preference: scale)
         let scaleFactor = scalePlan.outputScale
         let queue = DispatchQueue(label: "boo.peekaboo.capture.stream.\(display.displayID)")
-        let handler = StreamFrameHandler(
+        let handler = SCKStreamFrameHandler(
             onFrame: { [weak self] image, timestamp, _ in
-                let context = FrameContext(
+                let context = SCKFrameContext(
                     displayFrame: display.frame,
                     scaleFactor: scaleFactor,
                     sourceRect: CGRect(origin: .zero, size: display.frame.size))
@@ -329,7 +153,7 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
                 self?.handleStreamError(error, key: key)
             })
 
-        let session = try StreamSession(
+        let session = try SCKStreamSession(
             key: key,
             display: display,
             scaleFactor: scaleFactor,
@@ -353,10 +177,10 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
     private func update(
         image: CGImage,
         timestamp: Date,
-        context: FrameContext,
-        key: StreamKey)
+        context: SCKFrameContext,
+        key: SCKFrameStreamKey)
     {
-        self.latestFrames[key] = Frame(
+        self.latestFrames[key] = SCKFrame(
             image: image,
             timestamp: timestamp,
             displayFrame: context.displayFrame,
@@ -364,7 +188,7 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             sourceRect: context.sourceRect)
     }
 
-    private func handleStreamError(_ error: any Error, key: StreamKey) {
+    private func handleStreamError(_ error: any Error, key: SCKFrameStreamKey) {
         if let session = self.sessions[key] {
             session.pendingError = error
         }
@@ -374,11 +198,11 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
     }
 
     private func waitForFrame(
-        key: StreamKey,
-        context: FrameContext,
+        key: SCKFrameStreamKey,
+        context: SCKFrameContext,
         after requestTime: Date,
         maxAge: TimeInterval?,
-        correlationId: String) async throws -> Frame
+        correlationId: String) async throws -> SCKFrame
     {
         let ageLimit = maxAge ?? self.maxFrameAge
         let deadline = Date().addingTimeInterval(self.frameWaitTimeout)
@@ -386,7 +210,7 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             if let frame = self.latestFrames[key] {
                 let age = Date().timeIntervalSince(frame.timestamp)
                 if frame.timestamp >= requestTime || age <= ageLimit {
-                    return Frame(
+                    return SCKFrame(
                         image: frame.image,
                         timestamp: frame.timestamp,
                         displayFrame: context.displayFrame,
@@ -416,8 +240,8 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
             frameWidth: display.frame.width)
     }
 
-    private nonisolated static let defaultMaxFrameAge: TimeInterval = 0.25
-    private nonisolated static let defaultFrameWaitTimeout: TimeInterval = 0.6
-    private nonisolated static let defaultFramePollInterval: TimeInterval = 0.02
-    private nonisolated static let defaultFPS: CMTimeScale? = nil
+    nonisolated static let defaultMaxFrameAge: TimeInterval = 0.25
+    nonisolated static let defaultFrameWaitTimeout: TimeInterval = 0.6
+    nonisolated static let defaultFramePollInterval: TimeInterval = 0.02
+    nonisolated static let defaultFPS: CMTimeScale? = nil
 }

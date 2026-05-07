@@ -69,6 +69,7 @@
 - Dialog service now keeps public operations and button resolution/action helpers out of the construction/error file.
 - Process command models now keep enum cases, interaction parameters, system parameters, and output DTOs in focused files.
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
+- ScreenCaptureKit frame-source internals now keep stream handler/session types in a focused companion while the frame source owns request orchestration.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
 - Exact `--window-id` observation metadata now resolves through a dedicated window metadata catalog instead of doing CoreGraphics lookup inside target-resolution orchestration.
