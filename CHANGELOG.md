@@ -117,6 +117,7 @@
 ### Fixed
 - `peekaboo image --path .` and MCP image captures with directory-like paths now save a generated filename inside the directory instead of creating hidden `..png` artifacts.
 - `peekaboo see --path .` now uses the same directory-aware output policy for observation and legacy screen companion paths.
+- `peekaboo capture live --path ~/...`, `peekaboo capture video --path ~/...`, and `peekaboo capture video ~/...` now expand home-directory paths consistently with the rest of the CLI.
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.

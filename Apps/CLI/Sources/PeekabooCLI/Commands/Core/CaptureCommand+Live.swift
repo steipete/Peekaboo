@@ -267,11 +267,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     }
 
     func resolveOutputDirectory() throws -> URL {
-        if let path { return URL(fileURLWithPath: path, isDirectory: true) }
-        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("peekaboo")
-            .appendingPathComponent("capture-sessions", isDirectory: true)
-            .appendingPathComponent("capture-\(UUID().uuidString)", isDirectory: true)
+        CaptureCommandPathResolver.outputDirectory(from: self.path)
     }
 
     private func output(_ result: LiveCaptureSessionResult) {

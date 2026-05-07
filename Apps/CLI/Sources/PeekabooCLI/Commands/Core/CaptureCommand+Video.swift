@@ -61,7 +61,7 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
             }
             let outputDir = try self.resolveOutputDirectory()
             let options = self.buildOptions()
-            let videoURL = URL(fileURLWithPath: self.input)
+            let videoURL = self.inputVideoURL()
             let frameSource = try await VideoFrameSource(
                 url: videoURL,
                 sampleFps: self.sampleFps,
@@ -146,11 +146,11 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
     }
 
     func resolveOutputDirectory() throws -> URL {
-        if let path { return URL(fileURLWithPath: path, isDirectory: true) }
-        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            .appendingPathComponent("peekaboo")
-            .appendingPathComponent("capture-sessions", isDirectory: true)
-            .appendingPathComponent("capture-\(UUID().uuidString)", isDirectory: true)
+        CaptureCommandPathResolver.outputDirectory(from: self.path)
+    }
+
+    func inputVideoURL() -> URL {
+        CaptureCommandPathResolver.fileURL(from: self.input)
     }
 
     private func output(_ result: LiveCaptureSessionResult) {

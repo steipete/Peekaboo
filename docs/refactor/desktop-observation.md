@@ -165,6 +165,7 @@ Landed:
 - MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
 - CLI and MCP image output paths now share directory-aware planning, so `--path .`, trailing-slash paths, and existing directories receive generated filenames instead of hidden `..png` artifacts.
 - CLI `see` output paths now use the same directory-aware planning for primary screenshots and legacy multi-screen companion files.
+- `capture live` and `capture video` now share a small path resolver for home-directory expansion on output directories and video input paths.
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
