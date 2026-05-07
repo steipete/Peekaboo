@@ -21,6 +21,18 @@ struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
             logger.info("Screen recording permission granted (SCShareableContent probe)")
             return true
         } catch {
+            if let delay = ScreenCaptureKitTransientError.retryDelayNanoseconds(after: error) {
+                logger.warning(
+                    "Screen recording permission probe hit transient ScreenCaptureKit denial; retrying once")
+                try? await Task.sleep(nanoseconds: delay)
+                do {
+                    _ = try await ScreenCaptureKitCaptureGate.currentShareableContent()
+                    logger.info("Screen recording permission granted (SCShareableContent retry)")
+                    return true
+                } catch {
+                    logger.warning("Screen recording permission retry failed: \(error)")
+                }
+            }
             logger.warning("Screen recording permission not granted (SCShareableContent probe failed: \(error))")
             return false
         }

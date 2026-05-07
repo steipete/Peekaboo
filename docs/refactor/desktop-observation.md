@@ -234,6 +234,7 @@ Landed:
 - `peekaboo capture live` now keeps scope resolution, option normalization, output rendering, focus policy, and Commander binding in focused command-support files.
 - `peekaboo capture live` now applies the resolution cap consistently to live frames whose source images lack reusable color-space metadata.
 - `peekaboo see --mode screen --json` now suppresses human screen-summary lines so stdout remains a single JSON document.
+- Screen capture operations now keep ScreenCaptureKit permission probing inside the same serialized transaction as capture work; `peekaboo capture live` now honors `--capture-engine`, and live area capture defaults to the native `screencapture -R` path so it stays fast during concurrent `see` commands.
 - `InMemorySnapshotManager` now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files; writes now enforce the LRU cap immediately and artifact cleanup also applies to pruned entries.
 - Agent desktop context gathering now reads focused application/window state, cursor position, and recent apps through application/window/automation service boundaries instead of direct `NSWorkspace`/CoreGraphics event/window scans.
 - MCP app cycling and move-center resolution now use injected automation/screen services instead of direct AXorcist/AppKit calls.

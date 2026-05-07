@@ -148,7 +148,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         }
     }
 
-    func withCaptureEngine<T: Sendable>(
+    public func withCaptureEngine<T: Sendable>(
         _ engine: CaptureEnginePreference,
         operation: @MainActor () async throws -> T) async rethrows -> T
     {

@@ -62,14 +62,18 @@ extension ScreenCaptureService {
                 metadata: metadata)
         }
 
-        if requiresPermission {
-            try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
-        }
-
         return try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
             operationName: operation.metricName)
         {
-            try await body(correlationId)
+            // Permission probing may call ScreenCaptureKit on CLI builds where
+            // CGPreflightScreenCaptureAccess is unreliable; keep that probe in
+            // the same cross-process transaction as the capture itself.
+            let shouldProbePermission = requiresPermission &&
+                !(operation == .area && Self.captureEnginePreference == .legacy)
+            if shouldProbePermission {
+                try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
+            }
+            return try await body(correlationId)
         }
     }
 

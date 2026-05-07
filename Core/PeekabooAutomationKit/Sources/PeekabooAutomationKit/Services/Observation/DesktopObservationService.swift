@@ -49,38 +49,39 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         let tracer = DesktopObservationTraceRecorder()
         let observeStart = ContinuousClock.now
 
-        let (stateSnapshot, target, capture) = try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
-            operationName: "desktopObservation")
-        {
-            let stateSnapshot = try await tracer.span("state.snapshot") {
-                try await self.stateSnapshotProvider.snapshot(for: request.target)
-            }
+        let (stateSnapshot, target, capture, elements, ocr) = try await ScreenCaptureKitCaptureGate
+            .withExclusiveCaptureOperation(
+                operationName: "desktopObservation")
+            {
+                let stateSnapshot = try await tracer.span("state.snapshot") {
+                    try await self.stateSnapshotProvider.snapshot(for: request.target)
+                }
 
-            let target = try await tracer.span("target.resolve") {
-                try await self.targetResolver.resolve(request.target, snapshot: stateSnapshot)
-            }
+                let target = try await tracer.span("target.resolve") {
+                    try await self.targetResolver.resolve(request.target, snapshot: stateSnapshot)
+                }
 
-            let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
-                try await self.capture(target, options: request.capture, snapshot: stateSnapshot)
+                let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
+                    try await self.capture(target, options: request.capture, snapshot: stateSnapshot)
+                }
+                let capture = Self.normalize(capture: rawCapture, for: target)
+                let detection = try await self.detectIfNeeded(
+                    capture: capture,
+                    target: target,
+                    request: request,
+                    tracer: tracer)
+                let ocr = try await self.recognizeOCRIfNeeded(
+                    capture: capture,
+                    request: request,
+                    tracer: tracer)
+                let elements = self.combineDetectionAndOCR(
+                    detection: detection,
+                    ocr: ocr,
+                    capture: capture,
+                    target: target,
+                    request: request)
+                return (stateSnapshot, target, capture, elements, ocr)
             }
-            return (stateSnapshot, target, Self.normalize(capture: rawCapture, for: target))
-        }
-
-        let detection = try await self.detectIfNeeded(
-            capture: capture,
-            target: target,
-            request: request,
-            tracer: tracer)
-        let ocr = try await self.recognizeOCRIfNeeded(
-            capture: capture,
-            request: request,
-            tracer: tracer)
-        let elements = self.combineDetectionAndOCR(
-            detection: detection,
-            ocr: ocr,
-            capture: capture,
-            target: target,
-            request: request)
         let files = try await self.writeOutputIfNeeded(
             capture: capture,
             elements: elements,

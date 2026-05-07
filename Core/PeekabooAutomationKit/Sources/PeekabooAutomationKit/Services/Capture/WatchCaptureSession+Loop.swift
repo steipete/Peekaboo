@@ -17,6 +17,7 @@ extension WatchCaptureSession {
         var activeMode: Bool
         var lastDiffBuffer: WatchFrameDiffer.LumaBuffer?
         var frameIndex: Int
+        var transientCaptureWarningEmitted: Bool
     }
 
     struct DiffComputation {
@@ -49,7 +50,8 @@ extension WatchCaptureSession {
             lastActivityTime: timing.start,
             activeMode: false,
             lastDiffBuffer: nil,
-            frameIndex: 0)
+            frameIndex: 0,
+            transientCaptureWarningEmitted: false)
 
         while true {
             let now = Date()
@@ -59,7 +61,29 @@ extension WatchCaptureSession {
 
             let frameStart = Date()
             let cadence = state.activeMode ? timing.cadenceActiveNs : timing.cadenceIdleNs
-            guard let capture = try await self.captureFrame() else {
+            let capture: WatchCaptureFrame?
+            do {
+                capture = try await self.captureFrame()
+            } catch {
+                if let delay = ScreenCaptureKitTransientError.retryDelayNanoseconds(after: error) {
+                    self.framesDropped += 1
+                    if !state.transientCaptureWarningEmitted {
+                        state.transientCaptureWarningEmitted = true
+                        self.warnings.append(
+                            WatchWarning(
+                                code: .transientCaptureFailure,
+                                message: "Dropped a frame after a transient ScreenCaptureKit capture failure",
+                                details: ["error": error.localizedDescription]))
+                    }
+                    // SCK can report a temporary TCC denial while another CLI capture is settling.
+                    // Treat that as a dropped live frame; the next sample or fallback frame can recover.
+                    try await Task.sleep(nanoseconds: delay)
+                    continue
+                }
+                throw error
+            }
+
+            guard let capture else {
                 // Frame source exhausted, usually from finite video input.
                 break
             }

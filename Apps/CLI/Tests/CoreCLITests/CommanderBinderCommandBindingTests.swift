@@ -535,6 +535,26 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `Capture live command binding keeps capture engine`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "mode": ["area"],
+                "region": ["0,0,320,240"],
+                "captureEngine": ["modern"],
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: CaptureLiveCommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.mode == "area")
+        #expect(command.region == "0,0,320,240")
+        #expect(command.captureEngine == "modern")
+    }
+
+    @Test
     func `Capture video command requires input`() {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         #expect(throws: CommanderBindingError.missingArgument(label: "input")) {

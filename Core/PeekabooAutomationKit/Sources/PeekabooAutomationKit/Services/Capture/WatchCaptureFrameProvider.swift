@@ -60,10 +60,23 @@ struct WatchCaptureFrameProvider {
             }
             let validation = try self.regionValidator.validateRegion(rect)
             warning = validation.warning
-            result = try await self.screenCapture.captureArea(
-                validation.rect,
-                visualizerMode: .watchCapture,
-                scale: .logical1x)
+            let screenCapture = self.screenCapture
+            let validatedRect = validation.rect
+            let captureArea: @MainActor @Sendable () async throws -> CaptureResult = {
+                try await screenCapture.captureArea(
+                    validatedRect,
+                    visualizerMode: .watchCapture,
+                    scale: .logical1x)
+            }
+            if Self.shouldPreferLegacyAreaCapture,
+               let engineAware = self.screenCapture as? any EngineAwareScreenCaptureServiceProtocol
+            {
+                // Live area capture samples repeatedly; prefer the CoreGraphics path in auto mode
+                // to avoid ScreenCaptureKit setup races while overlapping observation commands run.
+                result = try await engineAware.withCaptureEngine(.legacy, operation: captureArea)
+            } else {
+                result = try await captureArea()
+            }
         }
 
         guard let image = WatchCaptureArtifactWriter.makeCGImage(from: result.imageData) else {
@@ -102,5 +115,13 @@ struct WatchCaptureFrameProvider {
         let scale = cap / maxDimension
         let newSize = CGSize(width: width * scale, height: height * scale)
         return WatchCaptureArtifactWriter.resize(image: image, to: newSize) ?? image
+    }
+
+    @MainActor
+    private static var shouldPreferLegacyAreaCapture: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        let hasExplicitEngine = environment["PEEKABOO_CAPTURE_ENGINE"] != nil ||
+            environment["PEEKABOO_USE_MODERN_CAPTURE"] != nil
+        return ScreenCaptureService.captureEnginePreference == .auto && !hasExplicitEngine
     }
 }

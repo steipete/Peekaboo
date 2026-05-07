@@ -64,7 +64,7 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
 }
 
 @MainActor
-protocol EngineAwareScreenCaptureServiceProtocol: ScreenCaptureServiceProtocol {
+public protocol EngineAwareScreenCaptureServiceProtocol: ScreenCaptureServiceProtocol {
     /// Observation can honor per-request engine choices without forcing every remote/mock capture service to grow
     /// engine-specific overloads.
     func withCaptureEngine<T: Sendable>(

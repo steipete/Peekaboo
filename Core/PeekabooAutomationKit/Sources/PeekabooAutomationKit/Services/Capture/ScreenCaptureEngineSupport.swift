@@ -174,6 +174,30 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
             } catch {
                 lastError = error
                 self.observer?(operationName, api, 0, false, error)
+                if let delay = ScreenCaptureKitTransientError.retryDelayNanoseconds(after: error) {
+                    logger.warning(
+                        "\(api.description) capture hit transient ScreenCaptureKit denial; retrying once",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: correlationId)
+                    try? await Task.sleep(nanoseconds: delay)
+                    do {
+                        let start = Date()
+                        let result = try await attempt(api)
+                        let duration = Date().timeIntervalSince(start)
+                        logger.info(
+                            "\(operationName) succeeded via \(api.description) after transient retry",
+                            metadata: [
+                                "engine": api.description,
+                                "duration": String(format: "%.2f", duration),
+                            ],
+                            correlationId: correlationId)
+                        self.observer?(operationName, api, duration, true, nil)
+                        return result
+                    } catch {
+                        lastError = error
+                        self.observer?(operationName, api, 0, false, error)
+                    }
+                }
                 let hasFallback = index < (selectedAPIs.count - 1)
                 if self.shouldFallback(after: error, api: api, hasFallback: hasFallback) {
                     logger.warning(
@@ -225,6 +249,32 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
             } catch {
                 lastError = error
                 self.observer?(operationName, api, 0, false, error)
+                if let delay = ScreenCaptureKitTransientError.retryDelayNanoseconds(after: error) {
+                    logger.warning(
+                        "\(api.description) capture hit transient ScreenCaptureKit denial; retrying once",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: correlationId)
+                    try? await Task.sleep(nanoseconds: delay)
+                    do {
+                        let start = Date()
+                        let result = try await attempt(api)
+                        let duration = Date().timeIntervalSince(start)
+                        logger.info(
+                            "\(operationName) succeeded via \(api.description) after transient retry",
+                            metadata: [
+                                "engine": api.description,
+                                "duration": String(format: "%.2f", duration),
+                            ],
+                            correlationId: correlationId)
+                        self.observer?(operationName, api, duration, true, nil)
+                        return result.withCaptureDiagnostics(
+                            engine: api.description,
+                            fallbackReason: fallbackReason)
+                    } catch {
+                        lastError = error
+                        self.observer?(operationName, api, 0, false, error)
+                    }
+                }
                 let hasFallback = index < (selectedAPIs.count - 1)
                 if self.shouldFallback(after: error, api: api, hasFallback: hasFallback) {
                     fallbackReason = "\(api.description) failed: \(String(describing: error))"
@@ -255,5 +305,24 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
     private func shouldFallback(after _: any Error, api: ScreenCaptureAPI, hasFallback: Bool) -> Bool {
         guard hasFallback, api == .modern else { return false }
         return true
+    }
+}
+
+enum ScreenCaptureKitTransientError {
+    static func retryDelayNanoseconds(after error: any Error) -> UInt64? {
+        let nsError = error as NSError
+        let message = [
+            String(describing: error),
+            error.localizedDescription,
+            nsError.domain,
+        ].joined(separator: " ").lowercased()
+        let looksTransient = nsError.domain.localizedCaseInsensitiveContains("ScreenCaptureKit") ||
+            message.contains("declined tcc") ||
+            message.contains("user declined") ||
+            message.contains("application, window, display capture")
+        guard looksTransient else {
+            return nil
+        }
+        return 350_000_000
     }
 }

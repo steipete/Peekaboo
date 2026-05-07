@@ -124,6 +124,7 @@ public struct CaptureWarning: Codable, Sendable, Equatable {
         case lowFps
         case diffDowngraded
         case autoclean
+        case transientCaptureFailure
     }
 
     public let code: Code

@@ -83,7 +83,9 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         self.logger.operationStart("capture_live", metadata: ["mode": self.mode ?? "auto"])
 
         do {
-            try await requireScreenRecordingPermission(services: self.services)
+            // The capture service performs the authoritative permission check inside
+            // the serialized capture transaction; an extra CLI-side SCK probe can race
+            // with concurrent screenshot commands and report transient TCC denial.
             let scope = try await self.resolveScope()
             let options = try self.buildOptions()
             if scope.kind == .window, let identifier = scope.applicationIdentifier {
@@ -106,7 +108,16 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                 keepAllFrames: false
             )
             let session = WatchCaptureSession(dependencies: deps, configuration: config)
-            let result = try await session.run()
+            let runSession: @MainActor @Sendable () async throws -> CaptureSessionResult = {
+                try await session.run()
+            }
+            let enginePreference = self.liveCaptureEnginePreference(for: scope)
+            let result: CaptureSessionResult = if let engineAware = self.services.screenCapture
+                as? any EngineAwareScreenCaptureServiceProtocol {
+                try await engineAware.withCaptureEngine(enginePreference, operation: runSession)
+            } else {
+                try await runSession()
+            }
             self.output(result)
             self.logger.operationComplete(
                 "capture_live",
@@ -121,6 +132,25 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                 metadata: ["error": error.localizedDescription]
             )
             throw ExitCode(1)
+        }
+    }
+}
+
+extension CaptureLiveCommand {
+    private func liveCaptureEnginePreference(for scope: CaptureScope) -> CaptureEnginePreference {
+        let value = (self.captureEngine ?? self.resolvedRuntime.configuration.captureEnginePreference)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch value {
+        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
+            return .modern
+        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
+            return .legacy
+        default:
+            // Live region capture samples repeatedly; CoreGraphics area capture is faster
+            // and avoids SCK continuation leaks when observation commands overlap.
+            return scope.kind == .region ? .legacy : .auto
         }
     }
 }

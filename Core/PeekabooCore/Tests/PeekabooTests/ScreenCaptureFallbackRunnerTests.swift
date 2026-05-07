@@ -120,4 +120,32 @@ struct ScreenCaptureFallbackRunnerTests {
         #expect(result.metadata.diagnostics?.fallbackReason?.contains("ScreenCaptureKit failed") == true)
         #expect(result.metadata.diagnostics?.finalPixelSize == CGSize(width: 20, height: 10))
     }
+
+    @MainActor
+    @Test
+    func `transient ScreenCaptureKit denial retries before fallback`() async throws {
+        let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
+        let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
+        var calls: [ScreenCaptureAPI] = []
+
+        let value: String = try await runner.run(
+            operationName: "test",
+            logger: logger,
+            correlationId: "c4")
+        { api in
+            calls.append(api)
+            if calls.count == 1 {
+                throw NSError(
+                    domain: "com.apple.ScreenCaptureKit.SCStreamErrorDomain",
+                    code: -3801,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "The user declined TCCs for application, window, display capture",
+                    ])
+            }
+            return "ok_\(api.rawValue)"
+        }
+
+        #expect(value == "ok_modern")
+        #expect(calls == [.modern, .modern])
+    }
 }

@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import ImageIO
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
 
@@ -79,51 +80,130 @@ extension LegacyScreenCaptureOperator {
         correlationId: String,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.logger.debug(
-            "Legacy area capture using ScreenCaptureKit screenshot manager",
-            correlationId: correlationId)
+        self.logger.debug("Legacy area capture using CoreGraphics display capture", correlationId: correlationId)
 
-        let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
-        guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
+        let displays = Self.activeDisplays()
+        guard let display = displays.first(where: { $0.bounds.contains(rect) }) else {
             throw PeekabooError.invalidInput(
                 "captureArea: The specified area is not within any display bounds")
         }
 
         let scalePlan = ScreenCaptureScaleResolver.plan(
             preference: scale,
-            displayID: display.displayID,
-            fallbackPixelWidth: display.width,
-            frameWidth: display.frame.width)
-        let outputScale = scalePlan.outputScale
-
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        let config = SCStreamConfiguration()
-        // `rect` is global desktop geometry; display-bound filters need local source geometry.
-        config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
-            globalRect: rect,
-            displayFrame: display.frame)
-        config.width = Int(rect.width * outputScale)
-        config.height = Int(rect.height * outputScale)
-        config.captureResolution = .best
-        config.showsCursor = false
-
-        let image = try await ScreenCaptureKitCaptureGate.captureImage(
-            contentFilter: filter,
-            configuration: config)
-
-        let imageData = try image.pngData()
+            displayID: display.id,
+            fallbackPixelWidth: CGDisplayPixelsWide(display.id),
+            frameWidth: display.bounds.width)
+        let image = if let systemImage = try? self.captureAreaWithSystemScreencapture(
+            rect,
+            correlationId: correlationId)
+        {
+            systemImage
+        } else {
+            try self.captureAreaWithCoreGraphics(display: display, rect: rect)
+        }
+        let scaledImage = ScreenCaptureImageScaler.maybeDownscale(
+            image,
+            scale: scale,
+            fallbackScale: scalePlan.nativeScale)
+        let imageData = try scaledImage.pngData()
         let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
+            size: CGSize(width: scaledImage.width, height: scaledImage.height),
             mode: .area,
             displayInfo: DisplayInfo(
-                index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
-                name: display.displayID.description,
-                bounds: display.frame,
-                scaleFactor: outputScale),
+                index: display.index,
+                name: display.id.description,
+                bounds: rect,
+                scaleFactor: scalePlan.outputScale),
             diagnostics: ScreenCaptureScaleResolver.diagnostics(
                 plan: scalePlan,
-                finalPixelSize: CGSize(width: image.width, height: image.height)))
+                finalPixelSize: CGSize(width: scaledImage.width, height: scaledImage.height)))
 
         return CaptureResult(imageData: imageData, metadata: metadata)
+    }
+
+    private func captureAreaWithCoreGraphics(
+        display: (index: Int, id: CGDirectDisplayID, bounds: CGRect),
+        rect: CGRect) throws -> CGImage
+    {
+        guard let displayImage = CGDisplayCreateImage(display.id) else {
+            throw OperationError.captureFailed(reason: "CGDisplayCreateImage returned nil for display")
+        }
+        let cropRect = Self.pixelCropRect(
+            globalRect: rect,
+            displayBounds: display.bounds,
+            scale: Self.nativeScale(for: display))
+        guard let image = displayImage.cropping(to: cropRect) else {
+            throw OperationError.captureFailed(reason: "Failed to crop CoreGraphics display image for capture area")
+        }
+        return image
+    }
+
+    private func captureAreaWithSystemScreencapture(
+        _ rect: CGRect,
+        correlationId: String) throws -> CGImage
+    {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("peekaboo-area-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = [
+            "-x",
+            "-R\(Int(rect.minX.rounded(.down))),\(Int(rect.minY.rounded(.down)))," +
+                "\(Int(rect.width.rounded(.toNearestOrAwayFromZero)))," +
+                "\(Int(rect.height.rounded(.toNearestOrAwayFromZero)))",
+            url.path,
+        ]
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw OperationError.captureFailed(reason: "screencapture exited with \(process.terminationStatus)")
+        }
+        let data = try Data(contentsOf: url)
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            throw OperationError.captureFailed(reason: "Failed to decode screencapture output")
+        }
+        self.logger.debug(
+            "Captured area via system screencapture",
+            metadata: ["imageSize": "\(image.width)x\(image.height)"],
+            correlationId: correlationId)
+        return image
+    }
+
+    private nonisolated static func activeDisplays() -> [(index: Int, id: CGDirectDisplayID, bounds: CGRect)] {
+        var count: UInt32 = 0
+        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else {
+            return []
+        }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetActiveDisplayList(count, &ids, &count) == .success else {
+            return []
+        }
+        return ids.prefix(Int(count)).enumerated().map { index, id in
+            (index: index, id: id, bounds: CGDisplayBounds(id))
+        }
+    }
+
+    private nonisolated static func pixelCropRect(
+        globalRect: CGRect,
+        displayBounds: CGRect,
+        scale: CGFloat) -> CGRect
+    {
+        CGRect(
+            x: ((globalRect.minX - displayBounds.minX) * scale).rounded(.down),
+            y: ((globalRect.minY - displayBounds.minY) * scale).rounded(.down),
+            width: max((globalRect.width * scale).rounded(.toNearestOrAwayFromZero), 1),
+            height: max((globalRect.height * scale).rounded(.toNearestOrAwayFromZero), 1))
+    }
+
+    private nonisolated static func nativeScale(for display: (index: Int, id: CGDirectDisplayID, bounds: CGRect))
+        -> CGFloat
+    {
+        let width = max(display.bounds.width, 1)
+        return max(CGFloat(CGDisplayPixelsWide(display.id)) / width, 1)
     }
 }
