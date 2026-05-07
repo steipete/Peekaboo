@@ -89,11 +89,13 @@
 - `peekaboo scroll --smooth --json` now reports the actual smooth scroll tick count used by the automation service (`amount * 10`) instead of the stale `amount * 3` estimate.
 - `peekaboo scroll --on --json` now reports the moved-window-adjusted target point, matching the point used by the automation service.
 - `peekaboo window focus --snapshot` can now focus the window captured by a snapshot, and explicit snapshots are preserved when focus changes invalidate implicit latest state.
+- `peekaboo window focus --snapshot` now refreshes reported window details from the snapshot's stored window identity instead of warning about a missing command-line target.
 - Element-targeted `click`, `move`, `scroll`, `drag`, and `swipe` JSON results now include target-point diagnostics showing the original snapshot point, resolved point, snapshot ID, and moved-window adjustment.
 - Archived stale runtime/visualizer refactor notes behind the current refactor index and documented element target-point diagnostics in the command guides.
 - Removed the obsolete command-local `ScreenCaptureBridge` shim from `peekaboo see`; fallback capture paths now call the typed capture service directly.
 - Split interaction target-point resolution into a focused command support file.
 - Split `ClickCommand` focus verification and output models into focused support files.
+- `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
@@ -110,6 +112,7 @@
 
 ### Performance
 - Menu bar listing is faster by avoiding redundant accessibility work.
+- Exact window-ID metadata refreshes now use a CoreGraphics lookup before falling back to all-app AX enumeration, making already-known window focus/list refreshes substantially faster.
 - Dialog discovery and visualizer dispatch now fail fast when their target UI is unavailable instead of waiting through slow default paths.
 - `peekaboo tools` and read-only `peekaboo list` inventory commands now default to local execution instead of probing bridge sockets first, shaving roughly 30-35ms from warm catalog/window-list calls when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.

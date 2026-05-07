@@ -564,8 +564,10 @@ extension WindowCommand {
                 let hasWindowTarget = self.windowOptions.app != nil ||
                     self.windowOptions.pid != nil ||
                     self.windowOptions.windowId != nil
-                let target = self.windowOptions.createTarget()
-                self.logger.debug("Target created: \(target)")
+                let target = hasWindowTarget ? self.windowOptions.createTarget() : nil
+                if let target {
+                    self.logger.debug("Target created: \(target)")
+                }
                 let appInfo = try await self.windowOptions.resolveApplicationInfoIfNeeded(services: self.services)
 
                 // Get window info before action
@@ -612,16 +614,27 @@ extension WindowCommand {
                         options: self.focusOptions.asFocusOptions,
                         services: self.services
                     )
-                } else {
+                } else if let target {
                     // Fallback to regular focus if no window ID
                     try await WindowServiceBridge.focusWindow(windows: self.services.windows, target: target)
+                } else {
+                    throw ValidationError("Either --app, --pid, --window-id, or --snapshot must be specified")
                 }
 
-                let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
-                    services: self.services,
-                    logger: self.logger,
-                    context: "window-focus"
-                )
+                let refreshedWindowInfo: ServiceWindowInfo? = if hasWindowTarget {
+                    await self.windowOptions.refetchWindowInfo(
+                        services: self.services,
+                        logger: self.logger,
+                        context: "window-focus"
+                    )
+                } else if let snapshotContext {
+                    await self.refetchWindowInfo(
+                        target: snapshotContext.target,
+                        context: "window-focus"
+                    )
+                } else {
+                    nil
+                }
                 let finalWindowInfo = refreshedWindowInfo ?? windowInfo
 
                 if self.verify {
@@ -1308,15 +1321,14 @@ extension WindowCommand.FocusSubcommand: ParsableCommand {
                 Focus brings a window to the foreground and activates its application.
 
                 Space Support:
-                By default, if the window is on a different Space (virtual desktop),
-                the focus command will switch to that Space. You can control this
-                behavior with the --space-switch and --move-here options.
+                Pass --space-switch to switch to a window on a different Space,
+                or --bring-to-current-space to move it to the current Space.
 
                 Examples:
                 peekaboo window focus --app Safari
                 peekaboo window focus --app "Visual Studio Code" --window-title "main.swift"
-                peekaboo window focus --app Terminal --no-space-switch
-                peekaboo window focus --app Finder --move-here
+                peekaboo window focus --app Terminal --space-switch
+                peekaboo window focus --app Finder --bring-to-current-space
                 """
             )
         }

@@ -3,6 +3,7 @@ import Commander
 private enum WindowCommandSignatures {
     static let windowOptions = WindowIdentificationOptions.commanderSignature()
     static let focusOptions = FocusCommandOptions.commanderSignature()
+    static let windowFocusOptions = FocusCommandOptions.commanderSignature(includeAutoFocusControl: false)
 }
 
 extension WindowCommand.CloseSubcommand: CommanderSignatureProviding {
@@ -74,7 +75,7 @@ extension WindowCommand.FocusSubcommand: CommanderSignatureProviding {
                     long: "verify"
                 ),
             ],
-            optionGroups: [WindowCommandSignatures.windowOptions, WindowCommandSignatures.focusOptions]
+            optionGroups: [WindowCommandSignatures.windowOptions, WindowCommandSignatures.windowFocusOptions]
         )
     }
 }

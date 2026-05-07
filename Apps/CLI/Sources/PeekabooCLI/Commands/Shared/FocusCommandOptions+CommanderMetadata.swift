@@ -1,13 +1,19 @@
 import Commander
 
 extension FocusCommandOptions {
-    static func commanderSignature(includeBackgroundDelivery: Bool = false) -> CommandSignature {
-        var flags: [FlagDefinition] = [
-            .commandFlag(
+    static func commanderSignature(
+        includeAutoFocusControl: Bool = true,
+        includeBackgroundDelivery: Bool = false
+    ) -> CommandSignature {
+        var flags: [FlagDefinition] = []
+        if includeAutoFocusControl {
+            flags.append(.commandFlag(
                 "noAutoFocus",
                 help: "Disable automatic focus before interaction",
                 long: "no-auto-focus"
-            ),
+            ))
+        }
+        flags.append(contentsOf: [
             .commandFlag(
                 "spaceSwitch",
                 help: "Switch to the window's Space if on a different Space",
@@ -18,7 +24,7 @@ extension FocusCommandOptions {
                 help: "Bring window to current Space instead of switching",
                 long: "bring-to-current-space"
             ),
-        ]
+        ])
         if includeBackgroundDelivery {
             flags.append(.commandFlag(
                 "focusBackground",
