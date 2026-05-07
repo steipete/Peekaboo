@@ -76,7 +76,8 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertNil(result.elements)
         XCTAssertEqual(result.capture.imageData, imageData)
         XCTAssertEqual(result.target.window?.windowID, 42)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window"])
+        XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.window"])
+        XCTAssertEqual(result.diagnostics.stateSnapshot?.runningApplicationCount, 1)
         XCTAssertEqual(automation.detectCalls, 0)
     }
 
@@ -133,7 +134,12 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(automation.lastWindowContext?.windowTitle, "Editor")
         XCTAssertEqual(automation.lastWindowContext?.windowID, 77)
         XCTAssertEqual(automation.lastWindowContext?.shouldFocusWebContent, false)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window", "detection.ax"])
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "detection.ax",
+        ])
     }
 
     func testObservationOutputWriterSavesRawScreenshotWhenRequested() async throws {
@@ -160,7 +166,12 @@ final class DesktopObservationServiceTests: XCTestCase {
 
         XCTAssertEqual(result.files.rawScreenshotPath, outputURL.path)
         XCTAssertEqual(try Data(contentsOf: outputURL), imageData)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window", "output.write"])
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "output.write",
+        ])
     }
 
     func testObservationForwardsCaptureEnginePreferenceWhenSupported() async throws {
@@ -179,6 +190,25 @@ final class DesktopObservationServiceTests: XCTestCase {
             detection: DesktopDetectionOptions(mode: .none)))
 
         XCTAssertEqual(capture.operations, [.windowID(99, .logical1x, .legacy)])
+    }
+
+    func testObservationUsesRequestSnapshotForPIDResolution() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 1234, title: "PID", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let capture = RecordingScreenCaptureService(result: Self.captureResult(app: app, window: window))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: RecordingUIAutomationService(),
+            applications: applications)
+
+        _ = try await service.observe(DesktopObservationRequest(
+            target: .pid(app.processIdentifier, window: .automatic),
+            detection: DesktopDetectionOptions(mode: .none)))
+
+        XCTAssertEqual(applications.listApplicationsCalls, 1)
+        XCTAssertEqual(applications.findApplicationCalls, 0)
+        XCTAssertEqual(capture.operations, [.windowID(1234, .logical1x, .auto)])
     }
 
     func testObservationDetectionTimeoutUsesRequestBudget() async throws {
@@ -250,6 +280,9 @@ final class DesktopObservationServiceTests: XCTestCase {
 private final class RecordingApplicationService: ApplicationServiceProtocol {
     let applications: [ServiceApplicationInfo]
     let windows: [ServiceWindowInfo]
+    var listApplicationsCalls = 0
+    var findApplicationCalls = 0
+    var frontmostApplicationCalls = 0
 
     init(applications: [ServiceApplicationInfo], windows: [ServiceWindowInfo]) {
         self.applications = applications
@@ -257,13 +290,15 @@ private final class RecordingApplicationService: ApplicationServiceProtocol {
     }
 
     func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
-        UnifiedToolOutput(
+        self.listApplicationsCalls += 1
+        return UnifiedToolOutput(
             data: ServiceApplicationListData(applications: self.applications),
             summary: .init(brief: "apps", status: .success),
             metadata: .init(duration: 0))
     }
 
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
+        self.findApplicationCalls += 1
         guard let app = self.applications.first(where: {
             $0.name == identifier || $0.bundleIdentifier == identifier
         }) else {
@@ -280,6 +315,7 @@ private final class RecordingApplicationService: ApplicationServiceProtocol {
     }
 
     func getFrontmostApplication() async throws -> ServiceApplicationInfo {
+        self.frontmostApplicationCalls += 1
         guard let app = self.applications.first else {
             throw DesktopObservationError.targetNotFound("frontmost")
         }

@@ -13,6 +13,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
     private let automation: any UIAutomationServiceProtocol
     private let targetResolver: any ObservationTargetResolving
     private let outputWriter: any ObservationOutputWriting
+    private let stateSnapshotProvider: any DesktopStateSnapshotProviding
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
@@ -23,29 +24,36 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         self.automation = automation
         self.targetResolver = ObservationTargetResolver(applications: applications)
         self.outputWriter = ObservationOutputWriter()
+        self.stateSnapshotProvider = DesktopStateSnapshotProvider(applications: applications)
     }
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
         targetResolver: any ObservationTargetResolving,
-        outputWriter: any ObservationOutputWriting = ObservationOutputWriter())
+        outputWriter: any ObservationOutputWriting = ObservationOutputWriter(),
+        stateSnapshotProvider: any DesktopStateSnapshotProviding = EmptyDesktopStateSnapshotProvider())
     {
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = targetResolver
         self.outputWriter = outputWriter
+        self.stateSnapshotProvider = stateSnapshotProvider
     }
 
     public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
         let tracer = DesktopObservationTraceRecorder()
 
+        let stateSnapshot = try await tracer.span("state.snapshot") {
+            try await self.stateSnapshotProvider.snapshot(for: request.target)
+        }
+
         let target = try await tracer.span("target.resolve") {
-            try await self.targetResolver.resolve(request.target)
+            try await self.targetResolver.resolve(request.target, snapshot: stateSnapshot)
         }
 
         let rawCapture = try await tracer.span("capture.\(Self.captureSpanName(for: target.kind))") {
-            try await self.capture(target, options: request.capture)
+            try await self.capture(target, options: request.capture, snapshot: stateSnapshot)
         }
         let capture = Self.normalize(capture: rawCapture, for: target)
 
@@ -65,12 +73,15 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             elements: elements,
             files: files,
             timings: tracer.timings(),
-            diagnostics: DesktopObservationDiagnostics(warnings: capture.warning.map { [$0] } ?? []))
+            diagnostics: DesktopObservationDiagnostics(
+                warnings: capture.warning.map { [$0] } ?? [],
+                stateSnapshot: DesktopStateSnapshotSummary(stateSnapshot)))
     }
 
     private func capture(
         _ target: ResolvedObservationTarget,
-        options: DesktopCaptureOptions) async throws -> CaptureResult
+        options: DesktopCaptureOptions,
+        snapshot _: DesktopStateSnapshot) async throws -> CaptureResult
     {
         guard let engineAwareCapture = self.engineAwareCapture else {
             return try await self.captureResolvedTarget(target, options: options)

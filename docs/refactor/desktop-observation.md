@@ -60,6 +60,7 @@ Landed:
 - Logical-1x capture downscaling now lives in `ScreenCaptureImageScaler`.
 - Legacy area capture now executes through the legacy capture operator instead of facade helper code.
 - ScreenCaptureKit and legacy capture operators now live in dedicated files.
+- Request-scoped `DesktopStateSnapshot` now feeds observation target resolution and diagnostics.
 
 Still intentionally incomplete:
 
@@ -84,11 +85,10 @@ Goal: `DesktopObservationService.observe` is the only behavioral path for deskto
 
 Next slices:
 
-1. Add a request-scoped `DesktopStateSnapshot` and pass it through target resolution, capture planning, and diagnostics.
-2. Finish moving app/window ranking out of command and MCP adapters.
-3. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
-4. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
-5. Export structured observation diagnostics in CLI and MCP JSON.
+1. Finish moving app/window ranking out of command and MCP adapters.
+2. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
+3. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
+4. Export structured observation diagnostics in CLI and MCP JSON.
 
 Stop when:
 

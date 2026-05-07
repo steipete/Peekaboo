@@ -77,6 +77,63 @@ public struct WindowIdentity: Sendable, Codable, Equatable {
     }
 }
 
+public struct DisplayIdentity: Sendable, Codable, Equatable {
+    public let index: Int
+    public let name: String?
+    public let bounds: CGRect
+    public let scaleFactor: CGFloat?
+
+    public init(index: Int, name: String?, bounds: CGRect, scaleFactor: CGFloat? = nil) {
+        self.index = index
+        self.name = name
+        self.bounds = bounds
+        self.scaleFactor = scaleFactor
+    }
+}
+
+public struct DesktopStateSnapshot: Sendable, Codable, Equatable {
+    public let capturedAt: Date
+    public let displays: [DisplayIdentity]
+    public let runningApplications: [ApplicationIdentity]
+    public let windows: [WindowIdentity]
+    public let frontmostApplication: ApplicationIdentity?
+    public let frontmostWindow: WindowIdentity?
+
+    public init(
+        capturedAt: Date = Date(),
+        displays: [DisplayIdentity] = [],
+        runningApplications: [ApplicationIdentity] = [],
+        windows: [WindowIdentity] = [],
+        frontmostApplication: ApplicationIdentity? = nil,
+        frontmostWindow: WindowIdentity? = nil)
+    {
+        self.capturedAt = capturedAt
+        self.displays = displays
+        self.runningApplications = runningApplications
+        self.windows = windows
+        self.frontmostApplication = frontmostApplication
+        self.frontmostWindow = frontmostWindow
+    }
+}
+
+public struct DesktopStateSnapshotSummary: Sendable, Codable, Equatable {
+    public let capturedAt: Date
+    public let displayCount: Int
+    public let runningApplicationCount: Int
+    public let windowCount: Int
+    public let frontmostApplication: ApplicationIdentity?
+    public let frontmostWindow: WindowIdentity?
+
+    public init(_ snapshot: DesktopStateSnapshot) {
+        self.capturedAt = snapshot.capturedAt
+        self.displayCount = snapshot.displays.count
+        self.runningApplicationCount = snapshot.runningApplications.count
+        self.windowCount = snapshot.windows.count
+        self.frontmostApplication = snapshot.frontmostApplication
+        self.frontmostWindow = snapshot.frontmostWindow
+    }
+}
+
 public struct ResolvedObservationTarget: Sendable, Equatable {
     public let kind: ResolvedObservationKind
     public let app: ApplicationIdentity?
@@ -265,9 +322,11 @@ public struct DesktopObservationFiles: Sendable, Codable, Equatable {
 
 public struct DesktopObservationDiagnostics: Sendable, Codable, Equatable {
     public let warnings: [String]
+    public let stateSnapshot: DesktopStateSnapshotSummary?
 
-    public init(warnings: [String] = []) {
+    public init(warnings: [String] = [], stateSnapshot: DesktopStateSnapshotSummary? = nil) {
         self.warnings = warnings
+        self.stateSnapshot = stateSnapshot
     }
 }
 
