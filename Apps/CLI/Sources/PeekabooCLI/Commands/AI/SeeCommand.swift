@@ -326,8 +326,10 @@ extension SeeCommand: CommanderBindableCommand {
         }
         self.path = values.singleOption("path")
         self.screenIndex = try values.decodeOption("screenIndex", as: Int.self)
+        self.captureEngine = values.singleOption("captureEngine")
         self.annotate = values.flag("annotate")
         self.analyze = values.singleOption("analyze")
+        self.timeoutSeconds = try values.decodeOption("timeoutSeconds", as: Int.self)
         self.noWebFocus = values.flag("noWebFocus")
         self.menubar = values.flag("menubar")
     }

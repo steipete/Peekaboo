@@ -599,6 +599,36 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `See command binds capture engine and timeout options`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "captureEngine": ["classic"],
+                "timeoutSeconds": ["7"],
+            ],
+            flags: []
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: SeeCommand.self, parsedValues: parsed)
+        #expect(command.captureEngine == "classic")
+        #expect(command.timeoutSeconds == 7)
+        #expect(command.runtimeOptions.captureEnginePreference == "classic")
+    }
+
+    @Test
+    func `Image command binds capture engine option`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["captureEngine": ["modern"]],
+            flags: []
+        )
+
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: ImageCommand.self, parsedValues: parsed)
+        #expect(command.captureEngine == "modern")
+        #expect(command.runtimeOptions.captureEnginePreference == "modern")
+    }
+
+    @Test
     func `Move command binding with coordinates`() throws {
         let parsed = ParsedValues(
             positional: ["100,200"],
