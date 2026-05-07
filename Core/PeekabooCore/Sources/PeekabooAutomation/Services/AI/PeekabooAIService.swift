@@ -157,7 +157,7 @@ public final class PeekabooAIService {
         model: LanguageModel? = nil) async throws -> String
     {
         // Load image data
-        let url = URL(fileURLWithPath: path.replacingOccurrences(of: "~", with: NSHomeDirectory()))
+        let url = Self.imageFileURL(for: path)
         let imageData = try Data(contentsOf: url)
 
         return try await self.analyzeImage(imageData: imageData, question: question, model: model)
@@ -170,9 +170,13 @@ public final class PeekabooAIService {
         model: LanguageModel? = nil) async throws -> AnalysisResult
     {
         // Analyze an image file returning structured metadata
-        let url = URL(fileURLWithPath: path.replacingOccurrences(of: "~", with: NSHomeDirectory()))
+        let url = Self.imageFileURL(for: path)
         let imageData = try Data(contentsOf: url)
         return try await self.analyzeImageDetailed(imageData: imageData, question: question, model: model)
+    }
+
+    static func imageFileURL(for path: String) -> URL {
+        URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
     }
 
     /// Generate text from a prompt

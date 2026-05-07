@@ -121,6 +121,7 @@
 - `peekaboo clipboard`, `peekaboo paste`, and MCP clipboard/paste file paths now expand `~/...` before reading or writing files.
 - `peekaboo run` script/output paths and `peekaboo agent --audio-file ~/...` now expand home-directory paths before file IO.
 - `.peekaboo.json` script `see` screenshot paths and clipboard file/output paths now expand `~/...` during process execution.
+- AI image-file analysis now expands only leading home-directory tildes instead of rewriting literal `~` characters inside filenames.
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.

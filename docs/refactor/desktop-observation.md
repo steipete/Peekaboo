@@ -169,6 +169,7 @@ Landed:
 - Clipboard and paste file IO now share a small `ClipboardPathResolver`, so CLI and MCP surfaces expand home-directory paths consistently before reading or writing files.
 - `run` script/output paths and agent audio-file inputs now route through the shared path resolver before file IO.
 - Script-level screenshot and clipboard file IO now route through shared path resolvers during process execution.
+- AI image-file reads now use Cocoa home-directory expansion instead of replacing every literal `~` in the path.
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.

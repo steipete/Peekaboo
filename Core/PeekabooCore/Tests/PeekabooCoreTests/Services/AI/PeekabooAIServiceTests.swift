@@ -273,6 +273,16 @@ struct PeekabooAIServiceTests {
 
     @Test
     @MainActor
+    func `Image file URL expands leading tilde only`() {
+        let homePath = PeekabooAIService.imageFileURL(for: "~/Desktop/image.png").path
+        #expect(homePath == NSString(string: "~/Desktop/image.png").expandingTildeInPath)
+
+        let embeddedTildePath = "/tmp/peekaboo-image~literal.png"
+        #expect(PeekabooAIService.imageFileURL(for: embeddedTildePath).path == embeddedTildePath)
+    }
+
+    @Test
+    @MainActor
     func `Use custom model for generation`() async throws {
         let service = PeekabooAIService()
 
