@@ -6,12 +6,17 @@ import PeekabooFoundation
 @MainActor
 extension SeeCommand {
     func screenshotOutputPath() -> String {
-        if let providedPath = path {
-            return NSString(string: providedPath).expandingTildeInPath
-        }
-
         let timestamp = Date().timeIntervalSince1970
         let filename = "peekaboo_see_\(Int(timestamp)).png"
+
+        if let providedPath = path {
+            return ObservationOutputPathResolver.resolve(
+                path: providedPath,
+                format: .png,
+                defaultFileName: filename
+            ).path
+        }
+
         let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
         return (defaultPath as NSString).appendingPathComponent(filename)
     }

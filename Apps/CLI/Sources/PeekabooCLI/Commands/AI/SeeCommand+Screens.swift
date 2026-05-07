@@ -111,15 +111,27 @@ extension SeeCommand {
 
     private func screenOutputPath(for index: Int) -> String {
         if let basePath = self.path {
-            let directory = (basePath as NSString).deletingLastPathComponent
-            let filename = (basePath as NSString).lastPathComponent
+            let expanded = (basePath as NSString).expandingTildeInPath
+            if ObservationOutputPathResolver.isDirectoryLike(expanded) {
+                return URL(fileURLWithPath: expanded, isDirectory: true)
+                    .appendingPathComponent(self.defaultScreenOutputFilename(for: index))
+                    .path
+            }
+
+            let directory = (expanded as NSString).deletingLastPathComponent
+            let filename = (expanded as NSString).lastPathComponent
             let nameWithoutExt = (filename as NSString).deletingPathExtension
             let ext = (filename as NSString).pathExtension
+            let fileExtension = ext.isEmpty ? "png" : ext
 
             return (directory as NSString)
-                .appendingPathComponent("\(nameWithoutExt)_screen\(index).\(ext)")
+                .appendingPathComponent("\(nameWithoutExt)_screen\(index).\(fileExtension)")
         }
 
+        return self.defaultScreenOutputFilename(for: index)
+    }
+
+    private func defaultScreenOutputFilename(for index: Int) -> String {
         let timestamp = ISO8601DateFormatter().string(from: Date())
         return "screenshot_\(timestamp)_screen\(index).png"
     }

@@ -153,6 +153,22 @@ struct SeeCommandAnnotationTests {
     }
 
     @Test
+    @MainActor
+    func `Directory path expands to generated see screenshot filename`() throws {
+        let command = try SeeCommand.parse(["--path", "."])
+        let output = command.screenshotOutputPath()
+        let url = URL(fileURLWithPath: output)
+
+        #expect(url.lastPathComponent.hasPrefix("peekaboo_see_"))
+        #expect(url.pathExtension == "png")
+        #expect(
+            url.deletingLastPathComponent().standardizedFileURL.path ==
+                URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+                .standardizedFileURL.path
+        )
+    }
+
+    @Test
     func `Coordinate system conversion for NSGraphicsContext`() {
         // Given a window-relative element bounds with top-left origin
         let elementBounds = CGRect(x: 100, y: 100, width: 80, height: 40)

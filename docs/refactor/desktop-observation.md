@@ -164,6 +164,7 @@ Landed:
 - MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
 - MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
 - CLI and MCP image output paths now share directory-aware planning, so `--path .`, trailing-slash paths, and existing directories receive generated filenames instead of hidden `..png` artifacts.
+- CLI `see` output paths now use the same directory-aware planning for primary screenshots and legacy multi-screen companion files.
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
@@ -1452,6 +1453,7 @@ Results:
 - follow-up `see` on the controlled TextEdit window completed in `0.93s`, found the marker in JSON, and reported `395` elements / `303` interactables;
 - screenshots were inspected with local image vision: TextEdit marker visible, Chrome annotated screenshot nonblank with labels aligned to visible UI.
 - `peekaboo image --app TextEdit --path . --json` was run from `/tmp/peekaboo-path-dot.51XoMS` and wrote `TextEdit_2026-05-07T17:53:30Z.png` inside that directory, verifying the directory-like output path fix.
+- `peekaboo see --app TextEdit --path . --json` was run from `/tmp/peekaboo-see-path-dot.ZPHsAQ` and wrote `peekaboo_see_1778176668.png` inside that directory in `0.89s`, verifying the same policy for `see`.
 
 ### Performance Budgets
 
