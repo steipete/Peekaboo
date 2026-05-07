@@ -861,6 +861,25 @@ struct MCPToolErrorHandlingTests {
     }
 
     @Test
+    func `Window tool reports missing target as validation error`() async throws {
+        try await MCPToolTestHelpers.withContext {
+            let tool = WindowTool()
+
+            let response = try await tool.execute(arguments: ToolArguments(raw: ["action": "focus"]))
+
+            #expect(response.isError == true)
+
+            guard case let .text(text: error, annotations: _, _meta: _) = response.content.first else {
+                Issue.record("Expected text error response")
+                return
+            }
+
+            #expect(error.contains("Must specify at least 'window_id', 'app', or 'title'"))
+            #expect(!error.contains("Failed to focus window"))
+        }
+    }
+
+    @Test
     func `Type tool defaults to human cadence`() async throws {
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
 

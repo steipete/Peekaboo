@@ -90,6 +90,7 @@
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of duplicating per-command refresh loops.
+- MCP `window` action handlers now live in a focused companion file, and missing window targets return the direct validation error instead of a generic action failure.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now invalidate implicitly reused latest snapshots after successful UI mutations so later commands do not silently target stale UI.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!

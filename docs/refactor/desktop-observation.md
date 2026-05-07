@@ -179,6 +179,7 @@ Landed:
 - `InMemorySnapshotManager` now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files; writes now enforce the LRU cap immediately and artifact cleanup also applies to pruned entries.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
+- MCP `WindowTool` action handlers now live in a focused companion file, and target validation uses the tool's normal argument-error path.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
 - `peekaboo clipboard` Commander binding and output DTOs are split from clipboard action logic.
