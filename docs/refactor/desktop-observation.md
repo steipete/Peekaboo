@@ -117,6 +117,7 @@ Landed:
 - Observation label placement geometry and candidate generation now live in `ObservationLabelPlacementGeometry`, leaving `ObservationLabelPlacer` focused on scoring/orchestration.
 - Desktop observation target diagnostics and trace timing now live in focused helpers, leaving `DesktopObservationService` focused on the observe pipeline.
 - `peekaboo move` result and movement-resolution types now live in `MoveCommand+Types`.
+- `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 
@@ -181,7 +182,9 @@ ClickCommand+Output.swift: 30 lines
 TypeCommand.swift: 338 lines
 TypeCommand+TextProcessing.swift: 60 lines
 TypeCommand+Types.swift: 11 lines
-MoveCommand.swift: 437 lines
+MoveCommand.swift: 323 lines
+MoveCommand+CommanderMetadata.swift: 134 lines
+MoveCommand+Movement.swift: 58 lines
 MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
 DragCommand.swift: 360 lines

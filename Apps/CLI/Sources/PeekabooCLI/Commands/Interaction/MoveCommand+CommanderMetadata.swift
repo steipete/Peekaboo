@@ -1,5 +1,66 @@
 import Commander
 
+// MARK: - Conformances
+
+@MainActor
+extension MoveCommand: ParsableCommand {
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        MainActorCommandDescription.describe {
+            CommandDescription(
+                commandName: "move",
+                abstract: "Move the mouse cursor to coordinates or UI elements",
+                discussion: """
+                    The 'move' command positions the mouse cursor at specific locations or
+                    on UI elements detected by 'see'. Supports instant and smooth movement.
+
+                    EXAMPLES:
+                      peekaboo move 100,200                 # Move to coordinates
+                      peekaboo move --to "Submit Button"    # Move to element by text
+                      peekaboo move --on B3                 # Move to element by ID
+                      peekaboo move 500,300 --smooth        # Smooth movement
+                      peekaboo move --center                # Move to screen center
+
+                    MOVEMENT MODES:
+                      - Instant (default): Immediate cursor positioning
+                      - Smooth: Animated movement with configurable duration
+                      - Human: Natural arcs with eased velocity, enable via '--profile human'
+
+                    ELEMENT TARGETING:
+                      When targeting elements, the cursor moves to the element's center.
+                      Use element IDs from 'see' output for precise targeting.
+                """,
+
+                showHelpOnEmptyInvocation: true
+            )
+        }
+    }
+}
+
+extension MoveCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension MoveCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.coordinates = try values.decodeOptionalPositional(0, label: "coordinates")
+        self.coords = values.singleOption("coords")
+        self.to = values.singleOption("to")
+        self.on = values.singleOption("on")
+        self.id = values.singleOption("id")
+        self.target = try values.makeInteractionTargetOptions()
+        self.center = values.flag("center")
+        self.smooth = values.flag("smooth")
+        if let duration: Int = try values.decodeOption("duration", as: Int.self) {
+            self.duration = duration
+        }
+        if let steps: Int = try values.decodeOption("steps", as: Int.self) {
+            self.steps = steps
+        }
+        self.snapshot = values.singleOption("snapshot")
+        self.profile = values.singleOption("profile")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
+
 extension MoveCommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
