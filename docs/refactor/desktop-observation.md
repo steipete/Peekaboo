@@ -71,7 +71,7 @@ Landed:
 - Watch capture lifecycle, loop/diff cadence, and frame/video persistence are split across focused session companions.
 - Application window listing keeps service facade/output assembly separate from hybrid CGWindowList/AX enumeration policy.
 - Capture models now keep image primitives, live session options, frame metadata, and session-result summaries in focused files.
-- UI automation keeps service initialization, delegated operations, focus/wait lookup, and search-policy limits in focused files.
+- UI automation keeps service initialization, element/click delegation, typing, pointer/keyboard operations, focus/wait lookup, and search-policy limits in focused files.
 - Space management keeps managed-display Space mapping helpers in a focused companion file.
 - Legacy capture keeps window capture and screen/area capture paths in focused operator companions.
 - Observation label placement keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
@@ -354,7 +354,9 @@ ApplicationService+WindowListing.swift: 197 lines
 ApplicationWindowEnumerationContext.swift: 278 lines
 ApplicationServiceWindowsWorkaround.swift: 198 lines
 UIAutomationService.swift: 139 lines
-UIAutomationService+Operations.swift: 431 lines
+UIAutomationService+Operations.swift: 175 lines
+UIAutomationService+TypingOperations.swift: 135 lines
+UIAutomationService+PointerKeyboardOperations.swift: 122 lines
 UIAutomationService+ElementLookup.swift: 307 lines
 UIAutomationSearchPolicy.swift: 21 lines
 VisualizerCoordinator.swift: 204 lines

@@ -51,7 +51,7 @@
 - Watch capture sessions now separate lifecycle/result assembly from capture-loop cadence/diffing and frame/video persistence helpers.
 - Application window listing now isolates hybrid CGWindowList/AX enumeration policy in a dedicated context object.
 - Capture models now separate image primitives, live session options, frame metadata, and session-result summaries into focused files.
-- UI automation now keeps focus lookup, wait/search logic, and search-policy limits out of the primary service initializer file.
+- UI automation now keeps focus lookup, wait/search logic, typing, pointer/keyboard operations, and search-policy limits in focused service files.
 - Space management now keeps managed-display Space mapping helpers out of the private-CGS service file.
 - Legacy capture now keeps window capture and screen/area capture paths in focused operator companions.
 - Observation label placement now keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
