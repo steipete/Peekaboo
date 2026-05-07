@@ -229,6 +229,19 @@ private func logWindowAction(
     )
 }
 
+@MainActor
+private func invalidateLatestSnapshotAfterWindowMutation(
+    services: any PeekabooServiceProviding,
+    logger: Logger,
+    reason: String
+) async {
+    await InteractionObservationInvalidator.invalidateLatestSnapshot(
+        using: services.snapshots,
+        logger: logger,
+        reason: reason
+    )
+}
+
 // MARK: - Subcommands
 
 extension WindowCommand {
@@ -284,6 +297,11 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.closeWindow(windows: self.services.windows, target: target)
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window close"
+                )
 
                 logWindowAction(
                     action: "close",
@@ -361,6 +379,11 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.minimizeWindow(windows: self.services.windows, target: target)
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window minimize"
+                )
                 logWindowAction(
                     action: "minimize",
                     appName: appName,
@@ -437,6 +460,11 @@ extension WindowCommand {
 
                 // Perform the action
                 try await WindowServiceBridge.maximizeWindow(windows: self.services.windows, target: target)
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window maximize"
+                )
                 logWindowAction(
                     action: "maximize",
                     appName: appName,
@@ -689,6 +717,11 @@ extension WindowCommand {
                 // Move the window
                 let newOrigin = CGPoint(x: x, y: y)
                 try await WindowServiceBridge.moveWindow(windows: self.services.windows, target: target, to: newOrigin)
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window move"
+                )
 
                 // Create result with new bounds
                 let updatedInfo = windowInfo.map { info in
@@ -798,6 +831,11 @@ extension WindowCommand {
                 // Resize the window
                 let newSize = CGSize(width: width, height: height)
                 try await WindowServiceBridge.resizeWindow(windows: self.services.windows, target: target, to: newSize)
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window resize"
+                )
 
                 let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
                     services: self.services,
@@ -900,6 +938,11 @@ extension WindowCommand {
                     windows: self.services.windows,
                     target: target,
                     bounds: newBounds
+                )
+                await invalidateLatestSnapshotAfterWindowMutation(
+                    services: self.services,
+                    logger: self.logger,
+                    reason: "window set-bounds"
                 )
 
                 let refreshedWindowInfo = await self.windowOptions.refetchWindowInfo(
