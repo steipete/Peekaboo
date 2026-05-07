@@ -33,7 +33,8 @@ extension PeekabooServiceProviding {
         DesktopObservationService(
             screenCapture: self.screenCapture,
             automation: self.automation,
-            applications: self.applications)
+            applications: self.applications,
+            screens: self.screens)
     }
 
     /// Install this service container as the default provider for MCP tool contexts and registry helpers.

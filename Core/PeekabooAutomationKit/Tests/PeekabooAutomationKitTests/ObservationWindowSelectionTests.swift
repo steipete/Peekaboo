@@ -59,6 +59,21 @@ final class ObservationWindowSelectionTests: XCTestCase {
         XCTAssertEqual(filtered.map(\.index), [0])
     }
 
+    func testMenuBarBoundsUsesPrimaryScreenVisibleFrameGap() {
+        let screen = ScreenInfo(
+            index: 0,
+            name: "Main",
+            frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1728, height: 1080),
+            isPrimary: true,
+            scaleFactor: 2,
+            displayID: 1)
+
+        let bounds = ObservationTargetResolver.menuBarBounds(for: screen)
+
+        XCTAssertEqual(bounds, CGRect(x: 0, y: 1080, width: 1728, height: 37))
+    }
+
     private static func window(
         id: Int,
         title: String,

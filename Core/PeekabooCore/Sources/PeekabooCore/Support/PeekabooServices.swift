@@ -161,7 +161,8 @@ public final class PeekabooServices {
         self.desktopObservation = DesktopObservationService(
             screenCapture: screenCap,
             automation: auto,
-            applications: apps)
+            applications: apps,
+            screens: screenSvc)
         self.screenCapture = screenCap
         self.applications = apps
         self.automation = auto
@@ -324,10 +325,12 @@ public final class PeekabooServices {
         self.screenCapture = screenCapture
         self.applications = applications
         self.automation = automation
+        let screenSvc = screens ?? ScreenService()
         self.desktopObservation = DesktopObservationService(
             screenCapture: screenCapture,
             automation: automation,
-            applications: applications)
+            applications: applications,
+            screens: screenSvc)
         self.windows = windows
         self.menu = menu
         self.dock = dock
@@ -340,7 +343,7 @@ public final class PeekabooServices {
         self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
-        self.screens = screens ?? ScreenService()
+        self.screens = screenSvc
         // Model provider is now handled internally by Tachikoma
 
         self.logger.debug("✨ PeekabooServices initialization complete (custom)")
@@ -373,7 +376,8 @@ public final class PeekabooServices {
         self.desktopObservation = DesktopObservationService(
             screenCapture: screenCapture,
             automation: automation,
-            applications: applications)
+            applications: applications,
+            screens: screens)
         self.windows = windows
         self.menu = menu
         self.dock = dock

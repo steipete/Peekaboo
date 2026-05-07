@@ -99,7 +99,8 @@ extension ImageTool {
     private func captureImages(for request: ImageRequest) async throws -> ImageCaptureSet {
         switch request.target {
         case .menubar:
-            return try await ImageCaptureSet(captures: [self.captureMenuBar()], observation: nil)
+            let observation = try await self.captureObservation(for: request)
+            return ImageCaptureSet(captures: [observation.capture], observation: observation)
         default:
             let result = try await self.captureObservation(for: request)
             return ImageCaptureSet(captures: [result.capture], observation: result)
@@ -330,23 +331,6 @@ private func windowSelection(from rawValue: String.SubSequence?) -> WindowSelect
         return .automatic
     }
     return .index(index)
-}
-
-extension ImageTool {
-    private func captureMenuBar() async throws -> CaptureResult {
-        guard let mainScreen = NSScreen.main else {
-            throw OperationError.captureFailed(reason: "No main screen available")
-        }
-
-        let screenBounds = mainScreen.frame
-        let menuBarRect = CGRect(
-            x: screenBounds.minX,
-            y: screenBounds.maxY - 24,
-            width: screenBounds.width,
-            height: 24)
-
-        return try await self.context.screenCapture.captureArea(menuBarRect)
-    }
 }
 
 private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {

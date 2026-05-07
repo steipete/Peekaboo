@@ -123,6 +123,31 @@ struct MCPToolExecutionTests {
         #expect(await MainActor.run { screenCapture.captureAttemptCount } == 1)
     }
 
+    @Test
+    func `Image tool menubar target uses observation menu bar bounds`() async throws {
+        let screen = ScreenInfo(
+            index: 0,
+            name: "Main",
+            frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1728, height: 1080),
+            isPrimary: true,
+            scaleFactor: 2,
+            displayID: 1)
+        let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
+        let screens = await MainActor.run { MockScreenService(screens: [screen]) }
+        let context = await MCPToolTestHelpers.makeContext(screenCapture: screenCapture, screens: screens)
+        let tool = ImageTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "app_target": "menubar",
+            "format": "data",
+        ]))
+
+        #expect(response.isError == false)
+        #expect(await MainActor.run { screenCapture.lastArea } == CGRect(x: 0, y: 1080, width: 1728, height: 37))
+        #expect(await MainActor.run { screenCapture.captureAttemptCount } == 1)
+    }
+
     // MARK: - List Tool Tests
 
     @Test
@@ -393,10 +418,12 @@ private enum MCPToolTestHelpers {
     static func makeContext(
         automation: (any UIAutomationServiceProtocol)? = nil,
         screenCapture: (any ScreenCaptureServiceProtocol)? = nil,
-        applications: (any ApplicationServiceProtocol)? = nil) async -> MCPToolContext
+        applications: (any ApplicationServiceProtocol)? = nil,
+        screens: (any ScreenServiceProtocol)? = nil) async -> MCPToolContext
     {
         await MainActor.run {
             let services = PeekabooServices()
+            let resolvedScreens = screens ?? services.screens
             return MCPToolContext(
                 automation: automation ?? services.automation,
                 menu: services.menu,
@@ -408,9 +435,10 @@ private enum MCPToolTestHelpers {
                 desktopObservation: DesktopObservationService(
                     screenCapture: screenCapture ?? services.screenCapture,
                     automation: automation ?? services.automation,
-                    applications: applications ?? services.applications),
+                    applications: applications ?? services.applications,
+                    screens: resolvedScreens),
                 snapshots: services.snapshots,
-                screens: services.screens,
+                screens: resolvedScreens,
                 agent: services.agent,
                 permissions: services.permissions,
                 clipboard: services.clipboard)
@@ -515,6 +543,7 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     private(set) var captureAttemptCount = 0
     private(set) var lastWindowID: CGWindowID?
     private(set) var lastAppIdentifier: String?
+    private(set) var lastArea: CGRect?
 
     init(screenRecordingGranted: Bool) {
         self.screenRecordingGranted = screenRecordingGranted
@@ -571,11 +600,12 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     func captureArea(
-        _: CGRect,
+        _ rect: CGRect,
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
+        self.lastArea = rect
         return self.makeResult(mode: .area)
     }
 
@@ -587,6 +617,31 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         CaptureResult(
             imageData: Data(),
             metadata: CaptureMetadata(size: .zero, mode: mode, windowInfo: window))
+    }
+}
+
+@MainActor
+private final class MockScreenService: ScreenServiceProtocol {
+    private let screens: [ScreenInfo]
+
+    init(screens: [ScreenInfo]) {
+        self.screens = screens
+    }
+
+    func listScreens() -> [ScreenInfo] {
+        self.screens
+    }
+
+    func screenContainingWindow(bounds: CGRect) -> ScreenInfo? {
+        self.screens.first { $0.frame.intersects(bounds) }
+    }
+
+    func screen(at index: Int) -> ScreenInfo? {
+        self.screens.first { $0.index == index }
+    }
+
+    var primaryScreen: ScreenInfo? {
+        self.screens.first { $0.isPrimary } ?? self.screens.first
     }
 }
 

@@ -374,17 +374,8 @@ extension ImageCommand {
     }
 
     private func captureMenuBar() async throws -> [SavedFile] {
-        guard let screen = self.services.screens.primaryScreen else {
-            throw CaptureError.captureFailure("Unable to determine main screen for menu bar capture")
-        }
-
-        let calculatedHeight = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
-        let menuBarHeight: CGFloat = calculatedHeight > 0 ? calculatedHeight : 24
-        let originY = screen.frame.maxY - menuBarHeight
-        let rect = CGRect(x: screen.frame.minX, y: originY, width: screen.frame.width, height: menuBarHeight)
-
         let observation = try await self.captureObservation(
-            target: .area(rect),
+            target: .menubar,
             preferredName: "menubar",
             index: nil
         )

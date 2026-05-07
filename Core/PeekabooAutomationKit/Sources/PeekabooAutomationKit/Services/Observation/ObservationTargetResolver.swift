@@ -11,9 +11,14 @@ public protocol ObservationTargetResolving: Sendable {
 @MainActor
 public final class ObservationTargetResolver: ObservationTargetResolving {
     private let applications: any ApplicationServiceProtocol
+    private let screens: (any ScreenServiceProtocol)?
 
-    public init(applications: any ApplicationServiceProtocol) {
+    public init(
+        applications: any ApplicationServiceProtocol,
+        screens: (any ScreenServiceProtocol)? = nil)
+    {
         self.applications = applications
+        self.screens = screens
     }
 
     public func resolve(
@@ -43,7 +48,7 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             ResolvedObservationTarget(kind: .area(rect), bounds: rect)
 
         case .menubar:
-            ResolvedObservationTarget(kind: .menubar)
+            try self.resolveMenuBar()
 
         case .menubarPopover:
             ResolvedObservationTarget(kind: .menubarPopover)
@@ -237,6 +242,28 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             bundleIdentifier: identity.bundleIdentifier,
             name: identity.name,
             windowCount: 0)
+    }
+
+    private func resolveMenuBar() throws -> ResolvedObservationTarget {
+        guard let screen = self.screens?.primaryScreen else {
+            throw DesktopObservationError.targetNotFound("primary menu bar screen")
+        }
+
+        let bounds = Self.menuBarBounds(for: screen)
+        return ResolvedObservationTarget(
+            kind: .menubar,
+            bounds: bounds,
+            captureScaleHint: screen.scaleFactor)
+    }
+
+    public nonisolated static func menuBarBounds(for screen: ScreenInfo) -> CGRect {
+        let calculatedHeight = max(0, screen.frame.maxY - screen.visibleFrame.maxY)
+        let menuBarHeight: CGFloat = calculatedHeight > 0 ? calculatedHeight : 24
+        return CGRect(
+            x: screen.frame.minX,
+            y: screen.frame.maxY - menuBarHeight,
+            width: screen.frame.width,
+            height: menuBarHeight)
     }
 
     public nonisolated static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {

@@ -18,11 +18,12 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
-        applications: any ApplicationServiceProtocol)
+        applications: any ApplicationServiceProtocol,
+        screens: any ScreenServiceProtocol = ScreenService())
     {
         self.screenCapture = screenCapture
         self.automation = automation
-        self.targetResolver = ObservationTargetResolver(applications: applications)
+        self.targetResolver = ObservationTargetResolver(applications: applications, screens: screens)
         self.outputWriter = ObservationOutputWriter()
         self.stateSnapshotProvider = DesktopStateSnapshotProvider(applications: applications)
     }
@@ -131,7 +132,13 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
                 scale: options.scale)
 
         case .menubar:
-            throw DesktopObservationError.unsupportedTarget("menubar")
+            guard let bounds = target.bounds else {
+                throw DesktopObservationError.targetNotFound("menu bar bounds")
+            }
+            return try await self.screenCapture.captureArea(
+                bounds,
+                visualizerMode: options.visualizerMode,
+                scale: options.scale)
 
         case .menubarPopover:
             throw DesktopObservationError.unsupportedTarget("menubar popover")
