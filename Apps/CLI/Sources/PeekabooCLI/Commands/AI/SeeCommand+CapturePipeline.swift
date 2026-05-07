@@ -6,7 +6,6 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-import ScreenCaptureKit
 
 @MainActor
 extension SeeCommand {

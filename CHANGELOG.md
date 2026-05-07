@@ -42,6 +42,7 @@
 - Menu bar popover click-to-open capture now runs through desktop observation via a typed `openIfNeeded` target option instead of command-local click fallback code.
 - Desktop observation diagnostics now report shared target resolution metadata for menu bar strip and popover captures, including source, bounds, hints, and click-open fallback status.
 - `peekaboo menubar list` now uses the same `data.items/count` JSON envelope and text list formatting as `peekaboo list menubar`.
+- CLI `see` screen capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!

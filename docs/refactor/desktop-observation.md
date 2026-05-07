@@ -80,6 +80,7 @@ Landed:
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.
 - Menu-bar strip and popover observation diagnostics now share typed target-resolution metadata for source, bounds, hints, window IDs, and click-open fallbacks.
 - `peekaboo menubar list` and `peekaboo list menubar` now share the same JSON payload and text list formatting.
+- CLI `see` all-screens capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
 
 Still incomplete:
 
@@ -587,7 +588,7 @@ Purpose: finish the plan/operator split and remove residual command capture poli
 
 Work:
 
-- audit all command imports for `ScreenCaptureKit`, capture-only `AppKit`, and direct CoreGraphics window work;
+- in progress: audit all command imports for `ScreenCaptureKit`, capture-only `AppKit`, and direct CoreGraphics window work;
 - finish splitting capture output helpers;
 - ensure forced engine and fallback behavior is covered;
 - add diagnostics for output scale, native scale, final pixel size, engine, and fallback reason;

@@ -6,7 +6,6 @@ import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
-import ScreenCaptureKit
 
 enum ScreenCaptureBridge {
     static func captureFrontmost(services: any PeekabooServiceProviding) async throws -> CaptureResult {
