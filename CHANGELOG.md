@@ -79,6 +79,7 @@
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank or auxiliary-window captures in multi-window Chromium-style apps.
 - `peekaboo image --window-id ...` now reports the resolved window identity instead of leaking ScreenCaptureKit's internal helper-window ordering into `window_index`.
 - Direct element detection callers now use a real racing timeout instead of creating an unobserved timeout task.
+- Element-targeted actions now fail with snapshot window identity when a cached target window disappeared or changed size, instead of silently clicking stale coordinates.
 - `peekaboo image --capture-engine` is now wired into Commander metadata, so the documented capture-engine selector is accepted by live CLI parsing.
 - Concurrent ScreenCaptureKit screenshot requests now queue through an in-process and cross-process capture gate instead of racing into continuation leaks or transient TCC-denied failures.
 - Concurrent `peekaboo see` calls now queue the local screenshot/detection pipeline across processes, avoiding ReplayKit/ScreenCaptureKit continuation hangs under parallel usage.

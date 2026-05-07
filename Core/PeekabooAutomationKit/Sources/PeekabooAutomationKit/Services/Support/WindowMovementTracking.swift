@@ -29,13 +29,22 @@ public enum WindowMovementTracking {
             return .unchanged(point)
         }
 
-        let currentBounds = self.currentBounds(for: windowID)
-        guard let currentBounds else {
-            return .unchanged(point)
+        guard let currentBounds = self.currentBounds(for: windowID) else {
+            let identity = self.windowIdentityDescription(snapshot: snapshot, windowID: windowID)
+            return .stale(
+                """
+                Snapshot window is no longer available (\(identity)). \
+                Run 'peekaboo see' again before targeting elements from this snapshot.
+                """)
         }
 
         if currentBounds.size != snapshotBounds.size {
-            let message = "Window resized from \(snapshotBounds.size) to \(currentBounds.size)"
+            let identity = self.windowIdentityDescription(snapshot: snapshot, windowID: windowID)
+            let message = """
+            Snapshot window changed size (\(identity)). \
+            Previous bounds: \(snapshotBounds); current bounds: \(currentBounds). \
+            Run 'peekaboo see' again before targeting elements from this snapshot.
+            """
             return .stale(message)
         }
 
@@ -65,5 +74,22 @@ public enum WindowMovementTracking {
             return provider.windowBounds(for: windowID)
         }
         return self.identityService.getWindowInfo(windowID: windowID)?.bounds
+    }
+
+    private static func windowIdentityDescription(
+        snapshot: UIAutomationSnapshot,
+        windowID: CGWindowID) -> String
+    {
+        var parts = ["windowID: \(windowID)"]
+        if let applicationName = snapshot.applicationName {
+            parts.append("app: \(applicationName)")
+        }
+        if let applicationBundleId = snapshot.applicationBundleId {
+            parts.append("bundle: \(applicationBundleId)")
+        }
+        if let windowTitle = snapshot.windowTitle {
+            parts.append("title: \(windowTitle)")
+        }
+        return parts.joined(separator: ", ")
     }
 }
