@@ -202,6 +202,8 @@ Landed:
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Script process execution now keeps window and clipboard commands in focused companions, leaving system commands to app/menu/dock routing.
 - MCP capture tooling now keeps argument normalization, request construction, path expansion, window resolution, and metadata output in focused companions.
+- MCP dialog tooling now keeps input parsing and response formatting in focused companions while the primary tool owns service dispatch.
+- MCP app tooling now keeps lifecycle, focus/switch, listing, and response formatting in focused companions while the primary action file owns dispatch.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps delegated detection/click/typing/scroll/hotkey/gesture operations, focus/wait lookup, and search-policy limits in focused companion files; the primary file keeps initialization only.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
