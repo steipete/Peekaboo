@@ -412,6 +412,77 @@ struct ElementClassifierTests {
 }
 
 @Suite(.tags(.fast))
+struct ElementTypeAdjusterTests {
+    @Test
+    func `Editable groups resolve to text fields`() {
+        let input = ElementTypeAdjustmentInput(
+            role: "AXGroup",
+            roleDescription: nil,
+            title: nil,
+            label: nil,
+            placeholder: nil,
+            isEditable: true)
+
+        #expect(ElementTypeAdjuster
+            .resolve(baseType: .group, input: input, hasTextFieldDescendant: false) == .textField)
+        #expect(!ElementTypeAdjuster.shouldScanForTextFieldDescendant(baseType: .group, input: input))
+    }
+
+    @Test
+    func `Text field hints promote generic groups without descendant scan`() {
+        let placeholder = ElementTypeAdjustmentInput(
+            role: "AXGroup",
+            roleDescription: nil,
+            title: nil,
+            label: nil,
+            placeholder: "Email",
+            isEditable: false)
+        let keyword = ElementTypeAdjustmentInput(
+            role: "AXGroup",
+            roleDescription: nil,
+            title: "Password",
+            label: nil,
+            placeholder: nil,
+            isEditable: false)
+
+        #expect(ElementTypeAdjuster
+            .resolve(baseType: .group, input: placeholder, hasTextFieldDescendant: false) == .textField)
+        #expect(ElementTypeAdjuster
+            .resolve(baseType: .group, input: keyword, hasTextFieldDescendant: false) == .textField)
+        #expect(!ElementTypeAdjuster.shouldScanForTextFieldDescendant(baseType: .group, input: keyword))
+    }
+
+    @Test
+    func `Generic groups scan descendants only when hints are missing`() {
+        let input = ElementTypeAdjustmentInput(
+            role: "AXGroup",
+            roleDescription: nil,
+            title: "Container",
+            label: nil,
+            placeholder: nil,
+            isEditable: false)
+
+        #expect(ElementTypeAdjuster.shouldScanForTextFieldDescendant(baseType: .group, input: input))
+        #expect(ElementTypeAdjuster.resolve(baseType: .group, input: input, hasTextFieldDescendant: false) == .group)
+        #expect(ElementTypeAdjuster.resolve(baseType: .group, input: input, hasTextFieldDescendant: true) == .textField)
+    }
+
+    @Test
+    func `Non group types keep their classifier result`() {
+        let input = ElementTypeAdjustmentInput(
+            role: "AXButton",
+            roleDescription: "text field",
+            title: "Email",
+            label: nil,
+            placeholder: "Name",
+            isEditable: true)
+
+        #expect(ElementTypeAdjuster.resolve(baseType: .button, input: input, hasTextFieldDescendant: true) == .button)
+        #expect(!ElementTypeAdjuster.shouldScanForTextFieldDescendant(baseType: .button, input: input))
+    }
+}
+
+@Suite(.tags(.fast))
 struct AXDescriptorReaderTests {
     @Test
     func `Scalar coercion accepts expected AX attribute value shapes`() {

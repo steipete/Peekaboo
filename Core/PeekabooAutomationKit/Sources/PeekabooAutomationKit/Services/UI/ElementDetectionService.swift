@@ -680,28 +680,21 @@ extension ElementDetectionService {
         descriptor: AXDescriptorReader.Descriptor,
         baseType: ElementType) -> ElementType
     {
-        let roleInfo = ElementRoleInfo(
+        let input = ElementTypeAdjustmentInput(
             role: descriptor.role,
             roleDescription: descriptor.roleDescription,
+            title: descriptor.title,
+            label: descriptor.label,
+            placeholder: descriptor.placeholder,
             isEditable: baseType == .group && element.isEditable() == true)
-        let resolved = ElementRoleResolver.resolveType(baseType: baseType, info: roleInfo)
+        let hasTextFieldDescendant = ElementTypeAdjuster.shouldScanForTextFieldDescendant(
+            baseType: baseType,
+            input: input) && self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2)
 
-        let loweredTitle = descriptor.title?.lowercased()
-        let loweredLabel = descriptor.label?.lowercased()
-        let keywords = ["email", "password", "username", "phone", "code"]
-        let matchesKeyword =
-            loweredTitle.map { title in keywords.contains(where: { title.contains($0) }) } ?? false ||
-            loweredLabel.map { label in keywords.contains(where: { label.contains($0) }) } ?? false
-
-        if resolved == .group,
-           descriptor.placeholder?.isEmpty == false ||
-           matchesKeyword ||
-           self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2)
-        {
-            return .textField
-        }
-
-        return resolved
+        return ElementTypeAdjuster.resolve(
+            baseType: baseType,
+            input: input,
+            hasTextFieldDescendant: hasTextFieldDescendant)
     }
 
     private func containsTextFieldDescendant(

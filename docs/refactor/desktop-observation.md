@@ -51,6 +51,7 @@ Landed:
 - Batched AX descriptor reading and AX value coercion now live in `AXDescriptorReader`.
 - Element grouping and detection metadata assembly now live in `ElementDetectionResultBuilder`.
 - Sparse Chromium/Tauri web focus recovery now lives in `WebFocusFallback`.
+- Generic-group text-field recovery now lives in `ElementTypeAdjuster`.
 
 Still intentionally incomplete:
 
@@ -60,7 +61,7 @@ Still intentionally incomplete:
 - structured timing export in all user-facing JSON;
 - extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
-- moving traversal, full element-type adjustment, and cache invalidation into dedicated collaborators;
+- moving traversal and cache invalidation into dedicated collaborators;
 - command cleanup after the bridge paths disappear.
 
 The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.
