@@ -123,6 +123,7 @@ Landed:
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
+- `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
 
 Still incomplete:
 
@@ -152,7 +153,10 @@ WindowManagementService+Resolution.swift: 197 lines
 WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
-DesktopObservationService.swift: 427 lines
+DesktopObservationService.swift: 97 lines
+DesktopObservationService+Capture.swift: 142 lines
+DesktopObservationService+Detection.swift: 176 lines
+DesktopObservationService+Output.swift: 20 lines
 DesktopObservationModels.swift: 15 lines
 DesktopObservationTargetModels.swift: 191 lines
 DesktopObservationRequestModels.swift: 120 lines
