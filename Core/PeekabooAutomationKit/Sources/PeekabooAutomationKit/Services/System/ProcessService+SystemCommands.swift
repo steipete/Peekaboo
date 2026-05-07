@@ -185,10 +185,11 @@ extension ProcessService {
             }
 
             if let outputPath = clipboardParams.output {
-                try result.data.write(to: URL(fileURLWithPath: outputPath))
+                let resolvedPath = ClipboardPathResolver.filePath(from: outputPath) ?? outputPath
+                try result.data.write(to: ClipboardPathResolver.fileURL(from: resolvedPath))
                 return StepExecutionResult(
                     output: .data([
-                        "output": .success(outputPath),
+                        "output": .success(resolvedPath),
                         "uti": .success(result.utiIdentifier),
                         "bytes": .success("\(result.data.count)"),
                         "textPreview": .success(result.textPreview),
@@ -224,7 +225,8 @@ extension ProcessService {
             }
 
             if let filePath = clipboardParams.filePath {
-                let url = URL(fileURLWithPath: filePath)
+                let resolvedPath = ClipboardPathResolver.filePath(from: filePath) ?? filePath
+                let url = ClipboardPathResolver.fileURL(from: resolvedPath)
                 let data = try Data(contentsOf: url)
                 let uti = clipboardParams.uti
                     ?? UTType(filenameExtension: url.pathExtension)?.identifier
@@ -237,7 +239,7 @@ extension ProcessService {
                 let result = try self.clipboardService.set(request)
                 return StepExecutionResult(
                     output: .data([
-                        "filePath": .success(filePath),
+                        "filePath": .success(resolvedPath),
                         "uti": .success(result.utiIdentifier),
                         "bytes": .success("\(result.data.count)"),
                         "textPreview": .success(result.textPreview),

@@ -63,8 +63,9 @@ extension ProcessService {
         guard !outputPath.isEmpty else {
             return captureResult.savedPath ?? ""
         }
-        try captureResult.imageData.write(to: URL(fileURLWithPath: outputPath))
-        return outputPath
+        let resolvedPath = PathResolver.expandPath(outputPath)
+        try captureResult.imageData.write(to: URL(fileURLWithPath: resolvedPath))
+        return resolvedPath
     }
 
     private func storeScreenshot(
