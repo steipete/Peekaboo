@@ -1,0 +1,86 @@
+import Commander
+import Foundation
+import PeekabooCore
+import PeekabooFoundation
+
+extension DockCommand {
+    // MARK: - Launch from Dock
+
+    @MainActor
+    struct LaunchSubcommand: OutputFormattable {
+        @Argument(help: "Application name in the Dock")
+        var app: String
+
+        @Flag(help: "Verify the app is running after launch")
+        var verify = false
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            do {
+                try await DockServiceBridge.launchFromDock(dock: self.services.dock, appName: self.app)
+                let dockItem = try await DockServiceBridge.findDockItem(dock: self.services.dock, name: self.app)
+                if self.verify {
+                    try await self.verifyLaunch(dockItem: dockItem)
+                }
+                AutomationEventLogger.log(.dock, "launch app=\(dockItem.title)")
+
+                if self.jsonOutput {
+                    struct DockLaunchResult: Codable {
+                        let action: String
+                        let app: String
+                    }
+
+                    let outputData = DockLaunchResult(action: "dock_launch", app: dockItem.title)
+                    outputSuccessCodable(data: outputData, logger: self.outputLogger)
+                } else {
+                    print("✓ Launched \(dockItem.title) from Dock")
+                }
+            } catch let error as DockError {
+                handleDockServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
+                throw ExitCode(1)
+            } catch {
+                handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
+                throw ExitCode(1)
+            }
+        }
+
+        private func verifyLaunch(dockItem: DockItem) async throws {
+            let identifier = dockItem.bundleIdentifier ?? dockItem.title
+            let deadline = Date().addingTimeInterval(2.0)
+            while Date() < deadline {
+                if await self.services.applications.isApplicationRunning(identifier: identifier) {
+                    return
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+            }
+            throw PeekabooError.operationError(message: "Dock launch verification failed for \(dockItem.title)")
+        }
+    }
+}
