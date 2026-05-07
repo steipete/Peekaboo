@@ -98,6 +98,7 @@
 - Split shared `peekaboo window` target, display-name, action-result, and snapshot-invalidation helpers into a focused support file.
 - Split watch-capture frame diffing, luma scaling, bounding-box extraction, and SSIM calculation into a pure `WatchFrameDiffer`.
 - Split watch-capture PNG writing, contact sheet generation, image loading, resizing, and change highlighting into `WatchCaptureArtifactWriter`.
+- Split watch-capture output directory creation, managed autoclean, and metadata JSON writing into `WatchCaptureSessionStore`.
 - `peekaboo window focus --help` no longer advertises stale Space flag names or the interaction-only `--no-auto-focus` flag.
 - Split exact CoreGraphics window-ID metadata lookup out of `WindowManagementService` so the window service stays closer to orchestration.
 - `ElementDetectionService` now returns detection results without writing snapshots itself; snapshot persistence is owned by the automation/observation orchestration layers.

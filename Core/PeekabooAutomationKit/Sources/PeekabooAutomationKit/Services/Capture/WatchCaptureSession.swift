@@ -76,9 +76,7 @@ public final class WatchCaptureSession {
     private let scope: CaptureScope
     private let options: CaptureOptions
     private let outputRoot: URL
-    private let autocleanMinutes: Int
-    private let managedAutoclean: Bool
-    private let fileManager = FileManager.default
+    private let store: WatchCaptureSessionStore
     private let screenService: (any ScreenServiceProtocol)?
     private let frameSource: (any CaptureFrameSource)?
     private let sourceKind: CaptureSessionResult.Source
@@ -104,8 +102,11 @@ public final class WatchCaptureSession {
         self.scope = configuration.scope
         self.options = configuration.options
         self.outputRoot = configuration.outputRoot
-        self.autocleanMinutes = configuration.autoclean.minutes
-        self.managedAutoclean = configuration.autoclean.managed
+        self.store = WatchCaptureSessionStore(
+            outputRoot: configuration.outputRoot,
+            autocleanMinutes: configuration.autoclean.minutes,
+            managedAutoclean: configuration.autoclean.managed,
+            sessionId: self.sessionId)
         self.sourceKind = configuration.sourceKind
         self.videoIn = configuration.videoIn
         self.videoOut = configuration.videoOut
@@ -119,8 +120,10 @@ public final class WatchCaptureSession {
     }
 
     public func run() async throws -> CaptureSessionResult {
-        try self.prepareOutputRoot()
-        self.performAutoclean()
+        try self.store.prepareOutputRoot()
+        if let autocleanWarning = self.store.performAutoclean() {
+            self.warnings.append(autocleanWarning)
+        }
         // videoWriter is created lazily on first saved frame to match actual dimensions.
 
         let timing = self.makeTiming(start: Date())
@@ -157,7 +160,7 @@ public final class WatchCaptureSession {
             options: optionsSnapshot,
             warnings: self.warnings)
 
-        try self.writeJSON(metadata, to: metadataURL)
+        try self.store.writeJSON(metadata, to: metadataURL)
         return metadata
     }
 
@@ -613,42 +616,6 @@ public final class WatchCaptureSession {
             maxMbHit: maxMbHit)
     }
 
-    private func prepareOutputRoot() throws {
-        try self.fileManager.createDirectory(
-            at: self.outputRoot,
-            withIntermediateDirectories: true)
-    }
-
-    private func performAutoclean() {
-        guard self.managedAutoclean else { return }
-        let root = self.outputRoot.deletingLastPathComponent()
-        guard root.lastPathComponent == "watch-sessions" else { return }
-        guard let contents = try? self.fileManager.contentsOfDirectory(
-            at: root,
-            includingPropertiesForKeys: [.contentModificationDateKey],
-            options: .skipsHiddenFiles)
-        else { return }
-
-        let deadline = Date().addingTimeInterval(TimeInterval(-self.autocleanMinutes) * 60)
-        var removed = 0
-        for url in contents {
-            guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
-                  let modified = attrs.contentModificationDate else { continue }
-            if modified < deadline {
-                if (try? self.fileManager.removeItem(at: url)) != nil {
-                    removed += 1
-                }
-            }
-        }
-        if removed > 0 {
-            self.warnings.append(
-                WatchWarning(
-                    code: .autoclean,
-                    message: "Autoclean removed \(removed) old watch sessions",
-                    details: ["session": self.sessionId]))
-        }
-    }
-
     private func sleep(ns: UInt64, since start: Date) async throws {
         // For video sources we don't throttle cadence; return immediately.
         if self.frameSource != nil { return }
@@ -656,11 +623,6 @@ public final class WatchCaptureSession {
         if ns > elapsed {
             try await Task.sleep(nanoseconds: ns - elapsed)
         }
-    }
-
-    private func writeJSON(_ value: some Encodable, to url: URL) throws {
-        let data = try JSONEncoder().encode(value)
-        try data.write(to: url, options: .atomic)
     }
 
     // MARK: - Region validation

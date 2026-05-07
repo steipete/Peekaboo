@@ -103,6 +103,7 @@ Landed:
 - Shared `peekaboo window` target, display-name, action-result, and snapshot-invalidation helpers now live in `WindowCommand+Support`, leaving the primary command file focused on subcommand wiring.
 - Watch capture frame diffing now lives in `WatchFrameDiffer`, keeping luma scaling, bounding-box extraction, and SSIM away from session orchestration.
 - Watch capture artifact writing now lives in `WatchCaptureArtifactWriter`, keeping PNG encoding, contact sheets, resizing, and change highlighting away from session orchestration.
+- Watch capture session filesystem duties now live in `WatchCaptureSessionStore`, keeping output directory setup, managed autoclean, and metadata JSON writing out of session orchestration.
 
 Still incomplete:
 
@@ -119,9 +120,10 @@ ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines
 ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
-WatchCaptureSession.swift: 713 lines
+WatchCaptureSession.swift: 675 lines
 WatchCaptureArtifactWriter.swift: 150 lines
 WatchFrameDiffer.swift: 250 lines
+WatchCaptureSessionStore.swift: 49 lines
 WindowManagementService.swift: 819 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
