@@ -1,0 +1,227 @@
+import Commander
+import Foundation
+import PeekabooCore
+import PeekabooFoundation
+
+extension MenuCommand {
+    // MARK: - Click Menu Item
+
+    @MainActor
+    struct ClickSubcommand: OutputFormattable {
+        @OptionGroup var target: InteractionTargetOptions
+
+        @Option(help: "Menu item to click (for simple, non-nested items)")
+        var item: String?
+
+        @Option(help: "Menu path for nested items (e.g., 'File > Export > PDF')")
+        var path: String?
+
+        @OptionGroup var focusOptions: FocusCommandOptions
+        @RuntimeStorage private var runtime: CommandRuntime?
+
+        private var resolvedRuntime: CommandRuntime {
+            guard let runtime else {
+                preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
+            }
+            return runtime
+        }
+
+        private var services: any PeekabooServiceProviding {
+            self.resolvedRuntime.services
+        }
+
+        private var logger: Logger {
+            self.resolvedRuntime.logger
+        }
+
+        var outputLogger: Logger {
+            self.logger
+        }
+
+        var jsonOutput: Bool {
+            self.resolvedRuntime.configuration.jsonOutput
+        }
+
+        @MainActor
+        mutating func run(using runtime: CommandRuntime) async throws {
+            self.runtime = runtime
+            self.logger.setJsonOutputMode(self.jsonOutput)
+
+            var normalizedItem = self.item
+            var normalizedPath = self.path
+            // Agents often copy "File > New" paths from list output into --item. Normalize
+            // that shape here so click execution and enabled-state validation stay aligned.
+            let normalization = normalizeMenuSelection(item: normalizedItem, path: normalizedPath)
+            normalizedItem = normalization.item
+            normalizedPath = normalization.path
+
+            if normalization.convertedFromItem, let resolvedPath = normalizedPath {
+                let note = "Interpreting --item value as menu path: \(resolvedPath)"
+                if self.jsonOutput {
+                    self.logger.info(note)
+                } else {
+                    print("ℹ️ \(note)")
+                }
+            }
+
+            guard normalizedItem != nil || normalizedPath != nil else {
+                throw ValidationError("Must specify either --item or --path")
+            }
+
+            guard normalizedItem == nil || normalizedPath == nil else {
+                throw ValidationError("Cannot specify both --item and --path")
+            }
+
+            do {
+                try self.target.validate()
+                let appIdentifier = try await self.resolveTargetApplicationIdentifier()
+                let windowID = try await self.target.resolveWindowID(services: self.services)
+                try await ensureFocusIgnoringMissingWindows(
+                    request: FocusIgnoringMissingWindowsRequest(
+                        windowID: windowID,
+                        applicationName: appIdentifier,
+                        windowTitle: self.target.windowTitle
+                    ),
+                    options: self.focusOptions,
+                    services: self.services,
+                    logger: self.logger
+                )
+
+                let canonicalPath: String? = normalizedPath.map(Self.canonicalizeMenuPath)
+                if let canonicalPath {
+                    try await self.ensureMenuItemEnabled(appIdentifier: appIdentifier, menuPath: canonicalPath)
+                }
+
+                if let itemName = normalizedItem {
+                    try await MenuServiceBridge.clickMenuItemByName(
+                        menu: self.services.menu,
+                        appIdentifier: appIdentifier,
+                        itemName: itemName
+                    )
+                } else if let path = canonicalPath {
+                    try await MenuServiceBridge.clickMenuItem(
+                        menu: self.services.menu,
+                        appIdentifier: appIdentifier,
+                        itemPath: path
+                    )
+                }
+
+                let appInfo = try await self.services.applications.findApplication(identifier: appIdentifier)
+                let clickedPath = canonicalPath ?? normalizedItem!
+
+                if self.jsonOutput {
+                    let data = MenuClickResult(
+                        action: "menu_click",
+                        app: appInfo.name,
+                        menu_path: clickedPath,
+                        clicked_item: clickedPath
+                    )
+                    outputSuccessCodable(data: data, logger: self.outputLogger)
+                } else {
+                    print("✓ Clicked menu item: \(clickedPath)")
+                }
+
+            } catch let error as MenuError {
+                MenuErrorOutputSupport.renderMenuError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Failed to click menu item",
+                    logger: self.outputLogger
+                )
+                throw ExitCode(1)
+            } catch let error as PeekabooError {
+                MenuErrorOutputSupport.renderApplicationError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    logger: self.outputLogger
+                )
+                throw ExitCode(1)
+            } catch {
+                MenuErrorOutputSupport.renderGenericError(
+                    error,
+                    jsonOutput: self.jsonOutput,
+                    details: "Menu operation failed",
+                    logger: self.outputLogger
+                )
+                throw ExitCode(1)
+            }
+        }
+
+        private func resolveTargetApplicationIdentifier() async throws -> String {
+            if let appIdentifier = try self.target.resolveApplicationIdentifierOptional() {
+                return appIdentifier
+            }
+
+            guard let frontmost = try? await self.services.applications.getFrontmostApplication() else {
+                throw ValidationError("No frontmost app found; provide --app or --pid")
+            }
+
+            return frontmost.bundleIdentifier ?? frontmost.name
+        }
+    }
+}
+
+@MainActor
+private func findMenuItem(
+    canonicalPath: String,
+    in menus: [Menu]
+) -> MenuItem? {
+    for menu in menus {
+        let menuBase = MenuCommand.ClickSubcommand.canonicalizeMenuPath(menu.title)
+        if menuBase == canonicalPath {
+            return nil // top-level menu is not a clickable item
+        }
+        if let item = findMenuItem(in: menu.items, canonicalPath: canonicalPath) {
+            return item
+        }
+    }
+    return nil
+}
+
+private func findMenuItem(
+    in items: [MenuItem],
+    canonicalPath: String
+) -> MenuItem? {
+    for item in items {
+        if MenuCommand.ClickSubcommand.canonicalizeMenuPath(item.path) == canonicalPath {
+            return item
+        }
+        if let nested = findMenuItem(in: item.submenu, canonicalPath: canonicalPath) {
+            return nested
+        }
+    }
+    return nil
+}
+
+@MainActor
+extension MenuCommand.ClickSubcommand {
+    fileprivate static func canonicalizeMenuPath(_ rawPath: String) -> String {
+        rawPath
+            .split(separator: ">")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " > ")
+    }
+
+    fileprivate func ensureMenuItemEnabled(appIdentifier: String, menuPath: String) async throws {
+        let structure = try await MenuServiceBridge.listMenus(
+            menu: self.services.menu,
+            appIdentifier: appIdentifier
+        )
+        let canonical = menuPath
+        guard let item = findMenuItem(canonicalPath: canonical, in: structure.menus) else {
+            throw MenuError.menuItemNotFound(canonical)
+        }
+        guard item.isEnabled else {
+            throw MenuError.menuItemDisabled(canonical)
+        }
+    }
+}
+
+@MainActor
+func normalizeMenuSelection(item: String?, path: String?) -> (item: String?, path: String?, convertedFromItem: Bool) {
+    guard path == nil, let item, item.contains(">") else {
+        return (item, path, false)
+    }
+    return (nil, item, true)
+}
