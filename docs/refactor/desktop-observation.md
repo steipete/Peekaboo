@@ -151,6 +151,7 @@ Landed:
 - `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
 - MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
 - MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
+- CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 
 Current status:
 
