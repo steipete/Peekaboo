@@ -244,91 +244,6 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
         }
     }
-
-    // Error handling is provided by ErrorHandlingCommand protocol
-
-    /// Process text with escape sequences like \n, \t, etc.
-    static func processTextWithEscapes(_ text: String) -> [TypeAction] {
-        // Process text with escape sequences like \n, \t, etc.
-        var actions: [TypeAction] = []
-        var currentText = ""
-        var i = text.startIndex
-
-        while i < text.endIndex {
-            let char = text[i]
-
-            if char == "\\" && text.index(after: i) < text.endIndex {
-                let nextChar = text[text.index(after: i)]
-
-                switch nextChar {
-                case "n":
-                    // Add accumulated text
-                    if !currentText.isEmpty {
-                        actions.append(.text(currentText))
-                        currentText = ""
-                    }
-                    // Add return key
-                    actions.append(.key(.return))
-                    // Skip the 'n'
-                    i = text.index(after: i)
-
-                case "t":
-                    // Add accumulated text
-                    if !currentText.isEmpty {
-                        actions.append(.text(currentText))
-                        currentText = ""
-                    }
-                    // Add tab key
-                    actions.append(.key(.tab))
-                    // Skip the 't'
-                    i = text.index(after: i)
-
-                case "b":
-                    // Add accumulated text
-                    if !currentText.isEmpty {
-                        actions.append(.text(currentText))
-                        currentText = ""
-                    }
-                    // Add backspace/delete key
-                    actions.append(.key(.delete))
-                    // Skip the 'b'
-                    i = text.index(after: i)
-
-                case "e":
-                    // Add accumulated text
-                    if !currentText.isEmpty {
-                        actions.append(.text(currentText))
-                        currentText = ""
-                    }
-                    // Add escape key
-                    actions.append(.key(.escape))
-                    // Skip the 'e'
-                    i = text.index(after: i)
-
-                case "\\":
-                    // Escaped backslash
-                    currentText.append("\\")
-                    // Skip the second backslash
-                    i = text.index(after: i)
-
-                default:
-                    // Not a recognized escape, keep the backslash
-                    currentText.append(char)
-                }
-            } else {
-                currentText.append(char)
-            }
-
-            i = text.index(after: i)
-        }
-
-        // Add any remaining text
-        if !currentText.isEmpty {
-            actions.append(.text(currentText))
-        }
-
-        return actions
-    }
 }
 
 @MainActor
@@ -359,18 +274,6 @@ extension TypeCommand: CommanderBindableCommand {
         self.target = try values.makeInteractionTargetOptions()
         self.focusOptions = try values.makeFocusOptions()
     }
-}
-
-// MARK: - JSON Output Structure
-
-struct TypeCommandResult: Codable {
-    let success: Bool
-    let typedText: String?
-    let keyPresses: Int
-    let totalCharacters: Int
-    let executionTime: TimeInterval
-    let wordsPerMinute: Int?
-    let profile: String
 }
 
 // MARK: - Conformances
