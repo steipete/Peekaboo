@@ -69,13 +69,20 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 throw ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
-            let observation = await InteractionObservationContext.resolve(
+            var observation = await InteractionObservationContext.resolve(
                 explicitSnapshot: self.snapshot,
                 fallbackToLatest: self.on != nil,
                 snapshots: self.services.snapshots
             )
 
-            if self.on != nil {
+            if let elementId = self.on {
+                observation = try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+                    observation,
+                    elementId: elementId,
+                    target: self.target,
+                    services: self.services,
+                    logger: self.logger
+                )
                 _ = try await observation.requireDetectionResult(using: self.services.snapshots)
             } else {
                 try await observation.validateIfExplicit(using: self.services.snapshots)

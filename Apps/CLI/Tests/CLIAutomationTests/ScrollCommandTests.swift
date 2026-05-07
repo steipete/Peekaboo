@@ -70,6 +70,54 @@ struct ScrollCommandTests {
     }
 
     @Test
+    func `Scroll on element refreshes stale latest snapshot`() async throws {
+        let appInfo = ServiceApplicationInfo(
+            processIdentifier: 42,
+            bundleIdentifier: "com.example.ScrollApp",
+            name: "ScrollApp",
+            windowCount: 1
+        )
+        let window = ServiceWindowInfo(
+            windowID: 4242,
+            title: "Scroll",
+            bounds: CGRect(x: 0, y: 0, width: 600, height: 400)
+        )
+        let automation = await MainActor.run {
+            let automation = StubAutomationService()
+            automation.detectElementsHandler = { _, _, _ in
+                Self.detectionResult(
+                    snapshotId: "fresh-snapshot",
+                    element: Self.buttonElement(id: "B1")
+                )
+            }
+            return automation
+        }
+        let snapshots = StubSnapshotManager()
+        _ = try await snapshots.createSnapshot()
+        let context = await MainActor.run {
+            TestServicesFactory.makeAutomationTestContext(
+                automation: automation,
+                snapshots: snapshots,
+                applications: StubApplicationService(
+                    applications: [appInfo],
+                    windowsByApp: ["com.example.ScrollApp": [window]]
+                )
+            )
+        }
+
+        let result = try await self.runScroll(
+            arguments: ["--direction", "down", "--on", "B1", "--json", "--no-auto-focus"],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let scrollCalls = await self.automationState(context) { $0.scrollCalls }
+        let call = try #require(scrollCalls.first)
+        #expect(call.request.target == "B1")
+        #expect(call.request.snapshotId == "fresh-snapshot")
+    }
+
+    @Test
     func `Scroll without snapshot still executes`() async throws {
         let context = await self.makeContext()
         let result = try await self.runScroll(
@@ -138,6 +186,24 @@ struct ScrollCommandTests {
         await MainActor.run {
             operation(context.automation)
         }
+    }
+
+    private static func buttonElement(id: String) -> DetectedElement {
+        DetectedElement(
+            id: id,
+            type: .button,
+            label: "Button \(id)",
+            bounds: CGRect(x: 20, y: 30, width: 100, height: 40)
+        )
+    }
+
+    private static func detectionResult(snapshotId: String, element: DetectedElement) -> ElementDetectionResult {
+        ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/\(snapshotId).png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
+        )
     }
 }
 #endif
