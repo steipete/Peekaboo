@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
@@ -118,5 +119,9 @@ extension UIAutomationService {
             from: fromPoint,
             to: to,
             duration: TimeInterval(duration) / 1000.0)
+    }
+
+    public func currentMouseLocation() -> CGPoint? {
+        InputDriver.currentLocation()
     }
 }

@@ -6,7 +6,6 @@
 //  Gathers desktop state (focused app, window, cursor, clipboard) for agent context.
 //
 
-import AppKit
 import CoreGraphics
 import Foundation
 import os.log
@@ -95,67 +94,35 @@ public final class DesktopContextService {
     // MARK: - Private Helpers
 
     private func gatherFocusedWindowInfo() async -> FocusedWindowInfo? {
-        // Get frontmost application via NSWorkspace
-        guard let frontApp = NSWorkspace.shared.frontmostApplication else {
+        let frontApp: ServiceApplicationInfo
+        do {
+            frontApp = try await self.services.applications.getFrontmostApplication()
+        } catch {
+            self.logger.debug("Failed to read frontmost application: \(error.localizedDescription)")
             return nil
         }
 
-        let appName = frontApp.localizedName ?? frontApp.bundleIdentifier ?? "Unknown"
-
-        // Get focused window info via CGWindowListCopyWindowInfo
-        // This avoids requiring accessibility permissions for basic window enumeration
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let windowInfoList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return FocusedWindowInfo(
-                appName: appName,
-                title: "",
-                bounds: nil,
-                processId: Int(frontApp.processIdentifier))
-        }
-
-        // Find windows belonging to the frontmost app
-        let pid = frontApp.processIdentifier
-        let appWindows = windowInfoList.filter { info in
-            guard let ownerPID = info[kCGWindowOwnerPID as String] as? Int32 else { return false }
-            return ownerPID == pid
-        }
-
-        // Get the topmost window (first in z-order)
-        guard let topWindow = appWindows.first else {
-            return FocusedWindowInfo(
-                appName: appName,
-                title: "",
-                bounds: nil,
-                processId: Int(pid))
-        }
-
-        // Extract window properties
-        let title = topWindow[kCGWindowName as String] as? String ?? ""
-        var bounds: CGRect?
-        if let boundsDict = topWindow[kCGWindowBounds as String] as? [String: Any],
-           let rect = CGRect(dictionaryRepresentation: boundsDict as CFDictionary)
-        {
-            bounds = rect
+        do {
+            if let focusedWindow = try await self.services.windows.getFocusedWindow() {
+                return FocusedWindowInfo(
+                    appName: frontApp.name,
+                    title: focusedWindow.title,
+                    bounds: focusedWindow.bounds,
+                    processId: Int(frontApp.processIdentifier))
+            }
+        } catch {
+            self.logger.debug("Failed to read focused window: \(error.localizedDescription)")
         }
 
         return FocusedWindowInfo(
-            appName: appName,
-            title: title,
-            bounds: bounds,
-            processId: Int(pid))
+            appName: frontApp.name,
+            title: "",
+            bounds: nil,
+            processId: Int(frontApp.processIdentifier))
     }
 
     private func gatherCursorPosition() async -> CGPoint? {
-        // Get current mouse location
-        let mouseLocation = NSEvent.mouseLocation
-
-        // Convert from screen coordinates (origin at bottom-left) to display coordinates (origin at top-left)
-        guard let mainScreen = NSScreen.main else {
-            return mouseLocation
-        }
-
-        let flippedY = mainScreen.frame.height - mouseLocation.y
-        return CGPoint(x: mouseLocation.x, y: flippedY)
+        self.services.automation.currentMouseLocation()
     }
 
     private func gatherClipboardContent() async -> String? {
@@ -171,12 +138,22 @@ public final class DesktopContextService {
     }
 
     private func gatherRecentApps() async -> [String] {
-        // Get running applications, sorted by recent activation
-        let runningApps = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .compactMap(\.localizedName)
-
-        return Array(runningApps.prefix(5))
+        do {
+            let output = try await self.services.applications.listApplications()
+            return Array(
+                output.data.applications
+                    .sorted { lhs, rhs in
+                        if lhs.isActive != rhs.isActive {
+                            return lhs.isActive && !rhs.isActive
+                        }
+                        return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                    }
+                    .prefix(5)
+                    .map(\.name))
+        } catch {
+            self.logger.debug("Failed to read running applications: \(error.localizedDescription)")
+            return []
+        }
     }
 }
 

@@ -107,6 +107,9 @@ public protocol UIAutomationServiceProtocol: Sendable {
     ///   - profile: Movement profile that controls path generation
     func moveMouse(to: CGPoint, duration: Int, steps: Int, profile: MouseMovementProfile) async throws
 
+    /// Read the current mouse cursor location in global display coordinates.
+    func currentMouseLocation() -> CGPoint?
+
     /// Get information about the currently focused UI element
     /// - Returns: Information about the focused element, or nil if no element has focus
     func getFocusedElement() -> UIFocusInfo?
@@ -118,6 +121,12 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Returns: The first element matching the criteria
     /// - Throws: PeekabooError.elementNotFound if no matching element is found
     func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
+}
+
+extension UIAutomationServiceProtocol {
+    public func currentMouseLocation() -> CGPoint? {
+        nil
+    }
 }
 
 /// Optional capability for automation services that can override the transport timeout used for element detection.
