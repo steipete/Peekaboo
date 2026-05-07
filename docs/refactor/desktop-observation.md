@@ -67,6 +67,7 @@ Landed:
 - Legacy area capture through the legacy capture operator.
 - Dedicated ScreenCaptureKit and legacy capture operator files.
 - Screen capture operation gating/metrics and capture execution orchestration are split out of the primary `ScreenCaptureService`.
+- ScreenCaptureKit display/area capture, window capture, and shared frame-source support are split out of the primary operator.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -214,6 +215,10 @@ ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines
 ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
+ScreenCaptureKitOperator.swift: 73 lines
+ScreenCaptureKitOperator+Display.swift: 113 lines
+ScreenCaptureKitOperator+Window.swift: 296 lines
+ScreenCaptureKitOperator+Support.swift: 67 lines
 WatchCaptureSession.swift: 486 lines
 WatchCaptureArtifactWriter.swift: 150 lines
 WatchFrameDiffer.swift: 250 lines
