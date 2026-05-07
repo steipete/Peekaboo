@@ -1,0 +1,75 @@
+import Foundation
+import PeekabooFoundation
+
+extension SnapshotManager {
+    /// Store raw screenshot and build UI map
+    public func storeScreenshot(_ request: SnapshotScreenshotRequest) async throws {
+        let snapshotPath = self.getSnapshotPath(for: request.snapshotId)
+        try FileManager.default.createDirectory(at: snapshotPath, withIntermediateDirectories: true)
+
+        var snapshotData = await self.snapshotActor
+            .loadSnapshot(snapshotId: request.snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+        if snapshotData.creatorProcessId == nil {
+            snapshotData.creatorProcessId = getpid()
+        }
+
+        let rawPath = snapshotPath.appendingPathComponent("raw.png")
+        let sourceURL = URL(fileURLWithPath: request.screenshotPath).standardizedFileURL
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw CaptureError.fileIOError("Screenshot missing at \(sourceURL.path)")
+        }
+        if FileManager.default.fileExists(atPath: rawPath.path) {
+            try FileManager.default.removeItem(at: rawPath)
+        }
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: rawPath)
+        } catch {
+            let message = "Failed to copy screenshot to snapshot storage: \(error.localizedDescription)"
+            throw CaptureError.fileIOError(message)
+        }
+
+        snapshotData.screenshotPath = rawPath.path
+        snapshotData.applicationName = request.applicationName
+        snapshotData.applicationBundleId = request.applicationBundleId
+        snapshotData.applicationProcessId = request.applicationProcessId
+        snapshotData.windowTitle = request.windowTitle
+        snapshotData.windowBounds = request.windowBounds
+        snapshotData.lastUpdateTime = Date()
+
+        try await self.snapshotActor.saveSnapshot(snapshotId: request.snapshotId, data: snapshotData, at: snapshotPath)
+    }
+
+    public func storeAnnotatedScreenshot(snapshotId: String, annotatedScreenshotPath: String) async throws {
+        let snapshotPath = self.getSnapshotPath(for: snapshotId)
+        try FileManager.default.createDirectory(at: snapshotPath, withIntermediateDirectories: true)
+
+        var snapshotData = await self.snapshotActor
+            .loadSnapshot(snapshotId: snapshotId, from: snapshotPath) ?? UIAutomationSnapshot()
+        if snapshotData.creatorProcessId == nil {
+            snapshotData.creatorProcessId = getpid()
+        }
+
+        let annotatedPath = snapshotPath.appendingPathComponent("annotated.png")
+        let sourceURL = URL(fileURLWithPath: annotatedScreenshotPath).standardizedFileURL
+
+        guard FileManager.default.fileExists(atPath: sourceURL.path) else {
+            throw CaptureError.fileIOError("Annotated screenshot missing at \(sourceURL.path)")
+        }
+
+        if FileManager.default.fileExists(atPath: annotatedPath.path) {
+            try FileManager.default.removeItem(at: annotatedPath)
+        }
+
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: annotatedPath)
+        } catch {
+            let message = "Failed to copy annotated screenshot to snapshot storage: \(error.localizedDescription)"
+            throw CaptureError.fileIOError(message)
+        }
+
+        snapshotData.annotatedPath = annotatedPath.path
+        snapshotData.lastUpdateTime = Date()
+
+        try await self.snapshotActor.saveSnapshot(snapshotId: snapshotId, data: snapshotData, at: snapshotPath)
+    }
+}
