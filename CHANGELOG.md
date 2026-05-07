@@ -61,6 +61,7 @@
 - `peekaboo menu` list output filtering, typed JSON conversion, and text rendering now share one command-support helper.
 - `peekaboo menu` subcommands now share one error-output mapper for JSON error codes and stderr rendering.
 - `peekaboo menu` click, click-extra, and list implementations now live in focused extension files, leaving the primary command file as registration and shared types.
+- Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo dialog` click, input, file, dismiss, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
