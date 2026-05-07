@@ -17,157 +17,76 @@ extension PeekabooAgentService {
         MCPToolContext(services: self.services)
     }
 
+    private func makeAgentTool(
+        from tool: some MCPTool,
+        name: String? = nil,
+        description: String? = nil) -> AgentTool
+    {
+        AgentTool(
+            name: name ?? tool.name,
+            description: description ?? tool.description,
+            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
+            execute: { arguments in
+                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
+                return await convertToolResponseToAgentToolResultAsync(response)
+            })
+    }
+
     // MARK: - Vision Tools
 
     public func createSeeTool() -> AgentTool {
-        let tool = SeeTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: SeeTool(context: self.makeToolContext()))
     }
 
     public func createImageTool() -> AgentTool {
-        let tool = ImageTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ImageTool(context: self.makeToolContext()))
     }
 
     public func createWatchTool() -> AgentTool {
-        // Back-compat alias to capture tool
-        let tool = CaptureTool(context: self.makeToolContext())
-        return AgentTool(
-            name: "watch", // preserve legacy tool name for agents
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        // Preserve the legacy agent-facing name while using the capture implementation.
+        self.makeAgentTool(from: CaptureTool(context: self.makeToolContext()), name: "watch")
     }
 
     public func createCaptureTool() -> AgentTool {
-        let tool = CaptureTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: CaptureTool(context: self.makeToolContext()))
     }
 
     // MARK: - UI Automation Tools
 
     public func createClickTool() -> AgentTool {
-        let tool = ClickTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ClickTool(context: self.makeToolContext()))
     }
 
     public func createTypeTool() -> AgentTool {
-        let tool = TypeTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: TypeTool(context: self.makeToolContext()))
     }
 
     public func createScrollTool() -> AgentTool {
-        let tool = ScrollTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ScrollTool(context: self.makeToolContext()))
     }
 
     public func createHotkeyTool() -> AgentTool {
-        let tool = HotkeyTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: HotkeyTool(context: self.makeToolContext()))
     }
 
     public func createDragTool() -> AgentTool {
-        let tool = DragTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: DragTool(context: self.makeToolContext()))
     }
 
     public func createMoveTool() -> AgentTool {
-        let tool = MoveTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: MoveTool(context: self.makeToolContext()))
     }
 
     // MARK: - Vision Tools
 
     public func createAnalyzeTool() -> AgentTool {
-        let tool = AnalyzeTool()
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: AnalyzeTool())
     }
 
     // MARK: - List Tool (Full Access)
 
     public func createListTool() -> AgentTool {
-        let tool = ListTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ListTool(context: self.makeToolContext()))
     }
 
     // MARK: - Screen Tools
@@ -229,169 +148,73 @@ extension PeekabooAgentService {
     // MARK: - Space Management
 
     public func createSpaceTool() -> AgentTool {
-        let tool = SpaceTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: SpaceTool(context: self.makeToolContext()))
     }
 
     // MARK: - Window Management
 
     public func createWindowTool() -> AgentTool {
-        let tool = WindowTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: WindowTool(context: self.makeToolContext()))
     }
 
     // MARK: - Menu Interaction
 
     public func createMenuTool() -> AgentTool {
-        let tool = MenuTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: MenuTool(context: self.makeToolContext()))
     }
 
     // MARK: - Dialog Handling
 
     public func createDialogTool() -> AgentTool {
-        let tool = DialogTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: DialogTool(context: self.makeToolContext()))
     }
 
     // MARK: - Dock Management
 
     public func createDockTool() -> AgentTool {
-        let tool = DockTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: DockTool(context: self.makeToolContext()))
     }
 
     // MARK: - Timing Control
 
     public func createSleepTool() -> AgentTool {
-        let tool = SleepTool()
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: SleepTool())
     }
 
     // MARK: - Clipboard
 
     public func createClipboardTool() -> AgentTool {
-        let tool = ClipboardTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ClipboardTool(context: self.makeToolContext()))
     }
 
     // MARK: - Paste
 
     public func createPasteTool() -> AgentTool {
-        let tool = PasteTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: PasteTool(context: self.makeToolContext()))
     }
 
     // MARK: - Gesture Support
 
     public func createSwipeTool() -> AgentTool {
-        let tool = SwipeTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: SwipeTool(context: self.makeToolContext()))
     }
 
     // MARK: - Permissions Check
 
     public func createPermissionsTool() -> AgentTool {
-        let tool = PermissionsTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: PermissionsTool(context: self.makeToolContext()))
     }
 
     // MARK: - Full App Management
 
     public func createAppTool() -> AgentTool {
-        let tool = AppTool(context: self.makeToolContext())
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: AppTool(context: self.makeToolContext()))
     }
 
     // MARK: - Shell Tool
 
     public func createShellTool() -> AgentTool {
-        let tool = ShellTool()
-        return AgentTool(
-            name: tool.name,
-            description: tool.description,
-            parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
-            execute: { arguments in
-                let response = try await tool.execute(arguments: makeToolArguments(from: arguments))
-                return await convertToolResponseToAgentToolResultAsync(response)
-            })
+        self.makeAgentTool(from: ShellTool())
     }
 
     // MARK: - Completion Tools

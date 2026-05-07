@@ -178,7 +178,7 @@ Landed:
 - UI automation orchestration now keeps delegated detection/click/typing/scroll/hotkey/gesture operations, focus/wait lookup, and search-policy limits in focused companion files; the primary file keeps initialization only.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in `SnapshotManager+Helpers`.
-- Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, and toolset assembly in focused companion files; tool-call argument previews now have tested sensitive-value redaction.
+- Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, toolset assembly, and MCP-to-agent tool adaptation in focused companion files; tool-call argument previews now have tested sensitive-value redaction.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
 - Bridge server request handling now keeps service-domain handlers in a focused companion file, leaving the primary handler file as routing plus core/capture/automation/window operations.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
@@ -394,7 +394,7 @@ SpaceCGSPrivateAPI.swift: 121 lines
 SpaceModels.swift: 68 lines
 SpaceTool.swift: 196 lines
 SpaceTool+Handlers.swift: 260 lines
-PeekabooAgentService+Tools.swift: 444 lines
+PeekabooAgentService+Tools.swift: 267 lines
 PeekabooAgentService+ToolSchema.swift: 92 lines
 AgentToolMCPBridge.swift: 93 lines
 UIAutomationServiceProtocol.swift: 155 lines

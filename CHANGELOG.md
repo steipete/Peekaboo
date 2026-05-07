@@ -82,7 +82,7 @@
 - UI automation orchestration now keeps detection, click, typing, scroll, hotkey, and gesture operations in a focused companion file while the primary service owns initialization and AX wait/search behavior.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in a focused companion file.
-- Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, and toolset assembly in focused companion files.
+- Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, toolset assembly, and MCP-to-agent tool adaptation in focused companion files.
 - Agent tool-call event previews now use a tested redaction helper for sensitive argument fields and inline token patterns before sending UI events.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
 - Bridge server request handling now keeps service-domain handlers in a focused companion file, leaving the primary handler file as routing plus core/capture/automation/window operations.
