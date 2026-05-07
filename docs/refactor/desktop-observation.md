@@ -233,6 +233,7 @@ Landed:
 - MCP `WindowTool` action handlers now live in a focused companion file, and target validation uses the tool's normal argument-error path.
 - MCP `AppTool` action handlers now live in a focused companion file, leaving the primary tool file as request parsing and dispatch.
 - MCP `SpaceTool` action handlers now live in a focused companion file, leaving the primary tool file as schema, request parsing, and dispatch.
+- MCP `DialogTool` input parsing and response formatting now live in focused companion files, leaving the primary tool to own schema, targeting, and service dispatch.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
 - `peekaboo clipboard` Commander binding and output DTOs are split from clipboard action logic.
@@ -369,6 +370,9 @@ CaptureTool+Request.swift: 231 lines
 CaptureTool+Paths.swift: 19 lines
 CaptureTool+Meta.swift: 20 lines
 CaptureTool+WindowResolution.swift: 91 lines
+DialogTool.swift: 236 lines
+DialogTool+Inputs.swift: 127 lines
+DialogTool+Formatting.swift: 83 lines
 AppTool.swift: 105 lines
 AppTool+Actions.swift: 408 lines
 DialogService.swift: 78 lines
