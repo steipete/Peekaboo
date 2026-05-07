@@ -87,10 +87,18 @@ struct CommandHelpRenderer {
                 .filter { !$0.isAlias }
                 .map(\.cliSpelling)
                 .joined(separator: ", ")
-            let valuePlaceholder = " <\(option.label)>"
+            let valuePlaceholder = " <\(self.optionValuePlaceholder(option.label))>"
             return (names + valuePlaceholder, option.help)
         }
         return self.makeSection(title: "OPTIONS", lines: self.renderKeyValueRows(rows, theme: theme), theme: theme)
+    }
+
+    private static func optionValuePlaceholder(_ label: String) -> String {
+        let suffix = "Option"
+        guard label.hasSuffix(suffix), label.count > suffix.count else {
+            return label
+        }
+        return String(label.dropLast(suffix.count))
     }
 
     private static func renderFlags(_ flags: [FlagDefinition], theme: HelpTheme?) -> String? {

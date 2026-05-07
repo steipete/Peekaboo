@@ -82,6 +82,7 @@
 - `peekaboo press --hold` now honors the requested hold duration.
 - `peekaboo app launch --no-focus` now also suppresses activation when launching without `--open` targets.
 - `peekaboo clipboard` now accepts the action positionally, so `peekaboo clipboard get --json` matches the documented CLI shape while `--action` remains available as an alias.
+- CLI help now hides internal `*Option` binding names in option placeholders, e.g. `--action <action>` instead of `--action <actionOption>`.
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
