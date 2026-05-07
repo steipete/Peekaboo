@@ -217,7 +217,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             // Determine click target first to check if we need a snapshot
             let clickTarget: ClickTarget
             let waitResult: WaitForElementResult
-            let activeSnapshotId: String
+            var activeSnapshotId: String
             var observationForInvalidation: InteractionObservationContext?
 
             // Check if we're clicking by coordinates (doesn't need snapshot)
@@ -240,14 +240,12 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             } else {
                 // `click` keeps using the latest observation for element lookup even when
                 // a target app is supplied; only focus skips the snapshot for explicit targets.
-                let observation = await InteractionObservationContext.resolve(
+                var observation = await InteractionObservationContext.resolve(
                     explicitSnapshot: self.snapshot,
                     fallbackToLatest: true,
                     snapshots: self.services.snapshots
                 )
                 try await observation.validateIfExplicit(using: self.services.snapshots)
-                observationForInvalidation = observation
-                activeSnapshotId = observation.snapshotId ?? ""
 
                 try await self.focusApplicationIfNeeded(snapshotId: observation.focusSnapshotId(for: self.target))
 
@@ -255,6 +253,13 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 let elementId = self.on ?? self.id
 
                 if let elementId {
+                    observation = try await self.refreshObservationIfElementMissing(
+                        observation,
+                        elementId: elementId
+                    )
+                    observationForInvalidation = observation
+                    activeSnapshotId = observation.snapshotId ?? ""
+
                     // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
                     waitResult = try await AutomationServiceBridge.waitForElement(
@@ -265,15 +270,13 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     )
 
                     if !waitResult.found {
-                        var message = "Element with ID '\(elementId)' not found"
-                        message += "\n\n💡 Hints:"
-                        message += "\n  • Run 'peekaboo see' first to capture UI elements"
-                        message += "\n  • Check that the element ID is correct (e.g., B1, T2)"
-                        message += "\n  • Element may have disappeared or changed"
-                        throw PeekabooError.elementNotFound(message)
+                        throw PeekabooError.elementNotFound(Self.elementNotFoundMessage(elementId))
                     }
 
                 } else if let searchQuery = query {
+                    observationForInvalidation = observation
+                    activeSnapshotId = observation.snapshotId ?? ""
+
                     // Find element by query with auto-wait
                     clickTarget = .query(searchQuery)
                     waitResult = try await AutomationServiceBridge.waitForElement(
@@ -284,13 +287,10 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                     )
 
                     if !waitResult.found {
-                        var message = "No actionable element found matching '\(searchQuery)' after \(self.waitFor)ms"
-                        message += "\n\n💡 Hints:"
-                        message += "\n  • Menu bar items often require clicking on their icon coordinates"
-                        message += "\n  • Try 'peekaboo see' first to get element IDs"
-                        message += "\n  • Use partial text matching (case-insensitive)"
-                        message += "\n  • Element might be disabled or not visible"
-                        message += "\n  • Try increasing --wait-for timeout"
+                        let message = Self.queryNotFoundMessage(
+                            searchQuery,
+                            waitFor: self.waitFor
+                        )
                         throw PeekabooError.elementNotFound(message)
                     }
 
@@ -409,6 +409,43 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
         let roleDescription = element.type.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
         let label = element.label ?? element.value ?? element.id
         return "\(roleDescription): \(label)"
+    }
+
+    private static func elementNotFoundMessage(_ elementId: String) -> String {
+        """
+        Element with ID '\(elementId)' not found
+
+        💡 Hints:
+          • Run 'peekaboo see' first to capture UI elements
+          • Check that the element ID is correct (e.g., B1, T2)
+          • Element may have disappeared or changed
+        """
+    }
+
+    private static func queryNotFoundMessage(_ query: String, waitFor: Int) -> String {
+        """
+        No actionable element found matching '\(query)' after \(waitFor)ms
+
+        💡 Hints:
+          • Menu bar items often require clicking on their icon coordinates
+          • Try 'peekaboo see' first to get element IDs
+          • Use partial text matching (case-insensitive)
+          • Element might be disabled or not visible
+          • Try increasing --wait-for timeout
+        """
+    }
+
+    private func refreshObservationIfElementMissing(
+        _ observation: InteractionObservationContext,
+        elementId: String
+    ) async throws -> InteractionObservationContext {
+        try await InteractionObservationRefresher.refreshForMissingElementIfNeeded(
+            observation,
+            elementId: elementId,
+            target: self.target,
+            services: self.services,
+            logger: self.logger
+        )
     }
 
     private func focusApplicationIfNeeded(snapshotId: String?) async throws {

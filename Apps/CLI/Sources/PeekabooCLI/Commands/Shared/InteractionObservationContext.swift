@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -96,6 +97,103 @@ struct InteractionObservationContext {
     private static func normalizedSnapshotId(_ snapshotId: String?) -> String? {
         let trimmed = snapshotId?.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed?.isEmpty == false ? trimmed : nil
+    }
+}
+
+@MainActor
+struct InteractionObservationRefreshDependencies {
+    let desktopObservation: any DesktopObservationServiceProtocol
+    let snapshots: any SnapshotManagerProtocol
+}
+
+@MainActor
+enum InteractionObservationRefresher {
+    static func refreshForMissingElementIfNeeded(
+        _ observation: InteractionObservationContext,
+        elementId: String,
+        target: InteractionTargetOptions,
+        services: any PeekabooServiceProviding,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
+        try await self.refreshForMissingElementIfNeeded(
+            observation,
+            elementId: elementId,
+            target: target,
+            dependencies: InteractionObservationRefreshDependencies(
+                desktopObservation: services.desktopObservation,
+                snapshots: services.snapshots
+            ),
+            logger: logger
+        )
+    }
+
+    static func refreshForMissingElementIfNeeded(
+        _ observation: InteractionObservationContext,
+        elementId: String,
+        target: InteractionTargetOptions,
+        dependencies: InteractionObservationRefreshDependencies,
+        logger: Logger
+    ) async throws -> InteractionObservationContext {
+        guard observation.source != .explicit else {
+            return observation
+        }
+
+        if let snapshotId = observation.snapshotId,
+           let detectionResult = try await dependencies.snapshots.getDetectionResult(snapshotId: snapshotId),
+           detectionResult.elements.findById(elementId) != nil {
+            return observation
+        }
+
+        let requestTarget = try target.observationTargetRequest()
+        let result = try await dependencies.desktopObservation.observe(DesktopObservationRequest(
+            target: requestTarget,
+            capture: DesktopCaptureOptions(
+                engine: .auto,
+                scale: .logical1x,
+                visualizerMode: .screenshotFlash
+            ),
+            detection: DesktopDetectionOptions(mode: .accessibility, allowWebFocusFallback: true),
+            output: DesktopObservationOutputOptions(saveSnapshot: true)
+        ))
+
+        guard let refreshedSnapshotId = result.elements?.snapshotId else {
+            return observation
+        }
+
+        logger.debug(
+            "Refreshed implicit observation snapshot '\(refreshedSnapshotId)' for missing element '\(elementId)'"
+        )
+        return InteractionObservationContext(
+            explicitSnapshotId: nil,
+            snapshotId: refreshedSnapshotId,
+            source: .latest
+        )
+    }
+}
+
+extension InteractionTargetOptions {
+    func observationTargetRequest() throws -> DesktopObservationTargetRequest {
+        if let windowId {
+            return .windowID(CGWindowID(windowId))
+        }
+
+        let windowSelection: WindowSelection? = if let windowIndex {
+            .index(windowIndex)
+        } else if let windowTitle {
+            .title(windowTitle)
+        } else {
+            nil
+        }
+
+        if let pid {
+            return .pid(pid, window: windowSelection)
+        }
+
+        if let app {
+            return .app(identifier: app, window: windowSelection)
+        }
+
+        return .frontmost
     }
 }
 
