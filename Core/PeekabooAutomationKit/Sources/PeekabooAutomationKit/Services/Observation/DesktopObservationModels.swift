@@ -349,13 +349,53 @@ public struct DesktopObservationOutputWriteResult: Sendable, Equatable {
     }
 }
 
+public struct DesktopObservationTargetDiagnostics: Sendable, Codable, Equatable {
+    public let requestedKind: String
+    public let resolvedKind: String
+    public let source: String
+    public let hints: [String]
+    public let openIfNeeded: Bool
+    public let clickHint: String?
+    public let windowID: Int?
+    public let bounds: CGRect?
+    public let captureScaleHint: CGFloat?
+
+    public init(
+        requestedKind: String,
+        resolvedKind: String,
+        source: String,
+        hints: [String] = [],
+        openIfNeeded: Bool = false,
+        clickHint: String? = nil,
+        windowID: Int? = nil,
+        bounds: CGRect? = nil,
+        captureScaleHint: CGFloat? = nil)
+    {
+        self.requestedKind = requestedKind
+        self.resolvedKind = resolvedKind
+        self.source = source
+        self.hints = hints
+        self.openIfNeeded = openIfNeeded
+        self.clickHint = clickHint
+        self.windowID = windowID
+        self.bounds = bounds
+        self.captureScaleHint = captureScaleHint
+    }
+}
+
 public struct DesktopObservationDiagnostics: Sendable, Codable, Equatable {
     public let warnings: [String]
     public let stateSnapshot: DesktopStateSnapshotSummary?
+    public let target: DesktopObservationTargetDiagnostics?
 
-    public init(warnings: [String] = [], stateSnapshot: DesktopStateSnapshotSummary? = nil) {
+    public init(
+        warnings: [String] = [],
+        stateSnapshot: DesktopStateSnapshotSummary? = nil,
+        target: DesktopObservationTargetDiagnostics? = nil)
+    {
         self.warnings = warnings
         self.stateSnapshot = stateSnapshot
+        self.target = target
     }
 }
 

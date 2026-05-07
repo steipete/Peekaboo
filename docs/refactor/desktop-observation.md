@@ -78,6 +78,7 @@ Landed:
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.
+- Menu-bar strip and popover observation diagnostics now share typed target-resolution metadata for source, bounds, hints, window IDs, and click-open fallbacks.
 
 Still incomplete:
 
@@ -562,7 +563,7 @@ Work:
 - done: route already-open `see --menubar` popovers through observation OCR before legacy fallback;
 - done: move popover-specific OCR selection into observation;
 - done: move popover click-to-open preflight behind a typed option;
-- ensure `.menubar` and `.menubarPopover(hints:)` share diagnostics;
+- done: ensure `.menubar` and `.menubarPopover(hints:)` share diagnostics;
 - keep menu-extra listing behavior consistent with `list menubar`.
 
 Gate:

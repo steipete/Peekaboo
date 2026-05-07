@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import MCP
 import PeekabooAutomationKit
@@ -11,6 +12,9 @@ enum ObservationDiagnosticsMetadata {
 
         if let stateSnapshot = observation.diagnostics.stateSnapshot {
             payload["state_snapshot"] = self.stateSnapshotValue(stateSnapshot)
+        }
+        if let target = observation.diagnostics.target {
+            payload["target"] = self.targetValue(target)
         }
 
         return .object(payload)
@@ -66,5 +70,30 @@ enum ObservationDiagnosticsMetadata {
         }
 
         return .object(payload)
+    }
+
+    private static func targetValue(_ target: DesktopObservationTargetDiagnostics) -> Value {
+        var payload: [String: Value] = [
+            "requested_kind": .string(target.requestedKind),
+            "resolved_kind": .string(target.resolvedKind),
+            "source": .string(target.source),
+            "hints": .array(target.hints.map(Value.string)),
+            "open_if_needed": .bool(target.openIfNeeded),
+        ]
+
+        payload["click_hint"] = target.clickHint.map(Value.string) ?? .null
+        payload["window_id"] = target.windowID.map { .double(Double($0)) } ?? .null
+        payload["bounds"] = target.bounds.map(self.rectValue) ?? .null
+        payload["capture_scale_hint"] = target.captureScaleHint.map { .double(Double($0)) } ?? .null
+        return .object(payload)
+    }
+
+    private static func rectValue(_ rect: CGRect) -> Value {
+        .object([
+            "x": .double(Double(rect.origin.x)),
+            "y": .double(Double(rect.origin.y)),
+            "width": .double(Double(rect.width)),
+            "height": .double(Double(rect.height)),
+        ])
     }
 }

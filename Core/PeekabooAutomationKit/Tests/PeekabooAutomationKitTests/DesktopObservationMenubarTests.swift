@@ -24,6 +24,27 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.area"])
     }
 
+    func testMenuBarObservationReportsSharedTargetDiagnostics() async throws {
+        let capture = MenuBarRecordingScreenCaptureService()
+        let screen = Self.primaryScreen()
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: MenuBarRecordingAutomationService(),
+            applications: UnusedApplicationService(),
+            screens: MenuBarRecordingScreenService(screens: [screen]))
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .menubar,
+            detection: DesktopDetectionOptions(mode: .none)))
+
+        let target = try XCTUnwrap(result.diagnostics.target)
+        XCTAssertEqual(target.requestedKind, "menubar")
+        XCTAssertEqual(target.resolvedKind, "menubar")
+        XCTAssertEqual(target.source, "primary-screen")
+        XCTAssertEqual(target.bounds, ObservationTargetResolver.menuBarBounds(for: screen))
+        XCTAssertEqual(target.captureScaleHint, screen.scaleFactor)
+    }
+
     func testPopoverObservationCapturesResolvedWindowID() async throws {
         let capture = MenuBarRecordingScreenCaptureService()
         let bounds = CGRect(x: 1200, y: 920, width: 320, height: 260)
@@ -44,6 +65,8 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(result.target.kind, .menubarPopover)
         XCTAssertEqual(result.target.bounds, bounds)
         XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.area"])
+        XCTAssertEqual(result.diagnostics.target?.source, "window-list")
+        XCTAssertEqual(result.diagnostics.target?.windowID, 42)
     }
 
     func testPopoverResolverPrefersHintedOwnerNearMenuBar() {
@@ -166,6 +189,13 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(capture.capturedAreas, [expected])
         XCTAssertEqual(result.target.kind, .menubarPopover)
         XCTAssertEqual(result.target.bounds, expected)
+        XCTAssertEqual(result.diagnostics.target?.requestedKind, "menubar-popover")
+        XCTAssertEqual(result.diagnostics.target?.resolvedKind, "menubar-popover")
+        XCTAssertEqual(result.diagnostics.target?.source, "click-location-area-fallback")
+        XCTAssertEqual(result.diagnostics.target?.hints, ["Definitely Not Open Menu Extra For Test"])
+        XCTAssertEqual(result.diagnostics.target?.openIfNeeded, true)
+        XCTAssertEqual(result.diagnostics.target?.clickHint, "Definitely Not Open Menu Extra For Test")
+        XCTAssertNil(result.diagnostics.target?.windowID)
     }
 
     private static func windowInfo(

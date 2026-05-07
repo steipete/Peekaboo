@@ -641,11 +641,37 @@ struct SeeObservationDiagnostics: Codable {
     let spans: [SeeObservationSpan]
     let warnings: [String]
     let state_snapshot: SeeDesktopStateSnapshotSummary?
+    let target: SeeObservationTargetDiagnostics?
 
     init(timings: ObservationTimings, diagnostics: DesktopObservationDiagnostics) {
         self.spans = timings.spans.map(SeeObservationSpan.init)
         self.warnings = diagnostics.warnings
         self.state_snapshot = diagnostics.stateSnapshot.map(SeeDesktopStateSnapshotSummary.init)
+        self.target = diagnostics.target.map(SeeObservationTargetDiagnostics.init)
+    }
+}
+
+struct SeeObservationTargetDiagnostics: Codable {
+    let requested_kind: String
+    let resolved_kind: String
+    let source: String
+    let hints: [String]
+    let open_if_needed: Bool
+    let click_hint: String?
+    let window_id: Int?
+    let bounds: CGRect?
+    let capture_scale_hint: CGFloat?
+
+    init(_ diagnostics: DesktopObservationTargetDiagnostics) {
+        self.requested_kind = diagnostics.requestedKind
+        self.resolved_kind = diagnostics.resolvedKind
+        self.source = diagnostics.source
+        self.hints = diagnostics.hints
+        self.open_if_needed = diagnostics.openIfNeeded
+        self.click_hint = diagnostics.clickHint
+        self.window_id = diagnostics.windowID
+        self.bounds = diagnostics.bounds
+        self.capture_scale_hint = diagnostics.captureScaleHint
     }
 }
 
