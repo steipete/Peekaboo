@@ -13,6 +13,7 @@ public final class ProcessService: ProcessServiceProtocol {
     let menuService: any MenuServiceProtocol
     let dockService: any DockServiceProtocol
     let clipboardService: any ClipboardServiceProtocol
+    let screenService: any ScreenServiceProtocol
 
     public init(
         applicationService: any ApplicationServiceProtocol,
@@ -22,7 +23,8 @@ public final class ProcessService: ProcessServiceProtocol {
         windowManagementService: any WindowManagementServiceProtocol,
         menuService: any MenuServiceProtocol,
         dockService: any DockServiceProtocol,
-        clipboardService: any ClipboardServiceProtocol)
+        clipboardService: any ClipboardServiceProtocol,
+        screenService: any ScreenServiceProtocol)
     {
         self.applicationService = applicationService
         self.screenCaptureService = screenCaptureService
@@ -32,6 +34,29 @@ public final class ProcessService: ProcessServiceProtocol {
         self.menuService = menuService
         self.dockService = dockService
         self.clipboardService = clipboardService
+        self.screenService = screenService
+    }
+
+    public convenience init(
+        applicationService: any ApplicationServiceProtocol,
+        screenCaptureService: any ScreenCaptureServiceProtocol,
+        snapshotManager: any SnapshotManagerProtocol,
+        uiAutomationService: any UIAutomationServiceProtocol,
+        windowManagementService: any WindowManagementServiceProtocol,
+        menuService: any MenuServiceProtocol,
+        dockService: any DockServiceProtocol,
+        clipboardService: any ClipboardServiceProtocol)
+    {
+        self.init(
+            applicationService: applicationService,
+            screenCaptureService: screenCaptureService,
+            snapshotManager: snapshotManager,
+            uiAutomationService: uiAutomationService,
+            windowManagementService: windowManagementService,
+            menuService: menuService,
+            dockService: dockService,
+            clipboardService: clipboardService,
+            screenService: ScreenService())
     }
 
     public convenience init(
@@ -72,7 +97,8 @@ public final class ProcessService: ProcessServiceProtocol {
             windowManagementService: windowManagementService,
             menuService: menuService,
             dockService: dockService,
-            clipboardService: clipboardService)
+            clipboardService: clipboardService,
+            screenService: ScreenService())
     }
 
     public func loadScript(from path: String) async throws -> PeekabooScript {

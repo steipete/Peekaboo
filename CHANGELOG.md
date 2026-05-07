@@ -109,6 +109,7 @@
 - CLI app quit/relaunch now resolve, terminate, and poll app state through the application service boundary instead of direct `NSWorkspace` process scans.
 - CLI visualizer smoke geometry now uses the injected screen service instead of reading `NSScreen` directly.
 - Application service protocol models no longer import AppKit.
+- Scripted swipe defaults now resolve the primary screen through the screen service instead of reading `NSScreen.main` directly.
 - Space management utilities now isolate private CGS API declarations and public Space models from service orchestration.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.

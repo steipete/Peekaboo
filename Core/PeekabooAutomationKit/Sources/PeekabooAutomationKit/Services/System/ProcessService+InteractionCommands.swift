@@ -1,4 +1,4 @@
-import AppKit
+import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
@@ -266,7 +266,7 @@ extension ProcessService {
             return (start, self.offsetPoint(start, direction: direction, distance: distance))
         }
 
-        let screenBounds = NSScreen.main?.frame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let screenBounds = self.screenService.primaryScreen?.frame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
         let center = CGPoint(x: screenBounds.midX, y: screenBounds.midY)
         let endPoint = self.offsetPoint(center, direction: direction, distance: distance)
         return (center, endPoint)
