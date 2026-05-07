@@ -111,6 +111,7 @@ struct MCPToolExecutionTests {
         let outputPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-mcp-image-\(UUID().uuidString).png")
             .path
+        defer { try? FileManager.default.removeItem(atPath: outputPath) }
 
         let response = try await tool.execute(arguments: ToolArguments(raw: [
             "path": outputPath,
@@ -121,6 +122,8 @@ struct MCPToolExecutionTests {
         #expect(response.isError == false)
         #expect(await MainActor.run { screenCapture.lastWindowID } == 42)
         #expect(await MainActor.run { screenCapture.captureAttemptCount } == 1)
+        #expect(FileManager.default.fileExists(atPath: outputPath))
+        #expect(Self.observationSpanNames(from: response).contains("output.raw.write"))
     }
 
     @Test
@@ -457,6 +460,25 @@ struct MCPToolExecutionTests {
                 bounds: CGRect(origin: visibleOrigin, size: CGSize(width: 1460, height: 945)),
                 index: 2),
         ])
+    }
+
+    private static func observationSpanNames(from response: ToolResponse) -> [String] {
+        guard case let .object(meta) = response.meta,
+              case let .object(observation)? = meta["observation"],
+              case let .object(timings)? = observation["timings"],
+              case let .array(spans)? = timings["spans"]
+        else {
+            return []
+        }
+
+        return spans.compactMap { span in
+            guard case let .object(spanPayload) = span,
+                  case let .string(name)? = spanPayload["name"]
+            else {
+                return nil
+            }
+            return name
+        }
     }
 }
 

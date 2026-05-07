@@ -1,12 +1,9 @@
-import Algorithms
-import AppKit
 import Foundation
 import MCP
 import PeekabooAutomation
 import PeekabooAutomationKit
 import PeekabooFoundation
 import TachikomaMCP
-import UniformTypeIdentifiers
 
 /// MCP tool for capturing screenshots
 public struct ImageTool: MCPTool {
@@ -70,7 +67,7 @@ public struct ImageTool: MCPTool {
             return self.screenRecordingPermissionError()
         }
         let captureResults = captureSet.captures
-        let savedFiles = try self.saveCaptures(captureResults, request: request)
+        let savedFiles = try self.savedFiles(for: captureSet, request: request)
 
         if let question = request.question {
             return try await self.performAnalysis(
@@ -126,34 +123,29 @@ extension ImageTool {
                 scale: request.scale,
                 focus: request.captureFocus,
                 visualizerMode: .screenshotFlash),
-            detection: DesktopDetectionOptions(mode: .none)))
+            detection: DesktopDetectionOptions(mode: .none),
+            output: DesktopObservationOutputOptions(
+                path: request.outputPath,
+                format: request.format.imageFormat,
+                saveRawScreenshot: request.outputPath != nil)))
     }
 
-    private func saveCaptures(_ results: [CaptureResult], request: ImageRequest) throws -> [MCPSavedFile] {
-        guard let basePath = request.path else { return [] }
-        var savedFiles: [MCPSavedFile] = []
-
-        for (index, result) in results.indexed() {
-            let fileName = results.count > 1 ?
-                generateFileName(
-                    basePath: basePath,
-                    index: index,
-                    metadata: result.metadata,
-                    format: request.format) :
-                ensureExtension(basePath, format: request.format)
-
-            try saveImageData(result.imageData, to: fileName, format: request.format)
-            savedFiles.append(
-                MCPSavedFile(
-                    path: fileName,
-                    item_label: describeCapture(result.metadata),
-                    window_title: result.metadata.windowInfo?.title,
-                    window_id: result.metadata.windowInfo.map { String($0.windowID) },
-                    window_index: result.metadata.windowInfo?.index ?? index,
-                    mime_type: request.format.mimeType))
+    private func savedFiles(for captureSet: ImageCaptureSet, request: ImageRequest) throws -> [MCPSavedFile] {
+        guard request.outputPath != nil else { return [] }
+        guard let result = captureSet.captures.first else { return [] }
+        guard let path = captureSet.observation?.files.rawScreenshotPath else {
+            throw OperationError.captureFailed(reason: "Observation completed without a saved screenshot path")
         }
 
-        return savedFiles
+        return [
+            MCPSavedFile(
+                path: path,
+                item_label: describeCapture(result.metadata),
+                window_title: result.metadata.windowInfo?.title,
+                window_id: result.metadata.windowInfo.map { String($0.windowID) },
+                window_index: result.metadata.windowInfo?.index,
+                mime_type: request.format.mimeType),
+        ]
     }
 
     private func performAnalysis(
@@ -278,34 +270,13 @@ extension ImageRequest {
     fileprivate var focusIdentifier: String? {
         self.target.focusIdentifier
     }
-}
 
-private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {
-    let url = URL(fileURLWithPath: path.expandingTildeInPath)
-
-    // Create parent directory if needed
-    let parentDir = url.deletingLastPathComponent()
-    if !FileManager.default.fileExists(atPath: parentDir.path) {
-        try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
-    }
-
-    // Convert format if needed
-    let outputData: Data
-    if format.imageFormat == .jpg {
-        // Convert PNG to JPEG
-        guard let image = NSImage(data: data),
-              let tiffData = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let jpegData = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.9])
-        else {
-            throw OperationError.captureFailed(reason: "Failed to convert image to JPEG")
+    fileprivate var outputPath: String? {
+        guard let path else {
+            return nil
         }
-        outputData = jpegData
-    } else {
-        outputData = data
+        return ensureExtension(path, format: self.format)
     }
-
-    try outputData.write(to: url)
 }
 
 private func saveTemporaryImage(_ data: Data) throws -> String {
@@ -325,35 +296,6 @@ private func ensureExtension(_ path: String, format: ImageFormatOption) -> Strin
     }
 
     return path
-}
-
-private func generateFileName(
-    basePath: String,
-    index: Int,
-    metadata: CaptureMetadata,
-    format: ImageFormatOption) -> String
-{
-    let url = URL(fileURLWithPath: basePath.expandingTildeInPath)
-    let basename = url.deletingPathExtension().lastPathComponent
-    let directory = url.deletingLastPathComponent()
-
-    var filename = basename
-    if let appInfo = metadata.applicationInfo {
-        filename += "-\(appInfo.name.replacingOccurrences(of: " ", with: "_"))"
-    }
-    if let windowInfo = metadata.windowInfo {
-        let sanitizedTitle = windowInfo.title
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: ":", with: "_")
-            .prefix(50)
-        filename += "-\(sanitizedTitle)"
-    }
-    filename += "-\(index)"
-
-    return directory
-        .appendingPathComponent(filename)
-        .appendingPathExtension(format.fileExtension)
-        .path
 }
 
 private func describeCapture(_ metadata: CaptureMetadata) -> String {

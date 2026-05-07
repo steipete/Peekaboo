@@ -78,6 +78,7 @@
 - The experimental `peekaboo commander` diagnostics command is registered again and emits standard JSON diagnostics with `--json`.
 - MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
 - MCP `image` and `see` now route app/PID/frontmost targets through the desktop observation resolver, so multi-window apps use the same visible-window selection as the CLI.
+- MCP `image` saved screenshots now use the shared desktop observation output writer instead of tool-local image persistence.
 - MCP `analyze` now honors configured AI providers and per-call `provider_config` model overrides instead of hardcoding the default OpenAI model.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
 - Window capture on macOS 26 now resolves native Retina scale from the backing display before falling back to ScreenCaptureKit display ratios.

@@ -139,6 +139,7 @@ Landed:
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
 - `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
 - MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
+- MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
 
 Current status:
 
