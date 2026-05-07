@@ -883,6 +883,7 @@ Work:
 - done: cover forced engine resolution and fallback diagnostics in pure tests;
 - done: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind the shared observation window catalog;
 - done: route menu-bar click verification window polling through the shared observation window catalog;
+- done: move frontmost-application capture lookup behind the shared capture application resolver;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:
@@ -908,6 +909,7 @@ Gate:
 swift test --package-path Core/PeekabooCore --filter ScreenCaptureService
 swift test --package-path Core/PeekabooCore --filter CaptureEngineResolverTests
 pnpm run test:safe
+```
 ```
 
 Manual Retina check:

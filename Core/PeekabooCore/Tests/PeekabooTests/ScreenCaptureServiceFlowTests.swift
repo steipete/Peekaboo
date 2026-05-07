@@ -319,6 +319,13 @@ private struct FixtureResolver: ApplicationResolving {
         }
         throw NotFoundError.application(identifier)
     }
+
+    func frontmostApplication() async throws -> ServiceApplicationInfo {
+        guard let app = fixtures.frontmostApplication else {
+            throw NotFoundError.application("frontmost")
+        }
+        return app
+    }
 }
 
 @MainActor

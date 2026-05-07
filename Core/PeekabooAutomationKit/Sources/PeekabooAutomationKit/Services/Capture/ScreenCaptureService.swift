@@ -1,4 +1,3 @@
-import AppKit
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
@@ -419,21 +418,17 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         try await self.performOperation(.frontmost) { correlationId in
-            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
-                self.logger.error("No frontmost application found", correlationId: correlationId)
-                throw NotFoundError.application("frontmost")
-            }
+            let serviceApp = try await self.frontmostApplication()
 
             self.logger.debug(
                 "Found frontmost application",
                 metadata: [
-                    "name": frontmost.localizedName ?? "unknown",
-                    "bundleId": frontmost.bundleIdentifier ?? "none",
-                    "pid": frontmost.processIdentifier,
+                    "name": serviceApp.name,
+                    "bundleId": serviceApp.bundleIdentifier ?? "none",
+                    "pid": serviceApp.processIdentifier,
                 ],
                 correlationId: correlationId)
 
-            let serviceApp = self.serviceApplicationInfo(from: frontmost)
             return try await self.captureWindow(
                 app: serviceApp,
                 windowIndex: nil,
@@ -485,14 +480,12 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         try await self.applicationResolver.findApplication(identifier: identifier)
     }
 
-    private func serviceApplicationInfo(from application: NSRunningApplication) -> ServiceApplicationInfo {
-        ServiceApplicationInfo(
-            processIdentifier: application.processIdentifier,
-            bundleIdentifier: application.bundleIdentifier,
-            name: application.localizedName ?? application.bundleIdentifier ?? "Unknown",
-            bundlePath: application.bundleURL?.path,
-            isActive: application.isActive,
-            isHidden: application.isHidden,
-            windowCount: 0)
+    private func frontmostApplication() async throws -> ServiceApplicationInfo {
+        do {
+            return try await self.applicationResolver.frontmostApplication()
+        } catch {
+            self.logger.error("No frontmost application found")
+            throw error
+        }
     }
 }

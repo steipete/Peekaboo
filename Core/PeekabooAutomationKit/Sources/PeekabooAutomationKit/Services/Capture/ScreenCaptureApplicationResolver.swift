@@ -4,9 +4,18 @@ import PeekabooFoundation
 
 @_spi(Testing) public protocol ApplicationResolving: Sendable {
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo
+    func frontmostApplication() async throws -> ServiceApplicationInfo
 }
 
 struct PeekabooApplicationResolver: ApplicationResolving {
+    @MainActor
+    func frontmostApplication() async throws -> ServiceApplicationInfo {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+            throw NotFoundError.application("frontmost")
+        }
+        return Self.applicationInfo(from: frontmost)
+    }
+
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let runningApps = NSWorkspace.shared.runningApplications.filter { app in

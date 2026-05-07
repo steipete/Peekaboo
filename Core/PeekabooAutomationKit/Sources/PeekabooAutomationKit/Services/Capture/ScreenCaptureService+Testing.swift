@@ -54,11 +54,17 @@ extension ScreenCaptureService {
         public let displays: [Display]
         public let windowsByPID: [Int32: [Window]]
         public let applicationsByIdentifier: [String: ServiceApplicationInfo]
+        public let frontmostApplication: ServiceApplicationInfo?
 
-        public init(displays: [Display], windows: [Window] = []) {
+        public init(
+            displays: [Display],
+            windows: [Window] = [],
+            frontmostApplication: ServiceApplicationInfo? = nil)
+        {
             precondition(!displays.isEmpty, "At least one display fixture is required")
             self.displays = displays
             self.windowsByPID = Dictionary(grouping: windows, by: { $0.application.processIdentifier })
+            self.frontmostApplication = frontmostApplication ?? windows.first?.application
 
             var lookup: [String: ServiceApplicationInfo] = [:]
             for window in windows {
@@ -184,6 +190,13 @@ private struct FixtureApplicationResolver: ApplicationResolving {
             return app
         }
         throw NotFoundError.application(identifier)
+    }
+
+    func frontmostApplication() async throws -> ServiceApplicationInfo {
+        guard let app = fixtures.frontmostApplication else {
+            throw NotFoundError.application("frontmost")
+        }
+        return app
     }
 }
 
