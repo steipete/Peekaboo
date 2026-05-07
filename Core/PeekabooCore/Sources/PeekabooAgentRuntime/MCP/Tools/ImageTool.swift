@@ -41,8 +41,15 @@ public struct ImageTool: MCPTool {
                     description: "Optional. Focus behavior.",
                     enum: ["background", "auto", "foreground"],
                     default: "auto"),
+                "scale": SchemaBuilder.string(
+                    description: "Optional. Capture scale: logical|1x or native|retina|2x.",
+                    enum: ["logical", "1x", "native", "retina", "2x"],
+                    default: "logical"),
+                "retina": SchemaBuilder.boolean(
+                    description: "Optional. Shorthand for scale=native.",
+                    default: false),
             ],
-            required: ["path", "format"])
+            required: [])
     }
 
     public init(context: MCPToolContext = .shared) {
@@ -115,6 +122,10 @@ extension ImageTool {
 
         return try await self.context.desktopObservation.observe(DesktopObservationRequest(
             target: request.target.observationTarget,
+            capture: DesktopCaptureOptions(
+                scale: request.scale,
+                focus: request.captureFocus,
+                visualizerMode: .screenshotFlash),
             detection: DesktopDetectionOptions(mode: .none)))
     }
 
@@ -215,9 +226,11 @@ struct ImageInput: Codable {
     let appTarget: String?
     let question: String?
     let captureFocus: CaptureFocus?
+    let scale: String?
+    let retina: Bool?
 
     enum CodingKeys: String, CodingKey {
-        case path, format, question
+        case path, format, question, scale, retina
         case appTarget = "app_target"
         case captureFocus = "capture_focus"
     }
@@ -226,9 +239,10 @@ struct ImageInput: Codable {
 private struct ImageRequest {
     let path: String?
     let format: ImageFormatOption
-    let target: ImageCaptureTarget
+    let target: ObservationTargetArgument
     let question: String?
     let captureFocus: CaptureFocus
+    let scale: CaptureScalePreference
 
     init(arguments: ToolArguments) throws {
         let input = try arguments.decode(ImageInput.self)
@@ -236,84 +250,26 @@ private struct ImageRequest {
         self.question = input.question
         self.captureFocus = input.captureFocus ?? .auto
         self.format = input.format ?? .png
-        self.target = try parseCaptureTarget(input.appTarget)
-    }
-}
-
-enum ImageCaptureTarget {
-    case screen(index: Int?)
-    case frontmost
-    case application(identifier: String, window: WindowSelection)
-    case pid(Int32, window: WindowSelection)
-    case menubar
-
-    var observationTarget: DesktopObservationTargetRequest {
-        switch self {
-        case let .screen(index):
-            .screen(index: index)
-        case .frontmost:
-            .frontmost
-        case let .application(identifier, window):
-            .app(identifier: identifier, window: window)
-        case let .pid(pid, window):
-            .pid(pid, window: window)
-        case .menubar:
-            .menubar
-        }
-    }
-}
-
-// MARK: - Helper Functions
-
-private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarget {
-    guard let target = appTarget else {
-        return .screen(index: nil)
+        self.target = try ObservationTargetArgument.parse(input.appTarget)
+        self.scale = try Self.captureScale(scale: input.scale, retina: input.retina)
     }
 
-    // Parse screen:N format
-    if target.hasPrefix("screen:") {
-        let indexStr = String(target.dropFirst(7))
-        if let index = Int(indexStr) {
-            return .screen(index: index)
-        }
-        throw PeekabooError.invalidInput("Invalid screen index: \(indexStr)")
-    }
-
-    // Special values
-    switch target.lowercased() {
-    case "", "screen":
-        return .screen(index: nil)
-    case "frontmost":
-        return .frontmost
-    case "menubar":
-        return .menubar
-    default:
-        if target.uppercased().hasPrefix("PID:") {
-            let parts = target.split(separator: ":", maxSplits: 2)
-            guard parts.count >= 2, let pid = Int32(parts[1]) else {
-                throw PeekabooError.invalidInput("Invalid PID target: \(target)")
-            }
-            return .pid(pid, window: windowSelection(from: parts.dropFirst(2).first))
+    private static func captureScale(scale: String?, retina: Bool?) throws -> CaptureScalePreference {
+        if retina == true {
+            return .native
         }
 
-        // Parse app[:window] format
-        let parts = target.split(separator: ":", maxSplits: 1)
-        let appIdentifier = String(parts[0])
-        return .application(
-            identifier: appIdentifier,
-            window: windowSelection(from: parts.dropFirst().first))
-    }
-}
+        guard let scale else {
+            return .logical1x
+        }
 
-extension ImageCaptureTarget {
-    fileprivate var focusIdentifier: String? {
-        switch self {
-        case let .application(identifier, window: _):
-            identifier
-        case let .pid(pid, window: _):
-            "PID:\(pid)"
-        case .screen, .frontmost, .menubar:
-            nil
+        switch scale.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "", "logical", "logical1x", "1x":
+            return .logical1x
+        case "native", "retina", "2x":
+            return .native
+        default:
+            throw PeekabooError.invalidInput("Invalid image scale: \(scale)")
         }
     }
 }
@@ -322,15 +278,6 @@ extension ImageRequest {
     fileprivate var focusIdentifier: String? {
         self.target.focusIdentifier
     }
-}
-
-private func windowSelection(from rawValue: String.SubSequence?) -> WindowSelection {
-    guard let rawValue,
-          let index = Int(String(rawValue))
-    else {
-        return .automatic
-    }
-    return .index(index)
 }
 
 private func saveImageData(_ data: Data, to path: String, format: ImageFormatOption) throws {

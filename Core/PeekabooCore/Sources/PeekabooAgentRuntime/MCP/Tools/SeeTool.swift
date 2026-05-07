@@ -191,7 +191,7 @@ public struct SeeTool: MCPTool {
 
         do {
             let snapshot = try await self.getOrCreateSnapshot(snapshotId: request.snapshotId)
-            let target = try self.parseCaptureTarget(request.appTarget)
+            let target = try ObservationTargetArgument.parse(request.appTarget)
             let observation = try await self.observeDesktop(
                 target: target,
                 path: request.path,
@@ -239,49 +239,14 @@ public struct SeeTool: MCPTool {
         return await UISnapshotManager.shared.createSnapshot()
     }
 
-    private func parseCaptureTarget(_ appTarget: String?) throws -> CaptureTarget {
-        guard let target = appTarget else {
-            return .screen(index: nil)
-        }
-
-        // Parse screen:N format
-        if target.hasPrefix("screen:") {
-            let indexStr = String(target.dropFirst(7))
-            if let index = Int(indexStr) {
-                return .screen(index: index)
-            }
-            throw PeekabooError.invalidInput("Invalid screen index: \(indexStr)")
-        }
-
-        // Special values
-        switch target.lowercased() {
-        case "", "screen":
-            return .screen(index: nil)
-        case "frontmost":
-            return .frontmost
-        default:
-            // Parse PID:N format
-            if target.hasPrefix("PID:") {
-                let pidStr = String(target.dropFirst(4))
-                if let pid = Int32(pidStr) {
-                    return .window(app: "PID:\(pid)", index: nil)
-                }
-                throw PeekabooError.invalidInput("Invalid PID: \(pidStr)")
-            }
-
-            // Otherwise treat as app name
-            return .window(app: target, index: nil)
-        }
-    }
-
     private func observeDesktop(
-        target: CaptureTarget,
+        target: ObservationTargetArgument,
         path: String?,
         annotate: Bool,
         snapshot: UISnapshot) async throws -> DesktopObservationResult
     {
         try await self.context.desktopObservation.observe(DesktopObservationRequest(
-            target: self.observationTarget(for: target),
+            target: target.observationTarget,
             detection: DesktopDetectionOptions(mode: .accessibility),
             output: DesktopObservationOutputOptions(
                 path: path,
@@ -319,31 +284,6 @@ public struct SeeTool: MCPTool {
             detectedElements: detectedElements,
             snapshot: snapshot)
         return annotated
-    }
-
-    private func observationTarget(for target: CaptureTarget) throws -> DesktopObservationTargetRequest {
-        switch target {
-        case let .screen(index):
-            return .screen(index: index)
-        case .frontmost:
-            return .frontmost
-        case let .window(identifier, index):
-            let selection: WindowSelection = if let index {
-                .index(index)
-            } else {
-                .automatic
-            }
-            if identifier.uppercased().hasPrefix("PID:") {
-                let pidString = String(identifier.dropFirst(4))
-                guard let pid = Int32(pidString) else {
-                    throw PeekabooError.invalidInput("Invalid PID: \(pidString)")
-                }
-                return .pid(pid, window: selection)
-            }
-            return .app(identifier: identifier, window: selection)
-        case .area:
-            throw PeekabooError.invalidInput("Area capture not supported for see tool")
-        }
     }
 
     private func detectUIElements(
@@ -387,7 +327,7 @@ public struct SeeTool: MCPTool {
         snapshot: UISnapshot,
         elements: [UIElement],
         output: ScreenshotOutput,
-        target: CaptureTarget,
+        target: ObservationTargetArgument,
         observation: DesktopObservationResult) async throws -> ToolResponse
     {
         let finalScreenshot = output.annotatedPath ?? output.screenshotPath
@@ -481,7 +421,7 @@ public struct SeeTool: MCPTool {
         snapshot: UISnapshot,
         elements: [UIElement],
         screenshotPath: String,
-        target: CaptureTarget) async -> String
+        target _: ObservationTargetArgument) async -> String
     {
         await SeeSummaryBuilder(
             snapshot: snapshot,

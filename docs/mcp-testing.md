@@ -64,6 +64,8 @@ node reloaderoo/dist/bin/reloaderoo.js inspect list-tools -- "$PEEKABOO_BIN" mcp
 
 # Call a specific tool
 node reloaderoo/dist/bin/reloaderoo.js inspect call-tool image --params '{"format": "data", "app_target": "Safari"}' -- "$PEEKABOO_BIN" mcp
+node reloaderoo/dist/bin/reloaderoo.js inspect call-tool image --params '{"format": "data", "app_target": "Safari:1", "scale": "native"}' -- "$PEEKABOO_BIN" mcp
+node reloaderoo/dist/bin/reloaderoo.js inspect call-tool see --params '{"app_target": "PID:1234:2"}' -- "$PEEKABOO_BIN" mcp
 
 # Get server information
 node reloaderoo/dist/bin/reloaderoo.js inspect server-info -- "$PEEKABOO_BIN" mcp

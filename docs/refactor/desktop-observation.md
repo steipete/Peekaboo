@@ -120,6 +120,7 @@ Landed:
 - `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
 - Drag destination-app/Dock AX lookup now lives in a focused CLI helper, `swipe` no longer carries stale platform imports, and `move --center` uses the shared screen service instead of command-local AppKit.
 - `image --app` auto focus now skips forced activation when a renderable target window already exists, fixing SwiftPM GUI captures that timed out while activation never completed.
+- MCP `image` and `see` now share one observation target parser, including screen, frontmost, menubar, PID/window-index, app/window-index, and app/window-title targets; MCP `image` also maps `scale: native` and `retina: true` to native capture scale.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
 - `peekaboo click` validation/helpers and Commander wiring now live in focused support files.

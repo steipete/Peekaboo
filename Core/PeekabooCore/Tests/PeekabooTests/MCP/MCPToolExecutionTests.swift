@@ -148,6 +148,21 @@ struct MCPToolExecutionTests {
         #expect(await MainActor.run { screenCapture.captureAttemptCount } == 1)
     }
 
+    @Test
+    func `Image tool native scale reaches observation capture`() async throws {
+        let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(screenCapture: screenCapture)
+        let tool = ImageTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "format": "data",
+            "scale": "native",
+        ]))
+
+        #expect(response.isError == false)
+        #expect(await MainActor.run { screenCapture.lastScale } == .native)
+    }
+
     // MARK: - List Tool Tests
 
     @Test
@@ -343,6 +358,39 @@ struct MCPToolExecutionTests {
         let detectedContext = await MainActor.run { automation.lastWindowContext }
         #expect(detectedContext?.applicationName == app.name)
         #expect(detectedContext?.windowID == 42)
+    }
+
+    @Test
+    func `See tool PID target with window index uses shared observation parser`() async throws {
+        let (app, windows) = await MainActor.run {
+            Self.makeWindowedTestApp()
+        }
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot-pid-window",
+            screenshotPath: "/tmp/peekaboo-see-pid-window-test.png",
+            elements: DetectedElements(),
+            metadata: DetectionMetadata(detectionTime: 0.01, elementCount: 0, method: "mock"))
+        let automation = await MainActor.run {
+            MockAutomationService(accessibilityGranted: true, detectionResult: detectionResult)
+        }
+        let applications = await MainActor.run {
+            MockApplicationService(applications: [app], windowsByIdentifier: [
+                app.bundleIdentifier ?? app.name: windows,
+            ])
+        }
+        let screenCapture = await MainActor.run { MockScreenCaptureService(screenRecordingGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(
+            automation: automation,
+            screenCapture: screenCapture,
+            applications: applications)
+        let tool = SeeTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "app_target": "PID:\(app.processIdentifier):2",
+        ]))
+
+        #expect(response.isError == false)
+        #expect(await MainActor.run { screenCapture.lastWindowID } == 42)
     }
 
     // MARK: - App Tool Tests
@@ -544,6 +592,7 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     private(set) var lastWindowID: CGWindowID?
     private(set) var lastAppIdentifier: String?
     private(set) var lastArea: CGRect?
+    private(set) var lastScale: CaptureScalePreference?
 
     init(screenRecordingGranted: Bool) {
         self.screenRecordingGranted = screenRecordingGranted
@@ -552,9 +601,10 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     func captureScreen(
         displayIndex _: Int?,
         visualizerMode _: CaptureVisualizerMode,
-        scale _: CaptureScalePreference) async throws -> CaptureResult
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
+        self.lastScale = scale
         return self.makeResult(mode: .screen)
     }
 
@@ -562,10 +612,11 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
         appIdentifier: String,
         windowIndex: Int?,
         visualizerMode _: CaptureVisualizerMode,
-        scale _: CaptureScalePreference) async throws -> CaptureResult
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
         self.lastAppIdentifier = appIdentifier
+        self.lastScale = scale
         return self.makeResult(
             mode: .window,
             window: ServiceWindowInfo(
@@ -578,10 +629,11 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
     func captureWindow(
         windowID: CGWindowID,
         visualizerMode _: CaptureVisualizerMode,
-        scale _: CaptureScalePreference) async throws -> CaptureResult
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
         self.lastWindowID = windowID
+        self.lastScale = scale
         return self.makeResult(
             mode: .window,
             window: ServiceWindowInfo(
@@ -593,19 +645,21 @@ private final class MockScreenCaptureService: ScreenCaptureServiceProtocol {
 
     func captureFrontmost(
         visualizerMode _: CaptureVisualizerMode,
-        scale _: CaptureScalePreference) async throws -> CaptureResult
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
+        self.lastScale = scale
         return self.makeResult(mode: .frontmost)
     }
 
     func captureArea(
         _ rect: CGRect,
         visualizerMode _: CaptureVisualizerMode,
-        scale _: CaptureScalePreference) async throws -> CaptureResult
+        scale: CaptureScalePreference) async throws -> CaptureResult
     {
         self.captureAttemptCount += 1
         self.lastArea = rect
+        self.lastScale = scale
         return self.makeResult(mode: .area)
     }
 
