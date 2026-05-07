@@ -151,14 +151,14 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
             )
         case .window:
             let identifier = try self.resolveApplicationIdentifier()
-            let windowIdx = try await self.resolveWindowIndex(for: identifier)
+            let windowReference = try await self.resolveWindowReference(for: identifier)
             return CaptureScope(
                 kind: .window,
                 screenIndex: nil,
                 displayUUID: nil,
-                windowId: nil,
+                windowId: windowReference.windowID,
                 applicationIdentifier: identifier,
-                windowIndex: windowIdx,
+                windowIndex: windowReference.windowIndex,
                 region: nil
             )
         case .area:
@@ -195,48 +195,38 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         return (index, "\(match.displayID)")
     }
 
-    private func resolveWindowIndex(for identifier: String) async throws -> Int? {
-        if let explicitIndex = self.windowIndex { return explicitIndex }
-
-        // Default behavior: leave windowIndex unset so ScreenCaptureService can pick the best window for
-        // the selected capture engine (ScreenCaptureKit and CGWindowList don't share a stable index ordering).
-        //
-        // When the engine is explicitly forced to classic/CG, we resolve a stable window index from the
-        // window inventory so `--window-title` can map to the intended window.
-        guard self.shouldResolveWindowIndexForCaptureEngine() else {
-            return nil
+    private func resolveWindowReference(for identifier: String) async throws -> (windowID: UInt32?, windowIndex: Int?) {
+        guard self.windowTitle != nil || self.windowIndex != nil else {
+            return (nil, nil)
         }
 
-        do {
-            let windows = try await WindowServiceBridge.listWindows(
-                windows: self.services.windows,
-                target: .application(identifier)
-            )
-            let renderable = ObservationTargetResolver.captureCandidates(from: windows)
-            if let title = self.windowTitle,
-               let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
-                return match.index
-            }
-            if let preferred = ObservationTargetResolver.bestWindow(from: renderable) { return preferred.index }
-            return renderable.first?.index
-        } catch { return nil }
-    }
+        let windows = try await WindowServiceBridge.listWindows(
+            windows: self.services.windows,
+            target: .application(identifier)
+        )
+        let renderable = ObservationTargetResolver.captureCandidates(from: windows)
 
-    private func shouldResolveWindowIndexForCaptureEngine() -> Bool {
-        guard let preference = self.resolvedRuntime.configuration.captureEnginePreference?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased(),
-            !preference.isEmpty
-        else {
-            return false
+        let selectedWindow: ServiceWindowInfo? = if let title = self.windowTitle?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !title.isEmpty {
+            renderable.first { $0.title.localizedCaseInsensitiveContains(title) }
+        } else if let explicitIndex = self.windowIndex {
+            renderable.first { $0.index == explicitIndex }
+        } else {
+            nil
         }
 
-        switch preference {
-        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
-            return true
-        default:
-            return false
+        guard let selectedWindow else {
+            let criteria = self.windowTitle.map { "window title '\($0)' for \(identifier)" }
+                ?? self.windowIndex.map { "window index \($0) for \(identifier)" }
+                ?? "window for \(identifier)"
+            throw PeekabooError.windowNotFound(criteria: criteria)
         }
+
+        return (
+            windowID: UInt32(exactly: selectedWindow.windowID),
+            windowIndex: selectedWindow.index
+        )
     }
 
     func parseRegion() throws -> CGRect {

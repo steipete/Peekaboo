@@ -193,7 +193,71 @@ struct WatchCaptureSessionTests {
         #expect(result.warnings.contains { $0.code == .sizeCap })
     }
 
+    @Test
+    @MainActor
+    func `Frame provider prefers stable window id when present`() async throws {
+        let png = Self.makePNG(size: CGSize(width: 20, height: 20))
+        let capture = StubScreenCaptureService(result: png, size: CGSize(width: 20, height: 20))
+        let screens = StubScreenService()
+        let provider = WatchCaptureFrameProvider(
+            screenCapture: capture,
+            frameSource: nil,
+            scope: WatchScope(
+                kind: .window,
+                windowId: 42,
+                applicationIdentifier: "TextEdit",
+                windowIndex: 3),
+            options: Self.defaultWatchOptions(),
+            regionValidator: WatchCaptureRegionValidator(screenService: screens))
+
+        _ = try await provider.captureFrame()
+
+        #expect(capture.capturedWindowID == 42)
+        #expect(capture.capturedAppIdentifier == nil)
+        #expect(capture.capturedWindowIndex == nil)
+    }
+
+    @Test
+    @MainActor
+    func `Frame provider falls back to app window index without stable id`() async throws {
+        let png = Self.makePNG(size: CGSize(width: 20, height: 20))
+        let capture = StubScreenCaptureService(result: png, size: CGSize(width: 20, height: 20))
+        let screens = StubScreenService()
+        let provider = WatchCaptureFrameProvider(
+            screenCapture: capture,
+            frameSource: nil,
+            scope: WatchScope(
+                kind: .window,
+                applicationIdentifier: "TextEdit",
+                windowIndex: 3),
+            options: Self.defaultWatchOptions(),
+            regionValidator: WatchCaptureRegionValidator(screenService: screens))
+
+        _ = try await provider.captureFrame()
+
+        #expect(capture.capturedWindowID == nil)
+        #expect(capture.capturedAppIdentifier == "TextEdit")
+        #expect(capture.capturedWindowIndex == 3)
+    }
+
     // MARK: - Helpers
+
+    private static func defaultWatchOptions() -> WatchCaptureOptions {
+        WatchCaptureOptions(
+            duration: 1,
+            idleFps: 1,
+            activeFps: 1,
+            changeThresholdPercent: 0,
+            heartbeatSeconds: 0,
+            quietMsToIdle: 0,
+            maxFrames: 1,
+            maxMegabytes: nil,
+            highlightChanges: false,
+            captureFocus: .auto,
+            resolutionCap: nil,
+            diffStrategy: .fast,
+            diffBudgetMs: nil)
+    }
 
     private static func makePNG(size: CGSize) -> Data {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -237,6 +301,9 @@ struct WatchCaptureSessionTests {
 private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     private let resultData: Data
     private let size: CGSize
+    var capturedAppIdentifier: String?
+    var capturedWindowIndex: Int?
+    var capturedWindowID: CGWindowID?
 
     init(result: Data, size: CGSize) {
         self.resultData = result
@@ -252,12 +319,23 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
     }
 
     func captureWindow(
-        appIdentifier _: String,
-        windowIndex _: Int?,
+        appIdentifier: String,
+        windowIndex: Int?,
         visualizerMode _: CaptureVisualizerMode,
         scale _: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.makeResult(mode: .window)
+        self.capturedAppIdentifier = appIdentifier
+        self.capturedWindowIndex = windowIndex
+        return self.makeResult(mode: .window)
+    }
+
+    func captureWindow(
+        windowID: CGWindowID,
+        visualizerMode _: CaptureVisualizerMode,
+        scale _: CaptureScalePreference) async throws -> CaptureResult
+    {
+        self.capturedWindowID = windowID
+        return self.makeResult(mode: .window)
     }
 
     func captureFrontmost(

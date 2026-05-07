@@ -36,6 +36,15 @@ struct WatchCaptureFrameProvider {
                 visualizerMode: .watchCapture,
                 scale: .logical1x)
         case .window:
+            if let windowId = self.scope.windowId {
+                warning = nil
+                result = try await self.screenCapture.captureWindow(
+                    windowID: CGWindowID(windowId),
+                    visualizerMode: .watchCapture,
+                    scale: .logical1x)
+                break
+            }
+
             guard let app = self.scope.applicationIdentifier else {
                 throw PeekabooError.windowNotFound(criteria: "missing application identifier")
             }

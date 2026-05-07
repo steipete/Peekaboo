@@ -179,6 +179,7 @@
 - `peekaboo image --app ... --window-title/--window-index` now captures the resolved window by stable window ID, avoiding mismatches between listed window indexes and ScreenCaptureKit window ordering.
 - `peekaboo image --app ...` now prefers titled app windows over untitled helper windows, avoiding blank or auxiliary-window captures in multi-window Chromium-style apps.
 - `peekaboo image --window-title ... --window-index ...` now applies title-over-index precedence when building the observation request, and `image`/`see` now map explicit `PID:<pid>` app identifiers to PID observation targets like MCP.
+- `peekaboo capture live --window-title/--window-index` now resolves explicit app-window selections to stable window IDs before the watch capture loop starts.
 - `peekaboo image --app ...` now reports `WINDOW_NOT_FOUND` when all known app windows are hidden or non-shareable instead of falling back to a generic app capture.
 - `peekaboo image --window-id ...` now reports the resolved window identity instead of leaking ScreenCaptureKit's internal helper-window ordering into `window_index`.
 - Direct element detection callers now use a real racing timeout instead of creating an unobserved timeout task.
