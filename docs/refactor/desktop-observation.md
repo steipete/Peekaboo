@@ -47,6 +47,7 @@ Landed:
 - Direct `ElementDetectionService` timeout racing is now enforced by `ElementDetectionTimeoutRunner`.
 - AX traversal limits and sparse-web fallback thresholds now live in `AXTraversalPolicy`.
 - AX tree cache state now lives in `ElementDetectionCache`.
+- AX role mapping, actionability policy, shortcut role policy, and attribute assembly now live in `ElementClassifier`.
 
 Still intentionally incomplete:
 
@@ -56,7 +57,7 @@ Still intentionally incomplete:
 - structured timing export in all user-facing JSON;
 - extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
-- moving descriptor reading and cache invalidation into dedicated collaborators;
+- moving descriptor reading, full element-type adjustment, and cache invalidation into dedicated collaborators;
 - command cleanup after the bridge paths disappear.
 
 The next work should bias toward small vertical slices that remove duplicated behavior from command code while keeping every commit shippable.

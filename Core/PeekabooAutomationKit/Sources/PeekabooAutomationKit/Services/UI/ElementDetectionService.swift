@@ -190,19 +190,6 @@ extension ElementDetectionService {
         "axsearchfield",
         "axsecuretextfield",
     ]
-    private static let actionableRoles: Set<String> = [
-        "axbutton", "axpopupbutton", "axtextfield", "axlink", "axweblink",
-        "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
-        "axslider", "axtab",
-    ]
-    /// AXPress lookup is expensive. Keep it to container-ish roles where Chromium/Tauri can hide clickable content.
-    private static let supportedActionLookupRoles: Set<String> = [
-        "axgroup", "aximage", "axcell", "axrow", "axoutlineitem",
-    ]
-    private static let keyboardShortcutRoles: Set<String> = [
-        "axbutton", "axpopupbutton", "axcheckbox", "axradiobutton",
-        "axmenuitem", "axtab",
-    ]
     private static let descriptorAttributeNames: [String] = [
         AXAttributeNames.kAXPositionAttribute,
         AXAttributeNames.kAXSizeAttribute,
@@ -217,49 +204,6 @@ extension ElementDetectionService {
         AXAttributeNames.kAXEnabledAttribute,
         AXAttributeNames.kAXPlaceholderValueAttribute,
     ]
-
-    // MARK: - Helper Methods
-
-    private func mapRoleToElementType(_ role: String) -> ElementType {
-        switch role.lowercased() {
-        case "axbutton", "axpopupbutton":
-            .button
-        case _ where Self.textFieldRoles.contains(role.lowercased()):
-            .textField
-        case "axlink", "axweblink":
-            .link
-        case "aximage":
-            .image
-        case "axstatictext", "axtext":
-            .other // text not in protocol
-        case "axcheckbox":
-            .checkbox
-        case "axradiobutton":
-            .checkbox // Use checkbox for radio buttons
-        case "axcombobox":
-            .other // Not in protocol
-        case "axslider":
-            .slider
-        case "axmenu":
-            .menu
-        case "axmenuitem":
-            .other // menuItem not in protocol
-        case "axtab":
-            .other // Not in protocol
-        case "axtable":
-            .other // Not in protocol
-        case "axlist":
-            .other // Not in protocol
-        case "axgroup":
-            .group
-        case "axtoolbar":
-            .other // Not in protocol
-        case "axwindow":
-            .other // Not in protocol
-        default:
-            .other
-        }
-    }
 
     private func resolveApplication(windowContext: WindowContext?) async throws -> NSRunningApplication {
         if let pid = windowContext?.applicationProcessId {
@@ -634,14 +578,14 @@ extension ElementDetectionService {
         self.logButtonDebugInfoIfNeeded(descriptor)
 
         let elementId = "elem_\(detectedElements.count)"
-        let baseType = self.mapRoleToElementType(descriptor.role)
+        let baseType = ElementClassifier.elementType(for: descriptor.role)
         let elementType = self.adjustedElementType(element: element, descriptor: descriptor, baseType: baseType)
         let isActionable = self.isElementActionable(element, role: descriptor.role)
         let keyboardShortcut = isActionable ? self.extractKeyboardShortcut(element, role: descriptor.role) : nil
         let label = self.effectiveLabel(for: element, descriptor: descriptor)
 
-        let attributes = self.createElementAttributes(
-            ElementAttributeInput(
+        let attributes = ElementClassifier.attributes(
+            from: ElementClassifier.AttributeInput(
                 role: descriptor.role,
                 title: descriptor.title,
                 description: descriptor.description,
@@ -967,12 +911,11 @@ extension ElementDetectionService {
     }
 
     private func isElementActionable(_ element: Element, role: String) -> Bool {
-        let normalizedRole = role.lowercased()
-        if Self.actionableRoles.contains(normalizedRole) {
+        if ElementClassifier.roleIsActionable(role) {
             return true
         }
 
-        guard Self.supportedActionLookupRoles.contains(normalizedRole) else {
+        guard ElementClassifier.shouldLookupActions(for: role) else {
             return false
         }
 
@@ -982,8 +925,7 @@ extension ElementDetectionService {
 
     @MainActor
     private func extractKeyboardShortcut(_ element: Element, role: String) -> String? {
-        let normalizedRole = role.lowercased()
-        guard Self.keyboardShortcutRoles.contains(normalizedRole) else {
+        guard ElementClassifier.supportsKeyboardShortcut(for: role) else {
             return nil
         }
 
@@ -1000,24 +942,6 @@ extension ElementDetectionService {
         }
 
         return nil
-    }
-
-    private func createElementAttributes(
-        _ input: ElementAttributeInput) -> [String: String]
-    {
-        var attributes: [String: String] = [:]
-
-        attributes["role"] = input.role
-        if let title = input.title { attributes["title"] = title }
-        if let description = input.description { attributes["description"] = description }
-        if let help = input.help { attributes["help"] = help }
-        if let roleDescription = input.roleDescription { attributes["roleDescription"] = roleDescription }
-        if let identifier = input.identifier { attributes["identifier"] = identifier }
-        if input.isActionable { attributes["isActionable"] = "true" }
-        if let shortcut = input.keyboardShortcut { attributes["keyboardShortcut"] = shortcut }
-        if let placeholder = input.placeholder { attributes["placeholder"] = placeholder }
-
-        return attributes
     }
 
     private func processMenuBar(
@@ -1141,18 +1065,6 @@ private struct AXDescriptorAttributes {
     let roleDescription: String?
     let identifier: String?
     let isEnabled: Bool?
-    let placeholder: String?
-}
-
-private struct ElementAttributeInput {
-    let role: String
-    let title: String?
-    let description: String?
-    let help: String?
-    let roleDescription: String?
-    let identifier: String?
-    let isActionable: Bool
-    let keyboardShortcut: String?
     let placeholder: String?
 }
 

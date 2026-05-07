@@ -64,10 +64,6 @@ struct ElementDetectionServiceTests {
 
     @Test
     func `Map element types correctly`() {
-        let snapshotManager = MockSnapshotManager()
-        _ = ElementDetectionService(snapshotManager: snapshotManager)
-
-        // Test various AX roles map to correct ElementType
         let roleMappings: [(String, ElementType)] = [
             ("AXButton", .button),
             ("AXTextField", .textField),
@@ -75,17 +71,18 @@ struct ElementDetectionServiceTests {
             ("AXLink", .link),
             ("AXImage", .image),
             ("AXCheckBox", .checkbox),
-            ("AXRadioButton", .other), // radioButton not in protocol
-            ("AXPopUpButton", .other), // popupButton not in protocol
+            ("AXRadioButton", .checkbox), // radioButton maps to closest available protocol type
+            ("AXPopUpButton", .button),
             ("AXComboBox", .other), // comboBox not in protocol
             ("AXSlider", .slider),
-            ("AXMenuItem", .menu), // Use menu type for menu items
+            ("AXMenu", .menu),
+            ("AXMenuItem", .other), // menuItem not in protocol
             ("AXUnknown", .other),
         ]
 
-        // We can't directly test the private method, but we can verify
-        // the service handles these types correctly
-        #expect(!roleMappings.isEmpty)
+        for (role, expectedType) in roleMappings {
+            #expect(ElementClassifier.elementType(for: role) == expectedType)
+        }
     }
 
     @Test
@@ -365,6 +362,52 @@ struct ElementDetectionCacheTests {
             isEnabled: true,
             isSelected: nil,
             attributes: [:])
+    }
+}
+
+@Suite(.tags(.fast))
+struct ElementClassifierTests {
+    @Test
+    func `Actionability policy separates direct and action lookup roles`() {
+        #expect(ElementClassifier.roleIsActionable("AXButton"))
+        #expect(ElementClassifier.roleIsActionable("AXTextField"))
+        #expect(!ElementClassifier.roleIsActionable("AXGroup"))
+        #expect(ElementClassifier.shouldLookupActions(for: "AXGroup"))
+        #expect(ElementClassifier.shouldLookupActions(for: "AXImage"))
+        #expect(!ElementClassifier.shouldLookupActions(for: "AXStaticText"))
+    }
+
+    @Test
+    func `Keyboard shortcut policy is role scoped`() {
+        #expect(ElementClassifier.supportsKeyboardShortcut(for: "AXButton"))
+        #expect(ElementClassifier.supportsKeyboardShortcut(for: "AXMenuItem"))
+        #expect(!ElementClassifier.supportsKeyboardShortcut(for: "AXTextField"))
+        #expect(!ElementClassifier.supportsKeyboardShortcut(for: "AXGroup"))
+    }
+
+    @Test
+    func `Attributes omit empty optional metadata`() {
+        let attributes = ElementClassifier.attributes(
+            from: ElementClassifier.AttributeInput(
+                role: "AXButton",
+                title: "Save",
+                description: nil,
+                help: "Saves the document",
+                roleDescription: "button",
+                identifier: "save-button",
+                isActionable: true,
+                keyboardShortcut: "⌘S",
+                placeholder: nil))
+
+        #expect(attributes["role"] == "AXButton")
+        #expect(attributes["title"] == "Save")
+        #expect(attributes["help"] == "Saves the document")
+        #expect(attributes["roleDescription"] == "button")
+        #expect(attributes["identifier"] == "save-button")
+        #expect(attributes["isActionable"] == "true")
+        #expect(attributes["keyboardShortcut"] == "⌘S")
+        #expect(attributes["description"] == nil)
+        #expect(attributes["placeholder"] == nil)
     }
 }
 
