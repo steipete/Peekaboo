@@ -53,6 +53,7 @@
 - `peekaboo image` now builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo image` capture orchestration, output models, filename planning, and focus helpers are now split out of the main command file.
 - `peekaboo see` now builds desktop observation requests through a dedicated command-support adapter.
+- MCP `see` request/output and summary support now live outside the primary tool file.
 - `peekaboo see` command support types, output rendering, and screen capture helpers are now split out of the main command file.
 - `peekaboo see` legacy capture/detection fallback is now isolated in a dedicated command-support pipeline.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now share one interaction observation context for explicit/latest snapshot selection and focus snapshot policy.

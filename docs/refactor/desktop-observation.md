@@ -137,6 +137,7 @@ Landed:
 - Observation target menu-bar resolution and window-selection scoring now live in focused resolver extension files.
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
+- MCP `see` request, output, and summary support now live in a companion file, leaving the primary tool under the size target.
 - `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
 - MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
 - MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
