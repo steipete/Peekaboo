@@ -1120,6 +1120,42 @@ Results:
 - PeekabooInspector `image --window-id 13665` captured `450x732` in `0.39s`; before the fix, `image --app PeekabooInspector` timed out after `3.30s`, and after the fix it captured the same `450x732` window in `0.57s`;
 - `see --app` and `see --window-id` succeeded for TextEdit, Chrome, and PeekabooInspector with matching screenshot dimensions; Inspector `see --app` recorded `84` elements, `74` interactables, and desktop observation spans `state.snapshot=93ms`, `target.resolve=30ms`, `capture.window=155ms`, `detection.ax=129ms`.
 
+Live verification after smart-capture service cleanup, May 7, 2026:
+
+```bash
+pnpm run format
+pnpm run lint
+pnpm run test:safe
+./Apps/CLI/.build/debug/peekaboo permissions status --json
+./Apps/CLI/.build/debug/peekaboo list apps --json
+./Apps/CLI/.build/debug/peekaboo list screens --json
+./Apps/CLI/.build/debug/peekaboo list windows --app Finder --json
+./Apps/CLI/.build/debug/peekaboo image --mode screen --path /tmp/peekaboo-live-screen.png --json
+./Apps/CLI/.build/debug/peekaboo see --app frontmost --path /tmp/peekaboo-live-see-frontmost.png --annotate --json
+./Apps/CLI/.build/debug/peekaboo click --coords 500,1000 --no-auto-focus --json
+./Apps/CLI/.build/debug/peekaboo move --coords 520,1000 --json
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path /tmp/peekaboo-live-textedit-before.png --annotate --json
+./Apps/CLI/.build/debug/peekaboo click --on elem_2 --snapshot 1ACF34FD-8EA8-4419-B0FA-73689AA4936B --app TextEdit --json
+./Apps/CLI/.build/debug/peekaboo type PEEKABOO_LIVE_TYPE_1778155880 --clear --app TextEdit --delay 0 --profile linear --json
+./Apps/CLI/.build/debug/peekaboo image --app TextEdit --path /tmp/peekaboo-live-textedit-after.png --json
+./Apps/CLI/.build/debug/peekaboo image --app "Google Chrome" --path /tmp/peekaboo-live-chrome-app.png --json
+./Apps/CLI/.build/debug/peekaboo image --window-id 12438 --path /tmp/peekaboo-live-chrome-window.png --json
+./Apps/CLI/.build/debug/peekaboo see --app "Google Chrome" --path /tmp/peekaboo-live-chrome-see.png --annotate --json
+```
+
+Results:
+
+- `pnpm run test:safe` passed `343` tests in `53` suites; `pnpm run lint` found `0` violations;
+- permissions granted: Screen Recording, Accessibility, Event Synthesizing;
+- `list apps` wall time `0.23s`, `list screens` `0.12s`, `list windows --app Finder` `0.18s`, `list menubar` `0.19s`, `tools` `0.10s`;
+- screen capture wrote a nonblank `3008x1632` PNG in `0.54s`; observation capture span `323ms`, output raw write `1.5ms`;
+- `see --app frontmost --annotate` on Ghostty produced `241` interactables in `1.09s`; spans included `capture.window=166ms`, `detection.ax=290ms`, `annotation.render=216ms`;
+- coordinate `click` and `move` on the already-frontmost Ghostty window succeeded without hitting destructive controls; JSON execution times were `54ms` and `37ms`;
+- controlled TextEdit fixture `see` found `393` elements and `301` interactables in `1.06s`; element click targeted `elem_2`, `type --clear` entered `PEEKABOO_LIVE_TYPE_1778155880`, and visual verification confirmed the marker in the captured `656x422` TextEdit image;
+- Chrome `image --app` and `image --window-id 12438` both captured the same real `1672x1297` browser window rather than auxiliary `3008x30` or `1x1` windows; app image wall time `0.55s`, window-id wall time `0.83s`;
+- Chrome `see --app --annotate` produced `59` elements and `54` interactables in `1.02s`; spans included `capture.window=191ms`, `detection.ax=97ms`, `annotation.render=269ms`;
+- screenshots were inspected with local image vision; no blank captures observed.
+
 ### Performance Budgets
 
 Budgets are manual benchmark targets, not flaky unit-test thresholds.
