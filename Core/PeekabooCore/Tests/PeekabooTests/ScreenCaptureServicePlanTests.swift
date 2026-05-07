@@ -41,6 +41,17 @@ struct ScreenCaptureServicePlanTests {
     }
 
     @Test
+    func `Private SCK window lookup defaults on and has runtime opt out`() {
+        #expect(LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(environment: [:]))
+        #expect(!LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+            environment: ["PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP": "1"]))
+        #expect(!LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+            environment: ["PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP": "false"]))
+        #expect(LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+            environment: ["PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP": "yes"]))
+    }
+
+    @Test
     func `Fallback runner retries on timeout errors`() async throws {
         let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
         let logger = MockLoggingService().logger(category: "screenCapture")
