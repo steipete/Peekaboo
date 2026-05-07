@@ -58,6 +58,7 @@ Landed:
 - Capture frame-source policy and display-local source rectangle planning now live in `ScreenCapturePlanner`.
 - Screen Recording enforcement now lives in `ScreenCapturePermissionGate`.
 - Logical-1x capture downscaling now lives in `ScreenCaptureImageScaler`.
+- Legacy area capture now executes through the legacy capture operator instead of facade helper code.
 
 Still intentionally incomplete:
 

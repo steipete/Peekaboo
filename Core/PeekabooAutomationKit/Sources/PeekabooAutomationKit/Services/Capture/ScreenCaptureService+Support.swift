@@ -191,6 +191,7 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         visualizerMode: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws
         -> CaptureResult
+    func captureArea(_ rect: CGRect, correlationId: String, scale: CaptureScalePreference) async throws -> CaptureResult
 }
 
 @_spi(Testing) public enum ScreenCaptureAPI: String, Sendable, CaseIterable {

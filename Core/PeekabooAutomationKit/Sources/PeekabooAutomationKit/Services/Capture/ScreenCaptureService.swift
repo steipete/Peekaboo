@@ -1,7 +1,6 @@
 import Algorithms
 import AppKit
 import CoreGraphics
-import CoreMedia
 import Foundation
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
@@ -466,7 +465,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                         correlationId: correlationId,
                         scale: scale)
                 case .legacy:
-                    try await self.captureAreaLegacy(
+                    try await self.legacyOperator.captureArea(
                         rect,
                         correlationId: correlationId,
                         scale: scale)
@@ -484,78 +483,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
 
     // MARK: - Private Helpers
 
-    private func createScreenshot(of display: SCDisplay) async throws -> CGImage {
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        let config = SCStreamConfiguration()
-        config.width = Int(display.width)
-        config.height = Int(display.height)
-        // Explicitly set the source rect to capture the full display
-        config.sourceRect = CGRect(x: 0, y: 0, width: CGFloat(display.width), height: CGFloat(display.height))
-        config.captureResolution = .best
-        config.showsCursor = false
-
-        return try await withTimeout(seconds: 3.0) {
-            try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
-        }
-    }
-
-    private func createScreenshot(of window: SCWindow) async throws -> CGImage {
-        let filter = SCContentFilter(desktopIndependentWindow: window)
-        let config = SCStreamConfiguration()
-        config.width = Int(window.frame.width)
-        config.height = Int(window.frame.height)
-        config.captureResolution = .best
-        config.showsCursor = false
-
-        // Configure for best quality
-        config.showsCursor = false
-
-        return try await withTimeout(seconds: 3.0) {
-            try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
-        }
-    }
-
-    private func captureWithStream(
-        filter: SCContentFilter,
-        configuration: SCStreamConfiguration) async throws -> CGImage
-    {
-        // Create a stream for single frame capture
-        let output = CaptureOutput()
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: output)
-
-        // Add stream output
-        try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
-
-        // Start capture with a bounded timeout so ScreenCaptureKit stalls can fall back.
-        do {
-            try await withTimeout(seconds: 3.0) {
-                try await stream.startCapture()
-            }
-        } catch {
-            try? await stream.stopCapture()
-            throw OperationError.captureFailed(reason: error.localizedDescription)
-        }
-
-        // Wait for frame with error handling
-        let image: CGImage
-        do {
-            image = try await output.waitForImage()
-        } catch {
-            // If we failed to get an image, stop the stream before re-throwing
-            try? await stream.stopCapture()
-            throw error
-        }
-
-        // Stop capture
-        try await stream.stopCapture()
-
-        return image
-    }
-
     private func findApplication(matching identifier: String) async throws -> ServiceApplicationInfo {
         try await self.applicationResolver.findApplication(identifier: identifier)
     }
@@ -569,59 +496,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             isActive: application.isActive,
             isHidden: application.isHidden,
             windowCount: 0)
-    }
-
-    private func captureAreaLegacy(
-        _ rect: CGRect,
-        correlationId: String,
-        scale: CaptureScalePreference) async throws -> CaptureResult
-    {
-        self.logger.debug(
-            "Legacy area capture using ScreenCaptureKit screenshot manager",
-            correlationId: correlationId)
-
-        let content = try await withTimeout(seconds: 5.0) {
-            try await ScreenCaptureKitCaptureGate.currentShareableContent()
-        }
-        guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
-            throw PeekabooError.invalidInput(
-                "captureArea: The specified area is not within any display bounds")
-        }
-
-        let scalePlan = ScreenCaptureScaleResolver.plan(
-            preference: scale,
-            displayID: display.displayID,
-            fallbackPixelWidth: display.width,
-            frameWidth: display.frame.width)
-        let outputScale = scalePlan.outputScale
-
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        let config = SCStreamConfiguration()
-        config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
-            globalRect: rect,
-            displayFrame: display.frame)
-        config.width = Int(rect.width * outputScale)
-        config.height = Int(rect.height * outputScale)
-        config.captureResolution = .best
-        config.showsCursor = false
-
-        let image = try await withTimeout(seconds: 3.0) {
-            try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
-        }
-
-        let imageData = try image.pngData()
-        let metadata = CaptureMetadata(
-            size: CGSize(width: image.width, height: image.height),
-            mode: .area,
-            displayInfo: DisplayInfo(
-                index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
-                name: display.displayID.description,
-                bounds: display.frame,
-                scaleFactor: outputScale))
-
-        return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
     @MainActor
@@ -1047,34 +921,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             }
         }
 
-        private func captureWithStream(
-            filter: SCContentFilter,
-            configuration: SCStreamConfiguration) async throws -> CGImage
-        {
-            let output = CaptureOutput()
-            let stream = SCStream(filter: filter, configuration: configuration, delegate: output)
-            try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: nil)
-            do {
-                try await withTimeout(seconds: 3.0) {
-                    try await stream.startCapture()
-                }
-            } catch {
-                try? await stream.stopCapture()
-                throw OperationError.captureFailed(reason: error.localizedDescription)
-            }
-
-            let image: CGImage
-            do {
-                image = try await output.waitForImage()
-            } catch {
-                try? await stream.stopCapture()
-                throw error
-            }
-
-            try await stream.stopCapture()
-            return image
-        }
-
         private func emitVisualizer(mode: CaptureVisualizerMode, rect: CGRect) async {
             switch mode {
             case .screenshotFlash:
@@ -1465,6 +1311,60 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             return CaptureResult(
                 imageData: imageData,
                 metadata: metadata)
+        }
+
+        func captureArea(
+            _ rect: CGRect,
+            correlationId: String,
+            scale: CaptureScalePreference) async throws -> CaptureResult
+        {
+            self.logger.debug(
+                "Legacy area capture using ScreenCaptureKit screenshot manager",
+                correlationId: correlationId)
+
+            let content = try await withTimeout(seconds: 5.0) {
+                try await ScreenCaptureKitCaptureGate.currentShareableContent()
+            }
+            guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
+                throw PeekabooError.invalidInput(
+                    "captureArea: The specified area is not within any display bounds")
+            }
+
+            let scalePlan = ScreenCaptureScaleResolver.plan(
+                preference: scale,
+                displayID: display.displayID,
+                fallbackPixelWidth: display.width,
+                frameWidth: display.frame.width)
+            let outputScale = scalePlan.outputScale
+
+            let filter = SCContentFilter(display: display, excludingWindows: [])
+            let config = SCStreamConfiguration()
+            // `rect` is global desktop geometry; display-bound filters need local source geometry.
+            config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
+                globalRect: rect,
+                displayFrame: display.frame)
+            config.width = Int(rect.width * outputScale)
+            config.height = Int(rect.height * outputScale)
+            config.captureResolution = .best
+            config.showsCursor = false
+
+            let image = try await withTimeout(seconds: 3.0) {
+                try await ScreenCaptureKitCaptureGate.captureImage(
+                    contentFilter: filter,
+                    configuration: config)
+            }
+
+            let imageData = try image.pngData()
+            let metadata = CaptureMetadata(
+                size: CGSize(width: image.width, height: image.height),
+                mode: .area,
+                displayInfo: DisplayInfo(
+                    index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
+                    name: display.displayID.description,
+                    bounds: display.frame,
+                    scaleFactor: outputScale))
+
+            return CaptureResult(imageData: imageData, metadata: metadata)
         }
 
         private func captureDisplayWithScreenshotManager(
