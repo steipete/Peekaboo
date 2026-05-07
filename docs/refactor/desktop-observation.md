@@ -155,6 +155,7 @@ Landed:
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
+- `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 
 Current status:
 
