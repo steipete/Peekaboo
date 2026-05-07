@@ -404,8 +404,14 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                 scale: .logical1x,
                 visualizerMode: .screenshotFlash
             ),
-            detection: DesktopDetectionOptions(mode: .none),
-            output: DesktopObservationOutputOptions()
+            detection: DesktopDetectionOptions(
+                mode: .accessibility,
+                allowWebFocusFallback: !self.noWebFocus
+            ),
+            output: DesktopObservationOutputOptions(
+                path: self.screenshotOutputPath(),
+                saveRawScreenshot: true
+            )
         ))
 
         self.logger.operationComplete("capture_phase", metadata: [
@@ -414,15 +420,12 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
 
         self.logObservationSpans(observation.timings)
 
-        self.logger.startTimer("file_write")
-        let outputPath = try self.saveScreenshot(observation.capture.imageData)
-        self.logger.stopTimer("file_write")
-
-        let windowContext = self.windowContext(for: observation)
-        let detectionResult = try await self.detectElements(
-            imageData: observation.capture.imageData,
-            windowContext: windowContext
-        )
+        guard let outputPath = observation.files.rawScreenshotPath else {
+            throw CaptureError.captureFailure("Observation completed without a saved screenshot path")
+        }
+        guard let detectionResult = observation.elements else {
+            throw CaptureError.captureFailure("Observation completed without element detection")
+        }
 
         let resultWithPath = ElementDetectionResult(
             snapshotId: detectionResult.snapshotId,
@@ -503,22 +506,6 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             return .title(windowTitle)
         }
         return .automatic
-    }
-
-    private func windowContext(for observation: DesktopObservationResult) -> WindowContext {
-        let capture = observation.capture
-        let targetContext = observation.target.detectionContext
-        return WindowContext(
-            applicationName: targetContext?.applicationName ?? capture.metadata.applicationInfo?.name,
-            applicationBundleId: targetContext?.applicationBundleId ?? capture.metadata.applicationInfo?
-                .bundleIdentifier,
-            applicationProcessId: targetContext?.applicationProcessId ?? capture.metadata.applicationInfo?
-                .processIdentifier,
-            windowTitle: targetContext?.windowTitle ?? capture.metadata.windowInfo?.title,
-            windowID: targetContext?.windowID ?? capture.metadata.windowInfo?.windowID,
-            windowBounds: targetContext?.windowBounds ?? capture.metadata.windowInfo?.bounds,
-            shouldFocusWebContent: !self.noWebFocus
-        )
     }
 
     private func observationTargetDescription(_ target: DesktopObservationTargetRequest) -> String {

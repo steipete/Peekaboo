@@ -38,17 +38,19 @@ enum SeeAnnotationCoordinateMapper {
 
 @MainActor
 extension SeeCommand {
-    func saveScreenshot(_ imageData: Data) throws -> String {
-        let outputPath: String
-
+    func screenshotOutputPath() -> String {
         if let providedPath = path {
-            outputPath = NSString(string: providedPath).expandingTildeInPath
-        } else {
-            let timestamp = Date().timeIntervalSince1970
-            let filename = "peekaboo_see_\(Int(timestamp)).png"
-            let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
-            outputPath = (defaultPath as NSString).appendingPathComponent(filename)
+            return NSString(string: providedPath).expandingTildeInPath
         }
+
+        let timestamp = Date().timeIntervalSince1970
+        let filename = "peekaboo_see_\(Int(timestamp)).png"
+        let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
+        return (defaultPath as NSString).appendingPathComponent(filename)
+    }
+
+    func saveScreenshot(_ imageData: Data) throws -> String {
+        let outputPath = self.screenshotOutputPath()
 
         let directory = (outputPath as NSString).deletingLastPathComponent
         try FileManager.default.createDirectory(
