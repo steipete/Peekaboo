@@ -93,6 +93,7 @@
 - Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
 - Dialog resolution now keeps application lookup, file-dialog recursion, visibility assists, and CoreGraphics window fallback in focused companions.
 - Dock service internals now keep item listing/search, actions, visibility defaults commands, and AX lookup support in focused service files; Dock removal also avoids an unused defaults read and passes the app name to AppleScript as an argument.
+- Hotkey service internals now keep key aliasing, chord validation, key-code lookup, and planner test hooks in a focused companion file.
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Script process execution now keeps window and clipboard script commands in focused companions instead of the mixed system-command file.
 - MCP capture tooling now keeps argument normalization, request construction, path expansion, window resolution, and metadata output in focused companions.
