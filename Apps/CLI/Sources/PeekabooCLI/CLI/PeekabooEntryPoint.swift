@@ -24,31 +24,66 @@ func executePeekabooCLI(arguments: [String]) async -> Int32 {
     // Load configuration at startup
     _ = ConfigurationManager.shared.loadConfiguration()
 
+    let shouldEmitJSONErrors = containsJSONOutputFlag(arguments)
+
     do {
         try await CommanderRuntimeExecutor.resolveAndRun(arguments: arguments)
         return EXIT_SUCCESS
     } catch let exit as ExitCode {
         return exit.rawValue
     } catch let programError as CommanderProgramError {
-        printCommanderError(programError)
+        printCommanderError(programError, jsonOutput: shouldEmitJSONErrors)
         return EXIT_FAILURE
     } catch {
-        fputs("Error: \(error.localizedDescription)\n", stderr)
+        printGenericError(error, jsonOutput: shouldEmitJSONErrors)
         return EXIT_FAILURE
     }
 }
 
-private func printCommanderError(_ error: CommanderProgramError) {
+private func containsJSONOutputFlag(_ arguments: [String]) -> Bool {
+    arguments.contains("--json") || arguments.contains("-j") || arguments.contains("--json-output")
+}
+
+private func commanderErrorMessage(_ error: CommanderProgramError) -> String {
     switch error {
     case let .parsingError(parsing):
-        fputs("Error: \(parsing.description)\n", stderr)
+        parsing.description
     case let .unknownCommand(name):
-        fputs("Error: Unknown command '\(name)'\n", stderr)
+        "Unknown command '\(name)'"
     case let .unknownSubcommand(command, name):
-        fputs("Error: Unknown subcommand '\(name)' for command '\(command)'\n", stderr)
+        "Unknown subcommand '\(name)' for command '\(command)'"
     case .missingCommand:
-        fputs("Error: No command specified\n", stderr)
+        "No command specified"
     case let .missingSubcommand(command):
-        fputs("Error: Command '\(command)' requires a subcommand\n", stderr)
+        "Command '\(command)' requires a subcommand"
     }
+}
+
+private func printCommanderError(_ error: CommanderProgramError, jsonOutput: Bool) {
+    let message = commanderErrorMessage(error)
+    guard jsonOutput else {
+        fputs("Error: \(message)\n", stderr)
+        return
+    }
+
+    let logger = Logger.shared
+    logger.setJsonOutputMode(true)
+    outputError(message: message, code: .INVALID_ARGUMENT, logger: logger)
+}
+
+private func printGenericError(_ error: any Error, jsonOutput: Bool) {
+    let code: ErrorCode = if error is CommanderBindingError {
+        .INVALID_ARGUMENT
+    } else {
+        .UNKNOWN_ERROR
+    }
+
+    guard jsonOutput else {
+        fputs("Error: \(error.localizedDescription)\n", stderr)
+        return
+    }
+
+    let logger = Logger.shared
+    logger.setJsonOutputMode(true)
+    outputError(message: error.localizedDescription, code: code, logger: logger)
 }

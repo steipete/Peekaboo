@@ -49,7 +49,17 @@ struct CLIRuntimeSmokeTests {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["list", "windows", "--json", "--no-remote"])
         #expect(result.status != .exited(0))
-        #expect(result.standardError.contains("Missing argument: app"))
+        let payload = !result.standardOutput.isEmpty ? result.standardOutput : result.standardError
+        let data = Data(payload.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              let error = json["error"] as? [String: Any] else {
+            Issue.record("Expected JSON parse-error output from list windows.")
+            return
+        }
+        #expect(json["success"] as? Bool == false)
+        #expect(error["code"] as? String == "INVALID_ARGUMENT")
+        #expect((error["message"] as? String)?.contains("Missing argument: app") == true)
     }
 
     @Test
@@ -58,6 +68,26 @@ struct CLIRuntimeSmokeTests {
         let result = try await TestChildProcess.runPeekaboo(["sleep", "1", "--no-remote"])
         #expect(result.status == .exited(0))
         #expect(result.standardOutput.contains("Paused"))
+    }
+
+    @Test
+    func `peekaboo parse errors honor JSON mode`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo(["sleep", "1", "--bogus", "--json", "--no-remote"])
+        #expect(result.status == .exited(1))
+
+        let payload = !result.standardOutput.isEmpty ? result.standardOutput : result.standardError
+        let data = Data(payload.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              let error = json["error"] as? [String: Any] else {
+            Issue.record("Expected JSON parse-error output.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == false)
+        #expect(error["code"] as? String == "INVALID_ARGUMENT")
+        #expect((error["message"] as? String)?.contains("Unknown option --bogus") == true)
     }
 
     @Test
