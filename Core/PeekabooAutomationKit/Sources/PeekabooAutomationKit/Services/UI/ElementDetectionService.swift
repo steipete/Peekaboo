@@ -15,11 +15,11 @@ import PeekabooFoundation
  * - Button, text field, image, and static text recognition
  * - Element bounds and coordinate mapping
  * - Accessibility attribute extraction
- * - Snapshot-based element caching
+ * - Snapshot ID propagation for callers that persist results
  *
  * ## Usage Example
  * ```swift
- * let detectionService = ElementDetectionService(snapshotManager: snapshotManager)
+ * let detectionService = ElementDetectionService()
  *
  * let result = try await detectionService.detectElements(
  *     in: screenshotData,
@@ -36,7 +36,6 @@ import PeekabooFoundation
 @MainActor
 public final class ElementDetectionService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ElementDetectionService")
-    private let snapshotManager: any SnapshotManagerProtocol
     private let windowIdentityService = WindowIdentityService()
     private let windowResolver: ElementDetectionWindowResolver
     private let axTreeCache = ElementDetectionCache()
@@ -45,10 +44,9 @@ public final class ElementDetectionService {
     private let axTreeCollector = AXTreeCollector()
 
     public init(
-        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        snapshotManager _: (any SnapshotManagerProtocol)? = nil,
         applicationService: ApplicationService? = nil)
     {
-        self.snapshotManager = snapshotManager ?? SnapshotManager()
         self
             .windowResolver =
             ElementDetectionWindowResolver(applicationService: applicationService ?? ApplicationService())
@@ -110,18 +108,12 @@ public final class ElementDetectionService {
 
         self.logger.info("Detected \(detectedElements.count) elements")
 
-        let result = ElementDetectionResultBuilder.makeResult(
+        return ElementDetectionResultBuilder.makeResult(
             snapshotId: effectiveSnapshotId,
             elements: detectedElements,
             usedCache: usedCache,
             windowContext: resolvedWindowContext,
             isDialog: windowResolution.isDialog)
-
-        if snapshotId != nil {
-            try await self.snapshotManager.storeDetectionResult(snapshotId: effectiveSnapshotId, result: result)
-        }
-
-        return result
     }
 }
 

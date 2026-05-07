@@ -300,6 +300,31 @@ struct ElementDetectionTimeoutRunnerTests {
 
         #expect(Date().timeIntervalSince(startedAt) < 0.25)
     }
+
+    @Test
+    func `Parent cancellation resumes direct detection timeout runner`() async throws {
+        let startedAt = Date()
+        let task = Task {
+            try await ElementDetectionTimeoutRunner.run(seconds: 5.0) {
+                try await Task.sleep(nanoseconds: 5_000_000_000)
+                return [DetectedElement]()
+            }
+        }
+
+        try await Task.sleep(nanoseconds: 10_000_000)
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected cancellation")
+        } catch is CancellationError {
+            // Expected; proves the continuation resumes on parent cancellation.
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+
+        #expect(Date().timeIntervalSince(startedAt) < 0.25)
+    }
 }
 
 @Suite(.tags(.fast))

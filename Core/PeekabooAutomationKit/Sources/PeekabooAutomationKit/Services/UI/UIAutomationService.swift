@@ -104,7 +104,7 @@ public final class UIAutomationService: TargetedHotkeyServiceProtocol {
      *
      * ## Service Initialization
      * The constructor initializes these specialized services:
-     * - `ElementDetectionService` with snapshot management integration
+     * - `ElementDetectionService` with AX traversal collaborators
      * - `ClickService` for precise mouse interactions
      * - `TypeService` for intelligent text input (note: clickService parameter is nil to avoid circular dependency)
      * - `ScrollService` for smooth scrolling operations
@@ -241,10 +241,14 @@ extension UIAutomationService {
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.debug("Delegating element detection to ElementDetectionService")
-        return try await self.elementDetectionService.detectElements(
+        let result = try await self.elementDetectionService.detectElements(
             in: imageData,
             snapshotId: snapshotId,
             windowContext: windowContext)
+        if let snapshotId {
+            try await self.snapshotManager.storeDetectionResult(snapshotId: snapshotId, result: result)
+        }
+        return result
     }
 
     // MARK: - Click Operations

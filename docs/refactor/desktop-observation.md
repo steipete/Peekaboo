@@ -98,12 +98,12 @@ Landed:
 - `peekaboo scroll --on --json` now reports the same moved-window-adjusted target point used by the automation service.
 - `peekaboo window focus --snapshot` now focuses the captured window context while preserving explicit snapshots during focus-cache invalidation.
 - Element-targeted `click`, `move`, `scroll`, `drag`, and `swipe` JSON results now report target-point diagnostics with original snapshot point, resolved point, snapshot ID, and moved-window adjustment.
+- `ElementDetectionService` now owns only detection/result building; snapshot persistence moved up to orchestration.
 
 Still incomplete:
 
 - Further capture-service cleanup after command bridges disappear.
-- Further element-detection cleanup after extracted collaborators fully own policy.
-- Finish richer target-point diagnostics and explicit/focus-cache invalidation policy.
+- Finish stale command/module cleanup and decide whether module extraction is worth it.
 - Optional module extraction after boundaries are stable.
 
 Current size pressure:
@@ -846,11 +846,11 @@ Purpose: finish isolating AX traversal, fallback, and result policy.
 
 Work:
 
-- move any remaining sparse-tree thresholds into `AXTraversalPolicy`;
-- remove snapshot/file-writing behavior from detection internals;
-- add cancellation tests for direct detection calls;
-- add unit tests for rich-tree versus sparse-web fallback;
-- keep `ElementDetectionService` under target size.
+- done: move remaining sparse-tree thresholds into `AXTraversalPolicy`;
+- done: remove snapshot/file-writing behavior from `ElementDetectionService`;
+- done: add cancellation tests for direct detection timeout calls;
+- done: add unit tests for rich-tree versus sparse-web fallback;
+- done: keep `ElementDetectionService` under target size.
 
 Gate:
 
