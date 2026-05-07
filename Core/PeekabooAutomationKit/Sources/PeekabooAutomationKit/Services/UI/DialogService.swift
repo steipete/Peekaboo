@@ -50,10 +50,15 @@ extension DialogError: LocalizedError {
 public final class DialogService: DialogServiceProtocol {
     let logger = Logger(subsystem: "boo.peekaboo.core", category: "DialogService")
     private let dialogTitleHints = ["open", "save", "export", "import", "choose", "replace"]
+    private let activeDialogSearchTimeout: Float = 0.25
+    private let targetedDialogSearchTimeout: Float = 0.5
     private let applicationService: any ApplicationServiceProtocol
     private let focusService = FocusManagementService()
     private let windowIdentityService = WindowIdentityService()
     private let feedbackClient: any AutomationFeedbackClient
+    private var scansAllApplicationsForDialogs: Bool {
+        ProcessInfo.processInfo.environment["PEEKABOO_DIALOG_SCAN_ALL_APPS"] == "1"
+    }
 
     public init(
         applicationService: (any ApplicationServiceProtocol)? = nil,
@@ -460,7 +465,8 @@ extension DialogService {
             throw DialogError.noActiveDialog
         }
 
-        let windows = focusedApp.windowsWithTimeout() ?? []
+        let windowSearchTimeout = self.dialogWindowSearchTimeout(title: title, appName: appName)
+        let windows = self.dialogWindowCandidates(in: focusedApp, title: title, appName: appName)
         self.logger.debug("Checking \(windows.count) windows for dialogs")
 
         for window in windows {
@@ -469,29 +475,54 @@ extension DialogService {
             }
         }
 
-        if let globalWindows = systemWide.windows() {
-            for window in globalWindows {
-                if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
-                    return candidate
+        if title != nil {
+            if let globalWindows = systemWide.windows() {
+                for window in globalWindows {
+                    if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
+                        return candidate
+                    }
                 }
             }
         }
 
-        for app in NSWorkspace.shared.runningApplications {
-            let axApp = AXApp(app).element
-            let appWindows = axApp.windowsWithTimeout() ?? []
-            for window in appWindows {
-                if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
-                    return candidate
+        if self.scansAllApplicationsForDialogs {
+            for app in NSWorkspace.shared.runningApplications {
+                let axApp = AXApp(app).element
+                let appWindows = axApp.windowsWithTimeout(timeout: windowSearchTimeout) ?? []
+                for window in appWindows {
+                    if let candidate = self.resolveDialogCandidate(in: window, matching: title) {
+                        return candidate
+                    }
                 }
             }
         }
 
-        if let cgCandidate = self.findDialogUsingCGWindowList(title: title) {
+        if title != nil, let cgCandidate = self.findDialogUsingCGWindowList(title: title) {
             return cgCandidate
         }
 
         throw DialogError.noActiveDialog
+    }
+
+    private func dialogWindowSearchTimeout(title: String?, appName: String?) -> Float {
+        title != nil || appName != nil ? self.targetedDialogSearchTimeout : self.activeDialogSearchTimeout
+    }
+
+    private func dialogWindowCandidates(in app: Element, title: String?, appName: String?) -> [Element] {
+        let timeout = self.dialogWindowSearchTimeout(title: title, appName: appName)
+
+        // Without a title, an app-scoped command is still looking for the active dialog, not every dialog-like
+        // subtree in the app. Checking focused/main windows keeps "no dialog" responses bounded for Electron/Tauri.
+        if appName != nil, title == nil {
+            app.setMessagingTimeout(timeout)
+            defer { app.setMessagingTimeout(0) }
+            return [
+                app.focusedWindow(),
+                app.mainWindow(),
+            ].compactMap(\.self)
+        }
+
+        return app.windowsWithTimeout(timeout: timeout) ?? []
     }
 
     func resolveDialogElement(windowTitle: String?, appName: String?) async throws -> Element {
@@ -502,21 +533,15 @@ extension DialogService {
             return element
         }
 
-        await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
+        if windowTitle != nil {
+            await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
+            if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
+                return element
+            }
 
-        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
-            return element
-        }
-
-        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
-            return element
-        }
-
-        if windowTitle == nil,
-           let appName,
-           let fileDialog = self.findActiveFileDialogElement(appName: appName)
-        {
-            return fileDialog
+            if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
+                return element
+            }
         }
 
         throw DialogError.noActiveDialog
@@ -574,6 +599,10 @@ extension DialogService {
     }
 
     private func ensureDialogVisibility(windowTitle: String?, appName: String?) async {
+        guard windowTitle != nil || appName != nil else {
+            return
+        }
+
         do {
             let applications = try await self.applicationService.listApplications()
             for app in applications.data.applications {
@@ -657,7 +686,7 @@ extension DialogService {
 
             guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
             let axApp = AXApp(runningApp).element
-            guard let appWindows = axApp.windowsWithTimeout() else { continue }
+            guard let appWindows = axApp.windowsWithTimeout(timeout: 0.5) else { continue }
 
             if let match = appWindows.first(where: {
                 let title = $0.title() ?? ""
@@ -1094,30 +1123,21 @@ extension DialogService {
                 foundVia: "find_dialog_element")
         }
 
-        await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
+        if windowTitle != nil {
+            await self.ensureDialogVisibility(windowTitle: windowTitle, appName: appName)
+            if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
+                return (
+                    element: element,
+                    dialogIdentifier: self.dialogIdentifier(for: element),
+                    foundVia: "ensure_visibility_then_find")
+            }
 
-        if let element = try? self.findDialogElement(withTitle: windowTitle, appName: appName) {
-            return (
-                element: element,
-                dialogIdentifier: self.dialogIdentifier(for: element),
-                foundVia: "ensure_visibility_then_find")
-        }
-
-        if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
-            return (
-                element: element,
-                dialogIdentifier: self.dialogIdentifier(for: element),
-                foundVia: "application_service")
-        }
-
-        if windowTitle == nil,
-           let appName,
-           let fileDialog = self.findActiveFileDialogElement(appName: appName)
-        {
-            return (
-                element: fileDialog,
-                dialogIdentifier: self.dialogIdentifier(for: fileDialog),
-                foundVia: "active_file_dialog_fallback")
+            if let element = await self.findDialogViaApplicationService(windowTitle: windowTitle, appName: appName) {
+                return (
+                    element: element,
+                    dialogIdentifier: self.dialogIdentifier(for: element),
+                    foundVia: "application_service")
+            }
         }
 
         throw DialogError.noActiveDialog
@@ -1362,7 +1382,7 @@ extension DialogService {
             }
 
             guard let appElement = AXApp(pid: pid_t(ownerPid.intValue))?.element,
-                  let windows = appElement.windowsWithTimeout()
+                  let windows = appElement.windowsWithTimeout(timeout: 0.5)
             else { continue }
 
             if let matchingWindow = windows.first(where: {
@@ -1382,10 +1402,15 @@ extension DialogService {
             return element
         }
 
-        for sheet in self.sheetElements(for: element) {
+        let sheets = title == nil ? (element.sheets() ?? []) : self.sheetElements(for: element)
+        for sheet in sheets {
             if let candidate = self.resolveDialogCandidate(in: sheet, matching: title) {
                 return candidate
             }
+        }
+
+        guard title != nil else {
+            return nil
         }
 
         if let children = element.children() {
@@ -1446,7 +1471,7 @@ extension DialogService {
         // Some apps expose sheets as AXWindow/AXUnknown instead of AXSheet. Avoid treating every AXUnknown
         // window as a dialog (TextEdit's main document window can be AXUnknown), and instead require at
         // least one dialog-ish signal.
-        if subrole == "AXUnknown" {
+        if subrole == "AXUnknown", title != nil {
             let buttonTitles = Set(self.collectButtons(from: element).compactMap { $0.title()?.lowercased() })
             let hasCancel = buttonTitles.contains("cancel")
             let hasDialogButton = hasCancel ||
