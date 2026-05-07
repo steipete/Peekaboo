@@ -153,7 +153,7 @@ public struct PasteTool: MCPTool {
         }
 
         if let filePath = arguments.getString("filePath") ?? arguments.getString("imagePath") {
-            let url = URL(fileURLWithPath: filePath)
+            let url = ClipboardPathResolver.fileURL(from: filePath)
             let data = try Data(contentsOf: url)
             let inferred = UTType(filenameExtension: url.pathExtension) ?? .data
             let forced = arguments.getString("uti").flatMap(UTType.init(_:)) ?? inferred

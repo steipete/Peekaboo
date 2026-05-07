@@ -34,6 +34,9 @@ peekaboo paste --data-base64 "$RTF_B64" --uti public.rtf --also-text "fallback" 
 peekaboo paste --file-path /tmp/snippet.png --app Notes
 ```
 
+## Notes
+- File paths for `--file-path` and `--image-path` accept `~/...`.
+
 ## Troubleshooting
 - Verify Screen Recording + Accessibility permissions (`peekaboo permissions status`).
 - Confirm your target (app/window/selector) with `peekaboo list`/`peekaboo see` before rerunning.

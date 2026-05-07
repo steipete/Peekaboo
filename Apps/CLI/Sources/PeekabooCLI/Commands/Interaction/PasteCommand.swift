@@ -155,7 +155,7 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         }
 
         if let path = self.filePath ?? self.imagePath {
-            let url = URL(fileURLWithPath: path)
+            let url = ClipboardPathResolver.fileURL(from: path)
             let data = try Data(contentsOf: url)
             let inferred = UTType(filenameExtension: url.pathExtension) ?? .data
             let forced = self.uti.flatMap(UTType.init(_:)) ?? inferred

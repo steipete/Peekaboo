@@ -148,10 +148,11 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             ? result.data.base64EncodedString()
             : nil
 
-        if let output, output != "-" {
-            let url = URL(fileURLWithPath: output)
+        let resolvedOutput = self.output.flatMap { $0 == "-" ? $0 : ClipboardPathResolver.filePath(from: $0) }
+        if let output = resolvedOutput, output != "-" {
+            let url = ClipboardPathResolver.fileURL(from: output)
             try result.data.write(to: url)
-        } else if output == "-", !self.jsonOutput {
+        } else if resolvedOutput == "-", !self.jsonOutput {
             FileHandle.standardOutput.write(result.data)
         }
 
@@ -159,7 +160,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             action: "get",
             uti: result.utiIdentifier,
             size: result.data.count,
-            filePath: output,
+            filePath: resolvedOutput,
             slot: nil,
             text: text,
             textPreview: result.textPreview,
@@ -168,12 +169,12 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         )
 
         self.output(payload) {
-            if output == "-" {
+            if resolvedOutput == "-" {
                 return
             }
             if let text = String(data: result.data, encoding: .utf8) {
                 print(text)
-            } else if let output {
+            } else if let output = resolvedOutput {
                 print("📋 Saved \(result.data.count) bytes (\(result.utiIdentifier)) to \(output)")
             } else {
                 print(
@@ -209,6 +210,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         guard let path = self.filePath ?? self.imagePath else {
             throw ValidationError("load requires --file-path or --image-path")
         }
+        let resolvedPath = ClipboardPathResolver.filePath(from: path) ?? path
         let request = try self.makeWriteRequest(overridePath: path)
         let result = try self.services.clipboard.set(request)
         let verification = try self.verifyWriteIfNeeded(request: request)
@@ -216,7 +218,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
             action: "load",
             uti: result.utiIdentifier,
             size: result.data.count,
-            filePath: path,
+            filePath: resolvedPath,
             slot: nil,
             text: nil,
             textPreview: result.textPreview,
@@ -225,7 +227,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         )
 
         self.output(payload) {
-            print("✅ Loaded \(result.data.count) bytes (\(result.utiIdentifier)) from \(path) into clipboard")
+            print("✅ Loaded \(result.data.count) bytes (\(result.utiIdentifier)) from \(resolvedPath) into clipboard")
             self.printVerificationSummary(verification)
         }
     }
@@ -298,7 +300,7 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         }
 
         if let path = overridePath ?? self.filePath ?? self.imagePath {
-            let url = URL(fileURLWithPath: path)
+            let url = ClipboardPathResolver.fileURL(from: path)
             let data = try Data(contentsOf: url)
             let uti = UTType(filenameExtension: url.pathExtension) ?? .data
             return ClipboardPayloadBuilder.dataRequest(

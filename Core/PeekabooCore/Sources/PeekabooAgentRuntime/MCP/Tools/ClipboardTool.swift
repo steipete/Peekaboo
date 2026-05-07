@@ -84,11 +84,12 @@ public struct ClipboardTool: MCPTool {
 
         let outputPath = arguments.getString("outputPath")
         if let outputPath {
-            let url = URL(fileURLWithPath: outputPath)
+            let resolvedPath = ClipboardPathResolver.filePath(from: outputPath) ?? outputPath
+            let url = ClipboardPathResolver.fileURL(from: resolvedPath)
             try result.data.write(to: url)
             return ToolResponse.text(
-                "Saved clipboard (\(result.utiIdentifier)) to \(outputPath)",
-                meta: self.meta(result: result, filePath: outputPath))
+                "Saved clipboard (\(result.utiIdentifier)) to \(resolvedPath)",
+                meta: self.meta(result: result, filePath: resolvedPath))
         }
 
         if let text = String(data: result.data, encoding: .utf8) {
@@ -150,7 +151,7 @@ public struct ClipboardTool: MCPTool {
         }
 
         if let filePath = arguments.getString("filePath") ?? arguments.getString("imagePath") {
-            let url = URL(fileURLWithPath: filePath)
+            let url = ClipboardPathResolver.fileURL(from: filePath)
             let data = try Data(contentsOf: url)
             let uti = UTType(filenameExtension: url.pathExtension) ?? .data
             return ClipboardPayloadBuilder.dataRequest(
