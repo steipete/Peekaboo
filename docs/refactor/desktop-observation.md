@@ -43,6 +43,7 @@ Landed:
 - `see`, `image`, MCP `see`, and MCP `image` have first observation-backed paths.
 - Request-scoped capture engine preference now flows through observation to `ScreenCaptureService`.
 - Observation detection timeout budget is being enforced in the facade.
+- Screen capture scale planning is now centralized and unit-tested for logical 1x versus native Retina output.
 
 Still intentionally incomplete:
 
@@ -165,6 +166,268 @@ Observation output should produce:
 - warnings for skipped output.
 
 Formatting remains outside the writer.
+
+## End-State Blueprint
+
+The full refactor is not just "move code out of commands". The end state is a desktop observation subsystem with explicit state, policies, and diagnostics.
+
+### Canonical Pipeline
+
+Every command or tool that needs to inspect the desktop should use this shape:
+
+```text
+User input
+  -> request adapter
+  -> DesktopObservationRequest
+  -> ObservationTargetResolver
+  -> DesktopStateSnapshot
+  -> CapturePlan
+  -> CaptureExecutor
+  -> ElementObservationService
+  -> ObservationOutputWriter
+  -> DesktopObservationResult
+  -> CLI/MCP/agent renderer
+```
+
+Rules:
+
+- request adapters are allowed to validate user-facing flag combinations;
+- adapters are not allowed to rank windows, probe AX, infer capture scale, or write screenshot paths;
+- service layers are allowed to return typed diagnostics;
+- renderers are allowed to choose JSON/text wording, but not behavior.
+
+### Desktop State Snapshot
+
+Add a request-scoped snapshot object that contains all expensive desktop enumeration results for one observation.
+
+```swift
+public struct DesktopStateSnapshot: Sendable {
+    public var capturedAt: Date
+    public var displays: [DisplayIdentity]
+    public var runningApplications: [ApplicationIdentity]
+    public var windows: [WindowIdentity]
+    public var frontmostApplication: ApplicationIdentity?
+    public var frontmostWindow: WindowIdentity?
+}
+```
+
+This snapshot should be built once per `DesktopObservationService.observe` call and passed to target resolution, capture planning, and diagnostics.
+
+Do not make it a long-lived global cache at first. Most correctness bugs here come from stale windows and stale AX references. Start with request-scoped reuse, then add short TTL caches only where measurements prove value.
+
+### Cache Policy
+
+Use three cache tiers:
+
+- request cache: always allowed, cleared after one observation;
+- short TTL cache: allowed for app/window lists and AX trees after live benchmarking;
+- persistent cache: only for static metadata such as bundle IDs or command docs, never for live windows/elements.
+
+Initial TTL recommendations:
+
+```text
+window inventory: 150-300 ms
+frontmost app/window: no TTL unless measured safe
+AX element tree: 250-500 ms, keyed by pid + windowID + focus epoch
+OCR output: no cache in the first refactor
+screenshot pixels: no cache
+```
+
+AX cache invalidation triggers:
+
+- different target PID or window ID;
+- window bounds changed;
+- frontmost app changed;
+- click/type/scroll/drag executed;
+- focus fallback executed;
+- detection options changed, especially web focus fallback and menu bar inclusion;
+- timeout/cancellation occurred before traversal completed.
+
+The cache should store immutable detection outputs, not live `AXUIElement` handles. Live AX handles can become invalid and can accidentally keep old UI state alive.
+
+### Desktop Identity Model
+
+Identity types should become explicit enough that CLI/MCP JSON can explain what happened.
+
+```swift
+public struct ApplicationIdentity: Sendable, Codable, Equatable, Hashable {
+    public var processID: pid_t
+    public var bundleIdentifier: String?
+    public var name: String
+    public var path: String?
+}
+
+public struct WindowIdentity: Sendable, Codable, Equatable, Hashable {
+    public var windowID: CGWindowID?
+    public var index: Int?
+    public var ownerPID: pid_t?
+    public var ownerName: String?
+    public var title: String
+    public var bounds: CGRect
+    public var layer: Int
+    public var alpha: Double
+    public var isOnScreen: Bool
+}
+```
+
+The same identity should flow through:
+
+- `list windows`;
+- `image --app`;
+- `image --window-id`;
+- `see --app`;
+- `see --window-id`;
+- MCP `image`;
+- MCP `see`;
+- snapshots and annotations.
+
+### Target Selection Contract
+
+Automatic app window selection must be deterministic:
+
+1. discard offscreen/minimized/helper-only windows when a renderable alternative exists;
+2. prefer explicit `windowID`, then title, then index;
+3. for automatic selection, prefer visible titled windows;
+4. prefer larger renderable area;
+5. break ties by stable CoreGraphics ordering;
+6. emit diagnostics for skipped helper windows when verbose/JSON diagnostics are enabled.
+
+This fixes the Tauri/Electron/CEF class of bugs where an app has many toolbar or helper windows and the command grabs a 2560x30 offscreen surface.
+
+### Capture Contract
+
+Capture should have a pure planning layer and a small execution layer.
+
+Pure planner inputs:
+
+- resolved target;
+- requested engine;
+- requested scale;
+- display/window geometry;
+- permission intent;
+- output format.
+
+Pure planner outputs:
+
+- operation kind;
+- engine preference;
+- fallback policy;
+- native scale;
+- output scale;
+- expected output pixel size when knowable;
+- diagnostics.
+
+Execution owns:
+
+- permission check;
+- focus work, if requested;
+- ScreenCaptureKit call;
+- legacy CoreGraphics call;
+- fallback sequencing;
+- image conversion.
+
+Hard rules:
+
+- `--retina` means native display scale;
+- no command-local scale math;
+- no silent engine fallback when the caller forced an engine;
+- every capture result reports engine, scale source, native scale, output scale, and final pixel size;
+- `screencapture -l <windowID>` remains the behavioral reference for native window capture where macOS allows it.
+
+### Detection Contract
+
+Element detection should become a policy-driven pipeline:
+
+```text
+Resolved target
+  -> AX root selection
+  -> AX traversal policy
+  -> descriptor reader
+  -> classifier
+  -> web focus fallback, if policy says sparse
+  -> result builder
+  -> snapshot writer
+```
+
+Detection should never re-decide app/window selection from scratch when observation already resolved a window. It may resolve AX roots for that window, but the source of truth for target identity is `ResolvedObservationTarget`.
+
+Timeout and cancellation must be real at every public entry point:
+
+- observation callers;
+- direct `ElementDetectionService` callers;
+- interaction commands that wait for elements;
+- MCP calls.
+
+### Interaction Integration
+
+Click/type/scroll/drag are outside the first desktop-observation refactor, but they should consume observation outputs later.
+
+Future shape:
+
+```text
+Interaction request
+  -> element query
+  -> snapshot lookup or observe-if-needed
+  -> target point planner
+  -> focus/permission guard
+  -> action executor
+  -> post-action invalidation
+```
+
+This makes action commands invalidate AX caches and avoids repeated full-tree scans when a user does `see`, then `click B12`, then `type`.
+
+### Performance Budgets
+
+Budgets are targets, not flaky unit-test thresholds. Record them in manual benchmark notes and structured timings.
+
+Warm local command budget on a normal desktop:
+
+```text
+permissions status: <100 ms
+list windows --app: <250 ms
+image --window-id: <500 ms
+image --app: <700 ms
+see --window-id, native AX tree: <1500 ms
+see --app, native AX tree: <1800 ms
+see sparse Chromium/Tauri with focus fallback: <2500 ms
+```
+
+Performance failures to treat as bugs:
+
+- `image` instantiates or traverses element detection;
+- `see --window-id` traverses all windows for an app when a direct window context exists;
+- local commands probe bridge or remote endpoints by default;
+- permission checks happen twice in one command;
+- fallback focus runs after a rich native tree was already found;
+- command runtime spends meaningful time formatting JSON compared with capture/detection.
+
+### CLI Consistency Contract
+
+The refactor should remove CLI drift. For equivalent flags:
+
+- `image --app X` and `see --app X` resolve the same target;
+- `image --window-id N` and `see --window-id N` report the same window identity;
+- CLI and MCP share target resolution;
+- JSON uses the same identity names for app/window metadata;
+- errors use the same typed reason for target-not-found, permission-denied, unsupported-target, and timeout;
+- `--verbose` reveals diagnostics without changing behavior.
+
+Backwards compatibility is not sacred for inconsistent behavior. If old behavior selected helper windows, ignored `--retina`, or hid timeouts, fix it and call it out in the changelog.
+
+### Module Boundary Contract
+
+Do not split packages until the behavior boundary is stable. When extraction is ready, the dependency direction should be:
+
+```text
+PeekabooCLI
+  -> PeekabooAgentRuntime
+  -> PeekabooObservation
+  -> PeekabooCapture
+  -> PeekabooElementDetection
+  -> PeekabooFoundation
+```
+
+No lower-level module should depend on CLI, MCP, Tachikoma, Commander, or renderer-specific JSON.
 
 ## Ship Groups
 
