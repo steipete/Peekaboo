@@ -72,14 +72,14 @@ public final class SmartCaptureService {
 
         // Capture current frame
         let captureResult = try await captureService.captureScreen(displayIndex: nil)
-        guard let currentImage = cgImage(from: captureResult) else {
+        guard let currentImage = SmartCaptureImageProcessor.cgImage(from: captureResult) else {
             throw SmartCaptureError.imageConversionFailed
         }
 
         // Compare with last capture using perceptual hash
         if let lastHash = lastCaptureState?.hash {
-            let currentHash = self.perceptualHash(currentImage)
-            let distance = self.hammingDistance(lastHash, currentHash)
+            let currentHash = SmartCaptureImageProcessor.perceptualHash(currentImage)
+            let distance = SmartCaptureImageProcessor.hammingDistance(lastHash, currentHash)
             let similarity = 1.0 - (Float(distance) / 64.0)
 
             if similarity > (1.0 - threshold) {
@@ -118,7 +118,7 @@ public final class SmartCaptureService {
 
         // Capture the region
         let regionResult = try await captureService.captureArea(rect)
-        guard let regionImage = cgImage(from: regionResult) else {
+        guard let regionImage = SmartCaptureImageProcessor.cgImage(from: regionResult) else {
             throw SmartCaptureError.imageConversionFailed
         }
 
@@ -126,8 +126,8 @@ public final class SmartCaptureService {
         var contextThumbnail: CGImage?
         if includeContextThumbnail {
             let fullScreenResult = try await captureService.captureScreen(displayIndex: nil)
-            if let fullScreen = cgImage(from: fullScreenResult) {
-                contextThumbnail = self.resizeImage(fullScreen, to: CGSize(width: 400, height: 250))
+            if let fullScreen = SmartCaptureImageProcessor.cgImage(from: fullScreenResult) {
+                contextThumbnail = SmartCaptureImageProcessor.resize(fullScreen, to: CGSize(width: 400, height: 250))
             }
         }
 
@@ -183,13 +183,13 @@ public final class SmartCaptureService {
             capturedImage = existingImage
         } else {
             let result = try await captureService.captureScreen(displayIndex: nil)
-            guard let img = cgImage(from: result) else {
+            guard let img = SmartCaptureImageProcessor.cgImage(from: result) else {
                 throw SmartCaptureError.imageConversionFailed
             }
             capturedImage = img
         }
 
-        let hash = self.perceptualHash(capturedImage)
+        let hash = SmartCaptureImageProcessor.perceptualHash(capturedImage)
         let focusedApp = await self.frontmostApplicationName()
 
         self.lastCaptureState = CaptureState(
@@ -203,114 +203,8 @@ public final class SmartCaptureService {
             metadata: .fresh(capturedAt: Date()))
     }
 
-    /// Convert CaptureResult image data to CGImage.
-    private func cgImage(from result: CaptureResult) -> CGImage? {
-        guard let dataProvider = CGDataProvider(data: result.imageData as CFData),
-              let cgImage = CGImage(
-                  pngDataProviderSource: dataProvider,
-                  decode: nil,
-                  shouldInterpolate: true,
-                  intent: .defaultIntent)
-        else {
-            return nil
-        }
-        return cgImage
-    }
-
     private func frontmostApplicationName() async -> String? {
         try? await self.applicationResolver.frontmostApplication().name
-    }
-
-    /// Compute a perceptual hash (dHash) of an image.
-    /// Returns a 64-bit hash representing visual content.
-    private func perceptualHash(_ image: CGImage) -> UInt64 {
-        // Resize to 9x8 for difference hash
-        guard let resized = resizeImage(image, to: CGSize(width: 9, height: 8)) else {
-            return 0
-        }
-
-        // Get grayscale pixel values
-        guard let pixels = getGrayscalePixels(resized) else {
-            return 0
-        }
-
-        // Compute difference hash
-        var hash: UInt64 = 0
-        for row in 0..<8 {
-            for col in 0..<8 {
-                let left = pixels[row * 9 + col]
-                let right = pixels[row * 9 + col + 1]
-                if left > right {
-                    hash |= (1 << UInt64(row * 8 + col))
-                }
-            }
-        }
-        return hash
-    }
-
-    /// Compute Hamming distance between two hashes.
-    private func hammingDistance(_ a: UInt64, _ b: UInt64) -> Int {
-        (a ^ b).nonzeroBitCount
-    }
-
-    /// Resize an image to target size.
-    private func resizeImage(_ image: CGImage, to size: CGSize) -> CGImage? {
-        let width = Int(size.width)
-        let height = Int(size.height)
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else {
-            return nil
-        }
-
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        return context.makeImage()
-    }
-
-    /// Extract grayscale pixel values from an image.
-    private func getGrayscalePixels(_ image: CGImage) -> [UInt8]? {
-        let width = image.width
-        let height = image.height
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        else {
-            return nil
-        }
-
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        guard let data = context.data else {
-            return nil
-        }
-
-        let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
-        var grayscale: [UInt8] = []
-
-        for i in 0..<(width * height) {
-            let r = Float(pixels[i * 4])
-            let g = Float(pixels[i * 4 + 1])
-            let b = Float(pixels[i * 4 + 2])
-            // Standard luminance conversion
-            let gray = UInt8(0.299 * r + 0.587 * g + 0.114 * b)
-            grayscale.append(gray)
-        }
-
-        return grayscale
     }
 }
 
