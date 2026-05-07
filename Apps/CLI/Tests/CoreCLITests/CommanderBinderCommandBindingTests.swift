@@ -530,6 +530,8 @@ struct CommanderBinderCommandBindingTests {
         let captureEngineOption = signature.options.first { $0.label == "captureEngine" }
         #expect(captureEngineOption != nil)
         #expect(captureEngineOption?.names.contains(.long("capture-engine")) == true)
+        let modeOption = signature.options.first { $0.label == "mode" }
+        #expect(modeOption?.help?.contains("area") == true)
     }
 
     @Test

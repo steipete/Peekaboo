@@ -12,7 +12,11 @@ extension CaptureLiveCommand: CommanderSignatureProviding {
             options: [
                 .commandOption("app", help: "Target application name, bundle ID, or 'PID:12345'", long: "app"),
                 .commandOption("pid", help: "Target application by process ID", long: "pid"),
-                .commandOption("mode", help: "Capture mode (screen, window, frontmost, region)", long: "mode"),
+                .commandOption(
+                    "mode",
+                    help: "Capture mode (screen, window, frontmost, area; region alias accepted)",
+                    long: "mode"
+                ),
                 .commandOption("windowTitle", help: "Capture window with specific title", long: "window-title"),
                 .commandOption("windowIndex", help: "Window index to capture", long: "window-index"),
                 .commandOption("screenIndex", help: "Screen index for screen captures", long: "screen-index"),

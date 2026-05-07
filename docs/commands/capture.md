@@ -23,7 +23,7 @@ A hidden alias `capture watch` maps to `capture live` for backwards compatibilit
 For `capture video`, `metadata.json` and JSON stdout include `options.video` with the requested sampling/trim options plus the effective FPS used by the frame reader.
 
 ## `capture live` flags
-- Targeting: `--mode`, `--screen-index`, `--app`, `--pid`, `--window-title`, `--window-index`, `--region` (global coords)
+- Targeting: `--mode screen|window|frontmost|area`, `--screen-index`, `--app`, `--pid`, `--window-title`, `--window-index`, `--region x,y,width,height` (global coords)
 - Focus: `--capture-focus auto|background|foreground`
 - Cadence: `--duration` (<=180), `--idle-fps`, `--active-fps`, `--threshold`, `--heartbeat-sec`, `--quiet-ms`
 - Caps: `--max-frames` (default 800), `--max-mb`
@@ -47,6 +47,9 @@ peekaboo capture live --duration 45 --idle-fps 1 --active-fps 8 --threshold 2.0
 
 # Live, target specific screen, MP4 output
 peekaboo capture live --mode screen --screen-index 1 --video-out /tmp/capture.mp4
+
+# Live, record an explicit desktop region; --region also infers area mode
+peekaboo capture live --region 100,120,640,360 --duration 10
 
 # Video ingest, sample 2 fps, trim first 5s
 peekaboo capture video /path/to/demo.mov --sample-fps 2 --start-ms 5000 --video-out /tmp/demo.mp4

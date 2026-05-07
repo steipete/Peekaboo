@@ -1,0 +1,70 @@
+import Commander
+import CoreGraphics
+import Foundation
+import PeekabooCore
+import PeekabooFoundation
+import Testing
+@testable import PeekabooCLI
+
+struct CaptureLiveBehaviorTests {
+    @Test
+    func `resolveMode defaults to window when targeting app pid or title`() throws {
+        var cmd = CaptureLiveCommand()
+        cmd.app = "Safari"
+        #expect(try cmd.resolveMode() == .window)
+
+        cmd.app = nil
+        cmd.pid = 123
+        #expect(try cmd.resolveMode() == .window)
+
+        cmd.pid = nil
+        cmd.windowTitle = "Log"
+        #expect(try cmd.resolveMode() == .window)
+    }
+
+    @Test
+    func `resolveMode defaults to frontmost when no targeting`() throws {
+        let cmd = CaptureLiveCommand()
+        #expect(try cmd.resolveMode() == .frontmost)
+    }
+
+    @Test
+    func `resolveMode uses area when region is provided`() throws {
+        var cmd = CaptureLiveCommand()
+        cmd.region = "10,20,300,200"
+        #expect(try cmd.resolveMode() == .area)
+        #expect(try cmd.parseRegion() == CGRect(x: 10, y: 20, width: 300, height: 200))
+    }
+
+    @Test
+    func `resolveMode accepts region alias for area`() throws {
+        var cmd = CaptureLiveCommand()
+        cmd.mode = "region"
+        cmd.region = "10,20,300,200"
+        #expect(try cmd.resolveMode() == .area)
+    }
+
+    @Test
+    func `resolveMode rejects invalid mode`() {
+        var cmd = CaptureLiveCommand()
+        cmd.mode = "banana"
+        #expect(throws: ValidationError.self) {
+            _ = try cmd.resolveMode()
+        }
+    }
+
+    @Test
+    func `parseRegion rejects malformed or empty dimensions`() {
+        var invalid = CaptureLiveCommand()
+        invalid.region = "1,2,3"
+        #expect(throws: PeekabooError.self) {
+            _ = try invalid.parseRegion()
+        }
+
+        var zero = CaptureLiveCommand()
+        zero.region = "1,2,0,4"
+        #expect(throws: PeekabooError.self) {
+            _ = try zero.parseRegion()
+        }
+    }
+}

@@ -9,7 +9,10 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     // Targeting
     @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'") var app: String?
     @Option(name: .long, help: "Target application by process ID") var pid: Int32?
-    @Option(name: .long, help: "Capture mode (screen, window, frontmost, region)") var mode: String?
+    @Option(
+        name: .long,
+        help: "Capture mode (screen, window, frontmost, area; region alias accepted)"
+    ) var mode: String?
     @Option(name: .long, help: "Capture window with specific title") var windowTitle: String?
     @Option(name: .long, help: "Window index to capture") var windowIndex: Int?
     @Option(name: .long, help: "Screen index for screen captures") var screenIndex: Int?
@@ -123,7 +126,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     }
 
     private func resolveScope() async throws -> CaptureScope {
-        let mode = self.resolveMode()
+        let mode = try self.resolveMode()
         switch mode {
         case .screen:
             let displayInfo = try await self.displayInfo(for: self.screenIndex)
@@ -167,11 +170,18 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
     }
 
     /// Exposed internally for tests.
-    func resolveMode() -> LiveCaptureMode {
+    func resolveMode() throws -> LiveCaptureMode {
         if let explicit = self.mode {
-            if explicit.lowercased() == "region" { return .area }
-            return LiveCaptureMode(rawValue: explicit) ?? .frontmost
+            let normalized = explicit.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized == "region" { return .area }
+            guard let mode = LiveCaptureMode(rawValue: normalized) else {
+                throw ValidationError(
+                    "Unsupported capture live mode '\(explicit)'. Use screen, window, frontmost, or area."
+                )
+            }
+            return mode
         }
+        if self.region != nil { return .area }
         if self.app != nil || self.pid != nil || self.windowTitle != nil { return .window }
         return .frontmost
     }
@@ -229,11 +239,27 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
         }
     }
 
-    private func parseRegion() throws -> CGRect {
-        guard let region else { throw PeekabooError.invalidInput("Region must be provided when --mode region is set") }
-        let parts = region.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
-        guard parts.count == 4 else { throw PeekabooError.invalidInput("Region must be x,y,width,height") }
-        return CGRect(x: parts[0], y: parts[1], width: parts[2], height: parts[3])
+    func parseRegion() throws -> CGRect {
+        guard let region = self.region?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !region.isEmpty
+        else {
+            throw PeekabooError.invalidInput("Region must be provided when --mode area is set")
+        }
+        let parts = region
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        guard parts.count == 4,
+              let x = Double(parts[0]),
+              let y = Double(parts[1]),
+              let width = Double(parts[2]),
+              let height = Double(parts[3])
+        else {
+            throw PeekabooError.invalidInput("Region must be x,y,width,height")
+        }
+        guard width > 0, height > 0 else {
+            throw PeekabooError.invalidInput("Region width and height must be greater than zero")
+        }
+        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     func buildOptions() throws -> CaptureOptions {
