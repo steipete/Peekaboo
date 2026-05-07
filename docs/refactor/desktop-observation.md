@@ -84,7 +84,8 @@ Landed:
 
 Still incomplete:
 
-- Further capture-service file splitting and cleanup after command bridges disappear.
+- Remaining CLI menu-bar click verifier window polling still reads CoreGraphics windows directly; move it behind observation or the interaction pipeline before final command cleanup.
+- Further capture-service cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
 - Interaction commands reusing observation state instead of repeating lookup work.
 - Optional module extraction after boundaries are stable.
@@ -109,7 +110,8 @@ Current command-boundary audit:
 - CLI command sources no longer import `ScreenCaptureKit`.
 - `see` all-screens capture no longer enumerates `SCShareableContent` directly.
 - AI/Core capture command sources no longer import `AppKit`; `see`, `image`, `list`, and menu-bar geometry now use shared screen/application services for screen inventory and app identity checks.
-- `SeeCommand+MenuBarCandidates.swift` still uses `CGWindowListCopyWindowInfo`; migrate remaining menu-bar candidate work into observation/menu services, then delete this command helper.
+- `SeeCommand+MenuBarCandidates.swift` uses the shared observation menu-bar window catalog instead of command-local `CGWindowListCopyWindowInfo`.
+- Remaining command-side `CGWindowListCopyWindowInfo` usage is limited to `MenuBarClickVerifier`; move that polling into observation/interaction cleanup.
 
 Near-term rule: command code may mention `CGWindowID` as a user-facing identifier, but must not enumerate windows, displays, or ScreenCaptureKit objects directly.
 
@@ -467,9 +469,8 @@ Goal: every desktop inspection frontend constructs `DesktopObservationRequest` a
 
 Remaining work:
 
-- move menu-bar popover OCR under observation;
-- move menu-bar click-to-open into either observation preflight or the future interaction pipeline;
 - delete command-level capture/detection bridge code once all supported targets are observation-backed.
+- move the remaining menu-bar click verifier polling into observation or the future interaction pipeline.
 
 Done when:
 
@@ -485,9 +486,9 @@ Remaining work:
 
 - audit `ScreenCaptureService.swift` for residual policy;
 - extract any remaining output-writing or target-selection policy;
-- make native/logical scale decisions fully reportable in JSON diagnostics;
 - keep `screencapture -l <windowID>` as the behavioral reference for native window capture where macOS permits it;
-- remove direct command imports of ScreenCaptureKit/AppKit capture details.
+- keep native/logical scale decisions reportable through `CaptureMetadata.diagnostics`;
+- keep command imports free of ScreenCaptureKit/AppKit capture details.
 
 Done when:
 
@@ -625,7 +626,20 @@ Work:
 
 Recommended order:
 
-1. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+1. Done: run live `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+2. Next: extract remaining observation request mapping out of large command files.
+
+Live check, May 7, 2026:
+
+```bash
+./Apps/CLI/.build/debug/peekaboo list windows --app Ghostty --json-output
+./Apps/CLI/.build/debug/peekaboo image --window-id 7565 --path /tmp/peekaboo-live-no-retina.png --json-output
+./Apps/CLI/.build/debug/peekaboo image --window-id 7565 --retina --path /tmp/peekaboo-live-retina.png --json-output
+screencapture -l 7565 -o -x /tmp/peekaboo-live-native.png
+sips -g pixelWidth -g pixelHeight /tmp/peekaboo-live-no-retina.png /tmp/peekaboo-live-retina.png /tmp/peekaboo-live-native.png
+```
+
+Result on the current host: all three files were `802x1250`, so this machine/session does not reproduce a Retina 2x delta. `image --app Ghostty` selected the real `802x1250` titled window `Peekaboo` instead of the visible `3008x30` auxiliary strip windows, matching the intended #113 app-window behavior.
 
 Gate:
 
