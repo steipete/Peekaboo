@@ -156,6 +156,7 @@ Landed:
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
+- `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
 - `peekaboo capture video` is split out of the primary capture command file.
 - `peekaboo agent permission` status and request flows are split into focused companion files.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
@@ -224,6 +225,10 @@ SeeCommand+ObservationRequest.swift: 140 lines
 PermissionCommand.swift: 32 lines
 PermissionCommand+Status.swift: 120 lines
 PermissionCommand+Requests.swift: 353 lines
+ListCommand.swift: 211 lines
+ListCommand+Apps.swift: 81 lines
+ListCommand+Windows.swift: 187 lines
+ListCommand+Screens.swift: 173 lines
 AgentChatUI.swift: 340 lines
 AgentChatUI+Components.swift: 85 lines
 AgentChatEventDelegate.swift: 175 lines

@@ -89,6 +89,7 @@
 - `peekaboo agent` output formatting helpers now live outside the event delegate so streaming and tool event handling stay focused.
 - `peekaboo config` custom-provider management commands now live in a focused companion file instead of the add-provider implementation file.
 - `peekaboo list screens` implementation and screen payload models now live outside the primary list command file.
+- `peekaboo list apps` and `peekaboo list windows` now live in focused companion files instead of the primary list command shell.
 - `peekaboo capture video` now lives in its own command file, leaving live capture and the watch alias in the primary capture command file.
 - `peekaboo agent permission` status and request flows now live in focused companion files instead of one oversized command implementation.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
