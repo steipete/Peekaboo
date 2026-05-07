@@ -37,6 +37,7 @@
 - Observation-backed CLI `see` captures now register raw screenshots and detection snapshots through the shared observation output writer.
 - CLI `see --annotate` now uses the shared observation annotation renderer for observation-backed captures, with the smart label placer moved out of command code.
 - Observation timings now include artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
+- Desktop observation JSON diagnostics now include a total `desktop.observe` timing span for end-to-end duration.
 - Added first-class OCR results to desktop observation, with shared OCR-to-element mapping for observation and menu-bar helpers.
 - `peekaboo see --menubar` now tries the desktop observation pipeline for already-open menu bar popovers before falling back to the legacy click-to-open path.
 - Menu bar popover OCR selection now lives in the shared desktop observation layer, including candidate-window, preferred-area, and AX-menu-frame matching.

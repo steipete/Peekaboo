@@ -88,6 +88,7 @@ Landed:
 - CLI `see --annotate` uses observation output and the shared observation annotation renderer for observation-backed captures.
 - Observation output reports artifact subspans for raw screenshot writes, annotation rendering, and snapshot registration.
 - Desktop observation now has first-class OCR results, a `detection.ocr` timing span, OCR-only detection for `preferOCR`, and shared OCR-to-element mapping used by menu-bar helpers.
+- Desktop observation now reports a total `desktop.observe` timing span after component capture, detection, OCR, and output spans.
 - CLI `see --menubar` now tries observation-backed already-open popover capture and OCR before falling back to the legacy click-to-open flow.
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.
@@ -951,17 +952,16 @@ It does not print.
 Required span names:
 
 ```text
+state.snapshot
 target.resolve
-desktop.snapshot
-permission.screen-recording
-focus.window
-capture.plan
 capture.window
+capture.frontmost
 capture.screen
 capture.area
-capture.write-file
 detection.ax
 detection.ocr
+output.write
+output.raw.write
 snapshot.write
 annotation.render
 desktop.observe
@@ -1460,6 +1460,32 @@ Results:
 - screenshots were inspected with local image vision: TextEdit marker visible, Chrome annotated screenshot nonblank with labels aligned to visible UI.
 - `peekaboo image --app TextEdit --path . --json` was run from `/tmp/peekaboo-path-dot.51XoMS` and wrote `TextEdit_2026-05-07T17:53:30Z.png` inside that directory, verifying the directory-like output path fix.
 - `peekaboo see --app TextEdit --path . --json` was run from `/tmp/peekaboo-see-path-dot.ZPHsAQ` and wrote `peekaboo_see_1778176668.png` inside that directory in `0.89s`, verifying the same policy for `see`.
+
+Live verification after path/span cleanup, May 7, 2026:
+
+```bash
+./Apps/CLI/.build/debug/peekaboo permissions status --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list apps --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list screens --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app TextEdit --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app "Google Chrome" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app frontmost --path "$TMPDIR/frontmost.png" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app TextEdit --path "$TMPDIR/textedit.png" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app "Google Chrome" --path "$TMPDIR/chrome.png" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path "$TMPDIR/textedit-see.png" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app "Google Chrome" --path "$TMPDIR/chrome-see.png" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path /tmp/peekaboo-span-check.png --json --no-remote
+```
+
+Results:
+
+- permissions granted: Screen Recording, Accessibility, Event Synthesizing;
+- display scale: 1x, so Retina 2x behavior remains hardware-limited on this host;
+- read-only command wall times stayed fast: `permissions status` `0.132s`, `list apps` `0.230s`, `list screens` `0.130s`, TextEdit windows `0.199s`, Chrome windows `0.218s`;
+- app image wall times: frontmost `0.684s`, TextEdit `0.567s`, Chrome `0.600s`;
+- `see --app TextEdit` completed in `0.930s` with `396` elements / `303` interactables and a `656x422` screenshot;
+- `see --app "Google Chrome"` completed in `0.703s` with `126` elements / `121` interactables and a `1672x1297` screenshot;
+- frontmost TextEdit `see` after the span cleanup completed in `0.93s` wall / `0.815s` JSON execution time with `396` elements and `303` interactables; spans included `state.snapshot=104.9ms`, `target.resolve=55.4ms`, `capture.window=164.1ms`, `detection.ax=379.5ms`, `output.write=5.1ms`, `output.raw.write=0.5ms`, `snapshot.write=4.6ms`, and total `desktop.observe=813.3ms`.
 
 ### Performance Budgets
 

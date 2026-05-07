@@ -124,6 +124,7 @@ struct MCPToolExecutionTests {
         #expect(await MainActor.run { screenCapture.captureAttemptCount } == 1)
         #expect(FileManager.default.fileExists(atPath: outputPath))
         #expect(Self.observationSpanNames(from: response).contains("output.raw.write"))
+        #expect(Self.observationSpanNames(from: response).contains("desktop.observe"))
     }
 
     @Test

@@ -77,7 +77,12 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertNil(result.elements)
         XCTAssertEqual(result.capture.imageData, imageData)
         XCTAssertEqual(result.target.window?.windowID, 42)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.window"])
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.window",
+            "desktop.observe",
+        ])
         XCTAssertEqual(result.diagnostics.stateSnapshot?.runningApplicationCount, 1)
         XCTAssertEqual(automation.detectCalls, 0)
     }
@@ -140,6 +145,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "target.resolve",
             "capture.window",
             "detection.ax",
+            "desktop.observe",
         ])
     }
 
@@ -183,6 +189,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "capture.window",
             "detection.ax",
             "detection.ocr",
+            "desktop.observe",
         ])
     }
 
@@ -221,6 +228,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "target.resolve",
             "capture.window",
             "detection.ocr",
+            "desktop.observe",
         ])
     }
 
@@ -254,6 +262,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "capture.window",
             "output.write",
             "output.raw.write",
+            "desktop.observe",
         ])
     }
 
@@ -308,7 +317,7 @@ final class DesktopObservationServiceTests: XCTestCase {
 
     func testObservationOutputWriterSavesAnnotatedScreenshotWhenRequested() async throws {
         let app = Self.app()
-        let window = Self.window(id: 88, title: "Output", bounds: CGRect(x: 10, y: 20, width: 100, height: 80))
+        let window = Self.window(id: 88, title: "Output", bounds: CGRect(x: 10, y: 20, width: 160, height: 120))
         let applications = RecordingApplicationService(applications: [app], windows: [window])
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-annotated-test-\(UUID().uuidString).png")
@@ -350,6 +359,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             "output.write",
             "output.raw.write",
             "annotation.render",
+            "desktop.observe",
         ])
 
         try? FileManager.default.removeItem(at: outputURL)
@@ -358,7 +368,7 @@ final class DesktopObservationServiceTests: XCTestCase {
 
     func testObservationOutputWriterRegistersSnapshotWhenRequested() async throws {
         let app = Self.app()
-        let window = Self.window(id: 89, title: "Snapshot", bounds: CGRect(x: 10, y: 20, width: 100, height: 80))
+        let window = Self.window(id: 89, title: "Snapshot", bounds: CGRect(x: 10, y: 20, width: 160, height: 120))
         let applications = RecordingApplicationService(applications: [app], windows: [window])
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-snapshot-test-\(UUID().uuidString).png")

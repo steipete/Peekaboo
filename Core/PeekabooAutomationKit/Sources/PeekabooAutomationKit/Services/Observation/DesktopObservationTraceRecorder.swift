@@ -24,7 +24,7 @@ final class DesktopObservationTraceRecorder {
         self.spans.append(contentsOf: spans)
     }
 
-    private func record(_ name: String, start: ContinuousClock.Instant, metadata: [String: String] = [:]) {
+    func record(_ name: String, start: ContinuousClock.Instant, metadata: [String: String] = [:]) {
         let duration = start.duration(to: ContinuousClock.now)
         let milliseconds = Double(duration.components.seconds * 1000)
             + Double(duration.components.attoseconds) / 1_000_000_000_000_000

@@ -21,7 +21,12 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(capture.capturedAreas, [menuBarBounds])
         XCTAssertEqual(result.target.kind, .menubar)
         XCTAssertEqual(result.target.bounds, menuBarBounds)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.area"])
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.area",
+            "desktop.observe",
+        ])
     }
 
     func testMenuBarObservationReportsSharedTargetDiagnostics() async throws {
@@ -64,7 +69,12 @@ final class DesktopObservationMenubarTests: XCTestCase {
         XCTAssertEqual(capture.capturedWindowIDs, [42])
         XCTAssertEqual(result.target.kind, .menubarPopover)
         XCTAssertEqual(result.target.bounds, bounds)
-        XCTAssertEqual(result.timings.spans.map(\.name), ["state.snapshot", "target.resolve", "capture.area"])
+        XCTAssertEqual(result.timings.spans.map(\.name), [
+            "state.snapshot",
+            "target.resolve",
+            "capture.area",
+            "desktop.observe",
+        ])
         XCTAssertEqual(result.diagnostics.target?.source, "window-list")
         XCTAssertEqual(result.diagnostics.target?.windowID, 42)
     }

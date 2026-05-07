@@ -47,6 +47,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
 
     public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
         let tracer = DesktopObservationTraceRecorder()
+        let observeStart = ContinuousClock.now
 
         let (stateSnapshot, target, capture) = try await ScreenCaptureKitCaptureGate.withExclusiveCaptureOperation(
             operationName: "desktopObservation")
@@ -85,6 +86,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             elements: elements,
             options: request.output,
             tracer: tracer)
+        tracer.record("desktop.observe", start: observeStart)
 
         return DesktopObservationResult(
             target: target,
