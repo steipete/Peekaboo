@@ -93,6 +93,7 @@ Landed:
 - `peekaboo menu` list output filtering, typed JSON conversion, and text rendering now share one command-support helper.
 - `peekaboo menu` subcommands now share one error-output mapper for JSON error codes and stderr rendering.
 - `peekaboo menu` click, click-extra, and list implementations now live in focused extension files, leaving `MenuCommand.swift` as registration and shared types.
+- `peekaboo dialog` click, input, file, dismiss, and list implementations now live in focused extension files, leaving `DialogCommand.swift` as registration, bindings, and shared error handling.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of maintaining command-local refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.
