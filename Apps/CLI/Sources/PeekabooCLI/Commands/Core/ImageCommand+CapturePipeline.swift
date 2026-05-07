@@ -256,6 +256,11 @@ extension ImageCommand {
     private func makeOutputURL(preferredName: String?, index: Int?) -> URL {
         if let explicit = self.path {
             let expanded = (explicit as NSString).expandingTildeInPath
+            if ObservationOutputPathResolver.isDirectoryLike(expanded) {
+                return URL(fileURLWithPath: expanded, isDirectory: true)
+                    .appendingPathComponent(self.defaultOutputFilename(preferredName: preferredName, index: index))
+            }
+
             var url = URL(fileURLWithPath: expanded)
             let directory = url.deletingLastPathComponent()
             var stem = url.deletingPathExtension().lastPathComponent
@@ -273,6 +278,11 @@ extension ImageCommand {
             return url
         }
 
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent(self.defaultOutputFilename(preferredName: preferredName, index: index))
+    }
+
+    private func defaultOutputFilename(preferredName: String?, index: Int?) -> String {
         let timestamp = Self.filenameDateFormatter.string(from: Date())
         var components: [String] = []
         if let preferred = preferredName {
@@ -289,9 +299,7 @@ extension ImageCommand {
             components.append(String(index))
         }
 
-        let filename = components.joined(separator: "_") + ".\(self.format.fileExtension)"
-        let base = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        return base.appendingPathComponent(filename)
+        return components.joined(separator: "_") + ".\(self.format.fileExtension)"
     }
 
     private func sanitizeFilenameComponent(_ value: String) -> String {

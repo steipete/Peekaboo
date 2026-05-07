@@ -275,7 +275,11 @@ extension ImageRequest {
         guard let path else {
             return nil
         }
-        return ensureExtension(path, format: self.format)
+        return ObservationOutputPathResolver.resolve(
+            path: path,
+            format: self.format.imageFormat,
+            defaultFileName: "peekaboo-\(UUID().uuidString).\(self.format.fileExtension)",
+            replacingExistingExtension: true).path
     }
 }
 
@@ -285,17 +289,6 @@ private func saveTemporaryImage(_ data: Data) throws -> String {
     let url = tempDir.appendingPathComponent(fileName)
     try data.write(to: url)
     return url.path
-}
-
-private func ensureExtension(_ path: String, format: ImageFormatOption) -> String {
-    let expectedExt = format.fileExtension
-    let url = URL(fileURLWithPath: path.expandingTildeInPath)
-
-    if url.pathExtension.lowercased() != expectedExt {
-        return url.deletingPathExtension().appendingPathExtension(expectedExt).path
-    }
-
-    return path
 }
 
 private func describeCapture(_ metadata: CaptureMetadata) -> String {
@@ -343,12 +336,6 @@ struct MCPSavedFile {
     let window_id: String?
     let window_index: Int?
     let mime_type: String
-}
-
-extension String {
-    var expandingTildeInPath: String {
-        (self as NSString).expandingTildeInPath
-    }
 }
 
 extension ImageFormatOption {

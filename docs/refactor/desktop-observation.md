@@ -45,7 +45,7 @@ Landed:
 - `DesktopObservationService` facade in `PeekabooAutomationKit`.
 - `ObservationTargetResolver` for core targets.
 - Request-scoped `DesktopStateSnapshot` for target resolution and diagnostics.
-- `ObservationOutputWriter` for raw screenshot persistence, annotated companion-path planning, basic annotation rendering, and snapshot registration.
+- `ObservationOutputWriter` and `ObservationOutputPathResolver` for raw screenshot persistence, directory-aware output path planning, annotated companion-path planning, basic annotation rendering, and snapshot registration.
 - Observation-backed paths for CLI `see`, CLI `image`, MCP `see`, and MCP `image`.
 - Request-scoped capture engine preference through observation.
 - Observation detection timeout enforcement.
@@ -163,6 +163,7 @@ Landed:
 - `DragDestinationResolver` now resolves app and Trash destinations through application, window, and Dock services instead of direct CLI AX/AppKit access.
 - MCP `see` annotation output now depends on `ObservationOutputWriter` instead of a tool-local AppKit renderer.
 - MCP `image` saved-file output now comes from `ObservationOutputWriter` instead of tool-local image encoding/writes.
+- CLI and MCP image output paths now share directory-aware planning, so `--path .`, trailing-slash paths, and existing directories receive generated filenames instead of hidden `..png` artifacts.
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
@@ -397,6 +398,7 @@ SpaceTool+Handlers.swift: 260 lines
 PeekabooAgentService+Tools.swift: 267 lines
 PeekabooAgentService+ToolSchema.swift: 92 lines
 AgentToolMCPBridge.swift: 93 lines
+ObservationOutputPathResolver.swift: 56 lines
 UIAutomationServiceProtocol.swift: 155 lines
 MouseMovementProfile.swift: 67 lines
 ElementDetectionModels.swift: 205 lines
@@ -1449,6 +1451,7 @@ Results:
 - controlled TextEdit interaction used a temp document under the artifact directory, clicked inside the document in `0.16s`, typed `PEEKABOO_E2E_174150` in `0.55s`, and recaptured the marker in a `656x422` screenshot;
 - follow-up `see` on the controlled TextEdit window completed in `0.93s`, found the marker in JSON, and reported `395` elements / `303` interactables;
 - screenshots were inspected with local image vision: TextEdit marker visible, Chrome annotated screenshot nonblank with labels aligned to visible UI.
+- `peekaboo image --app TextEdit --path . --json` was run from `/tmp/peekaboo-path-dot.51XoMS` and wrote `TextEdit_2026-05-07T17:53:30Z.png` inside that directory, verifying the directory-like output path fix.
 
 ### Performance Budgets
 

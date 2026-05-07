@@ -115,6 +115,7 @@
 - Release automation now dispatches the centralized Homebrew tap updater and waits for the matching tap workflow run. Thanks @dinakars777 for [#110](https://github.com/steipete/Peekaboo/pull/110)!
 
 ### Fixed
+- `peekaboo image --path .` and MCP image captures with directory-like paths now save a generated filename inside the directory instead of creating hidden `..png` artifacts.
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
 - `peekaboo agent permission ...` now resolves the documented permission subcommands instead of treating `permission` as an agent task.

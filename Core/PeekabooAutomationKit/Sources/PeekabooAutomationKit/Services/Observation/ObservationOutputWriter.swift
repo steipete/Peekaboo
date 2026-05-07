@@ -187,18 +187,10 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
     }
 
     private func outputURL(path: String?, format: ImageFormat) -> URL {
-        let baseURL: URL
-        if let path {
-            baseURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
-        } else {
-            let filename = "peekaboo-observation-\(Self.timestamp()).\(format.fileExtension)"
-            baseURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        }
-
-        if baseURL.pathExtension.isEmpty {
-            return baseURL.appendingPathExtension(format.fileExtension)
-        }
-        return baseURL
+        ObservationOutputPathResolver.resolve(
+            path: path,
+            format: format,
+            defaultFileName: "peekaboo-observation-\(Self.timestamp()).\(format.fileExtension)")
     }
 
     private func encodedImageData(_ data: Data, format: ImageFormat) throws -> Data {

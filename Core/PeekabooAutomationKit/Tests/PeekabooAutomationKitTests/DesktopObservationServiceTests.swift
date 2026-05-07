@@ -269,6 +269,43 @@ final class DesktopObservationServiceTests: XCTestCase {
             "relative_annotated.png")
     }
 
+    func testObservationOutputPathResolverTreatsCurrentDirectoryAsDirectory() {
+        let url = ObservationOutputPathResolver.resolve(
+            path: ".",
+            format: .png,
+            defaultFileName: "capture.png")
+
+        XCTAssertEqual(url.lastPathComponent, "capture.png")
+        XCTAssertEqual(
+            url.deletingLastPathComponent().standardizedFileURL.path,
+            URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+                .standardizedFileURL.path)
+    }
+
+    func testObservationOutputPathResolverTreatsExistingDirectoryAsDirectory() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-output-path-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let url = ObservationOutputPathResolver.resolve(
+            path: directory.path,
+            format: .jpg,
+            defaultFileName: "capture.jpg")
+
+        XCTAssertEqual(url.path, directory.appendingPathComponent("capture.jpg").path)
+    }
+
+    func testObservationOutputPathResolverCanReplaceExplicitFileExtension() {
+        let url = ObservationOutputPathResolver.resolve(
+            path: "/tmp/capture.jpg",
+            format: .png,
+            defaultFileName: "unused.png",
+            replacingExistingExtension: true)
+
+        XCTAssertEqual(url.path, "/tmp/capture.png")
+    }
+
     func testObservationOutputWriterSavesAnnotatedScreenshotWhenRequested() async throws {
         let app = Self.app()
         let window = Self.window(id: 88, title: "Output", bounds: CGRect(x: 10, y: 20, width: 100, height: 80))
