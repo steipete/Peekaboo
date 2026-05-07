@@ -163,7 +163,10 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
                 index: resolvedIndex,
                 name: nil,
                 bounds: bounds,
-                scaleFactor: scalePlan.outputScale))
+                scaleFactor: scalePlan.outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: scaledImage.width, height: scaledImage.height)))
 
         return CaptureResult(
             imageData: imageData,
@@ -289,7 +292,10 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
                 index: 0,
                 name: nil,
                 bounds: bounds,
-                scaleFactor: scalePlan.outputScale))
+                scaleFactor: scalePlan.outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: scaledImage.width, height: scaledImage.height)))
 
         return CaptureResult(
             imageData: imageData,
@@ -355,7 +361,10 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
                 index: displayIndex ?? 0,
                 name: "Display \(displayIndex ?? 0)",
                 bounds: screenBounds,
-                scaleFactor: scalePlan.outputScale))
+                scaleFactor: scalePlan.outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: scaledImage.width, height: scaledImage.height)))
 
         return CaptureResult(
             imageData: imageData,
@@ -411,7 +420,10 @@ final class LegacyScreenCaptureOperator: LegacyScreenCaptureOperating, @unchecke
                 index: content.displays.firstIndex(where: { $0.displayID == display.displayID }) ?? 0,
                 name: display.displayID.description,
                 bounds: display.frame,
-                scaleFactor: outputScale))
+                scaleFactor: outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: image.width, height: image.height)))
 
         return CaptureResult(imageData: imageData, metadata: metadata)
     }

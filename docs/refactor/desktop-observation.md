@@ -618,16 +618,15 @@ Work:
 - done: verify CLI sources no longer import `ScreenCaptureKit`;
 - done: remove capture-facing command `AppKit`, `NSScreen`, `NSWorkspace`, and `NSRunningApplication` dependencies from AI/Core command sources;
 - done: split `ScreenCaptureService+Support.swift` into focused scale, engine fallback, app resolving, and ScreenCaptureKit gate helpers;
+- done: add `CaptureMetadata.diagnostics` for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
+- done: cover forced engine resolution and fallback diagnostics in pure tests;
 - in progress: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind observation/menu services;
-- ensure forced engine and fallback behavior is covered in pure tests;
-- add diagnostics for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:
 
 1. Move `SeeCommand+MenuBarCandidates` remaining CGWindow candidate work into observation, preserving current popover diagnostics.
-2. Add planner/result diagnostics before deleting any legacy logging, so JSON consumers keep visibility.
-3. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+2. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
 
 Gate:
 

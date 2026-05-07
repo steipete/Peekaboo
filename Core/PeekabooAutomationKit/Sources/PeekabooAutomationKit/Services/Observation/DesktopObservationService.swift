@@ -210,7 +210,8 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             applicationInfo: capture.metadata.applicationInfo,
             windowInfo: normalizedWindow,
             displayInfo: capture.metadata.displayInfo,
-            timestamp: capture.metadata.timestamp)
+            timestamp: capture.metadata.timestamp,
+            diagnostics: capture.metadata.diagnostics)
 
         return CaptureResult(
             imageData: capture.imageData,

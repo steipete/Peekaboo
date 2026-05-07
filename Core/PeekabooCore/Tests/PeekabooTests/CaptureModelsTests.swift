@@ -143,6 +143,7 @@ struct CaptureModelsTests {
         #expect(minimalMetadata.windowInfo == nil)
         #expect(minimalMetadata.displayInfo == nil)
         #expect(minimalMetadata.timestamp == captureTime)
+        #expect(minimalMetadata.diagnostics == nil)
 
         // Test with display info
         let displayInfo = DisplayInfo(
@@ -154,9 +155,18 @@ struct CaptureModelsTests {
             size: testSize,
             mode: .screen,
             displayInfo: displayInfo,
-            timestamp: captureTime)
+            timestamp: captureTime,
+            diagnostics: CaptureDiagnostics(
+                requestedScale: .native,
+                nativeScale: 2,
+                outputScale: 2,
+                scaleSource: "screenBackingScaleFactor",
+                finalPixelSize: testSize,
+                engine: "ScreenCaptureKit"))
 
         #expect(metadataWithDisplay.displayInfo?.index == 1)
+        #expect(metadataWithDisplay.diagnostics?.requestedScale == .native)
+        #expect(metadataWithDisplay.diagnostics?.engine == "ScreenCaptureKit")
     }
 
     @Test

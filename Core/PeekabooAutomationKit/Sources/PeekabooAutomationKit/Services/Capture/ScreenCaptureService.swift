@@ -231,7 +231,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
         let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
         return try await self.performOperation(.screen, metadata: metadata) { correlationId in
-            try await self.fallbackRunner.run(
+            try await self.fallbackRunner.runCapture(
                 operationName: CaptureOperation.screen.metricName,
                 logger: self.logger,
                 correlationId: correlationId,
@@ -347,7 +347,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         options: WindowCaptureOptions,
         context: CaptureInvocationContext) async throws -> CaptureResult
     {
-        try await self.fallbackRunner.run(
+        try await self.fallbackRunner.runCapture(
             operationName: context.operation.metricName,
             logger: self.logger,
             correlationId: context.correlationId,
@@ -381,7 +381,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         options: WindowCaptureOptions,
         context: CaptureInvocationContext) async throws -> CaptureResult
     {
-        try await self.fallbackRunner.run(
+        try await self.fallbackRunner.runCapture(
             operationName: context.operation.metricName,
             logger: self.logger,
             correlationId: context.correlationId,
@@ -449,7 +449,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
 
         return try await self.performOperation(.area, metadata: metadata) { correlationId in
-            try await self.fallbackRunner.run(
+            try await self.fallbackRunner.runCapture(
                 operationName: CaptureOperation.area.metricName,
                 logger: self.logger,
                 correlationId: correlationId,

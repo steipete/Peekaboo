@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 @_spi(Testing) import PeekabooAutomationKit
@@ -82,5 +83,41 @@ struct ScreenCaptureFallbackRunnerTests {
         #expect(events[0].error is Dummy)
         #expect(events[1].api == .legacy)
         #expect(events[1].success == true)
+    }
+
+    @MainActor
+    @Test
+    func `capture runner stamps engine and fallback reason`() async throws {
+        enum Dummy: Error { case fail }
+        let logger = LoggingService(subsystem: "test.logger").logger(category: "test")
+        let runner = ScreenCaptureFallbackRunner(apis: [.modern, .legacy])
+        var calls: [ScreenCaptureAPI] = []
+
+        let result = try await runner.runCapture(
+            operationName: "captureScreen",
+            logger: logger,
+            correlationId: "c3")
+        { api in
+            calls.append(api)
+            if api == .modern {
+                throw Dummy.fail
+            }
+            return CaptureResult(
+                imageData: Data(),
+                metadata: CaptureMetadata(
+                    size: CGSize(width: 20, height: 10),
+                    mode: .screen,
+                    diagnostics: CaptureDiagnostics(
+                        requestedScale: .native,
+                        nativeScale: 2,
+                        outputScale: 2,
+                        scaleSource: "test",
+                        finalPixelSize: CGSize(width: 20, height: 10))))
+        }
+
+        #expect(calls == [.modern, .legacy])
+        #expect(result.metadata.diagnostics?.engine == "CGWindowList")
+        #expect(result.metadata.diagnostics?.fallbackReason?.contains("ScreenCaptureKit failed") == true)
+        #expect(result.metadata.diagnostics?.finalPixelSize == CGSize(width: 20, height: 10))
     }
 }

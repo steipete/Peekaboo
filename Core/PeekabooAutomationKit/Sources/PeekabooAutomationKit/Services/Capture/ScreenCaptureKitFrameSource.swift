@@ -242,6 +242,7 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
         let key = StreamKey(displayID: display.displayID, scale: scale)
         let session = try self.session(for: display, scale: scale, key: key, correlationId: correlationId)
         try await session.start(correlationId: correlationId)
+        let scalePlan = Self.scalePlan(for: display, preference: scale)
 
         let context = FrameContext(
             displayFrame: display.frame,
@@ -288,7 +289,10 @@ final class ScreenCaptureKitFrameSource: CaptureFrameSource {
                 name: request.displayName ?? display.displayID.description,
                 bounds: request.displayBounds,
                 scaleFactor: frame.scaleFactor),
-            timestamp: frame.timestamp)
+            timestamp: frame.timestamp,
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: frame.image.width, height: frame.image.height)))
 
         return (cgImage: frame.image, metadata: metadata)
     }

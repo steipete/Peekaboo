@@ -88,6 +88,22 @@ import CoreGraphics
             frameWidth: frameWidth).scale
     }
 
+    static func diagnostics(
+        plan: Plan,
+        finalPixelSize: CGSize,
+        engine: ScreenCaptureAPI? = nil,
+        fallbackReason: String? = nil) -> CaptureDiagnostics
+    {
+        CaptureDiagnostics(
+            requestedScale: plan.preference,
+            nativeScale: plan.nativeScale,
+            outputScale: plan.outputScale,
+            scaleSource: plan.source.rawValue,
+            finalPixelSize: finalPixelSize,
+            engine: engine?.description,
+            fallbackReason: fallbackReason)
+    }
+
     private static func nativeScaleWithSource(
         screenBackingScaleFactor: CGFloat?,
         fallbackPixelWidth: Int,

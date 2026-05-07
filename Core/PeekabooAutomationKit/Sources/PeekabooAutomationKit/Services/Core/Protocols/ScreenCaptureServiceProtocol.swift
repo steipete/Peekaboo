@@ -166,6 +166,9 @@ public struct CaptureMetadata: Sendable, Codable {
     /// Timestamp of capture
     public let timestamp: Date
 
+    /// Diagnostic details for scale planning and engine selection.
+    public let diagnostics: CaptureDiagnostics?
+
     public init(
         size: CGSize,
         mode: CaptureMode,
@@ -173,7 +176,8 @@ public struct CaptureMetadata: Sendable, Codable {
         applicationInfo: ServiceApplicationInfo? = nil,
         windowInfo: ServiceWindowInfo? = nil,
         displayInfo: DisplayInfo? = nil,
-        timestamp: Date = Date())
+        timestamp: Date = Date(),
+        diagnostics: CaptureDiagnostics? = nil)
     {
         self.size = size
         self.mode = mode
@@ -182,6 +186,70 @@ public struct CaptureMetadata: Sendable, Codable {
         self.windowInfo = windowInfo
         self.displayInfo = displayInfo
         self.timestamp = timestamp
+        self.diagnostics = diagnostics
+    }
+}
+
+public struct CaptureDiagnostics: Sendable, Codable, Equatable {
+    public let requestedScale: CaptureScalePreference
+    public let nativeScale: CGFloat
+    public let outputScale: CGFloat
+    public let scaleSource: String
+    public let finalPixelSize: CGSize
+    public let engine: String?
+    public let fallbackReason: String?
+
+    public init(
+        requestedScale: CaptureScalePreference,
+        nativeScale: CGFloat,
+        outputScale: CGFloat,
+        scaleSource: String,
+        finalPixelSize: CGSize,
+        engine: String? = nil,
+        fallbackReason: String? = nil)
+    {
+        self.requestedScale = requestedScale
+        self.nativeScale = nativeScale
+        self.outputScale = outputScale
+        self.scaleSource = scaleSource
+        self.finalPixelSize = finalPixelSize
+        self.engine = engine
+        self.fallbackReason = fallbackReason
+    }
+}
+
+extension CaptureMetadata {
+    public func withDiagnostics(_ diagnostics: CaptureDiagnostics?) -> CaptureMetadata {
+        CaptureMetadata(
+            size: self.size,
+            mode: self.mode,
+            videoTimestampMs: self.videoTimestampMs,
+            applicationInfo: self.applicationInfo,
+            windowInfo: self.windowInfo,
+            displayInfo: self.displayInfo,
+            timestamp: self.timestamp,
+            diagnostics: diagnostics)
+    }
+}
+
+extension CaptureResult {
+    public func withCaptureDiagnostics(engine: String?, fallbackReason: String?) -> CaptureResult {
+        guard let diagnostics = self.metadata.diagnostics else {
+            return self
+        }
+
+        return CaptureResult(
+            imageData: self.imageData,
+            savedPath: self.savedPath,
+            metadata: self.metadata.withDiagnostics(CaptureDiagnostics(
+                requestedScale: diagnostics.requestedScale,
+                nativeScale: diagnostics.nativeScale,
+                outputScale: diagnostics.outputScale,
+                scaleSource: diagnostics.scaleSource,
+                finalPixelSize: diagnostics.finalPixelSize,
+                engine: engine ?? diagnostics.engine,
+                fallbackReason: fallbackReason ?? diagnostics.fallbackReason)),
+            warning: self.warning)
     }
 }
 

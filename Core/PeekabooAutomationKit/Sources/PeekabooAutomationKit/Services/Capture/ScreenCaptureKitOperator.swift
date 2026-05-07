@@ -201,7 +201,10 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
                 index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
                 name: targetDisplay.displayID.description,
                 bounds: targetDisplay.frame,
-                scaleFactor: scalePlan.outputScale))
+                scaleFactor: scalePlan.outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: image.width, height: image.height)))
 
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
@@ -291,7 +294,10 @@ final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
                 index: content.displays.firstIndex(where: { $0.displayID == targetDisplay.displayID }) ?? 0,
                 name: targetDisplay.displayID.description,
                 bounds: targetDisplay.frame,
-                scaleFactor: scalePlan.outputScale))
+                scaleFactor: scalePlan.outputScale),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: image.width, height: image.height)))
 
         return CaptureResult(imageData: imageData, metadata: metadata)
     }

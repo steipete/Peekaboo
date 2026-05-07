@@ -45,6 +45,7 @@
 - CLI `see` screen capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
 - CLI `see`, `image`, and `list` capture paths now avoid command-local AppKit screen/application queries and use shared services for screen inventory and app identity checks.
 - Screen capture support internals are now split into focused scale, engine fallback, application resolving, and ScreenCaptureKit gate helpers.
+- Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!

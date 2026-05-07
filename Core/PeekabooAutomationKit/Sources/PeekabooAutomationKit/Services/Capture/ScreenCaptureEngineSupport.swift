@@ -189,6 +189,58 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         throw lastError ?? OperationError.captureFailed(reason: "\(operationName) failed")
     }
 
+    @MainActor
+    @_spi(Testing) public func runCapture(
+        operationName: String,
+        logger: CategoryLogger,
+        correlationId: String,
+        apis overrideAPIs: [ScreenCaptureAPI]? = nil,
+        attempt: @escaping @MainActor @Sendable (ScreenCaptureAPI) async throws -> CaptureResult) async throws
+        -> CaptureResult
+    {
+        var fallbackReason: String?
+        var lastError: (any Error)?
+        let selectedAPIs = overrideAPIs ?? self.apis
+        precondition(!selectedAPIs.isEmpty, "At least one API must be provided")
+
+        for (index, api) in selectedAPIs.indexed() {
+            do {
+                logger.debug(
+                    "Attempting \(operationName) via \(api.description)",
+                    correlationId: correlationId)
+                let start = Date()
+                let result = try await attempt(api)
+                let duration = Date().timeIntervalSince(start)
+                logger.info(
+                    "\(operationName) succeeded via \(api.description)",
+                    metadata: [
+                        "engine": api.description,
+                        "duration": String(format: "%.2f", duration),
+                    ],
+                    correlationId: correlationId)
+                self.observer?(operationName, api, duration, true, nil)
+                return result.withCaptureDiagnostics(
+                    engine: api.description,
+                    fallbackReason: fallbackReason)
+            } catch {
+                lastError = error
+                self.observer?(operationName, api, 0, false, error)
+                let hasFallback = index < (selectedAPIs.count - 1)
+                if self.shouldFallback(after: error, api: api, hasFallback: hasFallback) {
+                    fallbackReason = "\(api.description) failed: \(String(describing: error))"
+                    logger.warning(
+                        "\(api.description) capture failed, retrying with fallback API",
+                        metadata: ["error": String(describing: error)],
+                        correlationId: correlationId)
+                    continue
+                }
+                throw error
+            }
+        }
+
+        throw lastError ?? OperationError.captureFailed(reason: "\(operationName) failed")
+    }
+
     func apis(for preference: CaptureEnginePreference) -> [ScreenCaptureAPI] {
         switch preference {
         case .auto:

@@ -74,7 +74,10 @@ final class SingleShotFrameSource: CaptureFrameSource {
                 name: request.displayName ?? display.displayID.description,
                 bounds: request.displayBounds,
                 scaleFactor: scaleFactor),
-            timestamp: Date())
+            timestamp: Date(),
+            diagnostics: ScreenCaptureScaleResolver.diagnostics(
+                plan: scalePlan,
+                finalPixelSize: CGSize(width: image.width, height: image.height)))
 
         return (cgImage: image, metadata: metadata)
     }
