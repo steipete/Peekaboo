@@ -7,8 +7,8 @@ import PeekabooFoundation
 import ObjectiveC
 #endif
 
-extension LegacyScreenCaptureOperator {
-    @_spi(Testing) public nonisolated static func privateScreenCaptureKitWindowLookupEnabled(
+@_spi(Testing) public enum PrivateScreenCaptureKitWindowLookupPolicy {
+    public nonisolated static func isEnabled(
         environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool
     {
         #if PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP
@@ -22,6 +22,22 @@ extension LegacyScreenCaptureOperator {
         }
         return true
         #endif
+    }
+
+    private nonisolated static func envFlagIsEnabled(_ value: String?) -> Bool {
+        guard let value else { return false }
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "1", "true", "yes", "y", "on":
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+extension LegacyScreenCaptureOperator {
+    nonisolated static func privateScreenCaptureKitWindowLookupEnabled() -> Bool {
+        PrivateScreenCaptureKitWindowLookupPolicy.isEnabled()
     }
 
     func captureWindowWithPrivateScreenCaptureKit(
@@ -92,16 +108,6 @@ extension LegacyScreenCaptureOperator {
         }.value
     }
     #endif
-
-    private nonisolated static func envFlagIsEnabled(_ value: String?) -> Bool {
-        guard let value else { return false }
-        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "1", "true", "yes", "y", "on":
-            return true
-        default:
-            return false
-        }
-    }
 }
 
 #if !PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP

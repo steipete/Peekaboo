@@ -42,12 +42,12 @@ struct ScreenCaptureServicePlanTests {
 
     @Test
     func `Private SCK window lookup defaults on and has runtime opt out`() {
-        #expect(LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(environment: [:]))
-        #expect(!LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+        #expect(PrivateScreenCaptureKitWindowLookupPolicy.isEnabled(environment: [:]))
+        #expect(!PrivateScreenCaptureKitWindowLookupPolicy.isEnabled(
             environment: ["PEEKABOO_DISABLE_PRIVATE_SCK_WINDOW_LOOKUP": "1"]))
-        #expect(!LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+        #expect(!PrivateScreenCaptureKitWindowLookupPolicy.isEnabled(
             environment: ["PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP": "false"]))
-        #expect(LegacyScreenCaptureOperator.privateScreenCaptureKitWindowLookupEnabled(
+        #expect(PrivateScreenCaptureKitWindowLookupPolicy.isEnabled(
             environment: ["PEEKABOO_USE_PRIVATE_SCK_WINDOW_LOOKUP": "yes"]))
     }
 
