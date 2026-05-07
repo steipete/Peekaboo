@@ -73,6 +73,7 @@
 - MCP image capture now separates tool entrypoint, capture orchestration, and request/format types into focused files.
 - MCP list output now keeps parsing and formatting helpers in a focused companion file.
 - MCP type tooling now keeps request/target types and response/action formatting in focused companions while `TypeTool` owns schema, validation, and execution flow.
+- MCP move tooling now keeps coordinate parsing, target resolution/movement execution, response formatting, and request/result types in focused companions.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
 - Exact `--window-id` observation metadata now resolves through a dedicated window metadata catalog instead of doing CoreGraphics lookup inside target-resolution orchestration.
