@@ -92,6 +92,7 @@
 - `peekaboo capture video` now lives in its own command file, leaving live capture and the watch alias in the primary capture command file.
 - `peekaboo agent permission` status and request flows now live in focused companion files instead of one oversized command implementation.
 - `peekaboo agent permission ...` now resolves as nested permission subcommands before the agent free-form task argument.
+- Interactive agent chat UI, input components, and event translation now live in focused companion files instead of one oversized TUI implementation.
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.

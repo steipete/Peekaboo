@@ -5,95 +5,7 @@
 
 import Foundation
 import PeekabooAgentRuntime
-import Tachikoma
 import TauTUI
-
-/// Minimal loader component to keep chat rendering responsive without pulling in full spinner logic.
-@MainActor
-private final class Loader: Component {
-    private var message: String
-
-    init(tui: TUI, message: String) {
-        self.message = message
-    }
-
-    func setMessage(_ message: String) {
-        self.message = message
-    }
-
-    func stop() {}
-
-    func render(width: Int) -> [String] {
-        ["\(self.message)"]
-    }
-}
-
-// MARK: - Input
-
-@MainActor
-final class AgentChatInput: Component {
-    private let editor = Editor()
-
-    var onSubmit: ((String) -> Void)?
-    var onCancel: (() -> Void)?
-    var onInterrupt: (() -> Void)?
-    var onQueueWhileLocked: (() -> Void)?
-
-    var isLocked: Bool = false {
-        didSet {
-            if !self.isLocked {
-                self.editor.disableSubmit = false
-            }
-        }
-    }
-
-    init() {
-        self.editor.onSubmit = { [weak self] value in
-            self?.onSubmit?(value)
-        }
-    }
-
-    func render(width: Int) -> [String] {
-        self.editor.render(width: width)
-    }
-
-    func handle(input: TerminalInput) {
-        switch input {
-        case let .key(.character(char), modifiers):
-            if modifiers.contains(.control) {
-                let lower = String(char).lowercased()
-                if lower == "c" || lower == "d" {
-                    self.onInterrupt?()
-                    return
-                }
-            }
-        case .key(.escape, _):
-            if self.isLocked {
-                self.onCancel?()
-                return
-            }
-        case .key(.end, _):
-            if self.isLocked {
-                self.onQueueWhileLocked?()
-                return
-            }
-        default:
-            break
-        }
-
-        self.editor.handle(input: input)
-    }
-
-    func clear() {
-        self.editor.setText("")
-    }
-
-    func currentText() -> String {
-        self.editor.getText()
-    }
-}
-
-// MARK: - TauTUI Chat UI
 
 @MainActor
 final class AgentChatUI {
@@ -117,7 +29,7 @@ final class AgentChatUI {
     private let thinkingGray = AnsiStyling.color(246)
 
     private var promptContinuation: AsyncStream<String>.Continuation?
-    private var loader: Loader?
+    private var loader: AgentChatLoader?
     private var assistantBuffer = ""
     private var assistantComponent: MarkdownComponent?
     private var thinkingBlocks: [MarkdownComponent] = []
@@ -193,7 +105,7 @@ final class AgentChatUI {
     func beginRun(prompt: String) {
         self.setRunning(true)
         self.removeLoader()
-        self.loader = Loader(tui: self.tui, message: "Running…")
+        self.loader = AgentChatLoader(tui: self.tui, message: "Running…")
         if let loader {
             self.messages.addChild(loader)
         }
@@ -424,168 +336,5 @@ final class AgentChatUI {
         let base = sessionId.map { "Session: \($0)" } ?? "Session: new (will be created on first run)"
         let mode = queueMode == .all ? "queue: all" : "queue: one-at-a-time"
         return "\(base) • \(mode)"
-    }
-}
-
-// MARK: - Event delegate
-
-@MainActor
-final class AgentChatEventDelegate: AgentEventDelegate {
-    private weak var ui: AgentChatUI?
-    private var lastToolArguments: [String: [String: Any]] = [:]
-
-    init(ui: AgentChatUI) {
-        self.ui = ui
-    }
-
-    func agentDidEmitEvent(_ event: AgentEvent) {
-        guard let ui else { return }
-        switch event {
-        case .started:
-            break
-        case let .assistantMessage(content):
-            ui.appendAssistant(content)
-        case let .thinkingMessage(content):
-            ui.updateThinking(content)
-        case let .toolCallStarted(name, arguments):
-            let args = self.parseArguments(arguments)
-            self.lastToolArguments[name] = args
-            let formatter = self.toolFormatter(for: name)
-            let toolType = ToolType(rawValue: name)
-            let summary = formatter?.formatStarting(arguments: args) ??
-                name.replacingOccurrences(of: "_", with: " ")
-            ui.showToolStart(
-                name: name,
-                summary: summary,
-                icon: toolType?.icon,
-                displayName: toolType?.displayName
-            )
-        case let .toolCallCompleted(name, result):
-            let summary = self.toolResultSummary(name: name, result: result)
-            let success = self.successFlag(from: result)
-            let toolType = ToolType(rawValue: name)
-            ui.showToolCompletion(
-                name: name,
-                success: success,
-                summary: summary,
-                icon: toolType?.icon,
-                displayName: toolType?.displayName
-            )
-        case let .toolCallUpdated(name, arguments):
-            let args = self.parseArguments(arguments)
-            if let previous = self.lastToolArguments[name], self.dictionariesEqual(previous, args) {
-                break // skip no-op updates
-            }
-            let formatter = self.toolFormatter(for: name)
-            let toolType = ToolType(rawValue: name)
-            let summary = self.diffSummary(for: name, newArgs: args)
-                ?? formatter?.formatStarting(arguments: args)
-                ?? name.replacingOccurrences(of: "_", with: " ")
-            ui.showToolUpdate(
-                name: name,
-                summary: summary,
-                icon: toolType?.icon,
-                displayName: toolType?.displayName
-            )
-            self.lastToolArguments[name] = args
-        case let .error(message):
-            ui.showError(message)
-        case .completed:
-            ui.finishStreaming()
-        case .queueDrained:
-            break
-        }
-    }
-
-    private func toolFormatter(for name: String) -> (any ToolFormatter)? {
-        if let type = ToolType(rawValue: name) {
-            return ToolFormatterRegistry.shared.formatter(for: type)
-        }
-        return nil
-    }
-
-    private func parseArguments(_ jsonString: String) -> [String: Any] {
-        guard let data = jsonString.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return [:]
-        }
-        return json
-    }
-
-    private func parseResult(_ jsonString: String) -> [String: Any]? {
-        guard let data = jsonString.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
-        }
-        return json
-    }
-
-    private func toolResultSummary(name: String, result: String) -> String? {
-        guard let json = self.parseResult(result) else { return nil }
-        if let summary = ToolEventSummary.from(resultJSON: json)?.shortDescription(toolName: name) {
-            return summary
-        }
-        let formatter = self.toolFormatter(for: name)
-        return formatter?.formatResultSummary(result: json)
-    }
-
-    private func successFlag(from result: String) -> Bool {
-        guard let json = self.parseResult(result) else { return true }
-        return (json["success"] as? Bool) ?? true
-    }
-
-    /// Minimal diff between previous and new args for the same tool name.
-    private func diffSummary(for toolName: String, newArgs: [String: Any]) -> String? {
-        guard let previous = self.lastToolArguments[toolName] else { return nil }
-
-        var changes: [String] = []
-        for (key, newValue) in newArgs {
-            guard let prevValue = previous[key] else {
-                changes.append("+\(key)")
-                continue
-            }
-            if !self.valuesEqual(prevValue, newValue) {
-                let rendered = self.renderValue(newValue)
-                changes.append("\(key): \(rendered)")
-            }
-            if changes.count >= 3 { break }
-        }
-
-        if changes.isEmpty { return nil }
-        return changes.joined(separator: ", ")
-    }
-
-    private func valuesEqual(_ lhs: Any, _ rhs: Any) -> Bool {
-        switch (lhs, rhs) {
-        case let (l as String, r as String): l == r
-        case let (l as Int, r as Int): l == r
-        case let (l as Double, r as Double): l == r
-        case let (l as Bool, r as Bool): l == r
-        default: false
-        }
-    }
-
-    private func dictionariesEqual(_ lhs: [String: Any], _ rhs: [String: Any]) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        for (key, lval) in lhs {
-            guard let rval = rhs[key], self.valuesEqual(lval, rval) else { return false }
-        }
-        return true
-    }
-
-    private func renderValue(_ value: Any) -> String {
-        switch value {
-        case let str as String:
-            let max = 32
-            if str.count > max {
-                let idx = str.index(str.startIndex, offsetBy: max)
-                return String(str[..<idx]) + "…"
-            }
-            return str
-        case let num as Int: return String(num)
-        case let num as Double: return String(format: "%.3f", num)
-        case let bool as Bool: return bool ? "true" : "false"
-        default: return "…"
-        }
     }
 }
