@@ -66,10 +66,10 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
 
         let appIdentifier = try self.resolveApplicationIdentifier()
 
-        if let index = windowIndex {
-            return .index(app: appIdentifier, index: index)
-        } else if let title = self.windowTitle {
+        if let title = self.windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
             return .applicationAndTitle(app: appIdentifier, title: title)
+        } else if let index = windowIndex {
+            return .index(app: appIdentifier, index: index)
         } else {
             // Default to app's frontmost window
             return .application(appIdentifier)

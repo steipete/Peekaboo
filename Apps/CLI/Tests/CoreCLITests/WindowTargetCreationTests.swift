@@ -4,12 +4,12 @@ import Testing
 
 struct WindowTargetCreationTests {
     @Test
-    func `app + windowTitle creates .applicationAndTitle`() {
+    func `app + windowTitle creates .applicationAndTitle`() throws {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
         options.windowTitle = "GitHub"
 
-        switch options.createTarget() {
+        switch try options.createTarget() {
         case let .applicationAndTitle(app, title):
             #expect(app == "Safari")
             #expect(title == "GitHub")
@@ -19,12 +19,12 @@ struct WindowTargetCreationTests {
     }
 
     @Test
-    func `app + windowIndex creates .index`() {
+    func `app + windowIndex creates .index`() throws {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
         options.windowIndex = 0
 
-        switch options.createTarget() {
+        switch try options.createTarget() {
         case let .index(app, index):
             #expect(app == "Safari")
             #expect(index == 0)
@@ -34,11 +34,11 @@ struct WindowTargetCreationTests {
     }
 
     @Test
-    func `app only creates .application`() {
+    func `app only creates .application`() throws {
         var options = WindowIdentificationOptions()
         options.app = "Safari"
 
-        switch options.createTarget() {
+        switch try options.createTarget() {
         case let .application(app):
             #expect(app == "Safari")
         default:
@@ -47,15 +47,44 @@ struct WindowTargetCreationTests {
     }
 
     @Test
-    func `windowId creates .windowId`() {
+    func `windowId creates .windowId`() throws {
         var options = WindowIdentificationOptions()
         options.windowId = 12345
 
-        switch options.createTarget() {
+        switch try options.createTarget() {
         case let .windowId(id):
             #expect(id == 12345)
         default:
             Issue.record("Expected .windowId")
+        }
+    }
+
+    @Test
+    func `app window target prefers title over index`() throws {
+        var options = WindowIdentificationOptions()
+        options.app = "Safari"
+        options.windowTitle = "GitHub"
+        options.windowIndex = 2
+
+        switch try options.toWindowTarget() {
+        case let .applicationAndTitle(app, title):
+            #expect(app == "Safari")
+            #expect(title == "GitHub")
+        default:
+            Issue.record("Expected .applicationAndTitle")
+        }
+    }
+
+    @Test
+    func `createTarget supports pid targets`() throws {
+        var options = WindowIdentificationOptions()
+        options.pid = 12345
+
+        switch try options.createTarget() {
+        case let .application(app):
+            #expect(app == "PID:12345")
+        default:
+            Issue.record("Expected PID application target")
         }
     }
 

@@ -182,6 +182,7 @@
 - `peekaboo capture live --window-title/--window-index` now resolves explicit app-window selections to stable window IDs before the watch capture loop starts.
 - MCP `capture` now honors `window_title`, resolves explicit title/index window selections to stable window IDs, and rejects ambiguous `window_index` without an app or PID.
 - Element-targeted CLI and MCP interaction commands now apply title-over-index precedence when both window selectors are provided.
+- Window management commands now use one resolver for listing, refetching, and mutating windows, so `--pid` targets and title/index precedence stay consistent across close/minimize/maximize/move/resize/focus.
 - `peekaboo image --app ...` now reports `WINDOW_NOT_FOUND` when all known app windows are hidden or non-shareable instead of falling back to a generic app capture.
 - `peekaboo image --window-id ...` now reports the resolved window identity instead of leaking ScreenCaptureKit's internal helper-window ordering into `window_index`.
 - Direct element detection callers now use a real racing timeout instead of creating an unobserved timeout task.

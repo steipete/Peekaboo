@@ -61,7 +61,7 @@ extension WindowCommand {
                 let hasWindowTarget = self.windowOptions.app != nil ||
                     self.windowOptions.pid != nil ||
                     self.windowOptions.windowId != nil
-                let target = hasWindowTarget ? self.windowOptions.createTarget() : nil
+                let target = hasWindowTarget ? try self.windowOptions.createTarget() : nil
                 if let target {
                     self.logger.debug("Target created: \(target)")
                 }

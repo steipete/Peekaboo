@@ -49,7 +49,7 @@ extension WindowCommand {
 
             do {
                 try self.windowOptions.validate()
-                let target = self.windowOptions.createTarget()
+                let target = try self.windowOptions.createTarget()
                 let appInfo = try await self.windowOptions.resolveApplicationInfoIfNeeded(services: self.services)
 
                 // Get window info
@@ -163,7 +163,7 @@ extension WindowCommand {
 
             do {
                 try self.windowOptions.validate()
-                let target = self.windowOptions.createTarget()
+                let target = try self.windowOptions.createTarget()
                 let appInfo = try await self.windowOptions.resolveApplicationInfoIfNeeded(services: self.services)
 
                 // Get window info
@@ -267,7 +267,7 @@ extension WindowCommand {
 
             do {
                 try self.windowOptions.validate()
-                let target = self.windowOptions.createTarget()
+                let target = try self.windowOptions.createTarget()
                 let appInfo = try await self.windowOptions.resolveApplicationInfoIfNeeded(services: self.services)
 
                 // Get window info

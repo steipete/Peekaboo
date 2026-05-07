@@ -36,20 +36,8 @@ func withTimeout<T: Sendable>(
 
 extension WindowIdentificationOptions {
     /// Create a window target from options
-    func createTarget() -> WindowTarget {
-        if let windowId {
-            return .windowId(windowId)
-        }
-        if let app {
-            if let index = windowIndex {
-                return .index(app: app, index: index)
-            } else if let title = windowTitle {
-                return .applicationAndTitle(app: app, title: title)
-            } else {
-                return .application(app)
-            }
-        }
-        return .frontmost
+    func createTarget() throws -> WindowTarget {
+        try self.toWindowTarget()
     }
 
     /// Select a window from a list based on options
