@@ -212,6 +212,8 @@ Apps/CLI/.generated/
 Commander/Commander.tar.gz
 
 # Test images and screenshots
+Core/PeekabooCore/..png
+Core/PeekabooCore/..png_annotated.png
 *_screenshot.png
 *_Screenshot_*.png
 Calculator_*.png
