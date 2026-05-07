@@ -49,6 +49,7 @@
 - Screen capture orchestration now keeps public protocol witnesses in `ScreenCaptureService`, with operation gating/metrics and capture execution paths split into focused companions.
 - ScreenCaptureKit capture execution now separates display/area capture, window capture, and shared frame-source support into focused operator companions.
 - Watch capture sessions now separate lifecycle/result assembly from capture-loop cadence/diffing and frame/video persistence helpers.
+- Application window listing now isolates hybrid CGWindowList/AX enumeration policy in a dedicated context object.
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.

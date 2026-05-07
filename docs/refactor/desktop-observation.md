@@ -69,6 +69,7 @@ Landed:
 - Screen capture operation gating/metrics and capture execution orchestration are split out of the primary `ScreenCaptureService`.
 - ScreenCaptureKit display/area capture, window capture, and shared frame-source support are split out of the primary operator.
 - Watch capture lifecycle, loop/diff cadence, and frame/video persistence are split across focused session companions.
+- Application window listing keeps service facade/output assembly separate from hybrid CGWindowList/AX enumeration policy.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -320,7 +321,8 @@ ProcessService+ParameterParsing.swift: 197 lines
 ApplicationService.swift: 72 lines
 ApplicationService+Discovery.swift: 246 lines
 ApplicationService+Lifecycle.swift: 385 lines
-ApplicationService+WindowListing.swift: 470 lines
+ApplicationService+WindowListing.swift: 197 lines
+ApplicationWindowEnumerationContext.swift: 278 lines
 ApplicationServiceWindowsWorkaround.swift: 198 lines
 UIAutomationService.swift: 458 lines
 UIAutomationService+Operations.swift: 430 lines
