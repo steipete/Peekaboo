@@ -135,6 +135,39 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo config errors emit standard JSON envelope`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo([
+            "config",
+            "add-provider",
+            "bad id",
+            "--type",
+            "openai",
+            "--name",
+            "Bad",
+            "--base-url",
+            "https://example.com",
+            "--api-key",
+            "dummy",
+            "--json",
+            "--no-remote",
+        ])
+        #expect(result.status == .exited(1))
+
+        let data = Data(result.standardOutput.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              let error = json["error"] as? [String: Any] else {
+            Issue.record("Expected JSON object output from config error.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == false)
+        #expect(error["code"] as? String == "INVALID_ID")
+        #expect(json["debug_logs"] is [Any])
+    }
+
+    @Test
     func `peekaboo list menubar emits standard JSON envelope`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["list", "menubar", "--json", "--no-remote"])

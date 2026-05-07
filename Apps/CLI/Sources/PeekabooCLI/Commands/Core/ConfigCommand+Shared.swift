@@ -123,6 +123,10 @@ struct SuccessOutput: Encodable {
         self.debugLogs = debugLogs
     }
 
+    func withDebugLogs(_ debugLogs: [String]) -> Self {
+        Self(success: self.success, data: self.data, debugLogs: debugLogs)
+    }
+
     enum CodingKeys: String, CodingKey {
         case success, data
         case debugLogs = "debug_logs"
@@ -137,7 +141,31 @@ struct SuccessOutput: Encodable {
 }
 
 struct ErrorOutput: Encodable {
-    let error: Bool
+    let success = false
+    let error: ConfigErrorInfo
+    let debugLogs: [String]
+
+    init(error _: Bool = true, code: String, message: String, details: String?, debugLogs: [String] = []) {
+        self.error = ConfigErrorInfo(code: code, message: message, details: details)
+        self.debugLogs = debugLogs
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case success, error
+        case debugLogs = "debug_logs"
+    }
+
+    func withDebugLogs(_ debugLogs: [String]) -> Self {
+        Self(
+            code: self.error.code,
+            message: self.error.message,
+            details: self.error.details,
+            debugLogs: debugLogs
+        )
+    }
+}
+
+struct ConfigErrorInfo: Encodable {
     let code: String
     let message: String
     let details: String?
@@ -183,7 +211,19 @@ struct JSONValue: Encodable {
     }
 }
 
+func outputJSON(_ value: SuccessOutput, logger: Logger) {
+    writeConfigJSON(value.withDebugLogs(logger.getDebugLogs()), logger: logger)
+}
+
+func outputJSON(_ value: ErrorOutput, logger: Logger) {
+    writeConfigJSON(value.withDebugLogs(logger.getDebugLogs()), logger: logger)
+}
+
 func outputJSON(_ value: some Encodable, logger: Logger) {
+    writeConfigJSON(value, logger: logger)
+}
+
+private func writeConfigJSON(_ value: some Encodable, logger: Logger) {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     do {
