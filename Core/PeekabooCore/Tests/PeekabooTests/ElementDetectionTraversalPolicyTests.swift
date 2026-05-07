@@ -1,12 +1,11 @@
-import Testing
 @_spi(Testing) import PeekabooAutomationKit
+import Testing
 
-@MainActor
 @Suite(.tags(.fast))
 struct ElementDetectionTraversalPolicyTests {
     @Test
     func `Sparse tree may attempt web focus fallback`() {
-        #expect(ElementDetectionService.shouldAttemptWebFocusFallback(
+        #expect(AXTraversalPolicy.shouldAttemptWebFocusFallback(
             attempt: 0,
             allowWebFocus: true,
             detectedElementCount: 20,
@@ -15,7 +14,7 @@ struct ElementDetectionTraversalPolicyTests {
 
     @Test
     func `Rich native tree skips web focus fallback`() {
-        #expect(!ElementDetectionService.shouldAttemptWebFocusFallback(
+        #expect(!AXTraversalPolicy.shouldAttemptWebFocusFallback(
             attempt: 0,
             allowWebFocus: true,
             detectedElementCount: 21,
@@ -24,7 +23,7 @@ struct ElementDetectionTraversalPolicyTests {
 
     @Test
     func `Visible text field skips web focus fallback`() {
-        #expect(!ElementDetectionService.shouldAttemptWebFocusFallback(
+        #expect(!AXTraversalPolicy.shouldAttemptWebFocusFallback(
             attempt: 0,
             allowWebFocus: true,
             detectedElementCount: 3,
@@ -33,7 +32,7 @@ struct ElementDetectionTraversalPolicyTests {
 
     @Test
     func `Disabled web focus skips fallback`() {
-        #expect(!ElementDetectionService.shouldAttemptWebFocusFallback(
+        #expect(!AXTraversalPolicy.shouldAttemptWebFocusFallback(
             attempt: 0,
             allowWebFocus: false,
             detectedElementCount: 3,
@@ -42,7 +41,7 @@ struct ElementDetectionTraversalPolicyTests {
 
     @Test
     func `Attempt limit skips fallback`() {
-        #expect(!ElementDetectionService.shouldAttemptWebFocusFallback(
+        #expect(!AXTraversalPolicy.shouldAttemptWebFocusFallback(
             attempt: 2,
             allowWebFocus: true,
             detectedElementCount: 3,

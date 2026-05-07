@@ -222,11 +222,6 @@ extension ElementDetectionService {
         "axsearchfield",
         "axsecuretextfield",
     ]
-    private static let maxTraversalDepth = 12
-    private static let maxElementCount = 400
-    private static let maxChildrenPerNode = 50
-    private static let maxWebFocusAttempts = 2
-    private static let maxElementsBeforeWebFocusFallback = 20
     private static let actionableRoles: Set<String> = [
         "axbutton", "axpopupbutton", "axtextfield", "axlink", "axweblink",
         "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
@@ -254,20 +249,6 @@ extension ElementDetectionService {
         AXAttributeNames.kAXEnabledAttribute,
         AXAttributeNames.kAXPlaceholderValueAttribute,
     ]
-
-    @_spi(Testing)
-    public static func shouldAttemptWebFocusFallback(
-        attempt: Int,
-        allowWebFocus: Bool,
-        detectedElementCount: Int,
-        hasTextField: Bool) -> Bool
-    {
-        guard !hasTextField else { return false }
-
-        return attempt < self.maxWebFocusAttempts
-            && allowWebFocus
-            && detectedElementCount <= self.maxElementsBeforeWebFocusFallback
-    }
 
     // MARK: - Helper Methods
 
@@ -650,7 +631,7 @@ extension ElementDetectionService {
 
             // Web focus fallback walks the AX tree looking for AXWebArea. Only pay that cost when
             // the first pass is sparse enough to suggest hidden Chromium/Tauri content.
-            guard Self.shouldAttemptWebFocusFallback(
+            guard AXTraversalPolicy.shouldAttemptWebFocusFallback(
                 attempt: attempt,
                 allowWebFocus: allowWebFocus,
                 detectedElementCount: detectedElements.count,
@@ -675,10 +656,10 @@ extension ElementDetectionService {
         elementIdMap: inout [String: DetectedElement],
         visitedElements: inout Set<Element>)
     {
-        guard depth < Self.maxTraversalDepth else { return }
+        guard depth < AXTraversalPolicy.maxTraversalDepth else { return }
         guard !Task.isCancelled else { return }
         guard Date() < deadline else { return }
-        guard detectedElements.count < Self.maxElementCount else { return }
+        guard detectedElements.count < AXTraversalPolicy.maxElementCount else { return }
         guard visitedElements.insert(element).inserted else { return }
         guard let descriptor = self.describeElement(element) else { return }
 
@@ -839,9 +820,9 @@ extension ElementDetectionService {
     {
         guard !Task.isCancelled else { return }
         guard let children = element.children() else { return }
-        let limitedChildren = children.prefix(Self.maxChildrenPerNode)
+        let limitedChildren = children.prefix(AXTraversalPolicy.maxChildrenPerNode)
         for child in limitedChildren {
-            guard detectedElements.count < Self.maxElementCount else { break }
+            guard detectedElements.count < AXTraversalPolicy.maxElementCount else { break }
             self.processElement(
                 child,
                 depth: depth,

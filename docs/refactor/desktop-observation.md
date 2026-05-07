@@ -45,6 +45,7 @@ Landed:
 - Observation detection timeout budget is being enforced in the facade.
 - Screen capture scale planning is now centralized and unit-tested for logical 1x versus native Retina output.
 - Direct `ElementDetectionService` timeout racing is now enforced by `ElementDetectionTimeoutRunner`.
+- AX traversal limits and sparse-web fallback thresholds now live in `AXTraversalPolicy`.
 
 Still intentionally incomplete:
 
