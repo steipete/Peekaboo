@@ -72,6 +72,7 @@ Landed:
 - Application window listing keeps service facade/output assembly separate from hybrid CGWindowList/AX enumeration policy.
 - Capture models now keep image primitives, live session options, frame metadata, and session-result summaries in focused files.
 - UI automation keeps service initialization, delegated operations, focus/wait lookup, and search-policy limits in focused files.
+- Space management keeps managed-display Space mapping helpers in a focused companion file.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -180,7 +181,7 @@ Landed:
 - `WindowToolFormatter` now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
 - Agent tool formatting now routes Dock, shell/wait, and clipboard tools through dedicated formatters, with menu/dialog rendering split into focused companion files.
 - `UIAutomationToolFormatter` now keeps pointer and keyboard result rendering in focused companion files, and `move`/`drag`/`swipe` summaries use current pointer metadata instead of blank base summaries.
-- `SpaceUtilities` now keeps private CGS API declarations and public Space models/errors in focused files.
+- `SpaceUtilities` now keeps private CGS API declarations, managed-display mapping, and public Space models/errors in focused files.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
 - `TypeService` now keeps target resolution, typing cadence, and special-key synthesis in focused helper files; special-key synthesis now honors the documented `SpecialKey` raw values for keypad Enter, forward delete, caps lock, clear, and help.
@@ -363,7 +364,8 @@ PeekabooServices+Automation.swift: 136 lines
 WindowToolFormatter.swift: 128 lines
 WindowToolFormatter+WindowResults.swift: 379 lines
 WindowToolFormatter+SpaceResults.swift: 129 lines
-SpaceUtilities.swift: 443 lines
+SpaceUtilities.swift: 372 lines
+SpaceManagementService+DisplayMapping.swift: 73 lines
 SpaceCGSPrivateAPI.swift: 121 lines
 SpaceModels.swift: 68 lines
 SpaceTool.swift: 196 lines
