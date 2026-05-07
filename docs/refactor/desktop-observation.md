@@ -165,7 +165,7 @@ Landed:
 - UI automation orchestration now keeps delegated detection, click, typing, scroll, hotkey, and gesture operations in `UIAutomationService+Operations`; the primary file keeps initialization, focus, and AX wait/search behavior.
 - Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in `SnapshotManager+Helpers`.
-- Agent service orchestration now keeps execution loops, session lifecycle wrappers, and toolset assembly in focused companion files.
+- Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, and toolset assembly in focused companion files; tool-call argument previews now have tested sensitive-value redaction.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - `PeekabooServices` now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
