@@ -79,6 +79,8 @@
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.
 - Type actions now synthesize `enter`, `forward_delete`, `caps_lock`, `clear`, and `help` with their documented key codes instead of collapsing or rejecting them.
 - Type service internals now keep target resolution, typing cadence, and special-key synthesis in focused helper files.
+- In-memory snapshots now enforce the configured LRU limit immediately after writes and delete pruned artifacts when cleanup is enabled.
+- In-memory snapshot management now keeps lifecycle, screenshot access, pruning, and detection mapping in focused helper files.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
