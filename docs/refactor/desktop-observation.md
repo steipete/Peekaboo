@@ -1411,6 +1411,45 @@ Results:
 - read-only command wall times were `115-235ms` on this host, except `dialog list` returned the expected structured no-dialog error in `164ms`;
 - `image --app frontmost` captured successfully in `565ms`; `see --app frontmost` captured and detected successfully in `847ms`.
 
+Live verification after service split cleanup, May 7, 2026:
+
+```bash
+./Apps/CLI/.build/debug/peekaboo permissions status --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list apps --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list screens --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app TextEdit --json --no-remote
+./Apps/CLI/.build/debug/peekaboo list windows --app "Google Chrome" --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13441 --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app TextEdit --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13441 --retina --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-retina.png --json --no-remote
+screencapture -l 13441 -o -x .artifacts/live-e2e/2026-05-07T174032Z/textedit-native.png
+./Apps/CLI/.build/debug/peekaboo see --window-id 13441 --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-see-window.png --annotate --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app TextEdit --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-see-app.png --annotate --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13977 --path .artifacts/live-e2e/2026-05-07T174032Z/chrome-window.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T174032Z/chrome-app.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13977 --retina --path .artifacts/live-e2e/2026-05-07T174032Z/chrome-retina.png --json --no-remote
+screencapture -l 13977 -o -x .artifacts/live-e2e/2026-05-07T174032Z/chrome-native.png
+./Apps/CLI/.build/debug/peekaboo see --window-id 13977 --path .artifacts/live-e2e/2026-05-07T174032Z/chrome-see-window.png --annotate --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --app "Google Chrome" --path .artifacts/live-e2e/2026-05-07T174032Z/chrome-see-app.png --annotate --json --no-remote
+./Apps/CLI/.build/debug/peekaboo click --coords 536,293 --no-auto-focus --json --no-remote
+./Apps/CLI/.build/debug/peekaboo type PEEKABOO_E2E_174150 --clear --app TextEdit --delay 0 --profile linear --json --no-remote
+./Apps/CLI/.build/debug/peekaboo image --window-id 13983 --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-controlled-after.png --json --no-remote
+./Apps/CLI/.build/debug/peekaboo see --window-id 13983 --path .artifacts/live-e2e/2026-05-07T174032Z/textedit-controlled-see-after.png --annotate --json --no-remote
+```
+
+Results:
+
+- permissions granted and standard JSON envelopes returned for permissions, apps, and screens;
+- TextEdit `image --window-id` completed in `0.43s`; `image --app` selected the same real `656x422` titled window in `0.53s`;
+- TextEdit `--retina` and native `screencapture -l` both produced `656x422` on this 1x host, so the flag path still matches native capture dimensions here;
+- TextEdit `see --window-id` completed in `0.48s` with spans `capture.window=163ms`, `detection.ax=64ms`, `annotation.render=22ms`; `see --app` completed in `0.62s` against the same window ID;
+- Chrome `image --window-id` completed in `0.39s`; `image --app` selected the same real `1672x1297` titled browser window in `0.63s`, not the auxiliary `3008x30` or `1x1` helper windows;
+- Chrome `--retina` and native `screencapture -l` both produced `1672x1297` on this 1x host;
+- Chrome `see --window-id` completed in `1.56s` with `546` elements and `436` interactables; `see --app` completed in `1.66s` against the same window ID with `547` elements and `436` interactables;
+- controlled TextEdit interaction used a temp document under the artifact directory, clicked inside the document in `0.16s`, typed `PEEKABOO_E2E_174150` in `0.55s`, and recaptured the marker in a `656x422` screenshot;
+- follow-up `see` on the controlled TextEdit window completed in `0.93s`, found the marker in JSON, and reported `395` elements / `303` interactables;
+- screenshots were inspected with local image vision: TextEdit marker visible, Chrome annotated screenshot nonblank with labels aligned to visible UI.
+
 ### Performance Budgets
 
 Budgets are manual benchmark targets, not flaky unit-test thresholds.
