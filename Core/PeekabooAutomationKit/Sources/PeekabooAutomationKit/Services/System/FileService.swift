@@ -219,7 +219,8 @@ public final class FileService: FileServiceProtocol {
             throw PeekabooError.fileIOError("Invalid characters in file path: \(path)")
         }
 
-        let url = URL(fileURLWithPath: path)
+        let resolvedPath = PathResolver.expandPath(path)
+        let url = URL(fileURLWithPath: resolvedPath)
 
         // Create parent directory if it doesn't exist
         let directory = url.deletingLastPathComponent()
@@ -229,7 +230,7 @@ public final class FileService: FileServiceProtocol {
                 withIntermediateDirectories: true,
                 attributes: nil)
         } catch {
-            throw error.asPeekabooError(context: "Failed to create directory for file: \(path)")
+            throw error.asPeekabooError(context: "Failed to create directory for file: \(resolvedPath)")
         }
 
         let utType: UTType = format == .png ? .png : .jpeg
@@ -241,9 +242,9 @@ public final class FileService: FileServiceProtocol {
         else {
             // Try to create a more specific error for common cases
             if !FileManager.default.isWritableFile(atPath: directory.path) {
-                throw PeekabooError.fileIOError("Permission denied writing to: \(path)")
+                throw PeekabooError.fileIOError("Permission denied writing to: \(resolvedPath)")
             }
-            throw PeekabooError.fileIOError("Failed to create image destination for: \(path)")
+            throw PeekabooError.fileIOError("Failed to create image destination for: \(resolvedPath)")
         }
 
         // Set compression quality for JPEG images (1.0 = highest quality)
@@ -256,7 +257,7 @@ public final class FileService: FileServiceProtocol {
         CGImageDestinationAddImage(destination, image, properties)
 
         guard CGImageDestinationFinalize(destination) else {
-            throw PeekabooError.fileIOError("Failed to finalize image write to: \(path)")
+            throw PeekabooError.fileIOError("Failed to finalize image write to: \(resolvedPath)")
         }
     }
 }
