@@ -293,6 +293,60 @@ struct WindowCommandTests {
         #expect(bounds.height == Int(updatedSize.height))
     }
 
+    @Test
+    func `window move accepts window id without app`() async throws {
+        let appName = "TextEdit"
+        let windowID = 303
+        let initialBounds = CGRect(x: 50, y: 60, width: 200, height: 150)
+        let updatedOrigin = CGPoint(x: 300, y: 320)
+
+        let context = await MainActor.run {
+            self.makeWindowContext(
+                appInfo: ServiceApplicationInfo(
+                    processIdentifier: 99,
+                    bundleIdentifier: "com.apple.TextEdit",
+                    name: appName
+                ),
+                windows: [
+                    appName: [
+                        ServiceWindowInfo(
+                            windowID: windowID,
+                            title: "Draft",
+                            bounds: initialBounds,
+                            isMinimized: false,
+                            isMainWindow: true,
+                            windowLevel: 0,
+                            alpha: 1.0,
+                            index: 0
+                        ),
+                    ],
+                ]
+            )
+        }
+
+        let result = try await self.runWindowCommand([
+            "window", "move",
+            "--window-id", "\(windowID)",
+            "--x", String(Int(updatedOrigin.x)),
+            "--y", String(Int(updatedOrigin.y)),
+            "--json",
+        ], context: context)
+
+        #expect(result.exitStatus == 0)
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(
+            CodableJSONResponse<WindowActionResult>.self,
+            from: Data(output.utf8)
+        )
+
+        #expect(response.success == true)
+        let bounds = try #require(response.data.new_bounds)
+        #expect(bounds.x == Int(updatedOrigin.x))
+        #expect(bounds.y == Int(updatedOrigin.y))
+        #expect(bounds.width == Int(initialBounds.width))
+        #expect(bounds.height == Int(initialBounds.height))
+    }
+
     /// Helper function to run peekaboo commands
     private func runPeekabooCommand(
         _ arguments: [String],
