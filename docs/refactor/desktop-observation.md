@@ -163,6 +163,7 @@ Landed:
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps delegated detection, click, typing, scroll, hotkey, and gesture operations in `UIAutomationService+Operations`; the primary file keeps initialization, focus, and AX wait/search behavior.
+- Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -292,6 +293,10 @@ ApplicationService+WindowListing.swift: 470 lines
 ApplicationServiceWindowsWorkaround.swift: 198 lines
 UIAutomationService.swift: 458 lines
 UIAutomationService+Operations.swift: 430 lines
+VisualizerCoordinator.swift: 204 lines
+VisualizerCoordinator+AnimationAPI.swift: 200 lines
+VisualizerCoordinator+InputDisplays.swift: 286 lines
+VisualizerCoordinator+SystemDisplays.swift: 277 lines
 MenuService+Extras.swift: 296 lines
 MenuService+MenuExtraState.swift: 256 lines
 MenuService+MenuExtraWindows.swift: 274 lines

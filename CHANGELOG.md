@@ -67,6 +67,7 @@
 - Script process execution now keeps capture commands, interaction commands, system commands, and generic parameter parsing in focused service files.
 - Application service internals now keep app discovery, lifecycle/Spotlight launch lookup, and window enumeration in focused service files.
 - UI automation orchestration now keeps detection, click, typing, scroll, hotkey, and gesture operations in a focused companion file while the primary service owns initialization and AX wait/search behavior.
+- Visualizer coordination now keeps public animation entry points, input/display overlays, and system/display overlays in focused companion files instead of one large coordinator.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
