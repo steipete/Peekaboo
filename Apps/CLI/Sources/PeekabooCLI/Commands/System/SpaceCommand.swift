@@ -1,5 +1,5 @@
-import AppKit
 import Commander
+import CoreGraphics
 import Foundation
 import PeekabooCore
 

@@ -1,4 +1,3 @@
-import AppKit
 import Commander
 import Foundation
 import PeekabooCore
