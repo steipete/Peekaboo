@@ -109,6 +109,7 @@ Landed:
 - Watch capture frame acquisition now lives in `WatchCaptureFrameProvider`, keeping live/video source selection, region-target capture, and resolution capping out of session orchestration.
 - Watch capture active/idle hysteresis now lives in `WatchCaptureActivityPolicy`; the unused private motion-interval accumulator was removed from session state.
 - Window operation orchestration now stays in `WindowManagementService`; target resolution, title search, and close-presence polling moved into dedicated service extension files.
+- `peekaboo window` response models and Commander binding/conformance wiring now live in `WindowCommand+Bindings`, leaving the primary command file closer to behavior-only subcommands.
 
 Still incomplete:
 
@@ -139,7 +140,8 @@ WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
-WindowCommand.swift: 1221 lines
+WindowCommand.swift: 1031 lines
+WindowCommand+Bindings.swift: 187 lines
 WindowCommand+Support.swift: 189 lines
 SeeCommand.swift: 306 lines
 SeeCommand+CapturePipeline.swift: 225 lines
