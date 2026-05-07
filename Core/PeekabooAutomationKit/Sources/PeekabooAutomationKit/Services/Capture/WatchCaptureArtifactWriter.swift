@@ -72,14 +72,19 @@ enum WatchCaptureArtifactWriter {
 
     static func resize(image: CGImage, to size: CGSize) -> CGImage? {
         guard size.width > 0, size.height > 0 else { return nil }
+
+        // Decode through a known RGBA surface; some live ScreenCaptureKit frames arrive
+        // without color-space metadata, and replaying their bitmap flags can fail silently.
+        let width = max(1, Int(size.width.rounded()))
+        let height = max(1, Int(size.height.rounded()))
         guard let context = CGContext(
             data: nil,
-            width: Int(size.width),
-            height: Int(size.height),
-            bitsPerComponent: image.bitsPerComponent,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
             bytesPerRow: 0,
-            space: image.colorSpace ?? CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: image.bitmapInfo.rawValue)
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         else { return nil }
 
         context.interpolationQuality = .high

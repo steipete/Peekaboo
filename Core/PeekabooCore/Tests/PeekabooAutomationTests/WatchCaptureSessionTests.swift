@@ -240,9 +240,29 @@ struct WatchCaptureSessionTests {
         #expect(capture.capturedWindowIndex == 3)
     }
 
+    @Test
+    @MainActor
+    func `Frame provider caps live frames to resolution cap`() async throws {
+        let sourceSize = CGSize(width: 3008, height: 1632)
+        let png = Self.makePNG(size: sourceSize)
+        let capture = StubScreenCaptureService(result: png, size: sourceSize)
+        let screens = StubScreenService()
+        let provider = WatchCaptureFrameProvider(
+            screenCapture: capture,
+            frameSource: nil,
+            scope: WatchScope(kind: .screen),
+            options: Self.defaultWatchOptions(resolutionCap: 1440),
+            regionValidator: WatchCaptureRegionValidator(screenService: screens))
+
+        let output = try await provider.captureFrame()
+
+        #expect(output.frame?.cgImage?.width == 1440)
+        #expect(output.frame?.cgImage?.height == 781)
+    }
+
     // MARK: - Helpers
 
-    private static func defaultWatchOptions() -> WatchCaptureOptions {
+    private static func defaultWatchOptions(resolutionCap: CGFloat? = nil) -> WatchCaptureOptions {
         WatchCaptureOptions(
             duration: 1,
             idleFps: 1,
@@ -254,7 +274,7 @@ struct WatchCaptureSessionTests {
             maxMegabytes: nil,
             highlightChanges: false,
             captureFocus: .auto,
-            resolutionCap: nil,
+            resolutionCap: resolutionCap,
             diffStrategy: .fast,
             diffBudgetMs: nil)
     }
