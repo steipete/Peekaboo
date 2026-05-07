@@ -236,9 +236,17 @@ extension ElementDetectionService {
     private static let maxChildrenPerNode = 50
     private static let maxWebFocusAttempts = 2
     private static let actionableRoles: Set<String> = [
-        "axbutton", "axpopupbutton", "axtextfield", "axlink",
+        "axbutton", "axpopupbutton", "axtextfield", "axlink", "axweblink",
         "axcheckbox", "axradiobutton", "axmenuitem", "axcombobox",
         "axslider", "axtab",
+    ]
+    /// AXPress lookup is expensive. Keep it to container-ish roles where Chromium/Tauri can hide clickable content.
+    private static let supportedActionLookupRoles: Set<String> = [
+        "axgroup", "aximage", "axcell", "axrow", "axoutlineitem",
+    ]
+    private static let keyboardShortcutRoles: Set<String> = [
+        "axbutton", "axpopupbutton", "axcheckbox", "axradiobutton",
+        "axmenuitem", "axtab",
     ]
     private static let descriptorAttributeNames: [String] = [
         AXAttributeNames.kAXPositionAttribute,
@@ -687,7 +695,7 @@ extension ElementDetectionService {
         let baseType = self.mapRoleToElementType(descriptor.role)
         let elementType = self.adjustedElementType(element: element, descriptor: descriptor, baseType: baseType)
         let isActionable = self.isElementActionable(element, role: descriptor.role)
-        let keyboardShortcut = self.extractKeyboardShortcut(element)
+        let keyboardShortcut = isActionable ? self.extractKeyboardShortcut(element, role: descriptor.role) : nil
         let label = self.effectiveLabel(for: element, descriptor: descriptor)
 
         let attributes = self.createElementAttributes(
@@ -1017,16 +1025,26 @@ extension ElementDetectionService {
     }
 
     private func isElementActionable(_ element: Element, role: String) -> Bool {
-        if Self.actionableRoles.contains(role.lowercased()) {
+        let normalizedRole = role.lowercased()
+        if Self.actionableRoles.contains(normalizedRole) {
             return true
         }
 
-        // Action lookup is another AX round-trip; only pay it for roles we cannot classify cheaply.
+        guard Self.supportedActionLookupRoles.contains(normalizedRole) else {
+            return false
+        }
+
+        // Action lookup is another AX round-trip; only pay it for container-ish roles that can hide AXPress.
         return element.supportedActions()?.contains("AXPress") == true
     }
 
     @MainActor
-    private func extractKeyboardShortcut(_ element: Element) -> String? {
+    private func extractKeyboardShortcut(_ element: Element, role: String) -> String? {
+        let normalizedRole = role.lowercased()
+        guard Self.keyboardShortcutRoles.contains(normalizedRole) else {
+            return nil
+        }
+
         // Use the new keyboardShortcut() method from AXorcist
         if let shortcut = element.keyboardShortcut() {
             return shortcut
@@ -1129,7 +1147,9 @@ extension ElementDetectionService {
         var attributes = ["role": "AXMenuItem"]
 
         if let title = item.title() { attributes["title"] = title }
-        if let shortcut = extractKeyboardShortcut(item) { attributes["keyboardShortcut"] = shortcut }
+        if let shortcut = extractKeyboardShortcut(item, role: "AXMenuItem") {
+            attributes["keyboardShortcut"] = shortcut
+        }
         if item.isEnabled() == false { attributes["isEnabled"] = "false" }
 
         // Note: Check for special menu item types like checkmarks not implemented yet

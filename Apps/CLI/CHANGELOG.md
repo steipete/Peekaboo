@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
 - `peekaboo see` avoids recursive AX child-text lookups for elements whose labels cannot use them, reducing Playground element detection from about 201ms to 134ms in local testing.
 - `peekaboo see` batches per-element Accessibility descriptor reads and skips avoidable action/editability probes, reducing local Playground element detection from about 205ms to 176ms.
+- `peekaboo see` limits expensive AX action and keyboard-shortcut probes to roles that can use them, reducing Playground element detection from about 286ms to roughly 180-190ms in local testing.
 
 ## [2.0.2] - 2025-07-03
 
