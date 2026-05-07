@@ -42,10 +42,51 @@ struct ClickCommandTests {
         }
     }
 
+    @Test
+    func `Click command reuses latest snapshot for element lookup with app target`() async throws {
+        let context = await self.makeContext()
+        let element = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "Save",
+            bounds: CGRect(x: 20, y: 30, width: 80, height: 30)
+        )
+        let snapshotId = try await self.storeSnapshot(element: element, in: context.snapshots)
+        await MainActor.run {
+            context.automation.setWaitForElementResult(
+                WaitForElementResult(found: true, element: element, waitTime: 0),
+                for: .query("Save")
+            )
+        }
+
+        let result = try await InProcessCommandRunner.run(
+            ["click", "Save", "--app", "TextEdit", "--json", "--no-auto-focus"],
+            services: context.services
+        )
+
+        #expect(result.exitStatus == 0)
+        let waitCalls = await self.automationState(context) { $0.waitForElementCalls }
+        let clickCalls = await self.automationState(context) { $0.clickCalls }
+        #expect(waitCalls.first?.snapshotId == snapshotId)
+        #expect(clickCalls.first?.snapshotId == snapshotId)
+    }
+
     private func makeContext() async -> TestServicesFactory.AutomationTestContext {
         await MainActor.run {
             TestServicesFactory.makeAutomationTestContext()
         }
+    }
+
+    private func storeSnapshot(element: DetectedElement, in snapshots: StubSnapshotManager) async throws -> String {
+        let snapshotId = try await snapshots.createSnapshot()
+        let detection = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
+        )
+        try await snapshots.storeDetectionResult(snapshotId: snapshotId, result: detection)
+        return snapshotId
     }
 
     private func automationState<T: Sendable>(

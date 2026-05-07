@@ -106,16 +106,11 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         let startTime = Date()
         do {
             let actions = try self.buildActions()
-            let snapshotId = await self.resolveSnapshotId()
-            if let explicitSnapshot = self.snapshot, !explicitSnapshot.isEmpty {
-                _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: explicitSnapshot,
-                    snapshots: self.services.snapshots
-                )
-            }
-            self.warnIfFocusUnknown(snapshotId: snapshotId)
-            try await self.focusIfNeeded(snapshotId: snapshotId)
-            let typeResult = try await self.executeTypeActions(actions: actions, snapshotId: snapshotId)
+            let observation = await self.resolveObservationContext()
+            try await observation.validateIfExplicit(using: self.services.snapshots)
+            self.warnIfFocusUnknown(snapshotId: observation.snapshotId)
+            try await self.focusIfNeeded(snapshotId: observation.focusSnapshotId(for: self.target))
+            let typeResult = try await self.executeTypeActions(actions: actions, snapshotId: observation.snapshotId)
             self.renderResult(typeResult, startTime: startTime)
         } catch {
             self.handleError(error)
@@ -162,14 +157,14 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return actions
     }
 
-    private func resolveSnapshotId() async -> String? {
-        if let providedSnapshot = snapshot {
-            providedSnapshot
-        } else if self.target.hasAnyTarget {
-            nil
-        } else {
-            await self.services.snapshots.getMostRecentSnapshot()
-        }
+    private func resolveObservationContext() async -> InteractionObservationContext {
+        // With an explicit app/window target, `type` focuses that target and avoids reusing
+        // a potentially unrelated latest snapshot for the keystroke injection path.
+        await InteractionObservationContext.resolve(
+            explicitSnapshot: self.snapshot,
+            fallbackToLatest: !self.target.hasAnyTarget,
+            snapshots: self.services.snapshots
+        )
     }
 
     mutating func validate() throws {

@@ -126,6 +126,33 @@ struct TypeCommandTests {
     }
 
     @Test
+    func `Type execution reuses latest snapshot when target is implicit`() async throws {
+        let context = await self.makeContext()
+        let snapshotId = try await context.snapshots.createSnapshot()
+
+        let result = try await self.runType(arguments: ["Hello", "--no-auto-focus"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let call = try #require(await self.automationState(context) { $0.typeActionsCalls.first })
+        #expect(call.snapshotId == snapshotId)
+    }
+
+    @Test
+    func `Type execution does not reuse latest snapshot with explicit app target`() async throws {
+        let context = await self.makeContext()
+        _ = try await context.snapshots.createSnapshot()
+
+        let result = try await self.runType(
+            arguments: ["Hello", "--app", "TextEdit", "--no-auto-focus"],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let call = try #require(await self.automationState(context) { $0.typeActionsCalls.first })
+        #expect(call.snapshotId == nil)
+    }
+
+    @Test
     func `Type command argument parsing`() throws {
         let command = try TypeCommand.parse(["Hello World", "--delay", "10", "--return"])
 

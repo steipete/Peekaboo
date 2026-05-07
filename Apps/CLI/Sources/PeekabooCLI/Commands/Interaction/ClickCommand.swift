@@ -237,33 +237,17 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 try self.verifyFocusForCoordinateClick()
 
             } else {
-                // For element-based clicks, try to get a snapshot but allow fallback
-                let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let providedSnapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
-                let snapshotIdForAutomation: String? = if let providedSnapshotId {
-                    providedSnapshotId
-                } else {
-                    await self.services.snapshots.getMostRecentSnapshot()
-                }
+                // `click` keeps using the latest observation for element lookup even when
+                // a target app is supplied; only focus skips the snapshot for explicit targets.
+                let observation = await InteractionObservationContext.resolve(
+                    explicitSnapshot: self.snapshot,
+                    fallbackToLatest: true,
+                    snapshots: self.services.snapshots
+                )
+                try await observation.validateIfExplicit(using: self.services.snapshots)
+                activeSnapshotId = observation.snapshotId ?? ""
 
-                // Use snapshot if available, otherwise use empty string to indicate no snapshot.
-                activeSnapshotId = snapshotIdForAutomation ?? ""
-
-                // If the user explicitly passed --snapshot, fail early if that snapshot doesn't exist anymore.
-                if let providedSnapshot = providedSnapshotId {
-                    _ = try await SnapshotValidation.requireDetectionResult(
-                        snapshotId: providedSnapshot,
-                        snapshots: self.services.snapshots
-                    )
-                }
-
-                let focusSnapshotId: String? = if providedSnapshotId != nil || !self.target.hasAnyTarget {
-                    activeSnapshotId.isEmpty ? nil : activeSnapshotId
-                } else {
-                    nil
-                }
-
-                try await self.focusApplicationIfNeeded(snapshotId: focusSnapshotId)
+                try await self.focusApplicationIfNeeded(snapshotId: observation.focusSnapshotId(for: self.target))
 
                 // Use whichever element ID parameter was provided
                 let elementId = self.on ?? self.id

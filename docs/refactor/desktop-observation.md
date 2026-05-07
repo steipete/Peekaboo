@@ -86,12 +86,13 @@ Landed:
 - `peekaboo see` support types, output rendering, and screen-capture helpers are split out of the primary command file.
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
+- `peekaboo click`, `type`, `move`, and `scroll` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 
 Still incomplete:
 
 - Further capture-service cleanup after command bridges disappear.
 - Further element-detection cleanup after extracted collaborators fully own policy.
-- Interaction commands reusing observation state instead of repeating lookup work.
+- Finish interaction observe-if-needed, stale-window diagnostics, target-point diagnostics, and post-action cache invalidation.
 - Optional module extraction after boundaries are stable.
 
 Current size pressure:
@@ -105,17 +106,22 @@ ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
-SeeCommand.swift: 307 lines
+SeeCommand.swift: 306 lines
 SeeCommand+CapturePipeline.swift: 225 lines
 SeeCommand+DetectionPipeline.swift: 160 lines
 SeeCommand+Output.swift: 204 lines
 SeeCommand+Types.swift: 204 lines
 SeeCommand+Screens.swift: 149 lines
 SeeCommand+ObservationRequest.swift: 140 lines
-ImageCommand.swift: 189 lines
-ImageCommand+CapturePipeline.swift: 336 lines
+ImageCommand.swift: 188 lines
+ImageCommand+CapturePipeline.swift: 337 lines
 ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
+InteractionObservationContext.swift: 81 lines
+ClickCommand.swift: 535 lines
+TypeCommand.swift: 428 lines
+MoveCommand.swift: 435 lines
+ScrollCommand.swift: 224 lines
 ```
 
 Current command-boundary audit:
@@ -684,7 +690,7 @@ Goal: click/type/scroll/drag/hotkey reuse observation state when available and i
 Future work:
 
 - create an `ObservationSnapshotStore` facade over current snapshot manager behavior;
-- make action commands accept a fresh observation result or snapshot ID;
+- extend the shared interaction observation context to drag/hotkey/focus and fresh observation results;
 - add observe-if-needed behavior for stale or missing element IDs;
 - add target-point diagnostics for click/move without a full desktop scan;
 - add explicit cache invalidation after click/type/scroll/drag/hotkey/focus.
@@ -842,8 +848,10 @@ Purpose: make action commands consume observation state and invalidate caches.
 
 Work:
 
-- define snapshot freshness and stale-window diagnostics;
-- teach click/type/scroll/drag to accept fresh observation context where available;
+- done: define shared explicit/latest snapshot selection and focus snapshot policy in `InteractionObservationContext`;
+- done: teach click/type/move/scroll to resolve snapshot context through the shared helper;
+- define stale-window diagnostics;
+- teach drag/hotkey/focus to accept fresh observation context where available;
 - add observe-if-needed for missing/stale element IDs;
 - centralize post-action invalidation;
 - add target-point diagnostics.

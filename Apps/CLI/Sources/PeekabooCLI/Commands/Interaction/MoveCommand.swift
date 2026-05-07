@@ -150,31 +150,19 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let elementId = on ?? id {
                 // Move to element by ID
-                let snapshotId: String? = if let providedSnapshot = snapshot {
-                    providedSnapshot
-                } else {
-                    await self.services.snapshots.getMostRecentSnapshot()
-                }
-                guard let activeSnapshotId = snapshotId else {
-                    throw PeekabooError.snapshotNotFound("No snapshot found")
-                }
-
-                let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
-                    activeSnapshotId
-                } else {
-                    nil
-                }
+                let observation = await InteractionObservationContext.resolve(
+                    explicitSnapshot: self.snapshot,
+                    fallbackToLatest: true,
+                    snapshots: self.services.snapshots
+                )
                 try await ensureFocused(
-                    snapshotId: focusSnapshotId,
+                    snapshotId: observation.focusSnapshotId(for: self.target),
                     target: self.target,
                     options: self.focusOptions,
                     services: self.services
                 )
 
-                let detectionResult = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: activeSnapshotId,
-                    snapshots: self.services.snapshots
-                )
+                let detectionResult = try await observation.requireDetectionResult(using: self.services.snapshots)
                 guard let element = detectionResult.elements.findById(elementId) else {
                     throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
                 }
@@ -184,33 +172,20 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
             } else if let query = to {
                 // Find element by text/query
-                let snapshotId: String? = if let providedSnapshot = snapshot {
-                    providedSnapshot
-                } else {
-                    await self.services.snapshots.getMostRecentSnapshot()
-                }
-                guard let activeSnapshotId = snapshotId else {
-                    throw PeekabooError.snapshotNotFound("No snapshot found")
-                }
-
-                let focusSnapshotId: String? = if self.snapshot != nil || !self.target.hasAnyTarget {
-                    activeSnapshotId
-                } else {
-                    nil
-                }
+                let observation = await InteractionObservationContext.resolve(
+                    explicitSnapshot: self.snapshot,
+                    fallbackToLatest: true,
+                    snapshots: self.services.snapshots
+                )
+                let activeSnapshotId = try observation.requireSnapshot()
                 try await ensureFocused(
-                    snapshotId: focusSnapshotId,
+                    snapshotId: observation.focusSnapshotId(for: self.target),
                     target: self.target,
                     options: self.focusOptions,
                     services: self.services
                 )
 
-                if self.snapshot != nil {
-                    _ = try await SnapshotValidation.requireDetectionResult(
-                        snapshotId: activeSnapshotId,
-                        snapshots: self.services.snapshots
-                    )
-                }
+                try await observation.validateIfExplicit(using: self.services.snapshots)
 
                 // Wait for element to be available
                 let waitResult = try await AutomationServiceBridge.waitForElement(

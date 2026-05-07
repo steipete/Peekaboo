@@ -69,40 +69,21 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 throw ValidationError("Invalid direction. Use: up, down, left, or right")
             }
 
-            let explicitSnapshotId = self.snapshot?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let providedSnapshotId = explicitSnapshotId?.isEmpty == false ? explicitSnapshotId : nil
-
-            // Determine snapshot ID if element target is specified.
-            let snapshotIdForAutomation: String? = if self.on != nil {
-                if let providedSnapshotId {
-                    providedSnapshotId
-                } else {
-                    await self.services.snapshots.getMostRecentSnapshot()
-                }
-            } else {
-                nil
-            }
+            let observation = await InteractionObservationContext.resolve(
+                explicitSnapshot: self.snapshot,
+                fallbackToLatest: self.on != nil,
+                snapshots: self.services.snapshots
+            )
 
             if self.on != nil {
-                guard let snapshotIdForAutomation else {
-                    throw PeekabooError.snapshotNotFound("No snapshot found")
-                }
-
-                _ = try await SnapshotValidation.requireDetectionResult(
-                    snapshotId: snapshotIdForAutomation,
-                    snapshots: self.services.snapshots
-                )
+                _ = try await observation.requireDetectionResult(using: self.services.snapshots)
+            } else {
+                try await observation.validateIfExplicit(using: self.services.snapshots)
             }
 
             // Ensure window is focused before scrolling
-            let focusSnapshotId: String? = if providedSnapshotId != nil || !self.target.hasAnyTarget {
-                snapshotIdForAutomation
-            } else {
-                nil
-            }
-
             try await ensureFocused(
-                snapshotId: focusSnapshotId,
+                snapshotId: observation.focusSnapshotId(for: self.target),
                 target: self.target,
                 options: self.focusOptions,
                 services: self.services
@@ -115,7 +96,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 target: self.on,
                 smooth: self.smooth,
                 delay: self.delay,
-                snapshotId: snapshotIdForAutomation
+                snapshotId: observation.snapshotId
             )
             try await AutomationServiceBridge.scroll(
                 automation: self.services.automation,
@@ -124,7 +105,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             AutomationEventLogger.log(
                 .scroll,
                 "direction=\(self.direction) amount=\(self.amount) smooth=\(self.smooth) "
-                    + "target=\(self.on ?? "pointer") snapshot=\(snapshotIdForAutomation ?? "latest")"
+                    + "target=\(self.on ?? "pointer") snapshot=\(observation.snapshotId ?? "latest")"
             )
 
             // Calculate total ticks for output
@@ -133,7 +114,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             // Determine scroll location for output
             let scrollLocation: CGPoint = if let elementId = on {
                 // Try to get element location from snapshot
-                if let activeSnapshotId = snapshotIdForAutomation,
+                if let activeSnapshotId = observation.snapshotId,
                    let detectionResult = try? await self.services.snapshots
                        .getDetectionResult(snapshotId: activeSnapshotId),
                        let element = detectionResult.elements.findById(elementId) {
