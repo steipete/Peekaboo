@@ -71,6 +71,7 @@
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in a focused companion file.
 - Agent service orchestration now keeps execution loops, session lifecycle wrappers, and toolset assembly in focused companion files.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
+- Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
