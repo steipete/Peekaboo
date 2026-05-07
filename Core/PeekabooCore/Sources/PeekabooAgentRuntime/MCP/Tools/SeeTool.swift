@@ -3,6 +3,7 @@ import Foundation
 import MCP
 import os.log
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 import PeekabooProtocols
 import PeekabooVisualizer
@@ -191,11 +192,14 @@ public struct SeeTool: MCPTool {
         do {
             let snapshot = try await self.getOrCreateSnapshot(snapshotId: request.snapshotId)
             let target = try self.parseCaptureTarget(request.appTarget)
-            let screenshotPath = try await self.captureScreenshot(
-                target: target,
+            let observation = try await self.observeDesktop(target: target, snapshot: snapshot)
+            let screenshotPath = try await self.saveObservationScreenshot(
+                observation,
                 path: request.path,
                 snapshot: snapshot)
-            let (elements, detectedElements) = try await self.detectUIElements(target: target, snapshot: snapshot)
+            let (elements, detectedElements) = try await self.detectUIElements(
+                observation: observation,
+                snapshot: snapshot)
             let annotatedPath = try await self.generateAnnotationIfNeeded(
                 annotate: request.annotate,
                 screenshotPath: screenshotPath,
@@ -266,11 +270,21 @@ public struct SeeTool: MCPTool {
         }
     }
 
-    private func captureScreenshot(target: CaptureTarget, path: String?, snapshot: UISnapshot) async throws -> String {
+    private func observeDesktop(target: CaptureTarget, snapshot: UISnapshot) async throws -> DesktopObservationResult {
+        try await self.context.desktopObservation.observe(DesktopObservationRequest(
+            target: self.observationTarget(for: target),
+            detection: DesktopDetectionOptions(mode: .accessibility),
+            output: DesktopObservationOutputOptions(snapshotID: snapshot.id)))
+    }
+
+    private func saveObservationScreenshot(
+        _ observation: DesktopObservationResult,
+        path: String?,
+        snapshot: UISnapshot) async throws -> String
+    {
         let screenshotPath = self.makeScreenshotPath(from: path)
-        let captureResult = try await self.captureResult(for: target)
-        try self.saveCaptureResult(captureResult, to: screenshotPath)
-        await snapshot.setScreenshot(path: screenshotPath, metadata: captureResult.metadata)
+        try self.saveCaptureResult(observation.capture, to: screenshotPath)
+        await snapshot.setScreenshot(path: screenshotPath, metadata: observation.capture.metadata)
         return screenshotPath
     }
 
@@ -301,49 +315,46 @@ public struct SeeTool: MCPTool {
             .path
     }
 
-    private func captureResult(for target: CaptureTarget) async throws -> CaptureResult {
+    private func observationTarget(for target: CaptureTarget) throws -> DesktopObservationTargetRequest {
         switch target {
         case let .screen(index):
-            return try await self.context.screenCapture.captureScreen(displayIndex: index)
+            return .screen(index: index)
         case .frontmost:
-            return try await self.context.screenCapture.captureFrontmost()
-        case let .window(identifier, _):
-            try await self.validateWindowsExist(for: identifier)
-            return try await self.context.screenCapture.captureWindow(
-                appIdentifier: identifier,
-                windowIndex: 0)
+            return .frontmost
+        case let .window(identifier, index):
+            let selection: WindowSelection = if let index {
+                .index(index)
+            } else {
+                .automatic
+            }
+            if identifier.uppercased().hasPrefix("PID:") {
+                let pidString = String(identifier.dropFirst(4))
+                guard let pid = Int32(pidString) else {
+                    throw PeekabooError.invalidInput("Invalid PID: \(pidString)")
+                }
+                return .pid(pid, window: selection)
+            }
+            return .app(identifier: identifier, window: selection)
         case .area:
             throw PeekabooError.invalidInput("Area capture not supported for see tool")
         }
     }
 
-    private func validateWindowsExist(for identifier: String) async throws {
-        let windows = try await self.context.windows.listWindows(target: .application(identifier))
-        guard !windows.isEmpty else {
-            throw PeekabooError.windowNotFound(criteria: "No windows found for application: \(identifier)")
-        }
-    }
-
     private func saveCaptureResult(_ result: CaptureResult, to path: String) throws {
-        try result.imageData.write(to: URL(fileURLWithPath: path))
+        let url = URL(fileURLWithPath: path)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true)
+        try result.imageData.write(to: url)
     }
 
     private func detectUIElements(
-        target: CaptureTarget,
+        observation: DesktopObservationResult,
         snapshot: UISnapshot) async throws -> ([UIElement], [AutomationDetectedElement])
     {
-        guard let screenshotPath = await snapshot.screenshotPath else {
-            self.logger.warning("No screenshot available for element detection")
+        guard let detectionResult = observation.elements else {
             return ([], [])
         }
-
-        let imageData = try Data(contentsOf: URL(fileURLWithPath: screenshotPath))
-        let windowContext = try await self.windowContext(for: target)
-
-        let detectionResult = try await self.context.automation.detectElements(
-            in: imageData,
-            snapshotId: snapshot.id,
-            windowContext: windowContext)
 
         let detectedElements = await MainActor.run { detectionResult.elements.all }
         await self.emitElementDetectionVisualizer(from: detectedElements)
@@ -351,25 +362,6 @@ public struct SeeTool: MCPTool {
         self.logger.info("Detected \(elements.count) UI elements")
         await snapshot.setUIElements(elements)
         return (elements, detectedElements)
-    }
-
-    private func windowContext(for target: CaptureTarget) async throws -> WindowContext? {
-        switch target {
-        case .frontmost:
-            let appInfo = try await self.context.applications.getFrontmostApplication()
-            return WindowContext(applicationName: appInfo.name, windowTitle: nil, windowBounds: nil)
-        case let .window(appIdentifier, _):
-            let windows = try await self.context.windows.listWindows(target: .application(appIdentifier))
-            if let firstWindow = windows.first {
-                return WindowContext(
-                    applicationName: appIdentifier,
-                    windowTitle: firstWindow.title,
-                    windowBounds: firstWindow.bounds)
-            }
-            return WindowContext(applicationName: appIdentifier, windowTitle: nil, windowBounds: nil)
-        default:
-            return nil
-        }
     }
 
     private func convertElements(_ detected: [AutomationDetectedElement]) -> [UIElement] {

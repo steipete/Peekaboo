@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 
 /// Lightweight dependency container for MCP tools so they no longer reach for
@@ -13,6 +14,7 @@ public struct MCPToolContext: @unchecked Sendable {
     public let dialogs: any DialogServiceProtocol
     public let dock: any DockServiceProtocol
     public let screenCapture: any ScreenCaptureServiceProtocol
+    public let desktopObservation: any DesktopObservationServiceProtocol
     public let snapshots: any SnapshotManagerProtocol
     public let screens: any ScreenServiceProtocol
     public let agent: (any AgentServiceProtocol)?
@@ -70,6 +72,7 @@ public struct MCPToolContext: @unchecked Sendable {
         dialogs: any DialogServiceProtocol,
         dock: any DockServiceProtocol,
         screenCapture: any ScreenCaptureServiceProtocol,
+        desktopObservation: any DesktopObservationServiceProtocol,
         snapshots: any SnapshotManagerProtocol,
         screens: any ScreenServiceProtocol,
         agent: (any AgentServiceProtocol)?,
@@ -83,6 +86,7 @@ public struct MCPToolContext: @unchecked Sendable {
         self.dialogs = dialogs
         self.dock = dock
         self.screenCapture = screenCapture
+        self.desktopObservation = desktopObservation
         self.snapshots = snapshots
         self.screens = screens
         self.agent = agent
@@ -100,6 +104,7 @@ public struct MCPToolContext: @unchecked Sendable {
             dialogs: services.dialogs,
             dock: services.dock,
             screenCapture: services.screenCapture,
+            desktopObservation: services.desktopObservation,
             snapshots: services.snapshots,
             screens: services.screens,
             agent: services.agent,

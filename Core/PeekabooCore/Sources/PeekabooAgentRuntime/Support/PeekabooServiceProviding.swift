@@ -1,5 +1,6 @@
 import Foundation
 import PeekabooAutomation
+import PeekabooAutomationKit
 
 /// Aggregated service provider protocol exposed to higher-level modules.
 @MainActor

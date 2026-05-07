@@ -3,6 +3,7 @@ import AppKit
 import Foundation
 import MCP
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooFoundation
 import TachikomaMCP
 import UniformTypeIdentifiers
@@ -89,50 +90,23 @@ public struct ImageTool: MCPTool {
 extension ImageTool {
     private func captureImages(for request: ImageRequest) async throws -> [CaptureResult] {
         switch request.target {
-        case let .screen(index):
-            let result = try await self.context.screenCapture.captureScreen(displayIndex: index)
-            return [result]
-        case .frontmost:
-            let result = try await self.context.screenCapture.captureFrontmost()
-            return [result]
-        case let .application(identifier, windowIndex):
-            return try await self.captureApplication(
-                identifier: identifier,
-                windowIndex: windowIndex,
-                focus: request.captureFocus)
         case .menubar:
             return try await [self.captureMenuBar()]
+        default:
+            let result = try await self.captureObservation(for: request)
+            return [result.capture]
         }
     }
 
-    private func captureApplication(
-        identifier: String,
-        windowIndex: Int?,
-        focus: CaptureFocus) async throws -> [CaptureResult]
-    {
-        if focus == .foreground {
+    private func captureObservation(for request: ImageRequest) async throws -> DesktopObservationResult {
+        if request.captureFocus == .foreground, let identifier = request.focusIdentifier {
             try await self.context.applications.activateApplication(identifier: identifier)
             try await Task.sleep(nanoseconds: 50_000_000)
         }
 
-        if let windowIndex {
-            let result = try await self.context.screenCapture.captureWindow(
-                appIdentifier: identifier,
-                windowIndex: windowIndex)
-            return [result]
-        }
-
-        let windows = try await self.context.windows.listWindows(target: .application(identifier))
-        var results: [CaptureResult] = []
-
-        for index in windows.indices {
-            let result = try await self.context.screenCapture.captureWindow(
-                appIdentifier: identifier,
-                windowIndex: index)
-            results.append(result)
-        }
-
-        return results
+        return try await self.context.desktopObservation.observe(DesktopObservationRequest(
+            target: request.target.observationTarget,
+            detection: DesktopDetectionOptions(mode: .none)))
     }
 
     private func saveCaptures(_ results: [CaptureResult], request: ImageRequest) throws -> [MCPSavedFile] {
@@ -154,8 +128,8 @@ extension ImageTool {
                     path: fileName,
                     item_label: describeCapture(result.metadata),
                     window_title: result.metadata.windowInfo?.title,
-                    window_id: nil,
-                    window_index: index,
+                    window_id: result.metadata.windowInfo.map { String($0.windowID) },
+                    window_index: result.metadata.windowInfo?.index ?? index,
                     mime_type: request.format.mimeType))
         }
 
@@ -256,8 +230,24 @@ private struct ImageRequest {
 enum ImageCaptureTarget {
     case screen(index: Int?)
     case frontmost
-    case application(identifier: String, windowIndex: Int?)
+    case application(identifier: String, window: WindowSelection)
+    case pid(Int32, window: WindowSelection)
     case menubar
+
+    var observationTarget: DesktopObservationTargetRequest {
+        switch self {
+        case let .screen(index):
+            .screen(index: index)
+        case .frontmost:
+            .frontmost
+        case let .application(identifier, window):
+            .app(identifier: identifier, window: window)
+        case let .pid(pid, window):
+            .pid(pid, window: window)
+        case .menubar:
+            .menubar
+        }
+    }
 }
 
 // MARK: - Helper Functions
@@ -285,19 +275,49 @@ private func parseCaptureTarget(_ appTarget: String?) throws -> ImageCaptureTarg
     case "menubar":
         return .menubar
     default:
+        if target.uppercased().hasPrefix("PID:") {
+            let parts = target.split(separator: ":", maxSplits: 2)
+            guard parts.count >= 2, let pid = Int32(parts[1]) else {
+                throw PeekabooError.invalidInput("Invalid PID target: \(target)")
+            }
+            return .pid(pid, window: windowSelection(from: parts.dropFirst(2).first))
+        }
+
         // Parse app[:window] format
         let parts = target.split(separator: ":", maxSplits: 1)
         let appIdentifier = String(parts[0])
-
-        var windowIndex: Int?
-        if parts.count > 1 {
-            if let index = Int(String(parts[1])) {
-                windowIndex = index
-            }
-        }
-
-        return .application(identifier: appIdentifier, windowIndex: windowIndex)
+        return .application(
+            identifier: appIdentifier,
+            window: windowSelection(from: parts.dropFirst().first))
     }
+}
+
+extension ImageCaptureTarget {
+    fileprivate var focusIdentifier: String? {
+        switch self {
+        case let .application(identifier, window: _):
+            identifier
+        case let .pid(pid, window: _):
+            "PID:\(pid)"
+        case .screen, .frontmost, .menubar:
+            nil
+        }
+    }
+}
+
+extension ImageRequest {
+    fileprivate var focusIdentifier: String? {
+        self.target.focusIdentifier
+    }
+}
+
+private func windowSelection(from rawValue: String.SubSequence?) -> WindowSelection {
+    guard let rawValue,
+          let index = Int(String(rawValue))
+    else {
+        return .automatic
+    }
+    return .index(index)
 }
 
 extension ImageTool {

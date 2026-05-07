@@ -20,6 +20,7 @@
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
 - MCP `image` now returns a structured tool error when Screen Recording permission is missing instead of surfacing an internal server error.
+- MCP `image` and `see` now route app/PID/frontmost targets through the desktop observation resolver, so multi-window apps use the same visible-window selection as the CLI.
 - MCP `analyze` now honors configured AI providers and per-call `provider_config` model overrides instead of hardcoding the default OpenAI model.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
 - Window capture on macOS 26 now resolves native Retina scale from the backing display before falling back to ScreenCaptureKit display ratios.

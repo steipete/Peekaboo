@@ -91,6 +91,7 @@ let package = Package(
             name: "PeekabooAgentRuntime",
             dependencies: [
                 .target(name: "PeekabooAutomation"),
+                .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooVisualizer", package: "PeekabooVisualizer"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "PeekabooProtocols", package: "PeekabooProtocols"),
