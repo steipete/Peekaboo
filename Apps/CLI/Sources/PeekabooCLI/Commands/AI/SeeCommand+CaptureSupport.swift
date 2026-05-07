@@ -106,7 +106,6 @@ extension SeeCommand {
         return windows.first?.windowID
     }
 
-    // swiftlint:disable function_body_length
     func generateAnnotatedScreenshot(
         snapshotId: String,
         originalPath: String
@@ -283,6 +282,4 @@ extension SeeCommand {
 
         return annotatedPath
     }
-
-    // swiftlint:enable function_body_length
 }
