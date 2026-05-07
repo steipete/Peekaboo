@@ -288,7 +288,6 @@ struct CLIRuntimeSmokeTests {
         try await Self.withSavedClipboard {
             let setResult = try await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "set",
                 "--text",
                 text,
@@ -299,7 +298,6 @@ struct CLIRuntimeSmokeTests {
 
             let getResult = try await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "get",
                 "--json",
                 "--no-remote"
@@ -311,7 +309,6 @@ struct CLIRuntimeSmokeTests {
 
             let stdoutJSONResult = try await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "get",
                 "--output",
                 "-",
@@ -324,7 +321,6 @@ struct CLIRuntimeSmokeTests {
 
             let stdoutResult = try await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "get",
                 "--output",
                 "-",
@@ -415,7 +411,6 @@ struct CLIRuntimeSmokeTests {
         let slot = "cli-runtime-smoke-\(UUID().uuidString)"
         let saveResult = try await TestChildProcess.runPeekaboo([
             "clipboard",
-            "--action",
             "save",
             "--slot",
             slot,
@@ -432,7 +427,6 @@ struct CLIRuntimeSmokeTests {
             try await body()
             _ = try await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "restore",
                 "--slot",
                 slot,
@@ -442,7 +436,6 @@ struct CLIRuntimeSmokeTests {
         } catch {
             _ = try? await TestChildProcess.runPeekaboo([
                 "clipboard",
-                "--action",
                 "restore",
                 "--slot",
                 slot,

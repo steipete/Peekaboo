@@ -21,7 +21,8 @@ Work with the macOS pasteboard. Supports text, files/images, raw base64 payloads
 ## Key options
 | Flag | Description |
 | --- | --- |
-| `--action` | One of `get`, `set`, `clear`, `save`, `restore`, `load`. |
+| `action` | Positional action: `get`, `set`, `clear`, `save`, `restore`, `load`. |
+| `--action` | Legacy alias for the positional action. |
 | `--text` | Plain text to set. |
 | `--file-path`, `--image-path` | File or image to copy (UTI inferred from extension). |
 | `--data-base64` + `--uti` | Raw payload + explicit UTI. |
@@ -35,18 +36,18 @@ Work with the macOS pasteboard. Supports text, files/images, raw base64 payloads
 ## Examples
 ```bash
 # Copy text
-peekaboo clipboard --action set --text "hello world"
+peekaboo clipboard set --text "hello world"
 
 # Copy text and verify readback
-peekaboo clipboard --action set --text "hello world" --verify
+peekaboo clipboard set --text "hello world" --verify
 
 # Read clipboard and save binary to a file
-peekaboo clipboard --action get --output /tmp/clip.bin
+peekaboo clipboard get --output /tmp/clip.bin
 
 # Save, clear, then restore the user's clipboard
-peekaboo clipboard --action save --slot original
-peekaboo clipboard --action clear
-peekaboo clipboard --action restore --slot original
+peekaboo clipboard save --slot original
+peekaboo clipboard clear
+peekaboo clipboard restore --slot original
 ```
 
 ## Notes

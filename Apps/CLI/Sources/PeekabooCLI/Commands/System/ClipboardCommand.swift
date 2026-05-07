@@ -25,8 +25,14 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         }
     }
 
-    @Option(name: .shortAndLong, help: "Action: get, set, clear, save, restore, load")
-    var action: String
+    @Argument(help: "Action: get, set, clear, save, restore, load")
+    var action: String?
+
+    @Option(
+        names: [.customShort("a", allowingJoined: false), .customLong("action")],
+        help: "Action alias: get, set, clear, save, restore, load"
+    )
+    var actionOption: String?
 
     @Option(name: .long, help: "Text to set")
     var text: String?
@@ -94,7 +100,8 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         self.runtime = runtime
         self.logger.setJsonOutputMode(self.jsonOutput)
 
-        switch self.action.lowercased() {
+        let action = try self.resolvedAction()
+        switch action.lowercased() {
         case "get":
             try self.handleGet()
         case "set":
@@ -108,11 +115,27 @@ struct ClipboardCommand: OutputFormattable, RuntimeOptionsConfigurable {
         case "restore":
             try self.handleRestore()
         default:
-            throw ValidationError("Invalid action: \(self.action)")
+            throw ValidationError("Invalid action: \(action)")
         }
     }
 
     // MARK: - Actions
+
+    private func resolvedAction() throws -> String {
+        let positionalAction = self.action?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let optionAction = self.actionOption?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch (positionalAction, optionAction) {
+        case let (positional?, option?) where !positional.isEmpty && !option.isEmpty && positional != option:
+            throw ValidationError("Provide clipboard action either positionally or with --action, not both")
+        case let (positional?, _) where !positional.isEmpty:
+            return positional
+        case let (_, option?) where !option.isEmpty:
+            return option
+        default:
+            throw ValidationError("Missing action. Use: peekaboo clipboard get|set|clear|save|restore|load")
+        }
+    }
 
     private func handleGet() throws {
         let preferType = self.prefer.flatMap { UTType($0) }
@@ -395,7 +418,11 @@ extension ClipboardCommand: AsyncRuntimeCommand {}
 @MainActor
 extension ClipboardCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.action = try values.requireOption("action", as: String.self)
+        self.action = try values.decodeOptionalPositional(0, label: "action", as: String.self)
+        self.actionOption = try values.decodeOption("actionOption", as: String.self)
+        if self.actionOption == nil {
+            self.actionOption = try values.decodeOption("action", as: String.self)
+        }
         self.text = try values.decodeOption("text", as: String.self)
         self.filePath = try values.decodeOption("filePath", as: String.self)
         if self.filePath == nil {
