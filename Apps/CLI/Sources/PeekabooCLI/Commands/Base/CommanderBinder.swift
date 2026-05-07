@@ -56,12 +56,16 @@ enum CommanderCLIBinder {
         if values.flag("no-remote") {
             options.preferRemote = false
         }
+        let explicitBridgeSocket = values.singleOption("bridge-socket")?.trimmingCharacters(in: .whitespacesAndNewlines)
         if commandType == AgentCommand.self && !values.flag("no-remote") {
             // Agent execution should stay local by default unless explicitly overridden.
             options.preferRemote = false
         }
-        if let socketPath = values.singleOption("bridge-socket")?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !socketPath.isEmpty {
+        if commandType == ImageCommand.self && !values.flag("no-remote") && (explicitBridgeSocket?.isEmpty ?? true) {
+            // One-shot screenshots are latency-sensitive and work locally; avoid a bridge probe on every call.
+            options.preferRemote = false
+        }
+        if let socketPath = explicitBridgeSocket, !socketPath.isEmpty {
             options.bridgeSocketPath = socketPath
         }
         return options

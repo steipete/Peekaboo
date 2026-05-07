@@ -51,4 +51,23 @@ struct CommanderBinderTests {
         let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SleepCommand.self)
         #expect(options.preferRemote == true)
     }
+
+    @Test
+    func `Image runtime defaults to local host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ImageCommand.self)
+        #expect(options.preferRemote == false)
+    }
+
+    @Test
+    func `Image runtime honors explicit bridge socket`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["bridge-socket": ["/tmp/peekaboo.sock"]],
+            flags: []
+        )
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ImageCommand.self)
+        #expect(options.preferRemote == true)
+        #expect(options.bridgeSocketPath == "/tmp/peekaboo.sock")
+    }
 }
