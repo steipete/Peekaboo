@@ -293,6 +293,7 @@ public struct CaptureOptionsSnapshot: Codable, Sendable, Equatable {
     public let resolutionCap: CGFloat?
     public let diffStrategy: CaptureOptions.DiffStrategy
     public let diffBudgetMs: Int?
+    public let video: CaptureVideoOptionsSnapshot?
 
     public init(
         duration: TimeInterval,
@@ -307,7 +308,8 @@ public struct CaptureOptionsSnapshot: Codable, Sendable, Equatable {
         captureFocus: CaptureFocus,
         resolutionCap: CGFloat?,
         diffStrategy: CaptureOptions.DiffStrategy,
-        diffBudgetMs: Int?)
+        diffBudgetMs: Int?,
+        video: CaptureVideoOptionsSnapshot? = nil)
     {
         self.duration = duration
         self.idleFps = idleFps
@@ -322,6 +324,32 @@ public struct CaptureOptionsSnapshot: Codable, Sendable, Equatable {
         self.resolutionCap = resolutionCap
         self.diffStrategy = diffStrategy
         self.diffBudgetMs = diffBudgetMs
+        self.video = video
+    }
+}
+
+public struct CaptureVideoOptionsSnapshot: Codable, Sendable, Equatable {
+    public let sampleFps: Double?
+    public let everyMs: Int?
+    public let effectiveFps: Double
+    public let startMs: Int?
+    public let endMs: Int?
+    public let keepAllFrames: Bool
+
+    public init(
+        sampleFps: Double?,
+        everyMs: Int?,
+        effectiveFps: Double,
+        startMs: Int?,
+        endMs: Int?,
+        keepAllFrames: Bool)
+    {
+        self.sampleFps = sampleFps
+        self.everyMs = everyMs
+        self.effectiveFps = effectiveFps
+        self.startMs = startMs
+        self.endMs = endMs
+        self.keepAllFrames = keepAllFrames
     }
 }
 

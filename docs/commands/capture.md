@@ -20,6 +20,8 @@ A hidden alias `capture watch` maps to `capture live` for backwards compatibilit
 - `metadata.json` (`CaptureResult`) with stats, warnings, grid info, and source (live|video)
 - Optional MP4 (`--video-out`) built from kept frames
 
+For `capture video`, `metadata.json` and JSON stdout include `options.video` with the requested sampling/trim options plus the effective FPS used by the frame reader.
+
 ## `capture live` flags
 - Targeting: `--mode`, `--screen-index`, `--app`, `--pid`, `--window-title`, `--window-index`, `--region` (global coords)
 - Focus: `--capture-focus auto|background|foreground`

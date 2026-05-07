@@ -482,7 +482,15 @@ struct CaptureVideoCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOpti
                 sourceKind: .video,
                 videoIn: videoURL.path,
                 videoOut: self.videoOut,
-                keepAllFrames: self.noDiff
+                keepAllFrames: self.noDiff,
+                videoOptions: CaptureVideoOptionsSnapshot(
+                    sampleFps: self.everyMs == nil ? self.sampleFps ?? 2.0 : nil,
+                    everyMs: self.everyMs,
+                    effectiveFps: frameSource.effectiveFPS,
+                    startMs: self.startMs,
+                    endMs: self.endMs,
+                    keepAllFrames: self.noDiff
+                )
             )
             let session = WatchCaptureSession(dependencies: deps, configuration: config)
             let result = try await session.run()

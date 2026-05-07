@@ -91,7 +91,8 @@ public struct CaptureTool: MCPTool {
             sourceKind: request.source,
             videoIn: request.videoIn,
             videoOut: request.videoOut,
-            keepAllFrames: request.keepAllFrames)
+            keepAllFrames: request.keepAllFrames,
+            videoOptions: request.videoOptions)
         let session = WatchCaptureSession(
             dependencies: dependencies,
             configuration: configuration)
@@ -125,6 +126,7 @@ private struct CaptureRequest {
     let usesDefaultOutput: Bool
     let frameSource: (any CaptureFrameSource)?
     let keepAllFrames: Bool
+    let videoOptions: CaptureVideoOptionsSnapshot?
     let videoIn: String?
     let videoOut: String?
 
@@ -168,6 +170,7 @@ private struct CaptureRequest {
                 constraints: constraints)
             self.options = opts
             self.keepAllFrames = false
+            self.videoOptions = nil
             self.videoIn = nil
         case .video:
             guard let inputPath = input.input else {
@@ -190,6 +193,13 @@ private struct CaptureRequest {
             self.scope = CaptureScope(kind: .frontmost)
             self.keepAllFrames = input.noDiff ?? false
             self.videoIn = videoURL.path
+            self.videoOptions = CaptureVideoOptionsSnapshot(
+                sampleFps: everyMs == nil ? sampleFps ?? 2.0 : nil,
+                everyMs: everyMs,
+                effectiveFps: frameSource.effectiveFPS,
+                startMs: input.startMs,
+                endMs: input.endMs,
+                keepAllFrames: self.keepAllFrames)
             let opts = CaptureRequest.buildVideoOptions(constraints: constraints)
             self.options = opts
         }

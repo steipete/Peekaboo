@@ -41,6 +41,7 @@ public struct WatchCaptureConfiguration {
     public let videoIn: String?
     public let videoOut: String?
     public let keepAllFrames: Bool
+    public let videoOptions: CaptureVideoOptionsSnapshot?
 
     public init(
         scope: CaptureScope,
@@ -50,7 +51,8 @@ public struct WatchCaptureConfiguration {
         sourceKind: CaptureSessionResult.Source = .live,
         videoIn: String? = nil,
         videoOut: String? = nil,
-        keepAllFrames: Bool = false)
+        keepAllFrames: Bool = false,
+        videoOptions: CaptureVideoOptionsSnapshot? = nil)
     {
         self.scope = scope
         self.options = options
@@ -60,6 +62,7 @@ public struct WatchCaptureConfiguration {
         self.videoIn = videoIn
         self.videoOut = videoOut
         self.keepAllFrames = keepAllFrames
+        self.videoOptions = videoOptions
     }
 }
 
@@ -86,6 +89,7 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
     private let videoIn: String?
     private let videoOut: String?
     private let keepAllFrames: Bool
+    private let videoOptions: CaptureVideoOptionsSnapshot?
     private let videoWriterFPS: Double?
     private let sessionId = UUID().uuidString
     private var videoWriter: VideoWriter?
@@ -110,6 +114,7 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
         self.videoIn = configuration.videoIn
         self.videoOut = configuration.videoOut
         self.keepAllFrames = configuration.keepAllFrames
+        self.videoOptions = configuration.videoOptions
         if let videoSource = dependencies.frameSource as? VideoFrameSource {
             self.videoWriterFPS = videoSource.effectiveFPS
         } else {
@@ -644,7 +649,8 @@ public final class WatchCaptureSession { // swiftlint:disable:this type_body_len
             captureFocus: self.options.captureFocus,
             resolutionCap: self.options.resolutionCap,
             diffStrategy: self.options.diffStrategy,
-            diffBudgetMs: self.options.diffBudgetMs)
+            diffBudgetMs: self.options.diffBudgetMs,
+            video: self.videoOptions)
     }
 
     private func makeStats(durationMs: Int) -> WatchStats {
