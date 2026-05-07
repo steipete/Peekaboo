@@ -91,7 +91,7 @@ Landed:
 - Element-targeted actions now receive stale-window diagnostics when a snapshot window disappears or changes size.
 - Element-targeted move, drag, swipe, click output, and scroll targeting now share the core moved-window point adjustment.
 - Disk and in-memory snapshot stores now preserve typed detection window context so observation-backed snapshots keep bundle ID, PID, window ID, and bounds.
-- App launch/switch and window mutation commands now invalidate the implicit latest snapshot after focus or geometry changes.
+- App launch/switch, window mutation, hotkey, press, and paste commands now invalidate the implicit latest snapshot after UI changes.
 
 Still incomplete:
 
@@ -866,7 +866,7 @@ Work:
 - done: define stale-window diagnostics for disappeared or resized snapshot windows;
 - done: centralize moved-window target-point adjustment for click/type/move/scroll/drag/swipe element paths;
 - done: preserve typed detection window context in disk and in-memory snapshot stores;
-- done: invalidate implicit latest snapshots after app launch/switch and window focus/geometry changes;
+- done: invalidate implicit latest snapshots after app launch/switch, window focus/geometry, hotkey, press, and paste changes;
 - teach focus commands to accept fresh observation context where available;
 - add observe-if-needed for missing/stale element IDs;
 - define explicit-snapshot and focus-command invalidation policy;

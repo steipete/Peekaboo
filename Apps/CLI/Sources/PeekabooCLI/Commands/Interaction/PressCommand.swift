@@ -103,7 +103,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 }
             }
 
-            await InteractionObservationInvalidator.invalidateAfterMutation(
+            await InteractionObservationInvalidator.invalidateAfterMutationOrLatest(
                 observation,
                 snapshots: self.services.snapshots,
                 logger: self.logger,

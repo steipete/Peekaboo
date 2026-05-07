@@ -127,7 +127,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 targetPID = nil
             }
 
-            await InteractionObservationInvalidator.invalidateAfterMutation(
+            await InteractionObservationInvalidator.invalidateAfterMutationOrLatest(
                 observation,
                 snapshots: self.services.snapshots,
                 logger: self.logger,

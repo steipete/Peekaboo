@@ -120,6 +120,31 @@ enum InteractionObservationInvalidator {
         }
     }
 
+    static func invalidateAfterMutationOrLatest(
+        _ observation: InteractionObservationContext,
+        snapshots: any SnapshotManagerProtocol,
+        logger: Logger,
+        reason: String
+    ) async {
+        switch observation.source {
+        case .explicit:
+            return
+        case .latest:
+            await self.invalidateAfterMutation(
+                observation,
+                snapshots: snapshots,
+                logger: logger,
+                reason: reason
+            )
+        case .none:
+            await self.invalidateLatestSnapshot(
+                using: snapshots,
+                logger: logger,
+                reason: reason
+            )
+        }
+    }
+
     static func invalidateLatestSnapshot(
         using snapshots: any SnapshotManagerProtocol,
         logger: Logger,

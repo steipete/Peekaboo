@@ -126,6 +126,48 @@ struct InteractionObservationContextTests {
 
         #expect(invalidated == nil)
     }
+
+    @Test
+    func `Mutation invalidation without observation drops latest snapshot`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let latest = try await snapshots.createSnapshot()
+        let context = await InteractionObservationContext.resolve(
+            explicitSnapshot: nil,
+            fallbackToLatest: false,
+            snapshots: snapshots
+        )
+
+        await InteractionObservationInvalidator.invalidateAfterMutationOrLatest(
+            context,
+            snapshots: snapshots,
+            logger: Logger.shared,
+            reason: "test mutation"
+        )
+
+        #expect(latest.isEmpty == false)
+        #expect(await snapshots.getMostRecentSnapshot() == nil)
+    }
+
+    @Test
+    func `Mutation invalidation preserves explicit snapshot`() async throws {
+        let snapshots = CoreSnapshotManagerStub()
+        let explicit = try await snapshots.createSnapshot(id: "explicit-snapshot")
+        let context = await InteractionObservationContext.resolve(
+            explicitSnapshot: "explicit-snapshot",
+            fallbackToLatest: false,
+            snapshots: snapshots
+        )
+
+        await InteractionObservationInvalidator.invalidateAfterMutationOrLatest(
+            context,
+            snapshots: snapshots,
+            logger: Logger.shared,
+            reason: "test mutation"
+        )
+
+        #expect(explicit == "explicit-snapshot")
+        #expect(await snapshots.getMostRecentSnapshot() == "explicit-snapshot")
+    }
 }
 
 private final class CoreSnapshotManagerStub: SnapshotManagerProtocol, @unchecked Sendable {

@@ -113,6 +113,11 @@ struct PasteCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 keys: "cmd,v",
                 holdDuration: 50
             )
+            await InteractionObservationInvalidator.invalidateLatestSnapshot(
+                using: self.services.snapshots,
+                logger: self.logger,
+                reason: "paste"
+            )
 
             let result = PasteResult(
                 success: true,
