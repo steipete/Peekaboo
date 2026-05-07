@@ -73,6 +73,7 @@ Landed:
 - Capture models now keep image primitives, live session options, frame metadata, and session-result summaries in focused files.
 - UI automation keeps service initialization, delegated operations, focus/wait lookup, and search-policy limits in focused files.
 - Space management keeps managed-display Space mapping helpers in a focused companion file.
+- Legacy capture keeps window capture and screen/area capture paths in focused operator companions.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -224,6 +225,10 @@ ScreenCaptureKitOperator.swift: 73 lines
 ScreenCaptureKitOperator+Display.swift: 113 lines
 ScreenCaptureKitOperator+Window.swift: 296 lines
 ScreenCaptureKitOperator+Support.swift: 67 lines
+LegacyScreenCaptureOperator.swift: 11 lines
+LegacyScreenCaptureOperator+Window.swift: 279 lines
+LegacyScreenCaptureOperator+ScreenArea.swift: 129 lines
+LegacyScreenCaptureOperator+Support.swift: 226 lines
 WatchCaptureSession.swift: 166 lines
 WatchCaptureSession+Loop.swift: 253 lines
 WatchCaptureSession+Saving.swift: 90 lines
