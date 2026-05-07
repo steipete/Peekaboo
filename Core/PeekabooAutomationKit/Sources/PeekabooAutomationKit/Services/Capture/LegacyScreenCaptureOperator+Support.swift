@@ -1,0 +1,226 @@
+import AppKit
+import CoreGraphics
+import Foundation
+import PeekabooFoundation
+@preconcurrency import ScreenCaptureKit
+
+extension LegacyScreenCaptureOperator {
+    func captureDisplayWithScreenshotManager(
+        screen: NSScreen,
+        displayIndex: Int,
+        correlationId: String) async throws -> CGImage
+    {
+        let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
+        let displays = content.displays
+        guard !displays.isEmpty else {
+            throw OperationError.captureFailed(reason: "No ScreenCaptureKit displays available")
+        }
+
+        let display = try self.resolveDisplay(
+            for: screen,
+            displayIndex: displayIndex,
+            availableDisplays: displays)
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        self.logger.debug(
+            "Capturing display via SCScreenshotManager",
+            metadata: [
+                "displayIndex": displayIndex,
+                "displayID": display.displayID,
+            ],
+            correlationId: correlationId)
+
+        return try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: self.makeScreenshotConfiguration())
+    }
+
+    func captureDisplayWithCGDisplay(screen: NSScreen) throws -> CGImage {
+        let resolvedID = self.displayID(for: screen) ?? CGMainDisplayID()
+        guard let image = CGDisplayCreateImage(resolvedID) else {
+            throw OperationError.captureFailed(reason: "CGDisplayCreateImage returned nil")
+        }
+        return image
+    }
+
+    func resolveDisplay(
+        for screen: NSScreen,
+        displayIndex: Int,
+        availableDisplays: [SCDisplay]) throws -> SCDisplay
+    {
+        if let displayID = self.displayID(for: screen),
+           let display = availableDisplays.first(where: { $0.displayID == displayID })
+        {
+            return display
+        }
+
+        guard displayIndex >= 0, displayIndex < availableDisplays.count else {
+            throw PeekabooError
+                .invalidInput("displayIndex \(displayIndex) is out of range for ScreenCaptureKit displays")
+        }
+
+        return availableDisplays[displayIndex]
+    }
+
+    func captureWindowWithScreenshotManager(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
+        let content = try await ScreenCaptureKitCaptureGate.shareableContent(
+            excludingDesktopWindows: false,
+            onScreenWindowsOnly: false)
+        guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+            throw OperationError.captureFailed(
+                reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
+        }
+        guard let display = content.displays.first(where: { $0.frame.intersects(scWindow.frame) }) else {
+            throw OperationError.captureFailed(
+                reason: "Window \(windowID) is not on any available display")
+        }
+
+        let nativeScale = ScreenCaptureScaleResolver.plan(
+            preference: .native,
+            displayID: display.displayID,
+            fallbackPixelWidth: display.width,
+            frameWidth: display.frame.width).nativeScale
+
+        let filter = SCContentFilter(display: display, including: [scWindow])
+        let config = self.makeScreenshotConfiguration()
+        // Display-bound filters expect display-local geometry. This mirrors the reliable modern path and keeps
+        // single-shot captures crisp without relying on the obsolete CoreGraphics window API.
+        config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
+            globalRect: scWindow.frame,
+            displayFrame: display.frame)
+        config.width = max(Int(scWindow.frame.width * nativeScale), 1)
+        config.height = max(Int(scWindow.frame.height * nativeScale), 1)
+        config.captureResolution = .best
+        config.ignoreShadowsSingleWindow = true
+        if #available(macOS 14.2, *) {
+            config.includeChildWindows = false
+        }
+
+        self.logger.debug(
+            "Capturing window via display-bound SCScreenshotManager",
+            metadata: [
+                "windowID": windowID,
+                "displayID": display.displayID,
+            ],
+            correlationId: correlationId)
+
+        return try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: config)
+    }
+
+    @MainActor
+    func captureWindowWithCGWindowList(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
+        // PeekabooAutomationKit targets macOS 14+, where ScreenCaptureKit is always available. Current SDKs
+        // obsolete CGWindowListCreateImage, so the legacy selector funnels into the SCKit path instead.
+        try await self.captureWindowWithScreenshotManager(
+            windowID: windowID,
+            correlationId: correlationId)
+    }
+
+    nonisolated static func windowIndexError(requestedIndex: Int, totalWindows: Int) -> String {
+        let lastIndex = max(totalWindows - 1, 0)
+        return "windowIndex: Index \(requestedIndex) is out of range. Valid windows: 0-\(lastIndex)"
+    }
+
+    nonisolated static func firstRenderableWindowIndex(
+        in windows: [[String: Any]]) -> Int?
+    {
+        windows.indexed().first { indexWindow in
+            guard let info = self.makeFilteringInfo(from: indexWindow.element, index: indexWindow.index) else {
+                return false
+            }
+            return WindowFiltering.isRenderable(info)
+        }?.index
+    }
+
+    nonisolated static func makeFilteringInfo(
+        from window: [String: Any],
+        index: Int) -> ServiceWindowInfo?
+    {
+        guard
+            let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
+            let width = boundsDict["Width"] as? CGFloat,
+            let height = boundsDict["Height"] as? CGFloat,
+            let x = boundsDict["X"] as? CGFloat,
+            let y = boundsDict["Y"] as? CGFloat
+        else {
+            return nil
+        }
+
+        let bounds = CGRect(x: x, y: y, width: width, height: height)
+        let windowID = window[kCGWindowNumber as String] as? Int ?? index
+        let layer = window[kCGWindowLayer as String] as? Int ?? 0
+        let alpha = window[kCGWindowAlpha as String] as? CGFloat ?? 1.0
+        let isOnScreen = window[kCGWindowIsOnscreen as String] as? Bool ?? true
+        let sharingRaw = window[kCGWindowSharingState as String] as? Int
+        let sharingState = sharingRaw.flatMap { WindowSharingState(rawValue: $0) }
+
+        return ServiceWindowInfo(
+            windowID: windowID,
+            title: (window[kCGWindowName as String] as? String) ?? "",
+            bounds: bounds,
+            isMinimized: false,
+            isMainWindow: index == 0,
+            windowLevel: layer,
+            alpha: alpha,
+            index: index,
+            layer: layer,
+            isOnScreen: isOnScreen,
+            sharingState: sharingState)
+    }
+
+    func shouldUseLegacyCGCapture() -> Bool {
+        #if os(macOS)
+        if #available(macOS 14.0, *) {
+            let env = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()
+            return env.map { ["1", "true", "yes"].contains($0) } ?? false
+        }
+        return true
+        #else
+        return false
+        #endif
+    }
+
+    func scaleFactor(for bounds: CGRect) -> CGFloat {
+        if let screen = NSScreen.screens.first(where: { $0.frame.contains(bounds) }) {
+            return screen.backingScaleFactor
+        }
+        return NSScreen.main?.backingScaleFactor ?? 1.0
+    }
+
+    func scalePlan(
+        for bounds: CGRect,
+        preference: CaptureScalePreference) -> ScreenCaptureScaleResolver.Plan
+    {
+        let scaleFactor = self.scaleFactor(for: bounds)
+        return ScreenCaptureScaleResolver.plan(
+            preference: preference,
+            screenBackingScaleFactor: scaleFactor,
+            fallbackPixelWidth: Int(bounds.width * scaleFactor),
+            frameWidth: bounds.width)
+    }
+
+    func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
+        let key = NSDeviceDescriptionKey("NSScreenNumber")
+        guard let number = screen.deviceDescription[key] as? NSNumber else {
+            return nil
+        }
+        return CGDirectDisplayID(number.uint32Value)
+    }
+
+    func makeScreenshotConfiguration() -> SCStreamConfiguration {
+        let configuration = SCStreamConfiguration()
+        configuration.backgroundColor = .clear
+        configuration.shouldBeOpaque = true
+        configuration.showsCursor = false
+        configuration.capturesAudio = false
+        return configuration
+    }
+}

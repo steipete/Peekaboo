@@ -59,6 +59,7 @@ Landed:
 - Screen Recording enforcement now lives in `ScreenCapturePermissionGate`.
 - Logical-1x capture downscaling now lives in `ScreenCaptureImageScaler`.
 - Legacy area capture now executes through the legacy capture operator instead of facade helper code.
+- ScreenCaptureKit and legacy capture operators now live in dedicated files.
 
 Still intentionally incomplete:
 
@@ -66,7 +67,7 @@ Still intentionally incomplete:
 - annotation output under the observation writer;
 - OCR as a first-class observation enhancement;
 - structured timing export in all user-facing JSON;
-- extraction of `ScreenCaptureService` internals;
+- further extraction of `ScreenCaptureService` internals;
 - extraction of `ElementDetectionService` internals;
 - moving traversal and cache invalidation into dedicated collaborators;
 - command cleanup after the bridge paths disappear.
