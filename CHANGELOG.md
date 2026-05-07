@@ -12,6 +12,12 @@
 ### Fixed
 - CLI bundle metadata and the bundled Homebrew formula now advertise the macOS 15 minimum that v3.0.0-beta2+ already requires.
 - The bundled Homebrew formula now matches the published v3.0.0-beta4 CLI artifact checksum.
+- `peekaboo move --on` now targets UI elements correctly.
+- `peekaboo window` subcommands now accept `--window-id` without requiring a redundant app target.
+- `peekaboo press --hold` now honors the requested hold duration.
+- `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
+- `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
+- JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
 - Bridge-sourced permission checks now explain when Screen Recording is missing on the selected host app and document the `--no-remote --capture-engine cg` subprocess workaround.
 - OpenAI GPT-5 / Responses API paths now resolve OAuth credentials through Tachikoma instead of requiring `OPENAI_API_KEY`, while docs clarify the remaining OpenAI scope limitation.
@@ -19,6 +25,10 @@
 - `see --analyze` / image analysis now convert GLM vision model 0-1000 normalized bounding boxes into screenshot pixel coordinates before returning results.
 - `image --analyze` now honors configured custom AI providers such as `local-proxy/model` instead of falling back to built-in defaults. Thanks @381181295 for [#99](https://github.com/steipete/Peekaboo/pull/99)!
 - Browser focus verification now tolerates stale AX handles by re-resolving windows after activation and checking the topmost renderable CG window. Thanks @ZVNC28 for [#103](https://github.com/steipete/Peekaboo/pull/103)!
+
+### Performance
+- Menu bar listing is faster by avoiding redundant accessibility work.
+- Dialog discovery and visualizer dispatch now fail fast when their target UI is unavailable instead of waiting through slow default paths.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!
