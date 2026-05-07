@@ -92,32 +92,8 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         self.logger
     }
 
-    private var captureScale: CaptureScalePreference {
-        self.retina ? .native : .logical1x
-    }
-
-    private var observationCaptureOptions: DesktopCaptureOptions {
-        DesktopCaptureOptions(
-            engine: self.observationCaptureEnginePreference,
-            scale: self.captureScale,
-            focus: self.captureFocus,
-            visualizerMode: .screenshotFlash
-        )
-    }
-
-    private var observationCaptureEnginePreference: CaptureEnginePreference {
-        let value = (self.captureEngine ?? self.resolvedRuntime.configuration.captureEnginePreference)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-
-        switch value {
-        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
-            return .modern
-        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
-            return .legacy
-        default:
-            return .auto
-        }
+    var configuredCaptureEnginePreference: String? {
+        self.resolvedRuntime.configuration.captureEnginePreference
     }
 
     @MainActor
@@ -399,15 +375,9 @@ extension ImageCommand {
     ) async throws -> DesktopObservationResult {
         let url = self.makeOutputURL(preferredName: preferredName, index: index)
 
-        return try await self.services.desktopObservation.observe(DesktopObservationRequest(
+        return try await self.services.desktopObservation.observe(self.makeObservationRequest(
             target: target,
-            capture: self.observationCaptureOptions,
-            detection: DesktopDetectionOptions(mode: .none),
-            output: DesktopObservationOutputOptions(
-                path: url.path,
-                format: self.format,
-                saveRawScreenshot: true
-            )
+            outputURL: url
         ))
     }
 
@@ -534,16 +504,6 @@ extension ImageCommand {
             return appIdentifier
         }
         return "PID:\(app.processIdentifier)"
-    }
-
-    private var observationWindowSelection: WindowSelection {
-        if let windowIndex {
-            return .index(windowIndex)
-        }
-        if let windowTitle {
-            return .title(windowTitle)
-        }
-        return .automatic
     }
 
     private static let filenameDateFormatter: ISO8601DateFormatter = {

@@ -101,7 +101,8 @@ ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
 SeeCommand.swift: 1168 lines
-ImageCommand.swift: 635 lines
+ImageCommand.swift: 595 lines
+ImageCommand+ObservationRequest.swift: 56 lines
 ```
 
 Current command-boundary audit:
@@ -627,7 +628,7 @@ Work:
 Recommended order:
 
 1. Done: run live `sips` checks and compare against `screencapture -l <windowID> -o -x`.
-2. Next: extract remaining observation request mapping out of large command files.
+2. Started: extract remaining observation request mapping out of large command files.
 
 Live check, May 7, 2026:
 
@@ -712,7 +713,7 @@ Purpose: make CLI/MCP boring and prepare package extraction.
 Work:
 
 - delete obsolete bridge helpers;
-- move request mapping into small command-support adapters;
+- started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`);
 - archive stale refactor notes;
 - update command docs for changed diagnostics/timings;
 - only then consider module extraction.
