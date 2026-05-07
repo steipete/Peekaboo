@@ -162,7 +162,8 @@ public final class PeekabooServices {
             screenCapture: screenCap,
             automation: auto,
             applications: apps,
-            screens: screenSvc)
+            screens: screenSvc,
+            snapshotManager: snapshots)
         self.screenCapture = screenCap
         self.applications = apps
         self.automation = auto
@@ -330,7 +331,8 @@ public final class PeekabooServices {
             screenCapture: screenCapture,
             automation: automation,
             applications: applications,
-            screens: screenSvc)
+            screens: screenSvc,
+            snapshotManager: snapshots)
         self.windows = windows
         self.menu = menu
         self.dock = dock
@@ -377,7 +379,8 @@ public final class PeekabooServices {
             screenCapture: screenCapture,
             automation: automation,
             applications: applications,
-            screens: screens)
+            screens: screens,
+            snapshotManager: snapshots)
         self.windows = windows
         self.menu = menu
         self.dock = dock

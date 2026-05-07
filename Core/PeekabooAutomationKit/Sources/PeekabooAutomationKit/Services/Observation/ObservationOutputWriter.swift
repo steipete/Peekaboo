@@ -12,7 +12,11 @@ public protocol ObservationOutputWriting: Sendable {
 
 @MainActor
 public final class ObservationOutputWriter: ObservationOutputWriting {
-    public init() {}
+    private let snapshotManager: (any SnapshotManagerProtocol)?
+
+    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil) {
+        self.snapshotManager = snapshotManager
+    }
 
     public func write(
         capture: CaptureResult,
@@ -23,6 +27,12 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
         let effectiveRawPath = rawPath ?? capture.savedPath
         let annotatedPath = try self.writeAnnotatedScreenshotIfNeeded(
             rawPath: effectiveRawPath,
+            capture: capture,
+            elements: elements,
+            options: options)
+        try await self.writeSnapshotIfNeeded(
+            rawPath: effectiveRawPath,
+            annotatedPath: annotatedPath,
             capture: capture,
             elements: elements,
             options: options)
@@ -39,7 +49,7 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
         capture: CaptureResult,
         options: DesktopObservationOutputOptions) throws -> String?
     {
-        guard options.saveRawScreenshot || options.saveAnnotatedScreenshot else {
+        guard options.saveRawScreenshot || options.saveAnnotatedScreenshot || options.saveSnapshot else {
             return nil
         }
 
@@ -49,6 +59,51 @@ public final class ObservationOutputWriter: ObservationOutputWriting {
             withIntermediateDirectories: true)
         try self.encodedImageData(capture.imageData, format: options.format).write(to: url, options: .atomic)
         return url.path
+    }
+
+    private func writeSnapshotIfNeeded(
+        rawPath: String?,
+        annotatedPath: String?,
+        capture: CaptureResult,
+        elements: ElementDetectionResult?,
+        options: DesktopObservationOutputOptions) async throws
+    {
+        guard options.saveSnapshot, let snapshotManager = self.snapshotManager, let rawPath else {
+            return
+        }
+
+        let snapshotID = options.snapshotID ?? elements?.snapshotId
+        guard let snapshotID else {
+            return
+        }
+
+        let windowContext = elements?.metadata.windowContext
+        try await snapshotManager.storeScreenshot(SnapshotScreenshotRequest(
+            snapshotId: snapshotID,
+            screenshotPath: rawPath,
+            applicationBundleId: windowContext?.applicationBundleId ?? capture.metadata.applicationInfo?
+                .bundleIdentifier,
+            applicationProcessId: windowContext?.applicationProcessId ?? capture.metadata.applicationInfo?
+                .processIdentifier,
+            applicationName: windowContext?.applicationName ?? capture.metadata.applicationInfo?.name,
+            windowTitle: windowContext?.windowTitle ?? capture.metadata.windowInfo?.title,
+            windowBounds: windowContext?.windowBounds ?? capture.metadata.windowInfo?.bounds))
+
+        if let elements {
+            try await snapshotManager.storeDetectionResult(
+                snapshotId: snapshotID,
+                result: ElementDetectionResult(
+                    snapshotId: snapshotID,
+                    screenshotPath: rawPath,
+                    elements: elements.elements,
+                    metadata: elements.metadata))
+        }
+
+        if let annotatedPath {
+            try await snapshotManager.storeAnnotatedScreenshot(
+                snapshotId: snapshotID,
+                annotatedScreenshotPath: annotatedPath)
+        }
     }
 
     private func writeAnnotatedScreenshotIfNeeded(

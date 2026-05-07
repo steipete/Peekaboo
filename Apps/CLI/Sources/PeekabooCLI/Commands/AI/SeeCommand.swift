@@ -427,7 +427,8 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
             ),
             output: DesktopObservationOutputOptions(
                 path: self.screenshotOutputPath(),
-                saveRawScreenshot: true
+                saveRawScreenshot: true,
+                saveSnapshot: true
             )
         ))
 
@@ -443,32 +444,6 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         guard let detectionResult = observation.elements else {
             throw CaptureError.captureFailure("Observation completed without element detection")
         }
-
-        let resultWithPath = ElementDetectionResult(
-            snapshotId: detectionResult.snapshotId,
-            screenshotPath: outputPath,
-            elements: detectionResult.elements,
-            metadata: detectionResult.metadata
-        )
-
-        try await self.services.snapshots.storeScreenshot(
-            SnapshotScreenshotRequest(
-                snapshotId: detectionResult.snapshotId,
-                screenshotPath: outputPath,
-                applicationBundleId: detectionResult.metadata.windowContext?.applicationBundleId
-                    ?? observation.capture.metadata.applicationInfo?.bundleIdentifier,
-                applicationProcessId: detectionResult.metadata.windowContext?.applicationProcessId
-                    ?? observation.capture.metadata.applicationInfo.map { Int32($0.processIdentifier) },
-                applicationName: detectionResult.metadata.windowContext?.applicationName,
-                windowTitle: detectionResult.metadata.windowContext?.windowTitle,
-                windowBounds: detectionResult.metadata.windowContext?.windowBounds
-            )
-        )
-
-        try await self.services.snapshots.storeDetectionResult(
-            snapshotId: detectionResult.snapshotId,
-            result: resultWithPath
-        )
 
         return CaptureAndDetectionResult(
             snapshotId: detectionResult.snapshotId,

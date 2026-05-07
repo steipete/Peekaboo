@@ -45,7 +45,7 @@ Landed:
 - `DesktopObservationService` facade in `PeekabooAutomationKit`.
 - `ObservationTargetResolver` for core targets.
 - Request-scoped `DesktopStateSnapshot` for target resolution and diagnostics.
-- `ObservationOutputWriter` for raw screenshot persistence, annotated companion-path planning, and basic annotation rendering.
+- `ObservationOutputWriter` for raw screenshot persistence, annotated companion-path planning, basic annotation rendering, and snapshot registration.
 - Observation-backed paths for CLI `see`, CLI `image`, MCP `see`, and MCP `image`.
 - Request-scoped capture engine preference through observation.
 - Observation detection timeout enforcement.
@@ -71,10 +71,11 @@ Landed:
 - Observation-backed menu-bar strip capture for CLI `image --app menubar` and MCP `image`.
 - Observation-backed menu-bar popover window-list resolution and capture.
 - MCP `see` uses observation-produced annotated screenshots before falling back to its local renderer.
+- Observation-backed CLI `see` registers raw screenshots and detection results through observation output.
 
 Still incomplete:
 
-- CLI rich annotation renderer and snapshot registration under observation.
+- CLI rich annotation renderer under observation.
 - Menu-bar popover OCR and click-to-open behavior under observation.
 - OCR as a first-class observation enhancement.
 - Further capture-service file splitting and cleanup after command bridges disappear.

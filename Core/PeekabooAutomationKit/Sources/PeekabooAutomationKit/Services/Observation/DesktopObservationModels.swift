@@ -241,6 +241,7 @@ public struct DesktopObservationOutputOptions: Sendable, Equatable {
     public var format: ImageFormat
     public var saveRawScreenshot: Bool
     public var saveAnnotatedScreenshot: Bool
+    public var saveSnapshot: Bool
     public var snapshotID: String?
 
     public init(
@@ -248,12 +249,14 @@ public struct DesktopObservationOutputOptions: Sendable, Equatable {
         format: ImageFormat = .png,
         saveRawScreenshot: Bool = false,
         saveAnnotatedScreenshot: Bool = false,
+        saveSnapshot: Bool = false,
         snapshotID: String? = nil)
     {
         self.path = path
         self.format = format
         self.saveRawScreenshot = saveRawScreenshot
         self.saveAnnotatedScreenshot = saveAnnotatedScreenshot
+        self.saveSnapshot = saveSnapshot
         self.snapshotID = snapshotID
     }
 }

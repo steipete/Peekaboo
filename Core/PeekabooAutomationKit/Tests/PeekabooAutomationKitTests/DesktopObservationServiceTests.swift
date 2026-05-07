@@ -235,6 +235,53 @@ final class DesktopObservationServiceTests: XCTestCase {
         try? FileManager.default.removeItem(atPath: annotatedPath)
     }
 
+    func testObservationOutputWriterRegistersSnapshotWhenRequested() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 89, title: "Snapshot", bounds: CGRect(x: 10, y: 20, width: 100, height: 80))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-snapshot-test-\(UUID().uuidString).png")
+        let snapshotManager = InMemorySnapshotManager()
+        let automation = RecordingUIAutomationService(elements: DetectedElements(buttons: [
+            DetectedElement(
+                id: "B1",
+                type: .button,
+                label: "Save",
+                bounds: CGRect(x: 20, y: 30, width: 40, height: 20),
+                isEnabled: true),
+        ]))
+        let service = try DesktopObservationService(
+            screenCapture: RecordingScreenCaptureService(
+                result: Self.captureResult(
+                    imageData: Self.testPNGData(size: window.bounds.size),
+                    app: app,
+                    window: window)),
+            automation: automation,
+            applications: applications,
+            snapshotManager: snapshotManager)
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .accessibility),
+            output: DesktopObservationOutputOptions(
+                path: outputURL.path,
+                saveSnapshot: true)))
+
+        XCTAssertEqual(result.files.rawScreenshotPath, outputURL.path)
+        let snapshotID = try XCTUnwrap(result.elements?.snapshotId)
+        let storedDetection = try await snapshotManager.getDetectionResult(snapshotId: snapshotID)
+        XCTAssertEqual(storedDetection?.screenshotPath, outputURL.path)
+        XCTAssertEqual(storedDetection?.elements.all.first?.id, "B1")
+
+        let storedSnapshot = try await snapshotManager.getUIAutomationSnapshot(snapshotId: snapshotID)
+        XCTAssertEqual(storedSnapshot?.screenshotPath, outputURL.path)
+        XCTAssertEqual(storedSnapshot?.applicationBundleId, "com.example.fixture")
+        XCTAssertEqual(storedSnapshot?.windowTitle, "Snapshot")
+        XCTAssertEqual(storedSnapshot?.windowBounds, window.bounds)
+
+        try? FileManager.default.removeItem(at: outputURL)
+    }
+
     func testObservationForwardsCaptureEnginePreferenceWhenSupported() async throws {
         let app = Self.app()
         let window = Self.window(id: 99, title: "Engine", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))

@@ -19,12 +19,13 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
         applications: any ApplicationServiceProtocol,
-        screens: any ScreenServiceProtocol = ScreenService())
+        screens: any ScreenServiceProtocol = ScreenService(),
+        snapshotManager: (any SnapshotManagerProtocol)? = nil)
     {
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = ObservationTargetResolver(applications: applications, screens: screens)
-        self.outputWriter = ObservationOutputWriter()
+        self.outputWriter = ObservationOutputWriter(snapshotManager: snapshotManager)
         self.stateSnapshotProvider = DesktopStateSnapshotProvider(applications: applications)
     }
 
@@ -290,7 +291,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         options: DesktopObservationOutputOptions,
         tracer: DesktopObservationTraceRecorder) async throws -> DesktopObservationFiles
     {
-        guard options.saveRawScreenshot || options.saveAnnotatedScreenshot else {
+        guard options.saveRawScreenshot || options.saveAnnotatedScreenshot || options.saveSnapshot else {
             return DesktopObservationFiles(rawScreenshotPath: capture.savedPath)
         }
 
