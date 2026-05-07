@@ -80,6 +80,29 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo list menubar emits standard JSON envelope`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo(["list", "menubar", "--json", "--no-remote"])
+
+        let data = Data(result.standardOutput.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any] else {
+            Issue.record("Expected JSON object output from list menubar command.")
+            return
+        }
+
+        if result.status != .exited(0) {
+            #expect(json["success"] as? Bool == false)
+            return
+        }
+
+        #expect(json["success"] as? Bool == true)
+        let dataPayload = json["data"] as? [String: Any]
+        #expect(dataPayload?["items"] is [[String: Any]])
+        #expect(dataPayload?["count"] as? Int == (dataPayload?["items"] as? [[String: Any]])?.count)
+    }
+
+    @Test
     func `peekaboo clipboard get JSON includes exact text`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let text = "Peekaboo exact clipboard text \(UUID().uuidString)"

@@ -20,6 +20,10 @@ extension MenuService {
         ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_DEEP_AX_SWEEP"] == "1"
     }
 
+    private var menuBarAXAugmentationEnabled: Bool {
+        ProcessInfo.processInfo.environment["PEEKABOO_MENUBAR_AUGMENT_AX"] == "1"
+    }
+
     public func clickMenuExtra(title: String) async throws {
         let systemWide = Element.systemWide()
 
@@ -366,10 +370,10 @@ extension MenuService {
         let windowExtras = self.getMenuBarItemsViaWindows()
 
         // Fast path: WindowServer enumeration is usually sufficient and avoids AX calls entirely.
-        // Only fall back to accessibility sweeps when explicitly enabled or when WindowServer looks incomplete.
+        // Only fall back to accessibility sweeps when explicitly enabled, or when WindowServer returns nothing.
         if !windowExtras.isEmpty,
            !self.deepMenuBarAXSweepEnabled,
-           !self.shouldAugmentWindowExtrasWithAX(windowExtras)
+           !self.menuBarAXAugmentationEnabled
         {
             return windowExtras
         }
@@ -1023,34 +1027,6 @@ extension MenuService {
         NSWorkspace.shared.runningApplications.filter { app in
             app.activationPolicy != .regular
         }
-    }
-
-    private func shouldAugmentWindowExtrasWithAX(_ extras: [MenuExtraInfo]) -> Bool {
-        guard !extras.isEmpty else { return true }
-
-        let hasThirdParty = extras.contains { extra in
-            guard let bundleID = extra.bundleIdentifier else { return false }
-            return !bundleID.hasPrefix("com.apple.")
-        }
-        if hasThirdParty {
-            return false
-        }
-
-        if extras.contains(where: { isPlaceholderMenuTitle($0.title) }) {
-            return true
-        }
-
-        let titles = extras.map { $0.title.lowercased() }.filter { !$0.isEmpty }
-        guard !titles.isEmpty else { return true }
-        let counts = titles.reduce(into: [String: Int]()) { counts, title in
-            counts[title, default: 0] += 1
-        }
-        let mostCommon = counts.values.max() ?? 0
-        if mostCommon >= max(3, extras.count / 2) {
-            return true
-        }
-
-        return false
     }
 
     private func getMenuBarItemsFromAppsAX(

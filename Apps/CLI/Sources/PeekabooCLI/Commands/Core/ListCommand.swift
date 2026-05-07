@@ -375,12 +375,14 @@ extension ListCommand {
             do {
                 let items = try await MenuServiceBridge.listMenuBarItems(menu: self.services.menu)
                 if self.jsonOutput {
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                    let data = try encoder.encode(items)
-                    if let json = String(data: data, encoding: .utf8) {
-                        Swift.print(json)
+                    struct MenuBarListResult: Codable {
+                        let items: [MenuBarItemInfo]
+                        let count: Int
                     }
+                    outputSuccessCodable(
+                        data: MenuBarListResult(items: items, count: items.count),
+                        logger: self.outputLogger
+                    )
                 } else {
                     self.displayMenuBarItems(items)
                 }
