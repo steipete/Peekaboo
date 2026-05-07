@@ -1,0 +1,90 @@
+import CoreGraphics
+import Foundation
+
+@MainActor
+extension WatchCaptureSession {
+    struct FrameSaveContext {
+        let capture: WatchCaptureFrame
+        let index: Int
+        let timestampMs: Int
+        let changePercent: Double
+        let reason: CaptureFrameInfo.Reason
+        let motionBoxes: [CGRect]?
+    }
+
+    /// Returns a bounded video size that preserves aspect ratio while keeping the longest edge under `maxDimension`.
+    /// If `maxDimension` is nil or smaller than the current image, the original size is returned.
+    public static func scaledVideoSize(for size: CGSize, maxDimension: Int?) -> (width: Int, height: Int) {
+        guard let maxDimension, maxDimension > 0 else {
+            return (Int(size.width), Int(size.height))
+        }
+        let currentMax = Int(max(size.width, size.height))
+        guard currentMax > maxDimension else {
+            return (Int(size.width), Int(size.height))
+        }
+        let scale = Double(maxDimension) / Double(currentMax)
+        let scaledWidth = max(1, Int((Double(size.width) * scale).rounded()))
+        let scaledHeight = max(1, Int((Double(size.height) * scale).rounded()))
+        return (scaledWidth, scaledHeight)
+    }
+
+    func saveFrame(cgImage: CGImage, context: FrameSaveContext) throws -> CaptureFrameInfo {
+        try self.prepareVideoWriterIfNeeded(for: cgImage)
+        if let writer = self.videoWriter {
+            try writer.append(image: cgImage)
+        }
+
+        let fileName = String(format: "keep-%04d.png", self.frames.count + 1)
+        let url = self.outputRoot.appendingPathComponent(fileName)
+        try WatchCaptureArtifactWriter.writePNG(
+            image: cgImage,
+            to: url,
+            highlight: self.options.highlightChanges ? context.motionBoxes : nil)
+
+        if let data = try? Data(contentsOf: url) {
+            self.totalBytes += data.count
+        }
+
+        return CaptureFrameInfo(
+            index: context.index,
+            path: url.path,
+            file: fileName,
+            timestampMs: context.timestampMs,
+            changePercent: context.changePercent,
+            reason: context.reason,
+            motionBoxes: context.motionBoxes?.isEmpty == false ? context.motionBoxes : nil)
+    }
+
+    func prepareVideoWriterIfNeeded(for cgImage: CGImage) throws {
+        guard self.videoOut != nil, self.videoWriter == nil else { return }
+
+        // Create writer lazily on first kept frame so MP4 dimensions match real capture dimensions.
+        let fps = self.videoWriterFPS ?? self.options.activeFps
+        let size = Self.scaledVideoSize(
+            for: CGSize(width: cgImage.width, height: cgImage.height),
+            maxDimension: self.options.resolutionCap.map { Int($0) })
+        self.videoWriter = try VideoWriter(
+            outputPath: self.videoOut ?? self.outputRoot.appendingPathComponent("capture.mp4").path,
+            width: size.width,
+            height: size.height,
+            fps: fps)
+    }
+
+    func ensureFallbackFrame() async throws {
+        guard self.frames.isEmpty else { return }
+        guard let capture = try? await self.captureFrame(), let cg = capture.cgImage else { return }
+        let context = FrameSaveContext(
+            capture: capture,
+            index: 0,
+            timestampMs: 0,
+            changePercent: 0,
+            reason: .first,
+            motionBoxes: nil)
+        let saved = try self.saveFrame(cgImage: cg, context: context)
+        self.frames.append(saved)
+    }
+
+    func elapsedMilliseconds(since start: Date) -> Int {
+        Int(Date().timeIntervalSince(start) * 1000)
+    }
+}
