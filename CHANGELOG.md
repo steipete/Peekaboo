@@ -49,6 +49,7 @@
 - Capture metadata now includes diagnostics for requested scale, native scale, output scale, final pixel size, selected engine, and fallback reason.
 - CLI `see --menubar` popover candidate discovery now uses the shared desktop observation window catalog instead of command-local window-list parsing.
 - Menu-bar click verification now uses the shared desktop observation window catalog instead of command-local CoreGraphics window-list polling.
+- Exact `--window-id` observation metadata now resolves through a dedicated window metadata catalog instead of doing CoreGraphics lookup inside target-resolution orchestration.
 - `peekaboo image` now builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo image` capture orchestration, output models, filename planning, and focus helpers are now split out of the main command file.
 - `peekaboo see` now builds desktop observation requests through a dedicated command-support adapter.

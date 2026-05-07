@@ -3,42 +3,16 @@ import Foundation
 
 extension ObservationTargetResolver {
     func resolveWindowID(_ windowID: CGWindowID) -> ResolvedObservationTarget {
-        let windowInfo = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowID) as? [[String: Any]]
-        guard let info = windowInfo?.first else {
+        guard let metadata = ObservationWindowMetadataCatalog.currentWindow(windowID: windowID) else {
             return ResolvedObservationTarget(kind: .windowID(windowID))
         }
 
-        let title = info[kCGWindowName as String] as? String ?? ""
-        let bounds = Self.bounds(from: info)
-        let pid = info[kCGWindowOwnerPID as String] as? Int32
-        let appName = info[kCGWindowOwnerName as String] as? String ?? "Unknown"
-        let app = pid.map {
-            ApplicationIdentity(
-                processIdentifier: $0,
-                bundleIdentifier: nil,
-                name: appName)
-        }
-        let window = bounds.map {
-            WindowIdentity(
-                windowID: Int(windowID),
-                title: title,
-                bounds: $0,
-                index: 0)
-        }
-        let context = WindowContext(
-            applicationName: app?.name,
-            applicationBundleId: app?.bundleIdentifier,
-            applicationProcessId: app?.processIdentifier,
-            windowTitle: window?.title,
-            windowID: Int(windowID),
-            windowBounds: window?.bounds)
-
         return ResolvedObservationTarget(
             kind: .windowID(windowID),
-            app: app,
-            window: window,
-            bounds: bounds,
-            detectionContext: context)
+            app: metadata.app,
+            window: metadata.window,
+            bounds: metadata.bounds,
+            detectionContext: metadata.context)
     }
 
     func selectWindow(
@@ -67,20 +41,6 @@ extension ObservationTargetResolver {
             }
             return window
         }
-    }
-
-    private static func bounds(from window: [String: Any]) -> CGRect? {
-        guard
-            let boundsDict = window[kCGWindowBounds as String] as? [String: Any],
-            let x = boundsDict["X"] as? CGFloat,
-            let y = boundsDict["Y"] as? CGFloat,
-            let width = boundsDict["Width"] as? CGFloat,
-            let height = boundsDict["Height"] as? CGFloat
-        else {
-            return nil
-        }
-
-        return CGRect(x: x, y: y, width: width, height: height)
     }
 
     public nonisolated static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {

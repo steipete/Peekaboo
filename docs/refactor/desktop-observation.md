@@ -130,16 +130,17 @@ Landed:
 - Desktop observation target, request, and result DTOs now live in focused model files.
 - `DesktopObservationService` now keeps `observe` as orchestration, with capture, detection/OCR, and output-writing plumbing in focused extension files.
 
-Still incomplete:
+Current status:
 
-- Further capture-service cleanup after command bridges disappear.
-- Finish stale command/module cleanup and decide whether module extraction is worth it.
+- Capture-service cleanup is mostly complete; `ScreenCaptureService.swift` is under the 500-line target and frontmost-app lookup is behind `ScreenCaptureApplicationResolver`.
+- CLI command files no longer import `AXorcist` or `ScreenCaptureKit`; remaining AppKit use is app-management, focus verification, visualizer demo state, or command helper behavior outside the capture pipeline.
+- Observation resolver extensions no longer own broad CoreGraphics window-list scans. Menu-bar and exact-window metadata lookup now route through focused catalog helpers.
 - Optional module extraction after boundaries are stable.
 
 Current size pressure:
 
 ```text
-ScreenCaptureService.swift: 494 lines
+ScreenCaptureService.swift: 491 lines
 ScreenCaptureService+Support.swift: 19 lines
 ScreenCaptureScaleResolver.swift: 115 lines
 ScreenCaptureEngineSupport.swift: 207 lines
@@ -168,10 +169,11 @@ DesktopObservationRequestModels.swift: 120 lines
 DesktopObservationResultModels.swift: 120 lines
 DesktopObservationDiagnosticsBuilder.swift: 97 lines
 DesktopObservationTraceRecorder.swift: 33 lines
-ElementDetectionService.swift: 207 lines
+ElementDetectionService.swift: 199 lines
 ObservationTargetResolver.swift: 168 lines
 ObservationTargetResolver+MenuBar.swift: 131 lines
-ObservationTargetResolver+WindowSelection.swift: 159 lines
+ObservationTargetResolver+WindowSelection.swift: 119 lines
+ObservationWindowMetadataCatalog.swift: 87 lines
 ObservationLabelPlacer.swift: 425 lines
 ObservationLabelPlacementGeometry.swift: 183 lines
 WindowCommand.swift: 66 lines
@@ -181,16 +183,16 @@ WindowCommand+Geometry.swift: 328 lines
 WindowCommand+List.swift: 149 lines
 WindowCommand+Support.swift: 189 lines
 WindowCommand+State.swift: 250 lines
-SeeCommand.swift: 306 lines
-SeeCommand+CapturePipeline.swift: 225 lines
+SeeCommand.swift: 308 lines
+SeeCommand+CapturePipeline.swift: 221 lines
 SeeCommand+DetectionPipeline.swift: 160 lines
 SeeCommand+Output.swift: 204 lines
 SeeCommand+Types.swift: 204 lines
-SeeCommand+Screens.swift: 149 lines
+SeeCommand+Screens.swift: 146 lines
 SeeCommand+ObservationRequest.swift: 140 lines
-ImageCommand.swift: 188 lines
-ImageCommand+CapturePipeline.swift: 337 lines
-ImageCommand+Output.swift: 74 lines
+ImageCommand.swift: 192 lines
+ImageCommand+CapturePipeline.swift: 386 lines
+ImageCommand+Output.swift: 102 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 InteractionObservationContext.swift: 284 lines
 InteractionObservationInvalidator.swift: 91 lines
@@ -886,12 +888,13 @@ Work:
 - done: move frontmost-application capture lookup behind the shared capture application resolver;
 - done: remove stale `AXorcist` and `ScreenCaptureKit` imports from CLI command files;
 - done: route menu-bar popover target resolution through the shared observation window catalog;
+- done: route exact `--window-id` observation metadata through `ObservationWindowMetadataCatalog`;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:
 
 1. Done: run live `sips` checks and compare against `screencapture -l <windowID> -o -x`.
-2. Started: extract remaining observation request mapping out of large command files.
+2. Done: extract observation request mapping out of large `image` and `see` command files.
 
 Live check, May 7, 2026:
 

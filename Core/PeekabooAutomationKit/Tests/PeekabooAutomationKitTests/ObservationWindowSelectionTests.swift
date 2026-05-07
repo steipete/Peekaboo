@@ -3,6 +3,31 @@ import XCTest
 @testable import PeekabooAutomationKit
 
 final class ObservationWindowSelectionTests: XCTestCase {
+    func testWindowMetadataCatalogMapsCoreGraphicsWindowInfo() {
+        let metadata = ObservationWindowMetadataCatalog.metadata(
+            windowID: 42,
+            windowInfo: [
+                kCGWindowName as String: "Editor",
+                kCGWindowOwnerName as String: "Code",
+                kCGWindowOwnerPID as String: NSNumber(value: 1234),
+                kCGWindowBounds as String: [
+                    "X": NSNumber(value: 10),
+                    "Y": NSNumber(value: 20),
+                    "Width": NSNumber(value: 800),
+                    "Height": NSNumber(value: 600),
+                ],
+            ])
+
+        XCTAssertEqual(metadata.app?.name, "Code")
+        XCTAssertEqual(metadata.app?.processIdentifier, 1234)
+        XCTAssertEqual(metadata.window?.windowID, 42)
+        XCTAssertEqual(metadata.window?.title, "Editor")
+        XCTAssertEqual(metadata.bounds, CGRect(x: 10, y: 20, width: 800, height: 600))
+        XCTAssertEqual(metadata.context.applicationName, "Code")
+        XCTAssertEqual(metadata.context.windowTitle, "Editor")
+        XCTAssertEqual(metadata.context.windowID, 42)
+    }
+
     func testCaptureCandidatesDropNonShareableWindows() {
         let windows = [
             Self.window(
