@@ -90,6 +90,7 @@ Landed:
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
 - `peekaboo app` launch, quit, and relaunch implementations now live in focused support files, leaving `AppCommand.swift` under the target size.
+- `peekaboo menu` list output filtering, typed JSON conversion, and text rendering now share one command-support helper.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
 - Element-targeted interaction commands now share one stale-snapshot refresh helper instead of maintaining command-local refresh loops.
 - `peekaboo click`, `type`, `scroll`, `drag`, and `swipe` now centrally invalidate implicitly reused latest snapshots after successful UI mutations.

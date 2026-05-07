@@ -514,7 +514,7 @@ extension MenuCommand {
                     menu: self.services.menu,
                     appIdentifier: appIdentifier
                 )
-                let filteredMenus = self.includeDisabled ? menuStructure.menus : self
+                let filteredMenus = self.includeDisabled ? menuStructure.menus : MenuOutputSupport
                     .filterDisabledMenus(menuStructure.menus)
 
                 if self.jsonOutput {
@@ -522,13 +522,13 @@ extension MenuCommand {
                         app: menuStructure.application.name,
                         owner_name: menuStructure.application.name,
                         bundle_id: menuStructure.application.bundleIdentifier,
-                        menu_structure: self.convertMenusToTyped(filteredMenus)
+                        menu_structure: MenuOutputSupport.convertMenusToTyped(filteredMenus)
                     )
                     outputSuccessCodable(data: data, logger: self.outputLogger)
                 } else {
                     print("Menu structure for \(menuStructure.application.name):")
                     for menu in filteredMenus {
-                        self.printMenu(menu, indent: 0)
+                        MenuOutputSupport.printMenu(menu, indent: 0)
                     }
                 }
 
@@ -554,96 +554,6 @@ extension MenuCommand {
             }
 
             return frontmost.bundleIdentifier ?? frontmost.name
-        }
-
-        private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
-            menus.compactMap { menu in
-                guard menu.isEnabled else { return nil }
-                let filteredItems = self.filterDisabledItems(menu.items)
-                return Menu(title: menu.title, items: filteredItems, isEnabled: menu.isEnabled)
-            }
-        }
-
-        private func filterDisabledItems(_ items: [MenuItem]) -> [MenuItem] {
-            items.compactMap { item in
-                guard item.isEnabled else { return nil }
-                let filteredSubmenu = self.filterDisabledItems(item.submenu)
-                return MenuItem(
-                    title: item.title,
-                    keyboardShortcut: item.keyboardShortcut,
-                    isEnabled: item.isEnabled,
-                    isChecked: item.isChecked,
-                    isSeparator: item.isSeparator,
-                    submenu: filteredSubmenu,
-                    path: item.path
-                )
-            }
-        }
-
-        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
-            menus.map { menu in
-                MenuData(
-                    title: menu.title,
-                    bundle_id: menu.bundleIdentifier,
-                    owner_name: menu.ownerName,
-                    enabled: menu.isEnabled,
-                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
-                )
-            }
-        }
-
-        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
-            items.map { item in
-                MenuItemData(
-                    title: item.title,
-                    bundle_id: item.bundleIdentifier,
-                    owner_name: item.ownerName,
-                    enabled: item.isEnabled,
-                    shortcut: item.keyboardShortcut?.displayString,
-                    checked: item.isChecked ? true : nil,
-                    separator: item.isSeparator ? true : nil,
-                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
-                )
-            }
-        }
-
-        private func printMenu(_ menu: Menu, indent: Int) {
-            let spacing = String(repeating: "  ", count: indent)
-
-            var line = "\(spacing)\(menu.title)"
-            if !menu.isEnabled {
-                line += " (disabled)"
-            }
-            print(line)
-
-            for item in menu.items {
-                self.printMenuItem(item, indent: indent + 1)
-            }
-        }
-
-        private func printMenuItem(_ item: MenuItem, indent: Int) {
-            let spacing = String(repeating: "  ", count: indent)
-
-            if item.isSeparator {
-                print("\(spacing)---")
-                return
-            }
-
-            var line = "\(spacing)\(item.title)"
-            if !item.isEnabled {
-                line += " (disabled)"
-            }
-            if item.isChecked {
-                line += " ✓"
-            }
-            if let shortcut = item.keyboardShortcut {
-                line += " [\(shortcut.displayString)]"
-            }
-            print(line)
-
-            for subitem in item.submenu {
-                self.printMenuItem(subitem, indent: indent + 1)
-            }
         }
 
         private func handleApplicationError(_ error: PeekabooError) {
@@ -745,7 +655,7 @@ extension MenuCommand {
                 let frontmostMenus = try await MenuServiceBridge.listFrontmostMenus(menu: self.services.menu)
                 let menuExtras = try await MenuServiceBridge.listMenuExtras(menu: self.services.menu)
 
-                let filteredMenus = self.includeDisabled ? frontmostMenus.menus : self
+                let filteredMenus = self.includeDisabled ? frontmostMenus.menus : MenuOutputSupport
                     .filterDisabledMenus(frontmostMenus.menus)
 
                 if self.jsonOutput {
@@ -793,7 +703,7 @@ extension MenuCommand {
                         appName: frontmostMenus.application.name,
                         bundleId: frontmostMenus.application.bundleIdentifier ?? "unknown",
                         pid: frontmostMenus.application.processIdentifier,
-                        menus: self.convertMenusToTyped(filteredMenus),
+                        menus: MenuOutputSupport.convertMenusToTyped(filteredMenus),
                         statusItems: statusItems.isEmpty ? nil : statusItems
                     )
 
@@ -802,7 +712,7 @@ extension MenuCommand {
                 } else {
                     print("\n=== \(frontmostMenus.application.name) ===")
                     for menu in filteredMenus {
-                        self.printMenu(menu, indent: 0)
+                        MenuOutputSupport.printMenu(menu, indent: 0)
                     }
 
                     if !menuExtras.isEmpty {
@@ -822,96 +732,6 @@ extension MenuCommand {
             } catch {
                 self.handleGenericError(error)
                 throw ExitCode(1)
-            }
-        }
-
-        private func filterDisabledMenus(_ menus: [Menu]) -> [Menu] {
-            menus.compactMap { menu in
-                guard menu.isEnabled else { return nil }
-                let filteredItems = self.filterDisabledItems(menu.items)
-                return Menu(title: menu.title, items: filteredItems, isEnabled: menu.isEnabled)
-            }
-        }
-
-        private func filterDisabledItems(_ items: [MenuItem]) -> [MenuItem] {
-            items.compactMap { item in
-                guard item.isEnabled else { return nil }
-                let filteredSubmenu = self.filterDisabledItems(item.submenu)
-                return MenuItem(
-                    title: item.title,
-                    keyboardShortcut: item.keyboardShortcut,
-                    isEnabled: item.isEnabled,
-                    isChecked: item.isChecked,
-                    isSeparator: item.isSeparator,
-                    submenu: filteredSubmenu,
-                    path: item.path
-                )
-            }
-        }
-
-        private func convertMenusToTyped(_ menus: [Menu]) -> [MenuData] {
-            menus.map { menu in
-                MenuData(
-                    title: menu.title,
-                    bundle_id: menu.bundleIdentifier,
-                    owner_name: menu.ownerName,
-                    enabled: menu.isEnabled,
-                    items: menu.items.isEmpty ? nil : self.convertMenuItemsToTyped(menu.items)
-                )
-            }
-        }
-
-        private func convertMenuItemsToTyped(_ items: [MenuItem]) -> [MenuItemData] {
-            items.map { item in
-                MenuItemData(
-                    title: item.title,
-                    bundle_id: item.bundleIdentifier,
-                    owner_name: item.ownerName,
-                    enabled: item.isEnabled,
-                    shortcut: item.keyboardShortcut?.displayString,
-                    checked: item.isChecked ? true : nil,
-                    separator: item.isSeparator ? true : nil,
-                    items: item.submenu.isEmpty ? nil : self.convertMenuItemsToTyped(item.submenu)
-                )
-            }
-        }
-
-        private func printMenu(_ menu: Menu, indent: Int) {
-            let spacing = String(repeating: "  ", count: indent)
-
-            var line = "\(spacing)\(menu.title)"
-            if !menu.isEnabled {
-                line += " (disabled)"
-            }
-            print(line)
-
-            for item in menu.items {
-                self.printMenuItem(item, indent: indent + 1)
-            }
-        }
-
-        private func printMenuItem(_ item: MenuItem, indent: Int) {
-            let spacing = String(repeating: "  ", count: indent)
-
-            if item.isSeparator {
-                print("\(spacing)---")
-                return
-            }
-
-            var line = "\(spacing)\(item.title)"
-            if !item.isEnabled {
-                line += " (disabled)"
-            }
-            if item.isChecked {
-                line += " ✓"
-            }
-            if let shortcut = item.keyboardShortcut {
-                line += " [\(shortcut.displayString)]"
-            }
-            print(line)
-
-            for subitem in item.submenu {
-                self.printMenuItem(subitem, indent: indent + 1)
             }
         }
 
