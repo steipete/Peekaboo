@@ -120,6 +120,7 @@ Landed:
 - `peekaboo move` Commander wiring and cursor movement parameter policy now live in focused support files.
 - `peekaboo type` text escape processing and result DTOs now live in focused support files.
 - Drag/swipe element-or-coordinate point resolution now uses `InteractionTargetPointResolver.elementOrCoordinateResolution`, and gesture result DTOs live in focused type files.
+- `peekaboo click` validation/helpers and Commander wiring now live in focused support files.
 
 Still incomplete:
 
@@ -175,11 +176,13 @@ ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 InteractionObservationContext.swift: 284 lines
 InteractionObservationInvalidator.swift: 91 lines
-InteractionTargetPointResolver.swift: 221 lines
-ClickCommand.swift: 428 lines
+InteractionTargetPointResolver.swift: 227 lines
+ClickCommand.swift: 312 lines
+ClickCommand+CommanderMetadata.swift: 92 lines
+ClickCommand+Validation.swift: 79 lines
 ClickCommand+FocusVerification.swift: 148 lines
 ClickCommand+Output.swift: 30 lines
-TypeCommand.swift: 338 lines
+TypeCommand.swift: 337 lines
 TypeCommand+TextProcessing.swift: 60 lines
 TypeCommand+Types.swift: 11 lines
 MoveCommand.swift: 323 lines
@@ -187,9 +190,9 @@ MoveCommand+CommanderMetadata.swift: 134 lines
 MoveCommand+Movement.swift: 58 lines
 MoveCommand+Types.swift: 59 lines
 ScrollCommand.swift: 240 lines
-DragCommand.swift: 360 lines
+DragCommand.swift: 362 lines
 DragCommand+Types.swift: 15 lines
-SwipeCommand.swift: 295 lines
+SwipeCommand.swift: 297 lines
 SwipeCommand+Types.swift: 15 lines
 HotkeyCommand.swift: 272 lines
 PressCommand.swift: 231 lines

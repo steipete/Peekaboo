@@ -1,4 +1,38 @@
 import Commander
+import PeekabooCore
+
+@MainActor
+extension ClickCommand: ParsableCommand {
+    nonisolated(unsafe) static var commandDescription: CommandDescription {
+        let definition = UIAutomationToolDefinitions.click.commandConfiguration
+        return CommandDescription(
+            commandName: definition.commandName,
+            abstract: definition.abstract,
+            discussion: definition.discussion,
+            showHelpOnEmptyInvocation: true
+        )
+    }
+}
+
+extension ClickCommand: AsyncRuntimeCommand {}
+
+@MainActor
+extension ClickCommand: CommanderBindableCommand {
+    mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        self.query = try values.decodeOptionalPositional(0, label: "query")
+        self.snapshot = values.singleOption("snapshot")
+        self.on = values.singleOption("on")
+        self.id = values.singleOption("id")
+        self.target = try values.makeInteractionTargetOptions()
+        self.coords = values.singleOption("coords")
+        if let wait: Int = try values.decodeOption("waitFor", as: Int.self) {
+            self.waitFor = wait
+        }
+        self.double = values.flag("double")
+        self.right = values.flag("right")
+        self.focusOptions = try values.makeFocusOptions()
+    }
+}
 
 extension ClickCommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
