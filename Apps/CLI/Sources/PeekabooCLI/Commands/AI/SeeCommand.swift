@@ -143,6 +143,21 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         self.logger
     }
 
+    private var observationCaptureEnginePreference: CaptureEnginePreference {
+        let value = (self.captureEngine ?? self.resolvedRuntime.configuration.captureEnginePreference)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch value {
+        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
+            return .modern
+        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
+            return .legacy
+        default:
+            return .auto
+        }
+    }
+
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -400,7 +415,7 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
         let observation = try await self.services.desktopObservation.observe(DesktopObservationRequest(
             target: target,
             capture: DesktopCaptureOptions(
-                engine: .auto,
+                engine: self.observationCaptureEnginePreference,
                 scale: .logical1x,
                 visualizerMode: .screenshotFlash
             ),

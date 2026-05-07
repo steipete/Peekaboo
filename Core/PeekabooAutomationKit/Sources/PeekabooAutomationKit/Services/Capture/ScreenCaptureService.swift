@@ -62,7 +62,7 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
  */
 @MainActor
 // swiftlint:disable type_body_length
-public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
+public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwareScreenCaptureServiceProtocol {
     /// Convert a global desktop-space rectangle to a display-local `sourceRect`.
     ///
     /// ScreenCaptureKit expects `SCStreamConfiguration.sourceRect` in **display-local logical coordinates**.
@@ -157,6 +157,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
     private let applicationResolver: any ApplicationResolving
     private let modernOperator: any ModernScreenCaptureOperating
     private let legacyOperator: any LegacyScreenCaptureOperating
+    @TaskLocal private static var captureEnginePreference: CaptureEnginePreference = .auto
 
     private typealias Metadata = [String: Any]
 
@@ -243,6 +244,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         }
     }
 
+    func withCaptureEngine<T: Sendable>(
+        _ engine: CaptureEnginePreference,
+        operation: @MainActor () async throws -> T) async rethrows -> T
+    {
+        try await Self.$captureEnginePreference.withValue(engine, operation: operation)
+    }
+
     private func performOperation<T: Sendable>(
         _ operation: CaptureOperation,
         metadata: Metadata = [:],
@@ -283,11 +291,13 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         scale: CaptureScalePreference = .logical1x) async throws -> CaptureResult
     {
         let metadata: Metadata = ["displayIndex": displayIndex ?? "main"]
+        let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
         return try await self.performOperation(.screen, metadata: metadata) { correlationId in
             try await self.fallbackRunner.run(
                 operationName: CaptureOperation.screen.metricName,
                 logger: self.logger,
-                correlationId: correlationId)
+                correlationId: correlationId,
+                apis: apis)
             { api in
                 switch api {
                 case .modern:
@@ -402,7 +412,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         try await self.fallbackRunner.run(
             operationName: context.operation.metricName,
             logger: self.logger,
-            correlationId: context.correlationId)
+            correlationId: context.correlationId,
+            apis: self.fallbackRunner.apis(for: Self.captureEnginePreference))
         { api in
             switch api {
             case .modern:
@@ -435,7 +446,8 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         try await self.fallbackRunner.run(
             operationName: context.operation.metricName,
             logger: self.logger,
-            correlationId: context.correlationId)
+            correlationId: context.correlationId,
+            apis: self.fallbackRunner.apis(for: Self.captureEnginePreference))
         { api in
             switch api {
             case .modern:
@@ -496,12 +508,14 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         let metadata: Metadata = [
             "rect": "\(rect.origin.x),\(rect.origin.y) \(rect.width)x\(rect.height)",
         ]
+        let apis = self.fallbackRunner.apis(for: Self.captureEnginePreference)
 
         return try await self.performOperation(.area, metadata: metadata) { correlationId in
             try await self.fallbackRunner.run(
                 operationName: CaptureOperation.area.metricName,
                 logger: self.logger,
-                correlationId: correlationId)
+                correlationId: correlationId,
+                apis: apis)
             { api in
                 switch api {
                 case .modern:

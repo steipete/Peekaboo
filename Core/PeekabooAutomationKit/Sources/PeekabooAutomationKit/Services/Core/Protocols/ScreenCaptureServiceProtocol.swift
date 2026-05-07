@@ -63,6 +63,15 @@ public protocol ScreenCaptureServiceProtocol: Sendable {
     func hasScreenRecordingPermission() async -> Bool
 }
 
+@MainActor
+protocol EngineAwareScreenCaptureServiceProtocol: ScreenCaptureServiceProtocol {
+    /// Observation can honor per-request engine choices without forcing every remote/mock capture service to grow
+    /// engine-specific overloads.
+    func withCaptureEngine<T: Sendable>(
+        _ engine: CaptureEnginePreference,
+        operation: @MainActor () async throws -> T) async rethrows -> T
+}
+
 extension ScreenCaptureServiceProtocol {
     public func captureScreen(displayIndex: Int?) async throws -> CaptureResult {
         try await self.captureScreen(

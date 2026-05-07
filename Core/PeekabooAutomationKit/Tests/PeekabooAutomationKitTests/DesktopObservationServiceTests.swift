@@ -54,7 +54,7 @@ final class DesktopObservationServiceTests: XCTestCase {
             target: .app(identifier: "Fixture", window: .automatic),
             detection: DesktopDetectionOptions(mode: .none)))
 
-        XCTAssertEqual(capture.operations, [.windowID(42, .logical1x)])
+        XCTAssertEqual(capture.operations, [.windowID(42, .logical1x, .auto)])
         XCTAssertNil(result.elements)
         XCTAssertEqual(result.capture.imageData, imageData)
         XCTAssertEqual(result.target.window?.windowID, 42)
@@ -114,6 +114,24 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(result.files.rawScreenshotPath, outputURL.path)
         XCTAssertEqual(try Data(contentsOf: outputURL), imageData)
         XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window", "output.write"])
+    }
+
+    func testObservationForwardsCaptureEnginePreferenceWhenSupported() async throws {
+        let app = Self.app()
+        let window = Self.window(id: 99, title: "Engine", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let capture = RecordingScreenCaptureService(result: Self.captureResult(app: app, window: window))
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: RecordingUIAutomationService(),
+            applications: applications)
+
+        _ = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            capture: DesktopCaptureOptions(engine: .legacy),
+            detection: DesktopDetectionOptions(mode: .none)))
+
+        XCTAssertEqual(capture.operations, [.windowID(99, .logical1x, .legacy)])
     }
 
     private static func app() -> ServiceApplicationInfo {
@@ -221,20 +239,32 @@ private final class RecordingApplicationService: ApplicationServiceProtocol {
 }
 
 @MainActor
-private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol {
+private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol,
+EngineAwareScreenCaptureServiceProtocol {
     enum Operation: Equatable {
-        case screen(Int?, CaptureScalePreference)
-        case window(String, Int?, CaptureScalePreference)
-        case windowID(Int, CaptureScalePreference)
-        case frontmost(CaptureScalePreference)
-        case area(CGRect, CaptureScalePreference)
+        case screen(Int?, CaptureScalePreference, CaptureEnginePreference)
+        case window(String, Int?, CaptureScalePreference, CaptureEnginePreference)
+        case windowID(Int, CaptureScalePreference, CaptureEnginePreference)
+        case frontmost(CaptureScalePreference, CaptureEnginePreference)
+        case area(CGRect, CaptureScalePreference, CaptureEnginePreference)
     }
 
     private let result: CaptureResult
+    private var engine: CaptureEnginePreference = .auto
     var operations: [Operation] = []
 
     init(result: CaptureResult) {
         self.result = result
+    }
+
+    func withCaptureEngine<T: Sendable>(
+        _ engine: CaptureEnginePreference,
+        operation: @MainActor () async throws -> T) async rethrows -> T
+    {
+        let previous = self.engine
+        self.engine = engine
+        defer { self.engine = previous }
+        return try await operation()
     }
 
     func captureScreen(
@@ -242,7 +272,7 @@ private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol 
         visualizerMode _: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.operations.append(.screen(displayIndex, scale))
+        self.operations.append(.screen(displayIndex, scale, self.engine))
         return self.result
     }
 
@@ -252,7 +282,7 @@ private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol 
         visualizerMode _: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.operations.append(.window(appIdentifier, windowIndex, scale))
+        self.operations.append(.window(appIdentifier, windowIndex, scale, self.engine))
         return self.result
     }
 
@@ -261,7 +291,7 @@ private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol 
         visualizerMode _: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.operations.append(.windowID(Int(windowID), scale))
+        self.operations.append(.windowID(Int(windowID), scale, self.engine))
         return self.result
     }
 
@@ -269,7 +299,7 @@ private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol 
         visualizerMode _: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.operations.append(.frontmost(scale))
+        self.operations.append(.frontmost(scale, self.engine))
         return self.result
     }
 
@@ -278,7 +308,7 @@ private final class RecordingScreenCaptureService: ScreenCaptureServiceProtocol 
         visualizerMode _: CaptureVisualizerMode,
         scale: CaptureScalePreference) async throws -> CaptureResult
     {
-        self.operations.append(.area(rect, scale))
+        self.operations.append(.area(rect, scale, self.engine))
         return self.result
     }
 

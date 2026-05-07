@@ -70,6 +70,19 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         _ target: ResolvedObservationTarget,
         options: DesktopCaptureOptions) async throws -> CaptureResult
     {
+        guard let engineAwareCapture = self.engineAwareCapture else {
+            return try await self.captureResolvedTarget(target, options: options)
+        }
+
+        return try await engineAwareCapture.withCaptureEngine(options.engine) {
+            try await self.captureResolvedTarget(target, options: options)
+        }
+    }
+
+    private func captureResolvedTarget(
+        _ target: ResolvedObservationTarget,
+        options: DesktopCaptureOptions) async throws -> CaptureResult
+    {
         switch target.kind {
         case let .screen(index):
             return try await self.screenCapture.captureScreen(
@@ -110,6 +123,10 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         case .menubarPopover:
             throw DesktopObservationError.unsupportedTarget("menubar popover")
         }
+    }
+
+    private var engineAwareCapture: (any EngineAwareScreenCaptureServiceProtocol)? {
+        self.screenCapture as? any EngineAwareScreenCaptureServiceProtocol
     }
 
     private func detectIfNeeded(

@@ -210,11 +210,14 @@ struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
         operationName: String,
         logger: CategoryLogger,
         correlationId: String,
+        apis overrideAPIs: [ScreenCaptureAPI]? = nil,
         attempt: @escaping @MainActor @Sendable (ScreenCaptureAPI) async throws -> T) async throws -> T
     {
         var lastError: (any Error)?
+        let selectedAPIs = overrideAPIs ?? self.apis
+        precondition(!selectedAPIs.isEmpty, "At least one API must be provided")
 
-        for (index, api) in self.apis.indexed() {
+        for (index, api) in selectedAPIs.indexed() {
             do {
                 logger.debug(
                     "Attempting \(operationName) via \(api.description)",
@@ -236,7 +239,7 @@ struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
                 lastError = error
                 // We don't have a scoped start time here; treat duration as 0 for failed attempts.
                 self.observer?(operationName, api, 0, false, error)
-                let hasFallback = index < (self.apis.count - 1)
+                let hasFallback = index < (selectedAPIs.count - 1)
                 if self.shouldFallback(after: error, api: api, hasFallback: hasFallback) {
                     logger.warning(
                         "\(api.description) capture failed, retrying with fallback API",
@@ -249,6 +252,19 @@ struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
         }
 
         throw lastError ?? OperationError.captureFailed(reason: "\(operationName) failed")
+    }
+
+    func apis(for preference: CaptureEnginePreference) -> [ScreenCaptureAPI] {
+        switch preference {
+        case .auto:
+            self.apis
+        case .modern:
+            // Explicit engine selection is a hard request; do not silently fall back to the other stack.
+            [.modern]
+        case .legacy:
+            // `classic`/`cg` are used for targeted repros and workarounds, so keep the path deterministic.
+            [.legacy]
+        }
     }
 
     private func shouldFallback(after error: any Error, api: ScreenCaptureAPI, hasFallback: Bool) -> Bool {
