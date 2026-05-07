@@ -154,6 +154,7 @@ Landed:
 - CLI command utilities now keep error handling, output formatting, service bridge wrappers, cursor movement policy, and menu-bar list output in focused files instead of one shared grab-bag.
 - `peekaboo agent` command orchestration now keeps terminal/chat rendering, session resume/listing, execution output, and model parsing in focused extension files.
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
+- Core configuration management now keeps loading/migration, JSONC/env parsing, credentials, typed accessors, persistence/default templates, and custom-provider HTTP checks in focused files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
 - `peekaboo list apps` and `peekaboo list windows` implementations are split out of the primary list command shell.
@@ -244,6 +245,12 @@ CaptureCommand+Live.swift: 378 lines
 CaptureCommand+Video.swift: 207 lines
 CaptureCommand+WatchAlias.swift: 28 lines
 CaptureCommand+CommanderMetadata.swift: 87 lines
+ConfigurationManager.swift: 140 lines
+ConfigurationManager+Parsing.swift: 220 lines
+ConfigurationManager+Credentials.swift: 98 lines
+ConfigurationManager+Accessors.swift: 202 lines
+ConfigurationManager+Persistence.swift: 74 lines
+ConfigurationManager+CustomProviders.swift: 249 lines
 CommanderRuntimeRouter.swift: 240 lines
 CommanderRuntimeRouter+Help.swift: 192 lines
 AgentChatUI.swift: 340 lines
