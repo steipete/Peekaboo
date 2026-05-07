@@ -372,47 +372,13 @@ extension ListCommand {
             do {
                 let items = try await MenuServiceBridge.listMenuBarItems(menu: self.services.menu)
                 if self.jsonOutput {
-                    struct MenuBarListResult: Codable {
-                        let items: [MenuBarItemInfo]
-                        let count: Int
-                    }
-                    outputSuccessCodable(
-                        data: MenuBarListResult(items: items, count: items.count),
-                        logger: self.outputLogger
-                    )
+                    MenuBarItemListOutput.outputJSON(items: items, logger: self.outputLogger)
                 } else {
-                    self.displayMenuBarItems(items)
+                    MenuBarItemListOutput.display(items)
                 }
             } catch {
                 self.handleError(error)
                 throw ExitCode(1)
-            }
-        }
-
-        @MainActor
-        private func displayMenuBarItems(_ items: [MenuBarItemInfo]) {
-            if items.isEmpty {
-                Swift.print("No menu bar items detected.")
-                return
-            }
-
-            Swift.print("Menu Bar Items (\(items.count)):")
-            for (index, item) in items.indexed() {
-                self.displayMenuBarItem(item, index: index)
-            }
-        }
-
-        @MainActor
-        private func displayMenuBarItem(_ item: MenuBarItemInfo, index: Int) {
-            let title = item.title ?? "<untitled>"
-            Swift.print("  [\(index + 1)] \(title)")
-            if let description = item.description, !description.isEmpty {
-                Swift.print("       Description: \(description)")
-            }
-            if let frame = item.frame {
-                let frameOrigin = "\(Int(frame.origin.x)),\(Int(frame.origin.y))"
-                let frameSize = "\(Int(frame.width))×\(Int(frame.height))"
-                Swift.print("       Frame: \(frameOrigin) \(frameSize)")
             }
         }
     }

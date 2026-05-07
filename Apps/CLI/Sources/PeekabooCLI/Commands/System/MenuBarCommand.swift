@@ -7,7 +7,7 @@ import PeekabooFoundation
 
 /// Command for interacting with macOS menu bar items (status items).
 @MainActor
-struct MenuBarCommand: ParsableCommand, OutputFormattable {
+struct MenuBarCommand: ParsableCommand, ErrorHandlingCommand, OutputFormattable {
     nonisolated(unsafe) static var commandDescription: CommandDescription {
         MainActorCommandDescription.describe {
             CommandDescription(
@@ -35,7 +35,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                   peekaboo menubar click "Bluetooth"       # Click Bluetooth icon
 
                   # Click by index from the list
-                  peekaboo menubar click --index 3         # Click the 3rd item
+                  peekaboo menubar click --index 2         # Click listed item [2]
 
                 NOTE: Menu bar items are different from regular application menus. For application
                 menus (File, Edit, etc.), use the 'menu' command instead.
@@ -51,7 +51,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
     @Argument(help: "Name of the menu bar item to click (for click action)")
     var itemName: String?
 
-    @Option(help: "Index of the menu bar item (0-based)")
+    @Option(help: "0-based index shown by 'peekaboo menubar list' or 'peekaboo list menubar'")
     var index: Int?
 
     @Flag(help: "Include raw debug fields (window owner/layer) in JSON output")
@@ -107,8 +107,6 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
     @MainActor
     private func listMenuBarItems() async throws {
-        let startTime = Date()
-
         do {
             self.logger.debug("Listing menu bar items includeRawDebug=\(self.includeRawDebug)")
             let menuBarItems = try await MenuServiceBridge.listMenuBarItems(
@@ -117,58 +115,16 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             )
 
             if self.jsonOutput {
-                let output = ListJSONOutput(
-                    success: true,
-                    menuBarItems: menuBarItems.map { item in
-                        JSONMenuBarItem(
-                            title: item.title,
-                            raw_title: item.rawTitle,
-                            bundle_id: item.bundleIdentifier,
-                            owner_name: item.ownerName,
-                            identifier: item.identifier,
-                            ax_identifier: item.axIdentifier,
-                            ax_description: item.axDescription,
-                            raw_window_id: item.rawWindowID,
-                            raw_window_layer: item.rawWindowLayer,
-                            raw_owner_pid: item.rawOwnerPID,
-                            raw_source: item.rawSource,
-                            index: item.index,
-                            isVisible: item.isVisible,
-                            description: item.description
-                        )
-                    },
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: output, logger: self.outputLogger)
+                MenuBarItemListOutput.outputJSON(items: menuBarItems, logger: self.outputLogger)
             } else {
-                if menuBarItems.isEmpty {
-                    print("No menu bar items found.")
-                } else {
-                    print("📊 Menu Bar Items:")
-                    for item in menuBarItems {
-                        var info = "  [\(item.index)] \(item.title ?? "Untitled")"
-                        if !item.isVisible {
-                            info += " (hidden)"
-                        }
-                        if let desc = item.description, self.isVerbose {
-                            info += " - \(desc)"
-                        }
-                        print(info)
-                    }
-                    print("\n💡 Tip: Use 'peekaboo menubar click \"name\"' to click a menu bar item")
+                MenuBarItemListOutput.display(menuBarItems)
+                if !menuBarItems.isEmpty {
+                    print("\n💡 Tip: Use 'peekaboo menubar click --index <index>' or click by name")
                 }
             }
         } catch {
-            if self.jsonOutput {
-                let output = JSONErrorOutput(
-                    success: false,
-                    error: error.localizedDescription,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: output, logger: self.outputLogger)
-            } else {
-                throw error
-            }
+            self.handleError(error)
+            throw ExitCode(1)
         }
     }
 
@@ -223,12 +179,8 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
             }
         } catch {
             if self.jsonOutput {
-                let output = JSONErrorOutput(
-                    success: false,
-                    error: error.localizedDescription,
-                    executionTime: Date().timeIntervalSince(startTime)
-                )
-                outputSuccessCodable(data: output, logger: self.outputLogger)
+                self.handleError(error)
+                throw ExitCode(1)
             } else {
                 // Provide helpful hints for common errors
                 if error.localizedDescription.contains("not found") {
@@ -237,6 +189,7 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
                     print("  • Menu bar items often require clicking on their icon coordinates")
                     print("  • Try 'peekaboo see' first to get element IDs")
                     print("  • Use 'peekaboo menubar list' to see available items")
+                    throw ExitCode(1)
                 } else {
                     throw error
                 }
@@ -310,40 +263,11 @@ struct MenuBarCommand: ParsableCommand, OutputFormattable {
 
 // MARK: - JSON Output Types
 
-private struct JSONMenuBarItem: Codable {
-    let title: String?
-    let raw_title: String?
-    let bundle_id: String?
-    let owner_name: String?
-    let identifier: String?
-    let ax_identifier: String?
-    let ax_description: String?
-    let raw_window_id: CGWindowID?
-    let raw_window_layer: Int?
-    let raw_owner_pid: pid_t?
-    let raw_source: String?
-    let index: Int
-    let isVisible: Bool
-    let description: String?
-}
-
-private struct ListJSONOutput: Codable {
-    let success: Bool
-    let menuBarItems: [JSONMenuBarItem]
-    let executionTime: TimeInterval
-}
-
 private struct ClickJSONOutput: Codable {
     let success: Bool
     let clicked: String
     let executionTime: TimeInterval
     let verified: Bool?
-}
-
-private struct JSONErrorOutput: Codable {
-    let success: Bool
-    let error: String
-    let executionTime: TimeInterval
 }
 
 extension MenuBarCommand: AsyncRuntimeCommand {}

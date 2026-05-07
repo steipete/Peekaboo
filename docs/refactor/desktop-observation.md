@@ -79,6 +79,7 @@ Landed:
 - Popover-specific OCR selection now lives in observation via shared candidate-window, preferred-area, and AX-menu-frame matching helpers.
 - Menu-bar popover click-to-open capture now lives behind the typed observation target option `openIfNeeded`.
 - Menu-bar strip and popover observation diagnostics now share typed target-resolution metadata for source, bounds, hints, window IDs, and click-open fallbacks.
+- `peekaboo menubar list` and `peekaboo list menubar` now share the same JSON payload and text list formatting.
 
 Still incomplete:
 
@@ -564,7 +565,7 @@ Work:
 - done: move popover-specific OCR selection into observation;
 - done: move popover click-to-open preflight behind a typed option;
 - done: ensure `.menubar` and `.menubarPopover(hints:)` share diagnostics;
-- keep menu-extra listing behavior consistent with `list menubar`.
+- done: keep menu-extra listing behavior consistent with `list menubar`.
 
 Gate:
 
