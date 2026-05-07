@@ -57,6 +57,7 @@ Landed:
 - Detection app/window fallback selection now lives in `ElementDetectionWindowResolver`.
 - Capture frame-source policy and display-local source rectangle planning now live in `ScreenCapturePlanner`.
 - Screen Recording enforcement now lives in `ScreenCapturePermissionGate`.
+- Logical-1x capture downscaling now lives in `ScreenCaptureImageScaler`.
 
 Still intentionally incomplete:
 

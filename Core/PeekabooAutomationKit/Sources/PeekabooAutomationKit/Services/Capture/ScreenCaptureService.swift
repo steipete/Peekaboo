@@ -624,35 +624,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
         return CaptureResult(imageData: imageData, metadata: metadata)
     }
 
-    private func maybeDownscale(
-        _ image: CGImage,
-        scale: CaptureScalePreference,
-        fallbackScale: CGFloat) -> CGImage
-    {
-        guard scale == .logical1x, fallbackScale > 1 else {
-            return image
-        }
-
-        let targetSize = CGSize(
-            width: CGFloat(image.width) / fallbackScale,
-            height: CGFloat(image.height) / fallbackScale)
-        let colorSpace = image.colorSpace ?? CGColorSpaceCreateDeviceRGB()
-        guard let context = CGContext(
-            data: nil,
-            width: Int(targetSize.width.rounded()),
-            height: Int(targetSize.height.rounded()),
-            bitsPerComponent: image.bitsPerComponent,
-            bytesPerRow: 0,
-            space: colorSpace,
-            bitmapInfo: image.bitmapInfo.rawValue)
-        else {
-            return image
-        }
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(origin: .zero, size: targetSize))
-        return context.makeImage() ?? image
-    }
-
     @MainActor
     private final class ScreenCaptureKitOperator: ModernScreenCaptureOperating {
         private let logger: CategoryLogger
@@ -1253,7 +1224,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
 
             let scalePlan = self.scalePlan(for: bounds, preference: scale)
             let imageData: Data
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
+            let scaledImage = ScreenCaptureImageScaler.maybeDownscale(
+                image,
+                scale: scale,
+                fallbackScale: scalePlan.nativeScale)
             do {
                 imageData = try scaledImage.pngData()
             } catch {
@@ -1373,7 +1347,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
 
             let scalePlan = self.scalePlan(for: bounds, preference: scale)
             let imageData: Data
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
+            let scaledImage = ScreenCaptureImageScaler.maybeDownscale(
+                image,
+                scale: scale,
+                fallbackScale: scalePlan.nativeScale)
             do {
                 imageData = try scaledImage.pngData()
             } catch {
@@ -1456,7 +1433,10 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
                 frameWidth: screenBounds.width)
             let image = try self.captureDisplayWithCGDisplay(screen: targetScreen)
 
-            let scaledImage = self.maybeDownscale(image, scale: scale, fallbackScale: scalePlan.nativeScale)
+            let scaledImage = ScreenCaptureImageScaler.maybeDownscale(
+                image,
+                scale: scale,
+                fallbackScale: scalePlan.nativeScale)
 
             let imageData: Data
             do {
@@ -1668,35 +1648,6 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol, EngineAwa
             #else
             return false
             #endif
-        }
-
-        private func maybeDownscale(
-            _ image: CGImage,
-            scale: CaptureScalePreference,
-            fallbackScale: CGFloat) -> CGImage
-        {
-            guard scale == .logical1x, fallbackScale > 1 else {
-                return image
-            }
-
-            let targetSize = CGSize(
-                width: CGFloat(image.width) / fallbackScale,
-                height: CGFloat(image.height) / fallbackScale)
-            let colorSpace = image.colorSpace ?? CGColorSpaceCreateDeviceRGB()
-            guard let context = CGContext(
-                data: nil,
-                width: Int(targetSize.width.rounded()),
-                height: Int(targetSize.height.rounded()),
-                bitsPerComponent: image.bitsPerComponent,
-                bytesPerRow: 0,
-                space: colorSpace,
-                bitmapInfo: image.bitmapInfo.rawValue)
-            else {
-                return image
-            }
-            context.interpolationQuality = .high
-            context.draw(image, in: CGRect(origin: .zero, size: targetSize))
-            return context.makeImage() ?? image
         }
 
         private func scaleFactor(for bounds: CGRect) -> CGFloat {
