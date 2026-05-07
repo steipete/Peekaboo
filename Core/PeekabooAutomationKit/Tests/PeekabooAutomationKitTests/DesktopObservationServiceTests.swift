@@ -89,6 +89,33 @@ final class DesktopObservationServiceTests: XCTestCase {
         XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window", "detection.ax"])
     }
 
+    func testObservationOutputWriterSavesRawScreenshotWhenRequested() async throws {
+        let imageData = Data([1, 2, 3, 4])
+        let app = Self.app()
+        let window = Self.window(id: 88, title: "Output", bounds: CGRect(x: 100, y: 100, width: 500, height: 400))
+        let applications = RecordingApplicationService(applications: [app], windows: [window])
+        let capture = RecordingScreenCaptureService(
+            result: Self.captureResult(imageData: imageData, app: app, window: window))
+        let automation = RecordingUIAutomationService()
+        let service = DesktopObservationService(
+            screenCapture: capture,
+            automation: automation,
+            applications: applications)
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-observation-test-\(UUID().uuidString).png")
+
+        let result = try await service.observe(DesktopObservationRequest(
+            target: .app(identifier: "Fixture", window: .automatic),
+            detection: DesktopDetectionOptions(mode: .none),
+            output: DesktopObservationOutputOptions(
+                path: outputURL.path,
+                saveRawScreenshot: true)))
+
+        XCTAssertEqual(result.files.rawScreenshotPath, outputURL.path)
+        XCTAssertEqual(try Data(contentsOf: outputURL), imageData)
+        XCTAssertEqual(result.timings.spans.map(\.name), ["target.resolve", "capture.window", "output.write"])
+    }
+
     private static func app() -> ServiceApplicationInfo {
         ServiceApplicationInfo(
             processIdentifier: 123,

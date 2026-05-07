@@ -192,10 +192,12 @@ public struct SeeTool: MCPTool {
         do {
             let snapshot = try await self.getOrCreateSnapshot(snapshotId: request.snapshotId)
             let target = try self.parseCaptureTarget(request.appTarget)
-            let observation = try await self.observeDesktop(target: target, snapshot: snapshot)
-            let screenshotPath = try await self.saveObservationScreenshot(
-                observation,
+            let observation = try await self.observeDesktop(
+                target: target,
                 path: request.path,
+                snapshot: snapshot)
+            let screenshotPath = try await self.registerObservationScreenshot(
+                observation,
                 snapshot: snapshot)
             let (elements, detectedElements) = try await self.detectUIElements(
                 observation: observation,
@@ -270,20 +272,27 @@ public struct SeeTool: MCPTool {
         }
     }
 
-    private func observeDesktop(target: CaptureTarget, snapshot: UISnapshot) async throws -> DesktopObservationResult {
+    private func observeDesktop(
+        target: CaptureTarget,
+        path: String?,
+        snapshot: UISnapshot) async throws -> DesktopObservationResult
+    {
         try await self.context.desktopObservation.observe(DesktopObservationRequest(
             target: self.observationTarget(for: target),
             detection: DesktopDetectionOptions(mode: .accessibility),
-            output: DesktopObservationOutputOptions(snapshotID: snapshot.id)))
+            output: DesktopObservationOutputOptions(
+                path: path,
+                saveRawScreenshot: true,
+                snapshotID: snapshot.id)))
     }
 
-    private func saveObservationScreenshot(
+    private func registerObservationScreenshot(
         _ observation: DesktopObservationResult,
-        path: String?,
         snapshot: UISnapshot) async throws -> String
     {
-        let screenshotPath = self.makeScreenshotPath(from: path)
-        try self.saveCaptureResult(observation.capture, to: screenshotPath)
+        guard let screenshotPath = observation.files.rawScreenshotPath else {
+            throw OperationError.captureFailed(reason: "Observation did not produce a screenshot path")
+        }
         await snapshot.setScreenshot(path: screenshotPath, metadata: observation.capture.metadata)
         return screenshotPath
     }
@@ -302,17 +311,6 @@ public struct SeeTool: MCPTool {
             detectedElements: detectedElements,
             snapshot: snapshot)
         return annotated
-    }
-
-    private func makeScreenshotPath(from userProvidedPath: String?) -> String {
-        if let userProvidedPath {
-            return userProvidedPath
-        }
-
-        let filename = "peekaboo-see-\(Date().timeIntervalSince1970).png"
-        return FileManager.default.temporaryDirectory
-            .appendingPathComponent(filename)
-            .path
     }
 
     private func observationTarget(for target: CaptureTarget) throws -> DesktopObservationTargetRequest {
@@ -338,14 +336,6 @@ public struct SeeTool: MCPTool {
         case .area:
             throw PeekabooError.invalidInput("Area capture not supported for see tool")
         }
-    }
-
-    private func saveCaptureResult(_ result: CaptureResult, to path: String) throws {
-        let url = URL(fileURLWithPath: path)
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true)
-        try result.imageData.write(to: url)
     }
 
     private func detectUIElements(

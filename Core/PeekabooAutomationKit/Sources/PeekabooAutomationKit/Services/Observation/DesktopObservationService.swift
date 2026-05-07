@@ -11,6 +11,7 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
     private let screenCapture: any ScreenCaptureServiceProtocol
     private let automation: any UIAutomationServiceProtocol
     private let targetResolver: any ObservationTargetResolving
+    private let outputWriter: any ObservationOutputWriting
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
@@ -20,16 +21,19 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = ObservationTargetResolver(applications: applications)
+        self.outputWriter = ObservationOutputWriter()
     }
 
     public init(
         screenCapture: any ScreenCaptureServiceProtocol,
         automation: any UIAutomationServiceProtocol,
-        targetResolver: any ObservationTargetResolving)
+        targetResolver: any ObservationTargetResolving,
+        outputWriter: any ObservationOutputWriting = ObservationOutputWriter())
     {
         self.screenCapture = screenCapture
         self.automation = automation
         self.targetResolver = targetResolver
+        self.outputWriter = outputWriter
     }
 
     public func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
@@ -48,12 +52,16 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
             target: target,
             request: request,
             tracer: tracer)
+        let files = try await self.writeOutputIfNeeded(
+            capture: capture,
+            options: request.output,
+            tracer: tracer)
 
         return DesktopObservationResult(
             target: target,
             capture: capture,
             elements: elements,
-            files: DesktopObservationFiles(rawScreenshotPath: capture.savedPath),
+            files: files,
             timings: tracer.timings(),
             diagnostics: DesktopObservationDiagnostics(warnings: capture.warning.map { [$0] } ?? []))
     }
@@ -129,6 +137,20 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
                 in: capture.imageData,
                 snapshotId: request.output.snapshotID,
                 windowContext: context)
+        }
+    }
+
+    private func writeOutputIfNeeded(
+        capture: CaptureResult,
+        options: DesktopObservationOutputOptions,
+        tracer: DesktopObservationTraceRecorder) async throws -> DesktopObservationFiles
+    {
+        guard options.saveRawScreenshot || options.saveAnnotatedScreenshot else {
+            return DesktopObservationFiles(rawScreenshotPath: capture.savedPath)
+        }
+
+        return try await tracer.span("output.write") {
+            try await self.outputWriter.write(capture: capture, options: options)
         }
     }
 
