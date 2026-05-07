@@ -111,6 +111,7 @@ Landed:
 - Window operation orchestration now stays in `WindowManagementService`; target resolution, title search, and close-presence polling moved into dedicated service extension files.
 - `peekaboo window` response models and Commander binding/conformance wiring now live in `WindowCommand+Bindings`, leaving the primary command file closer to behavior-only subcommands.
 - `peekaboo window close`, `minimize`, and `maximize` implementations now live in `WindowCommand+State`.
+- `peekaboo window move`, `resize`, and `set-bounds` implementations now live in `WindowCommand+Geometry`.
 
 Still incomplete:
 
@@ -141,8 +142,9 @@ WindowManagementService+Search.swift: 158 lines
 WindowManagementService+Presence.swift: 57 lines
 WindowCGInfoLookup.swift: 91 lines
 ElementDetectionService.swift: 207 lines
-WindowCommand.swift: 787 lines
+WindowCommand.swift: 465 lines
 WindowCommand+Bindings.swift: 187 lines
+WindowCommand+Geometry.swift: 328 lines
 WindowCommand+Support.swift: 189 lines
 WindowCommand+State.swift: 250 lines
 SeeCommand.swift: 306 lines
