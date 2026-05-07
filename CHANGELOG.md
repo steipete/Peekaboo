@@ -38,6 +38,7 @@
 - Dialog discovery and visualizer dispatch now fail fast when their target UI is unavailable instead of waiting through slow default paths.
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
 - `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
+- `peekaboo see` avoids recursive AX child-text lookups for elements whose labels cannot use them, reducing Playground element detection from about 201ms to 134ms in local testing.
 
 ### Community
 - Added PeekabooWin to the README community projects list. Thanks @FelixKruger!

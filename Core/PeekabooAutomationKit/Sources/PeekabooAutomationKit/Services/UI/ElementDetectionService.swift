@@ -770,7 +770,9 @@ extension ElementDetectionService {
             identifier: descriptor.identifier,
             placeholder: descriptor.placeholder)
 
-        let childTexts = self.textualDescendants(of: element)
+        let childTexts = ElementLabelResolver.needsChildTexts(info: info)
+            ? self.textualDescendants(of: element)
+            : []
         return ElementLabelResolver.resolve(
             info: info,
             childTexts: childTexts,

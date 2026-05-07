@@ -66,6 +66,20 @@ import Foundation
         return nil
     }
 
+    @_spi(Testing) public static func needsChildTexts(info: ElementLabelInfo) -> Bool {
+        guard info.role.lowercased() == "axbutton" else {
+            return false
+        }
+
+        let baseLabel = ElementLabelResolver.firstNonGeneric(
+            candidates: [info.label, info.title, info.value, info.placeholder, info.roleDescription])
+        guard baseLabel == nil else {
+            return false
+        }
+
+        return ElementLabelResolver.normalize(info.description) == nil
+    }
+
     private static func firstNonGeneric(candidates: [String?]) -> String? {
         for candidate in candidates {
             if let normalized = self.normalize(candidate), normalized.lowercased() != "button" {

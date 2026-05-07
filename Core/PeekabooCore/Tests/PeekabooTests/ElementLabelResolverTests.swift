@@ -53,4 +53,49 @@ struct ElementLabelResolverTests {
         let resolved = ElementLabelResolver.resolve(info: info, childTexts: [], identifierCleaner: { _ in "Allow" })
         #expect(resolved == "Allow")
     }
+
+    @Test
+    func `Only unlabeled buttons need child text lookup`() {
+        let labeledButton = ElementLabelInfo(
+            role: "AXButton",
+            label: "Submit",
+            title: nil,
+            value: nil,
+            roleDescription: nil,
+            description: nil,
+            identifier: nil,
+            placeholder: nil)
+        let genericButton = ElementLabelInfo(
+            role: "AXButton",
+            label: "button",
+            title: nil,
+            value: nil,
+            roleDescription: nil,
+            description: nil,
+            identifier: nil,
+            placeholder: nil)
+        let describedButton = ElementLabelInfo(
+            role: "AXButton",
+            label: nil,
+            title: nil,
+            value: nil,
+            roleDescription: nil,
+            description: "Allow",
+            identifier: nil,
+            placeholder: nil)
+        let group = ElementLabelInfo(
+            role: "AXGroup",
+            label: nil,
+            title: nil,
+            value: nil,
+            roleDescription: nil,
+            description: nil,
+            identifier: nil,
+            placeholder: nil)
+
+        #expect(ElementLabelResolver.needsChildTexts(info: labeledButton) == false)
+        #expect(ElementLabelResolver.needsChildTexts(info: genericButton))
+        #expect(ElementLabelResolver.needsChildTexts(info: describedButton) == false)
+        #expect(ElementLabelResolver.needsChildTexts(info: group) == false)
+    }
 }
