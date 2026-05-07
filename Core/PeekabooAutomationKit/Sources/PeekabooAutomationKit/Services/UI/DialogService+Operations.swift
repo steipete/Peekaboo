@@ -1,0 +1,215 @@
+import AXorcist
+import CoreGraphics
+import Foundation
+import PeekabooFoundation
+
+@MainActor
+extension DialogService {
+    public func findActiveDialog(windowTitle: String?, appName: String?) async throws -> DialogInfo {
+        self.logger.info("Finding active dialog")
+        if let title = windowTitle {
+            self.logger.debug("Looking for window with title: \(title)")
+        }
+
+        let element = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
+        let title = element.title() ?? "Untitled Dialog"
+        let role = element.role() ?? "Unknown"
+        let subrole = element.subrole()
+        let isFileDialog = self.isFileDialogElement(element)
+        let position = element.position() ?? .zero
+        let size = element.size() ?? .zero
+
+        let info = DialogInfo(
+            title: title,
+            role: role,
+            subrole: subrole,
+            isFileDialog: isFileDialog,
+            bounds: CGRect(origin: position, size: size))
+
+        self.logger.info("\(AgentDisplayTokens.Status.success) Found dialog: \(title), file dialog: \(isFileDialog)")
+        return info
+    }
+
+    public func clickButton(
+        buttonText: String,
+        windowTitle: String?,
+        appName: String?) async throws -> DialogActionResult
+    {
+        self.logger.info("Clicking button: \(buttonText)")
+        if let title = windowTitle {
+            self.logger.debug("In window: \(title)")
+        }
+
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
+        return try await self.clickButton(
+            in: dialog,
+            buttonText: buttonText,
+            allowFallbackToDefaultAction: false)
+    }
+
+    public func enterText(
+        text: String,
+        fieldIdentifier: String?,
+        clearExisting: Bool,
+        windowTitle: String?,
+        appName: String?) async throws -> DialogActionResult
+    {
+        self.logger.info("Entering text into dialog field")
+        self.logger.debug("Text length: \(text.count) chars, clear existing: \(clearExisting)")
+        if let identifier = fieldIdentifier {
+            self.logger.debug("Target field: \(identifier)")
+        }
+
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
+        let targetField = try self.textField(in: dialog, identifier: fieldIdentifier)
+
+        await self.highlightDialogElement(
+            element: .textField,
+            bounds: self.elementBounds(for: targetField),
+            action: .enterText)
+
+        self.focusTextField(targetField)
+        try self.clearFieldIfNeeded(targetField, shouldClear: clearExisting)
+        try self.typeTextValue(text, delay: 10000)
+
+        let result = DialogActionResult(
+            success: true,
+            action: .enterText,
+            details: [
+                "field": targetField.title() ?? "Text Field",
+                "text_length": String(text.count),
+                "cleared": String(clearExisting),
+            ])
+
+        self.logger.info("\(AgentDisplayTokens.Status.success) Successfully entered text into field")
+        return result
+    }
+
+    public func dismissDialog(force: Bool, windowTitle: String?, appName: String?) async throws -> DialogActionResult {
+        self.logger.info("Dismissing dialog (force: \(force))")
+
+        if force {
+            self.logger.debug("Force dismissing with Escape key")
+            try? InputDriver.tapKey(.escape)
+
+            self.logger.info("\(AgentDisplayTokens.Status.success) Dialog dismissed with Escape key")
+            return DialogActionResult(
+                success: true,
+                action: .dismiss,
+                details: ["method": "escape"])
+        }
+
+        self.logger.debug("Looking for dismiss button")
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
+        let buttons = dialog.children()?.filter { $0.role() == "AXButton" } ?? []
+        self.logger.debug("Found \(buttons.count) buttons in dialog")
+
+        let dismissButtons = ["Cancel", "Close", "Dismiss", "No", "Don't Save"]
+        self.logger.debug("Looking for dismiss buttons: \(dismissButtons.joined(separator: ", "))")
+
+        for buttonName in dismissButtons {
+            if let button = buttons.first(where: { $0.title() == buttonName }) {
+                self.logger.debug("Found dismiss button: \(buttonName)")
+                try button.performAction(.press)
+
+                self.logger.info("\(AgentDisplayTokens.Status.success) Dialog dismissed by clicking: \(buttonName)")
+                return DialogActionResult(
+                    success: true,
+                    action: .dismiss,
+                    details: [
+                        "method": "button",
+                        "button": buttonName,
+                    ])
+            }
+        }
+
+        self.logger.error("No dismiss button found in dialog")
+        throw DialogError.noDismissButton
+    }
+
+    public func listDialogElements(windowTitle: String?, appName: String?) async throws -> DialogElements {
+        self.logger.info("Listing dialog elements")
+        if let title = windowTitle {
+            self.logger.debug("For window: \(title)")
+        }
+
+        let dialogInfo = try await findActiveDialog(windowTitle: windowTitle, appName: appName)
+        let dialog = try await self.resolveDialogElement(windowTitle: windowTitle, appName: appName)
+
+        let buttons = self.dialogButtons(from: dialog)
+        let textFields = self.dialogTextFields(from: dialog)
+        let staticTexts = self.dialogStaticTexts(from: dialog)
+        let otherElements = self.dialogOtherElements(from: dialog)
+
+        try self.validateDialogElementList(
+            DialogElementListValidation(
+                dialog: dialog,
+                dialogInfo: dialogInfo,
+                windowTitle: windowTitle,
+                buttons: buttons,
+                textFields: textFields,
+                staticTexts: staticTexts,
+                otherElements: otherElements))
+
+        let elements = DialogElements(
+            dialogInfo: dialogInfo,
+            buttons: buttons,
+            textFields: textFields,
+            staticTexts: staticTexts,
+            otherElements: otherElements)
+
+        let summary = "\(AgentDisplayTokens.Status.success) Listed \(buttons.count) buttons, " +
+            "\(textFields.count) fields, \(staticTexts.count) texts"
+        self.logger.info("\(summary, privacy: .public)")
+        return elements
+    }
+
+    private func textField(in dialog: Element, identifier: String?) throws -> Element {
+        let textFields = self.collectTextFields(from: dialog)
+        self.logger.debug("Found \(textFields.count) text fields")
+
+        guard !textFields.isEmpty else {
+            self.logger.error("No text fields found in dialog")
+            throw DialogError.noTextFields
+        }
+
+        return try self.selectTextField(
+            in: textFields,
+            identifier: identifier)
+    }
+
+    private func validateDialogElementList(_ validation: DialogElementListValidation) throws {
+        let accessoryRoles: Set = [
+            "AXCheckBox", "AXRadioButton", "AXPopUpButton", "AXComboBox", "AXSlider", "AXDisclosureTriangle",
+        ]
+        let hasAccessoryElements = validation.otherElements.contains { accessoryRoles.contains($0.role) }
+        let looksLikeDialog = self.isDialogElement(validation.dialog, matching: validation.windowTitle)
+        let hasContent = !validation.buttons.isEmpty ||
+            !validation.textFields.isEmpty ||
+            !validation.staticTexts.isEmpty ||
+            hasAccessoryElements
+
+        let isSuspiciousUnknown = validation.dialogInfo.role == "AXWindow" &&
+            validation.dialogInfo.subrole == "AXUnknown"
+        if !hasContent, !looksLikeDialog || isSuspiciousUnknown {
+            // A normal front window with no dialog controls should fail, not look like a valid empty dialog.
+            self.logger.error(
+                """
+                Active window '\(validation.dialogInfo.title)' (role: \(validation.dialogInfo.role)) is not a \
+                dialog and \
+                contains no interactive elements
+                """)
+            throw DialogError.noActiveDialog
+        }
+    }
+}
+
+private struct DialogElementListValidation {
+    let dialog: Element
+    let dialogInfo: DialogInfo
+    let windowTitle: String?
+    let buttons: [DialogButton]
+    let textFields: [DialogTextField]
+    let staticTexts: [String]
+    let otherElements: [DialogElement]
+}

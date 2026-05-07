@@ -76,6 +76,7 @@ Landed:
 - Legacy capture keeps window capture and screen/area capture paths in focused operator companions.
 - Observation label placement keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
 - Window management keeps construction, state operations, geometry operations, listing, target resolution, title search, and close-presence polling in focused files.
+- Dialog service keeps construction/errors, public operations, button action resolution, element extraction, target resolution, classification, and file-dialog flows in focused files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -326,7 +327,9 @@ PeekabooBridgePayloads.swift: 332 lines
 PeekabooBridgeRequestResponse.swift: 192 lines
 AppTool.swift: 105 lines
 AppTool+Actions.swift: 408 lines
-DialogService.swift: 430 lines
+DialogService.swift: 78 lines
+DialogService+Operations.swift: 215 lines
+DialogService+ButtonActions.swift: 155 lines
 DialogService+Elements.swift: 224 lines
 DialogService+Resolution.swift: 418 lines
 DialogService+Classification.swift: 96 lines
