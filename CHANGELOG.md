@@ -88,6 +88,7 @@
 - `peekaboo agent` output formatting helpers now live outside the event delegate so streaming and tool event handling stay focused.
 - `peekaboo config` custom-provider management commands now live in a focused companion file instead of the add-provider implementation file.
 - `peekaboo list screens` implementation and screen payload models now live outside the primary list command file.
+- `peekaboo capture video` now lives in its own command file, leaving live capture and the watch alias in the primary capture command file.
 - `peekaboo clipboard get --json` now includes the exact clipboard text/base64 payload, and `--output -` no longer mixes raw clipboard output with JSON.
 - `peekaboo capture video --sample-fps` now reports the effective video sampling options in JSON metadata.
 - JSON output is more consistent across the CLI: `tools`, `list permissions`, config commands, and Commander parse errors now emit parseable structured envelopes with `debug_logs` where applicable.

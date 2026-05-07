@@ -156,6 +156,7 @@ Landed:
 - `AgentOutputDelegate` now keeps event handling separate from tool/result formatting helpers.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
+- `peekaboo capture video` is split out of the primary capture command file.
 
 Current status:
 
