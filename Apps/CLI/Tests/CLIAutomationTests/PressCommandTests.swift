@@ -26,9 +26,10 @@ struct PressCommandTests {
         let result = try await self.runPress(arguments: ["return", "--json"], context: context)
 
         #expect(result.exitStatus == 0)
-        let calls = await self.automationState(context) { $0.typeActionsCalls }
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
         let call = try #require(calls.first)
-        #expect(call.actions.count == 1)
+        #expect(call.keys == "return")
+        #expect(call.holdDuration == 50)
 
         let payloadData = try #require(self.output(from: result).data(using: .utf8))
         let payload = try JSONDecoder().decode(CodableJSONResponse<PressResult>.self, from: payloadData)
@@ -44,10 +45,8 @@ struct PressCommandTests {
         let result = try await self.runPress(arguments: ["tab", "--count", "3"], context: context)
 
         #expect(result.exitStatus == 0)
-        let calls = await self.automationState(context) { $0.typeActionsCalls }
-        let call = try #require(calls.first)
-        #expect(call.actions.count == 3)
-        #expect(call.cadence == .fixed(milliseconds: 100))
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
+        #expect(calls.map(\.keys) == ["tab", "tab", "tab"])
     }
 
     @Test
@@ -56,12 +55,20 @@ struct PressCommandTests {
         let result = try await self.runPress(arguments: ["up", "down", "left", "right"], context: context)
 
         #expect(result.exitStatus == 0)
-        let calls = await self.automationState(context) { $0.typeActionsCalls }
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
+        #expect(calls.map(\.keys) == ["up", "down", "left", "right"])
+    }
+
+    @Test
+    func `Press command forwards hold duration`() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runPress(arguments: ["space", "--hold", "250"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
         let call = try #require(calls.first)
-        #expect(call.actions.count == 4)
-        #expect(call.actions.allSatisfy {
-            if case .key = $0 { true } else { false }
-        })
+        #expect(call.keys == "space")
+        #expect(call.holdDuration == 250)
     }
 
     @Test
@@ -70,9 +77,9 @@ struct PressCommandTests {
         let result = try await self.runPress(arguments: ["escape", "--snapshot", "snapshot-42"], context: context)
 
         #expect(result.exitStatus == 0)
-        let calls = await self.automationState(context) { $0.typeActionsCalls }
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
         let call = try #require(calls.first)
-        #expect(call.snapshotId == "snapshot-42")
+        #expect(call.keys == "escape")
     }
 
     @Test
@@ -81,7 +88,7 @@ struct PressCommandTests {
         let result = try await self.runPress(arguments: ["notakey"], context: context)
 
         #expect(result.exitStatus != 0)
-        let calls = await self.automationState(context) { $0.typeActionsCalls }
+        let calls = await self.automationState(context) { $0.hotkeyCalls }
         #expect(calls.isEmpty)
     }
 

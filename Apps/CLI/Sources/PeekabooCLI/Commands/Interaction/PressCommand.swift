@@ -93,39 +93,31 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 services: self.services
             )
 
-            // Build actions - repeat each key sequence 'count' times
-            var actions: [TypeAction] = []
-            for _ in 0..<self.count {
-                for (index, key) in self.keys.indexed() {
-                    if let specialKey = SpecialKey(rawValue: key.lowercased()) {
-                        actions.append(.key(specialKey))
-                    }
+            let normalizedKeys = self.keys.map { $0.lowercased() }
+            var completedPresses = 0
 
-                    // Add delay between keys (but not after the last key of the last repetition)
-                    let isLastKey = index == self.keys.count - 1
-                    let isLastRepetition = self.count == 1
-                    if !isLastKey || !isLastRepetition {
-                        // We'll handle the delay in the service
+            for repetition in 0..<self.count {
+                for (index, key) in normalizedKeys.indexed() {
+                    try await AutomationServiceBridge.hotkey(
+                        automation: self.services.automation,
+                        keys: key,
+                        holdDuration: self.hold
+                    )
+                    completedPresses += 1
+
+                    let isLastKey = index == normalizedKeys.count - 1
+                    let isLastRepetition = repetition == self.count - 1
+                    if self.delay > 0, !(isLastKey && isLastRepetition) {
+                        try await Task.sleep(nanoseconds: UInt64(self.delay) * 1_000_000)
                     }
                 }
             }
-
-            // Execute key presses
-            let typeRequest = TypeActionsRequest(
-                actions: actions,
-                cadence: .fixed(milliseconds: self.delay),
-                snapshotId: snapshotId
-            )
-            let result = try await AutomationServiceBridge.typeActions(
-                automation: self.services.automation,
-                request: typeRequest
-            )
 
             // Output results
             let pressResult = PressResult(
                 success: true,
                 keys: keys,
-                totalPresses: result.keyPresses,
+                totalPresses: completedPresses,
                 count: self.count,
                 executionTime: Date().timeIntervalSince(startTime)
             )
@@ -136,7 +128,7 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 if self.count > 1 {
                     print("🔢 Repeated: \(self.count) times")
                 }
-                print("📊 Total presses: \(result.keyPresses)")
+                print("📊 Total presses: \(completedPresses)")
                 print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
             }
 
@@ -150,6 +142,15 @@ struct PressCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
     mutating func validate() throws {
         try self.target.validate()
+        guard self.count >= 1 else {
+            throw ValidationError("--count must be greater than 0")
+        }
+        guard self.delay >= 0 else {
+            throw ValidationError("--delay must be greater than or equal to 0")
+        }
+        guard self.hold >= 0 else {
+            throw ValidationError("--hold must be greater than or equal to 0")
+        }
         for key in self.keys {
             guard SpecialKey(rawValue: key.lowercased()) != nil else {
                 throw ValidationError("Unknown key: '\(key)'. Run 'peekaboo press --help' for available keys.")

@@ -178,4 +178,18 @@ struct PressCommandIntegrationTests {
             }
         }
     }
+
+    @Test
+    func `Press command rejects invalid timing values`() throws {
+        for arguments in [
+            ["tab", "--count", "0"],
+            ["tab", "--delay", "-1"],
+            ["tab", "--hold", "-1"],
+        ] {
+            var command = try PressCommand.parse(arguments)
+            #expect(throws: (any Error).self) {
+                try command.validate()
+            }
+        }
+    }
 }
