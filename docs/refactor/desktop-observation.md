@@ -159,6 +159,7 @@ Landed:
 - Bridge protocol models now keep version/error metadata, operation policy, payload DTOs, and request/response envelopes in focused files.
 - Dialog service cleanup removed stale duplicate file-dialog navigation, filename, save-verification, and key-mapping helpers from the main implementation file; the active file-dialog path stays in `DialogService+FileDialogs`.
 - File-dialog handling now keeps orchestration, navigation/focus, filename entry, and save verification in focused service files.
+- Dialog service internals now keep active-dialog resolution, dialog classification, and element extraction/typing helpers in focused service files.
 - Menu extra handling now keeps public orchestration, open-menu state probing, WindowServer enumeration, AX fallback enumeration, and title cleanup in focused service files.
 - `peekaboo config` custom-provider add/list/test/remove/model commands are split into focused provider files.
 - `peekaboo list screens` implementation and screen payload models are split out of the primary list command file.
@@ -268,7 +269,10 @@ PeekabooBridgeModels.swift: 254 lines
 PeekabooBridgeOperation+Policy.swift: 121 lines
 PeekabooBridgePayloads.swift: 332 lines
 PeekabooBridgeRequestResponse.swift: 192 lines
-DialogService.swift: 1160 lines
+DialogService.swift: 430 lines
+DialogService+Elements.swift: 224 lines
+DialogService+Resolution.swift: 418 lines
+DialogService+Classification.swift: 96 lines
 DialogService+FileDialogs.swift: 177 lines
 DialogService+FileDialogVerification.swift: 302 lines
 DialogService+FileDialogNavigation.swift: 224 lines
