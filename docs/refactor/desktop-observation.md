@@ -53,6 +53,7 @@ Landed:
 - Sparse Chromium/Tauri web focus recovery now lives in `WebFocusFallback`.
 - Generic-group text-field recovery now lives in `ElementTypeAdjuster`.
 - Application menu-bar detection now lives in `MenuBarElementCollector`.
+- Accessibility tree traversal now lives in `AXTreeCollector`.
 
 Still intentionally incomplete:
 

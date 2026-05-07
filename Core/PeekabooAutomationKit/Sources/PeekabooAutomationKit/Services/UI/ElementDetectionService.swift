@@ -44,6 +44,7 @@ public final class ElementDetectionService {
     private let axTreeCache = ElementDetectionCache()
     private let webFocusFallback = WebFocusFallback()
     private let menuBarElementCollector = MenuBarElementCollector()
+    private let axTreeCollector = AXTreeCollector()
 
     public init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
@@ -136,12 +137,14 @@ extension ElementDetectionService {
         let (elements, map) = try await ElementDetectionTimeoutRunner.run(seconds: timeoutSeconds) {
             let deadline = Date().addingTimeInterval(timeoutSeconds)
             var localMap: [String: DetectedElement] = [:]
-            let elements = await self.collectElements(
+            let request = ElementCollectionRequest(
                 window: window,
                 appElement: appElement,
                 appIsActive: appIsActive,
                 allowWebFocus: allowWebFocus,
-                deadline: deadline,
+                deadline: deadline)
+            let elements = await self.collectElements(
+                request,
                 elementIdMap: &localMap)
             return (elements, localMap)
         }
@@ -151,20 +154,6 @@ extension ElementDetectionService {
 }
 
 extension ElementDetectionService {
-    private static let textualRoles: Set<String> = [
-        "axstatictext",
-        "axtext",
-        "axbutton",
-        "axlink",
-        "axdescription",
-        "axunknown",
-    ]
-    private static let textFieldRoles: Set<String> = [
-        "axtextfield",
-        "axtextarea",
-        "axsearchfield",
-        "axsecuretextfield",
-    ]
     private func resolveApplication(windowContext: WindowContext?) async throws -> NSRunningApplication {
         if let pid = windowContext?.applicationProcessId {
             if let runningApp = NSRunningApplication(processIdentifier: pid) {
@@ -468,13 +457,8 @@ extension ElementDetectionService {
         }
     }
 
-    // swiftlint:disable function_parameter_count
     private func collectElements(
-        window: Element,
-        appElement: Element,
-        appIsActive: Bool,
-        allowWebFocus: Bool,
-        deadline: Date,
+        _ request: ElementCollectionRequest,
         elementIdMap: inout [String: DetectedElement]) async -> [DetectedElement]
     {
         var detectedElements: [DetectedElement] = []
@@ -484,18 +468,11 @@ extension ElementDetectionService {
             elementIdMap.removeAll(keepingCapacity: true)
             detectedElements.removeAll(keepingCapacity: true)
 
-            var visitedElements = Set<Element>()
-            // Traverse only the captured window. Walking the app root also visits sibling windows,
-            // which makes `see --app` slower and returns elements outside the screenshot.
-            self.processElement(
-                window,
-                depth: 0,
-                deadline: deadline,
-                detectedElements: &detectedElements,
-                elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
+            let collection = self.axTreeCollector.collect(window: request.window, deadline: request.deadline)
+            detectedElements = collection.elements
+            elementIdMap = collection.elementIdMap
 
-            if appIsActive, let menuBar = appElement.menuBar() {
+            if request.appIsActive, let menuBar = request.appElement.menuBar() {
                 self.menuBarElementCollector.appendMenuBar(
                     menuBar,
                     elements: &detectedElements,
@@ -508,10 +485,10 @@ extension ElementDetectionService {
             // the first pass is sparse enough to suggest hidden Chromium/Tauri content.
             guard AXTraversalPolicy.shouldAttemptWebFocusFallback(
                 attempt: attempt,
-                allowWebFocus: allowWebFocus,
+                allowWebFocus: request.allowWebFocus,
                 detectedElementCount: detectedElements.count,
                 hasTextField: hasTextField),
-                self.webFocusFallback.focusIfNeeded(window: window, appElement: appElement)
+                self.webFocusFallback.focusIfNeeded(window: request.window, appElement: request.appElement)
             else {
                 break
             }
@@ -522,246 +499,14 @@ extension ElementDetectionService {
 
         return detectedElements
     }
+}
 
-    private func processElement(
-        _ element: Element,
-        depth: Int,
-        deadline: Date,
-        detectedElements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement],
-        visitedElements: inout Set<Element>)
-    {
-        guard depth < AXTraversalPolicy.maxTraversalDepth else { return }
-        guard !Task.isCancelled else { return }
-        guard Date() < deadline else { return }
-        guard detectedElements.count < AXTraversalPolicy.maxElementCount else { return }
-        guard visitedElements.insert(element).inserted else { return }
-        guard let descriptor = AXDescriptorReader.describe(element) else { return }
-
-        self.logButtonDebugInfoIfNeeded(descriptor)
-
-        let elementId = "elem_\(detectedElements.count)"
-        let baseType = ElementClassifier.elementType(for: descriptor.role)
-        let elementType = self.adjustedElementType(element: element, descriptor: descriptor, baseType: baseType)
-        let isActionable = self.isElementActionable(element, role: descriptor.role)
-        let keyboardShortcut = isActionable ? self.extractKeyboardShortcut(element, role: descriptor.role) : nil
-        let label = self.effectiveLabel(for: element, descriptor: descriptor)
-
-        let attributes = ElementClassifier.attributes(
-            from: ElementClassifier.AttributeInput(
-                role: descriptor.role,
-                title: descriptor.title,
-                description: descriptor.description,
-                help: descriptor.help,
-                roleDescription: descriptor.roleDescription,
-                identifier: descriptor.identifier,
-                isActionable: isActionable,
-                keyboardShortcut: keyboardShortcut,
-                placeholder: descriptor.placeholder))
-
-        let detectedElement = DetectedElement(
-            id: elementId,
-            type: elementType,
-            label: label,
-            value: descriptor.value,
-            bounds: descriptor.frame,
-            isEnabled: descriptor.isEnabled,
-            isSelected: nil,
-            attributes: attributes)
-
-        detectedElements.append(detectedElement)
-        elementIdMap[elementId] = detectedElement
-
-        self.processChildren(
-            of: element,
-            depth: depth + 1,
-            deadline: deadline,
-            detectedElements: &detectedElements,
-            elementIdMap: &elementIdMap,
-            visitedElements: &visitedElements)
-    }
-
-    private func processChildren(
-        of element: Element,
-        depth: Int,
-        deadline: Date,
-        detectedElements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement],
-        visitedElements: inout Set<Element>)
-    {
-        guard !Task.isCancelled else { return }
-        guard let children = element.children() else { return }
-        let limitedChildren = children.prefix(AXTraversalPolicy.maxChildrenPerNode)
-        for child in limitedChildren {
-            guard detectedElements.count < AXTraversalPolicy.maxElementCount else { break }
-            self.processElement(
-                child,
-                depth: depth,
-                deadline: deadline,
-                detectedElements: &detectedElements,
-                elementIdMap: &elementIdMap,
-                visitedElements: &visitedElements)
-        }
-    }
-
-    // swiftlint:enable function_parameter_count
-
-    private func logButtonDebugInfoIfNeeded(_ descriptor: AXDescriptorReader.Descriptor) {
-        guard descriptor.role.lowercased() == "axbutton" else { return }
-        let parts = [
-            "title: '\(descriptor.title ?? "nil")'",
-            "label: '\(descriptor.label ?? "nil")'",
-            "value: '\(descriptor.value ?? "nil")'",
-            "roleDescription: '\(descriptor.roleDescription ?? "nil")'",
-            "description: '\(descriptor.description ?? "nil")'",
-            "identifier: '\(descriptor.identifier ?? "nil")'",
-        ]
-        self.logger.debug("🔍 Button debug - \(parts.joined(separator: ", "))")
-    }
-
-    private func effectiveLabel(for element: Element, descriptor: AXDescriptorReader.Descriptor) -> String? {
-        let info = ElementLabelInfo(
-            role: descriptor.role,
-            label: descriptor.label,
-            title: descriptor.title,
-            value: descriptor.value,
-            roleDescription: descriptor.roleDescription,
-            description: descriptor.description,
-            identifier: descriptor.identifier,
-            placeholder: descriptor.placeholder)
-
-        let childTexts = ElementLabelResolver.needsChildTexts(info: info)
-            ? self.textualDescendants(of: element)
-            : []
-        return ElementLabelResolver.resolve(
-            info: info,
-            childTexts: childTexts,
-            identifierCleaner: self.cleanedIdentifier)
-    }
-
-    private func textualDescendants(of element: Element, depth: Int = 0, limit: Int = 4) -> [String] {
-        guard depth < 3, limit > 0, !Task.isCancelled,
-              let children = element.children(), !children.isEmpty
-        else {
-            return []
-        }
-
-        var results: [String] = []
-        for child in children {
-            if let role = child.role()?.lowercased(),
-               Self.textualRoles.contains(role)
-            {
-                if let candidate = child.title() ?? child.label() ?? child.stringValue() ?? child.descriptionText() {
-                    let normalized = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !normalized.isEmpty {
-                        results.append(normalized)
-                        if results.count >= limit { break }
-                    }
-                }
-            }
-
-            if results.count >= limit { break }
-
-            let remaining = limit - results.count
-            let nested = self.textualDescendants(of: child, depth: depth + 1, limit: remaining)
-            results.append(contentsOf: nested)
-            if results.count >= limit { break }
-        }
-
-        return results
-    }
-
-    private func cleanedIdentifier(_ identifier: String) -> String {
-        identifier.replacingOccurrences(of: "-button", with: "")
-            .replacingOccurrences(of: "-", with: " ")
-            .split(separator: " ")
-            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
-            .joined(separator: " ")
-    }
-
-    private func adjustedElementType(
-        element: Element,
-        descriptor: AXDescriptorReader.Descriptor,
-        baseType: ElementType) -> ElementType
-    {
-        let input = ElementTypeAdjustmentInput(
-            role: descriptor.role,
-            roleDescription: descriptor.roleDescription,
-            title: descriptor.title,
-            label: descriptor.label,
-            placeholder: descriptor.placeholder,
-            isEditable: baseType == .group && element.isEditable() == true)
-        let hasTextFieldDescendant = ElementTypeAdjuster.shouldScanForTextFieldDescendant(
-            baseType: baseType,
-            input: input) && self.containsTextFieldDescendant(element, depth: 0, remainingDepth: 2)
-
-        return ElementTypeAdjuster.resolve(
-            baseType: baseType,
-            input: input,
-            hasTextFieldDescendant: hasTextFieldDescendant)
-    }
-
-    private func containsTextFieldDescendant(
-        _ element: Element,
-        depth: Int,
-        remainingDepth: Int) -> Bool
-    {
-        guard !Task.isCancelled else { return false }
-        guard remainingDepth >= 0 else { return false }
-        guard let children = element.children(strict: true) else { return false }
-
-        for child in children {
-            if let role = child.role()?.lowercased(),
-               Self.textFieldRoles.contains(role)
-            {
-                return true
-            }
-
-            if child.isEditable() == true {
-                return true
-            }
-
-            if self.containsTextFieldDescendant(child, depth: depth + 1, remainingDepth: remainingDepth - 1) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    private func isElementActionable(_ element: Element, role: String) -> Bool {
-        if ElementClassifier.roleIsActionable(role) {
-            return true
-        }
-
-        guard ElementClassifier.shouldLookupActions(for: role) else {
-            return false
-        }
-
-        // Action lookup is another AX round-trip; only pay it for container-ish roles that can hide AXPress.
-        return element.supportedActions()?.contains("AXPress") == true
-    }
-
-    @MainActor
-    private func extractKeyboardShortcut(_ element: Element, role: String) -> String? {
-        guard ElementClassifier.supportsKeyboardShortcut(for: role) else {
-            return nil
-        }
-
-        // Use the new keyboardShortcut() method from AXorcist
-        if let shortcut = element.keyboardShortcut() {
-            return shortcut
-        }
-
-        // Fallback: For some elements, check description which may contain shortcuts
-        if let description = element.descriptionText(),
-           description.contains("⌘") || description.contains("⌥") || description.contains("⌃")
-        {
-            return description
-        }
-
-        return nil
-    }
+private struct ElementCollectionRequest {
+    let window: Element
+    let appElement: Element
+    let appIsActive: Bool
+    let allowWebFocus: Bool
+    let deadline: Date
 }
 
 private struct WindowResolution {
