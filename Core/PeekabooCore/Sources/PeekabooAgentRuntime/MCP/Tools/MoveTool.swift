@@ -1,13 +1,9 @@
+import CoreGraphics
 import Foundation
 import MCP
 import os.log
-import TachikomaMCP
-
-#if canImport(AppKit)
-import AppKit
-@preconcurrency import AXorcist
 import PeekabooAutomation
-#endif
+import TachikomaMCP
 
 /// MCP tool for moving the mouse cursor
 public struct MoveTool: MCPTool {
@@ -113,9 +109,9 @@ public struct MoveTool: MCPTool {
         return CGPoint(x: x, y: y)
     }
 
+    @MainActor
     private func getCenterOfScreen() throws -> CGPoint {
-        #if canImport(AppKit)
-        guard let mainScreen = NSScreen.main else {
+        guard let mainScreen = self.context.screens.primaryScreen else {
             throw CoordinateParseError(message: "Unable to determine main screen dimensions")
         }
 
@@ -123,10 +119,6 @@ public struct MoveTool: MCPTool {
         return CGPoint(
             x: screenFrame.midX,
             y: screenFrame.midY)
-        #else
-        // Fallback for non-AppKit environments
-        throw CoordinateParseError(message: "Screen center calculation not supported in this environment")
-        #endif
     }
 
     private func parseRequest(arguments: ToolArguments) throws -> MoveRequest {
@@ -224,9 +216,7 @@ public struct MoveTool: MCPTool {
 
     private func performMovement(to location: CGPoint, request: MoveRequest) async throws -> MovementExecution {
         let automation = self.context.automation
-        let currentLocation = await MainActor.run {
-            InputDriver.currentLocation() ?? .zero
-        }
+        let currentLocation = await automation.currentMouseLocation() ?? .zero
         let distance = hypot(location.x - currentLocation.x, location.y - currentLocation.y)
         let movement = self.resolveMovementParameters(for: request, distance: distance)
 

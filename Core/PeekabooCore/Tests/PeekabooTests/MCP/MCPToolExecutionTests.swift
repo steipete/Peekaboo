@@ -431,6 +431,49 @@ struct MCPToolExecutionTests {
         #expect(response.isError == true)
     }
 
+    @Test
+    func `App tool switch cycle uses automation service`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = AppTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "action": "switch",
+            "cycle": true,
+        ]))
+
+        #expect(response.isError == false)
+        #expect(await MainActor.run { automation.lastHotkeyKeys } == "cmd,tab")
+        #expect(await MainActor.run { automation.lastHotkeyHoldDuration } == 50)
+    }
+
+    @Test
+    func `Move tool center uses screen and cursor services`() async throws {
+        let automation = await MainActor.run {
+            MockAutomationService(accessibilityGranted: true, currentMouseLocation: CGPoint(x: 10, y: 20))
+        }
+        let screens = await MainActor.run {
+            MockScreenService(screens: [
+                ScreenInfo(
+                    index: 0,
+                    name: "Mock Display",
+                    frame: CGRect(x: 100, y: 200, width: 800, height: 600),
+                    visibleFrame: CGRect(x: 100, y: 200, width: 800, height: 600),
+                    isPrimary: true,
+                    scaleFactor: 1,
+                    displayID: 1),
+            ])
+        }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation, screens: screens)
+        let tool = MoveTool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["center": true]))
+
+        #expect(response.isError == false)
+        #expect(await MainActor.run { automation.lastMoveTarget } == CGPoint(x: 500, y: 500))
+        #expect(await MainActor.run { automation.lastMoveDuration } == 0)
+    }
+
     @MainActor
     private static func makeWindowedTestApp() -> (ServiceApplicationInfo, [ServiceWindowInfo]) {
         let app = ServiceApplicationInfo(
@@ -538,12 +581,22 @@ private enum MCPToolTestHelpers {
 private final class MockAutomationService: UIAutomationServiceProtocol {
     private let accessibilityGranted: Bool
     private let detectionResult: ElementDetectionResult?
+    private let mockCurrentMouseLocation: CGPoint?
     var lastCadence: TypingCadence?
+    private(set) var lastHotkeyKeys: String?
+    private(set) var lastHotkeyHoldDuration: Int?
+    private(set) var lastMoveTarget: CGPoint?
+    private(set) var lastMoveDuration: Int?
     private(set) var lastWindowContext: WindowContext?
 
-    init(accessibilityGranted: Bool, detectionResult: ElementDetectionResult? = nil) {
+    init(
+        accessibilityGranted: Bool,
+        detectionResult: ElementDetectionResult? = nil,
+        currentMouseLocation: CGPoint? = nil)
+    {
         self.accessibilityGranted = accessibilityGranted
         self.detectionResult = detectionResult
+        self.mockCurrentMouseLocation = currentMouseLocation
     }
 
     func detectElements(in _: Data, snapshotId _: String?, windowContext: WindowContext?) async throws
@@ -572,7 +625,10 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func scroll(_: ScrollRequest) async throws {}
 
-    func hotkey(keys _: String, holdDuration _: Int) async throws {}
+    func hotkey(keys: String, holdDuration: Int) async throws {
+        self.lastHotkeyKeys = keys
+        self.lastHotkeyHoldDuration = holdDuration
+    }
 
     func swipe(
         from _: CGPoint,
@@ -594,10 +650,18 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
     func drag(_: DragOperationRequest) async throws {}
 
     func moveMouse(
-        to _: CGPoint,
-        duration _: Int,
+        to: CGPoint,
+        duration: Int,
         steps _: Int,
-        profile _: MouseMovementProfile) async throws {}
+        profile _: MouseMovementProfile) async throws
+    {
+        self.lastMoveTarget = to
+        self.lastMoveDuration = duration
+    }
+
+    func currentMouseLocation() -> CGPoint? {
+        self.mockCurrentMouseLocation
+    }
 
     func getFocusedElement() -> UIFocusInfo? {
         nil

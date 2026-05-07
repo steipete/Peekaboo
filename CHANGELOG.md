@@ -103,6 +103,7 @@
 - UI automation tool formatting now keeps pointer and keyboard result rendering in focused companion files.
 - Agent summaries for `move`, `drag`, and `swipe` now include pointer result metadata instead of falling back to an empty completion summary.
 - Agent desktop context gathering now reads focused app/window state, cursor position, and recent apps through shared service boundaries instead of direct `NSWorkspace`/CoreGraphics event/window scans.
+- MCP app cycling and move-center resolution now use injected automation/screen services instead of direct AXorcist/AppKit calls.
 - Space management utilities now isolate private CGS API declarations and public Space models from service orchestration.
 - Agent tool creation now keeps MCP schema conversion and ToolResponse bridging in focused helper files.
 - UI automation protocol definitions now keep mouse profile, element-detection, and operation DTOs in focused model files.

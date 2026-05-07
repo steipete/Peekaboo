@@ -1,4 +1,3 @@
-@preconcurrency import AXorcist
 import Foundation
 import MCP
 import os.log
@@ -13,6 +12,7 @@ struct AppToolActions {
     }
 
     let service: any ApplicationServiceProtocol
+    let automation: any UIAutomationServiceProtocol
     let logger: Logger
 
     func perform(action: String, request: AppToolRequest) async throws -> ToolResponse {
@@ -135,7 +135,7 @@ struct AppToolActions {
     func handleFocus(request: AppToolRequest, mode: FocusMode) async throws -> ToolResponse {
         switch mode {
         case .appSwitch where request.cycle:
-            self.cycleApplications()
+            await self.cycleApplications()
             return ToolResponse(
                 content: [.text(
                     text: "\(AgentDisplayTokens.Status.success) Switched to next application",
@@ -398,9 +398,9 @@ struct AppToolActions {
         }
     }
 
-    private func cycleApplications() {
+    private func cycleApplications() async {
         do {
-            try InputDriver.hotkey(keys: ["cmd", "tab"], holdDuration: 0.05)
+            try await self.automation.hotkey(keys: "cmd,tab", holdDuration: 50)
         } catch {
             self.logger.error("Failed to send Cmd+Tab: \(error, privacy: .public)")
         }

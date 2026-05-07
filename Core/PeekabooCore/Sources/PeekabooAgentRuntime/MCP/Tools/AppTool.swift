@@ -80,6 +80,7 @@ public struct AppTool: MCPTool {
         do {
             let actions = AppToolActions(
                 service: self.context.applications,
+                automation: self.context.automation,
                 logger: self.logger)
             return try await actions.perform(action: action, request: request)
         } catch {
