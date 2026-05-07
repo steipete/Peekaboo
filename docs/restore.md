@@ -23,7 +23,7 @@ A `git reset --hard` wiped the in-progress CLI runtime refactor + visualizer har
 
 ## 3. Shared Helpers & Docs
 - [x] `CommandUtilities.requireScreenRecordingPermission` and `selectWindow` are `@MainActor`.
-- [x] `docs/refactor.md` logs the new tmux build IDs after each restoration batch.
+- [x] `docs/archive/refactor/runtime-visualizer-2025-11.md` logs the new tmux build IDs after each restoration batch.
 - [x] `Core/*/Package.swift` files point to `Vendor/swift-argument-parser` so SwiftPM stops warning about duplicate IDs.
 
 Add more sections as we rediscover missing edits. Update the checkboxes (or add short notes) once each item is restored so future contributors know what’s still outstanding.

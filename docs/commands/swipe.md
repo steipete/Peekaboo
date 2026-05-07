@@ -27,7 +27,7 @@ read_when:
 - Element lookups reuse the `[waitForElement + bounds.midpoint]` flow with a 5 s timeout, so swipes tolerate elements that pop in slightly late.
 - Coordinate parsing accepts `"x,y"` with optional whitespace; invalid strings result in immediate validation errors.
 - After issuing the swipe it waits ~0.1 s before reporting success to give AppKit time to settle (matching what integration tests expect).
-- JSON output surfaces both endpoints and the computed Euclidean distance, which is handy when you need to assert coverage in tests.
+- JSON output surfaces both endpoints and the computed Euclidean distance. Element endpoints also include `fromTargetPoint`/`toTargetPoint` diagnostics with the original snapshot midpoint, final resolved point, snapshot ID, and moved-window adjustment status.
 - `--profile human` enables adaptive durations/steps plus jittery arcs; see `docs/human-mouse-move.md` for the generator’s behavior.
 
 ## Examples

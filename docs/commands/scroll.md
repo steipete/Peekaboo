@@ -17,14 +17,14 @@ read_when:
 | `--on <element-id>` | Scroll relative to a Peekaboo element from the current/most recent snapshot. |
 | `--snapshot <id>` | Override the snapshot used to resolve `--on`. Omit when you want to scroll wherever the pointer is. |
 | `--delay <ms>` | Milliseconds between ticks (default `2`). |
-| `--smooth` | Use smaller increments (3 micro ticks per requested tick) for finer movement. |
+| `--smooth` | Use smaller increments (10 micro ticks per requested tick) for finer movement. |
 | Target flags | `--app <name>`, `--pid <pid>`, `--window-id <id>`, `--window-title <title>`, `--window-index <n>` — focus a specific app/window before scrolling. (`--window-title`/`--window-index` require `--app` or `--pid`; `--window-id` does not.) |
 | Focus flags | `FocusCommandOptions` control Space switching + retries. |
 
 ## Implementation notes
 - If you pass `--on` without a snapshot, the command automatically looks up `services.snapshots.getMostRecentSnapshot()` so you rarely need to wire IDs manually.
 - Focus is handled via `ensureFocused`; supplying a target helps the command recover when the scrollable view lives in a background Space.
-- JSON output reports the actual point that was scrolled: for element targets it resolves the bounds midpoint, otherwise it samples the current cursor location via `CGEvent(source:nil)?.location`.
+- JSON output reports the actual point that was scrolled: for element targets it resolves the bounds midpoint, applies moved-window adjustment when possible, and includes `targetPoint` diagnostics with the original snapshot midpoint, final resolved point, snapshot ID, and adjustment status. Coordinate-less scrolls sample the current cursor location via `CGEvent(source:nil)?.location`.
 - `ScrollRequest` is handed directly to `AutomationServiceBridge.scroll`, so the CLI benefits from the same smooth/step semantics the agent runtime sees.
 
 ## Examples

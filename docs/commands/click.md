@@ -26,7 +26,7 @@ read_when:
 - When no `--snapshot` is provided, the command grabs the most recent snapshot ID (if any) before waiting for elements. Coordinate clicks skip snapshot usage entirely to avoid stale caches.
 - Element-based clicks call `AutomationServiceBridge.waitForElement` with the supplied timeout so you don’t have to insert manual sleeps. Helpful hints are printed when timeouts expire.
 - Focus is enforced just before the click by `ensureFocused`; by default it will hop Spaces if necessary unless you pass `--no-auto-focus`.
-- JSON output reports `clickedElement`, the resolved coordinates, wait time, execution time, and the frontmost app after the click.
+- JSON output reports `clickedElement`, the resolved coordinates, wait time, execution time, the frontmost app after the click, and `targetPoint` diagnostics for element/query targets. `targetPoint` includes the original snapshot midpoint, the final resolved point, the snapshot ID, and whether a moved-window adjustment was applied.
 
 ## Examples
 ```bash

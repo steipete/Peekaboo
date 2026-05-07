@@ -30,7 +30,7 @@ read_when:
 - Element-based moves reuse snapshot data via `services.snapshots.getDetectionResult`; query-based moves run `AutomationServiceBridge.waitForElement`, so they automatically wait up to 5 s for dynamic UIs.
 - Smooth moves compute intermediate steps client-side and track the previous cursor location so the result payload can include the travel distance.
 - `--profile human` automatically enables smooth movement, adapts duration/steps to travel distance, and adds natural jitter/overshoot. See `docs/human-mouse-move.md` for deeper guidance.
-- JSON output reports `fromLocation`, `targetLocation`, `targetDescription`, total distance, and run time—handy when you need to assert that the pointer actually moved.
+- JSON output reports `fromLocation`, `targetLocation`, `targetDescription`, total distance, and run time. Element/query targets also include `targetPoint` diagnostics with the original snapshot midpoint, final resolved point, snapshot ID, and moved-window adjustment status.
 
 ## Examples
 ```bash

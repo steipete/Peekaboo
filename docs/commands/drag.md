@@ -28,7 +28,7 @@ read_when:
 - Element IDs are resolved through `AutomationServiceBridge.waitForElement` (5 s timeout) and use the element’s bounds midpoint as the drag point.
 - Modifier strings are forwarded verbatim to `DragRequest`, so `--modifiers cmd,shift` behaves like holding Cmd+Shift while dragging.
 - `--profile human` automatically chooses adaptive durations/steps and feeds the motion through the same humanized generator described in `docs/human-mouse-move.md`.
-- Results are logged in both human-readable form and JSON (`DragResult`) with start/end coordinates, duration, steps, modifiers, and execution time.
+- Results are logged in both human-readable form and JSON (`DragResult`) with start/end coordinates, duration, steps, modifiers, execution time, and `fromTargetPoint`/`toTargetPoint` diagnostics when either endpoint resolves from a snapshot element.
 
 ## Examples
 ```bash

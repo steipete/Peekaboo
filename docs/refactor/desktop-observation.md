@@ -83,7 +83,7 @@ Landed:
 - CLI `see` all-screens capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
 - `peekaboo image` builds desktop observation requests through a dedicated command-support adapter.
 - `peekaboo see` builds desktop observation requests through a dedicated command-support adapter.
-- `peekaboo see` support types, output rendering, and screen-capture helpers are split out of the primary command file.
+- `peekaboo see` support types, output rendering, and screen helpers are split out of the primary command file.
 - `peekaboo see` legacy capture/detection fallback now lives in a dedicated detection-pipeline adapter, putting the main command shell under the target size.
 - `peekaboo image` capture orchestration, output models, analysis rendering, filename planning, and focus helpers are split out of the primary command file.
 - `peekaboo click`, `type`, `move`, `scroll`, `drag`, `swipe`, `hotkey`, and `press` now use a shared interaction observation context for explicit/latest snapshot selection and focus snapshot policy.
@@ -128,7 +128,8 @@ ImageCommand.swift: 188 lines
 ImageCommand+CapturePipeline.swift: 337 lines
 ImageCommand+Output.swift: 74 lines
 ImageCommand+ObservationRequest.swift: 56 lines
-InteractionObservationContext.swift: 285 lines
+InteractionObservationContext.swift: 370 lines
+InteractionTargetPointResolver.swift: 156 lines
 ClickCommand.swift: 581 lines
 TypeCommand.swift: 428 lines
 MoveCommand.swift: 450 lines
@@ -904,13 +905,14 @@ Purpose: make CLI/MCP boring and prepare package extraction.
 
 Work:
 
-- delete obsolete bridge helpers;
+- done: deleted obsolete bridge helper stubs and the command-local `ScreenCaptureBridge` shim;
 - started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`, `SeeCommand+ObservationRequest.swift`);
-- started: split large `see` support into focused files (`SeeCommand+Types.swift`, `SeeCommand+Output.swift`, `SeeCommand+ScreenCaptureBridge.swift`, `SeeCommand+Screens.swift`);
+- started: split large `see` support into focused files (`SeeCommand+Types.swift`, `SeeCommand+Output.swift`, `SeeCommand+Screens.swift`);
 - done: move the remaining legacy capture/detection fallback body out of `SeeCommand.swift` into `SeeCommand+DetectionPipeline.swift`;
 - done: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
-- archive stale refactor notes;
-- update command docs for changed diagnostics/timings;
+- done: archive stale refactor notes behind the current refactor index;
+- done: update command docs for changed diagnostics/timings;
+- done: split interaction target-point diagnostics out of `InteractionObservationContext.swift`;
 - only then consider module extraction.
 
 Gate:

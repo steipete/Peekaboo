@@ -18,7 +18,7 @@ extension SeeCommand {
 
         if let index = self.screenIndex ?? (self.analyze != nil ? 0 : nil) {
             self.logger.verbose("Capturing specific screen", category: "Capture", metadata: ["screenIndex": index])
-            let result = try await ScreenCaptureBridge.captureScreen(services: self.services, displayIndex: index)
+            let result = try await self.services.screenCapture.captureScreen(displayIndex: index)
 
             if let displayInfo = result.metadata.displayInfo {
                 self.printScreenDisplayInfo(index: index, displayInfo: displayInfo)
@@ -88,10 +88,7 @@ extension SeeCommand {
             ])
 
             do {
-                let result = try await ScreenCaptureBridge.captureScreen(
-                    services: self.services,
-                    displayIndex: display.index
-                )
+                let result = try await self.services.screenCapture.captureScreen(displayIndex: display.index)
                 results.append(result)
             } catch {
                 self.logger.error("Failed to capture display \(display.index): \(error)")

@@ -6,7 +6,7 @@ import PeekabooCore
 extension SeeCommand {
     private func captureMenuBar() async throws -> CaptureResult {
         let rect = try self.menuBarRect()
-        return try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+        return try await self.services.screenCapture.captureArea(rect)
     }
 
     struct MenuBarPopoverContext {
@@ -209,10 +209,7 @@ extension SeeCommand {
             return nil
         }
 
-        let captureResult = try await ScreenCaptureBridge.captureWindowById(
-            services: self.services,
-            windowId: windowId
-        )
+        let captureResult = try await self.services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
 
         return MenuBarPopoverCapture(
             captureResult: captureResult,

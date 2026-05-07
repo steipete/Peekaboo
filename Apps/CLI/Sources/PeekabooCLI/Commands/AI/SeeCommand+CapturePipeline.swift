@@ -1,4 +1,5 @@
 import Commander
+import CoreGraphics
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -78,7 +79,7 @@ extension SeeCommand {
 
             self.logger.verbose("No menu bar popover detected; capturing menu bar area", category: "Capture")
             let rect = try self.menuBarRect()
-            let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+            let result = try await self.services.screenCapture.captureArea(rect)
             return CaptureContext(
                 captureResult: result,
                 captureBounds: rect,
@@ -93,7 +94,7 @@ extension SeeCommand {
             case "menubar":
                 self.logger.verbose("Capturing menu bar area", category: "Capture")
                 let rect = try self.menuBarRect()
-                let result = try await ScreenCaptureBridge.captureArea(services: self.services, rect: rect)
+                let result = try await self.services.screenCapture.captureArea(rect)
                 return CaptureContext(
                     captureResult: result,
                     captureBounds: rect,
@@ -103,7 +104,7 @@ extension SeeCommand {
                 )
             case "frontmost":
                 self.logger.verbose("Capturing frontmost window (via --app frontmost)", category: "Capture")
-                let result = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
+                let result = try await self.services.screenCapture.captureFrontmost()
                 return CaptureContext(
                     captureResult: result,
                     captureBounds: nil,
@@ -162,10 +163,7 @@ extension SeeCommand {
                 ])
 
                 self.logger.startTimer("window_capture")
-                let result = try await ScreenCaptureBridge.captureWindowById(
-                    services: self.services,
-                    windowId: windowId
-                )
+                let result = try await self.services.screenCapture.captureWindow(windowID: CGWindowID(windowId))
                 self.logger.stopTimer("window_capture")
                 self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
                 return result
@@ -185,9 +183,8 @@ extension SeeCommand {
                     ])
 
                     self.logger.startTimer("window_capture")
-                    let result = try await ScreenCaptureBridge.captureWindowById(
-                        services: self.services,
-                        windowId: resolvedWindowId
+                    let result = try await self.services.screenCapture.captureWindow(
+                        windowID: CGWindowID(resolvedWindowId)
                     )
                     self.logger.stopTimer("window_capture")
                     self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
@@ -200,8 +197,7 @@ extension SeeCommand {
                 )
 
                 self.logger.startTimer("window_capture")
-                let result = try await ScreenCaptureBridge.captureWindow(
-                    services: self.services,
+                let result = try await self.services.screenCapture.captureWindow(
                     appIdentifier: appIdentifier,
                     windowIndex: windowIndex
                 )
@@ -214,7 +210,7 @@ extension SeeCommand {
 
         case .frontmost:
             self.logger.verbose("Capturing frontmost window")
-            let result = try await ScreenCaptureBridge.captureFrontmost(services: self.services)
+            let result = try await self.services.screenCapture.captureFrontmost()
             self.logger.operationComplete("capture_phase", metadata: ["mode": effectiveMode.rawValue])
             return result
 
