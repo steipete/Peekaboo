@@ -114,12 +114,12 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
     @MainActor
     private func outputJSON(tools: [any MCPTool]) throws {
-        struct ToolInfo: Encodable {
+        struct ToolInfo: Codable {
             let name: String
             let description: String
         }
 
-        struct Payload: Encodable {
+        struct Payload: Codable {
             let tools: [ToolInfo]
             let count: Int
         }
@@ -129,12 +129,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
             count: tools.count
         )
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let jsonData = try encoder.encode(payload)
-        if let jsonString = String(data: jsonData, encoding: .utf8) {
-            print(jsonString)
-        }
+        outputSuccessCodable(data: payload, logger: self.outputLogger)
     }
 
     // MARK: - Formatted Output
