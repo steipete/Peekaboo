@@ -102,15 +102,18 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 services: self.services
             )
 
-            let startPoint = try await self.resolvePoint(
+            let startResolution = try await self.resolvePoint(
                 elementId: self.from,
                 coords: self.fromCoords,
                 snapshotId: observation.snapshotId,
                 description: "from"
             )
 
-            let endPoint: CGPoint = if let targetApp = toApp {
-                try await self.findApplicationPoint(targetApp)
+            let endResolution: InteractionTargetPointResolution = if let targetApp = toApp {
+                try await InteractionTargetPointResolver.coordinate(
+                    self.findApplicationPoint(targetApp),
+                    source: .application
+                )
             } else {
                 try await self.resolvePoint(
                     elementId: self.to,
@@ -119,6 +122,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                     description: "to"
                 )
             }
+            let startPoint = startResolution.point
+            let endPoint = endResolution.point
 
             let distance = hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y)
             let profileSelection = CursorMovementProfileSelection(
@@ -168,6 +173,8 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
                 steps: movement.steps,
                 profile: movement.profileName,
                 modifiers: self.modifiers ?? "none",
+                fromTargetPoint: startResolution.diagnostics,
+                toTargetPoint: endResolution.diagnostics,
                 executionTime: Date().timeIntervalSince(startTime)
             )
 
@@ -220,7 +227,7 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
         coords: String?,
         snapshotId: String?,
         description: String
-    ) async throws -> CGPoint {
+    ) async throws -> InteractionTargetPointResolution {
         if let coordinateString = coords {
             let components = coordinateString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             guard components.count == 2,
@@ -229,7 +236,10 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             else {
                 throw ValidationError("Invalid coordinates format: '\(coordinateString)'. Expected 'x,y'")
             }
-            return CGPoint(x: x, y: y)
+            return InteractionTargetPointResolver.coordinate(
+                CGPoint(x: x, y: y),
+                source: .coordinates
+            )
         }
 
         guard let element = elementId else {
@@ -257,12 +267,9 @@ struct DragCommand: ErrorHandlingCommand, OutputFormattable {
             throw PeekabooError.elementNotFound("Element with ID '\(element)' not found")
         }
 
-        let center = CGPoint(
-            x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
-            y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
-        )
-        return try await WindowMovementTracking.adjustPoint(
-            center,
+        return try await InteractionTargetPointResolver.elementCenterResolution(
+            element: foundElement,
+            elementId: element,
             snapshotId: snapshotId,
             snapshots: self.services.snapshots
         )
@@ -347,6 +354,8 @@ private struct DragResult: Codable {
     let steps: Int
     let profile: String
     let modifiers: String
+    let fromTargetPoint: InteractionTargetPointDiagnostics?
+    let toTargetPoint: InteractionTargetPointDiagnostics?
     let executionTime: TimeInterval
 }
 

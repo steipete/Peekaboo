@@ -119,16 +119,27 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
             let totalTicks = self.smooth ? self.amount * 10 : self.amount
 
             // Determine scroll location for output
-            let scrollLocation: CGPoint = if let elementId = on {
-                try await InteractionTargetPointResolver.elementCenter(
-                    elementId: elementId,
-                    snapshotId: observation.snapshotId,
-                    snapshots: self.services.snapshots
-                ) ?? .zero
+            let scrollResolution: InteractionTargetPointResolution = if let elementId = on {
+                if let snapshotId = observation.snapshotId,
+                   let detectionResult = try await self.services.snapshots.getDetectionResult(snapshotId: snapshotId),
+                   let element = detectionResult.elements.findById(elementId) {
+                    try await InteractionTargetPointResolver.elementCenterResolution(
+                        element: element,
+                        elementId: elementId,
+                        snapshotId: snapshotId,
+                        snapshots: self.services.snapshots
+                    )
+                } else {
+                    InteractionTargetPointResolver.coordinate(.zero, source: .element)
+                }
             } else {
                 // Get current mouse position
-                CGEvent(source: nil)?.location ?? .zero
+                InteractionTargetPointResolver.coordinate(
+                    CGEvent(source: nil)?.location ?? .zero,
+                    source: .pointer
+                )
             }
+            let scrollLocation = scrollResolution.point
 
             await InteractionObservationInvalidator.invalidateAfterMutation(
                 observation,
@@ -144,6 +155,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                 amount: amount,
                 location: ["x": scrollLocation.x, "y": scrollLocation.y],
                 totalTicks: totalTicks,
+                targetPoint: scrollResolution.diagnostics,
                 executionTime: Date().timeIntervalSince(startTime)
             )
             output(outputPayload) {
@@ -173,7 +185,26 @@ struct ScrollResult: Codable {
     let amount: Int
     let location: [String: Double]
     let totalTicks: Int
+    let targetPoint: InteractionTargetPointDiagnostics?
     let executionTime: TimeInterval
+
+    init(
+        success: Bool,
+        direction: String,
+        amount: Int,
+        location: [String: Double],
+        totalTicks: Int,
+        targetPoint: InteractionTargetPointDiagnostics? = nil,
+        executionTime: TimeInterval
+    ) {
+        self.success = success
+        self.direction = direction
+        self.amount = amount
+        self.location = location
+        self.totalTicks = totalTicks
+        self.targetPoint = targetPoint
+        self.executionTime = executionTime
+    }
 }
 
 // MARK: - Conformances

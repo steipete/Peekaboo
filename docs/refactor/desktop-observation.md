@@ -97,6 +97,7 @@ Landed:
 - `peekaboo scroll --smooth --json` now reports the actual smooth scroll tick count used by the automation service.
 - `peekaboo scroll --on --json` now reports the same moved-window-adjusted target point used by the automation service.
 - `peekaboo window focus --snapshot` now focuses the captured window context while preserving explicit snapshots during focus-cache invalidation.
+- Element-targeted `click`, `move`, `scroll`, `drag`, and `swipe` JSON results now report target-point diagnostics with original snapshot point, resolved point, snapshot ID, and moved-window adjustment.
 
 Still incomplete:
 
@@ -879,7 +880,7 @@ Work:
 - done: share moved-window target-point resolution with scroll result rendering;
 - done: teach `window focus` to accept explicit snapshot window context;
 - done: preserve explicit snapshots while invalidating implicit latest state after focus commands;
-- add target-point diagnostics.
+- done: add target-point diagnostics.
 
 Gate:
 

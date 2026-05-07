@@ -115,120 +115,9 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
 
         do {
             try self.validate()
-            // Determine target location
-            let targetLocation: CGPoint
-            let targetDescription: String
-
-            if self.center {
-                try await ensureFocused(
-                    snapshotId: nil,
-                    target: self.target,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-                // Move to screen center
-                guard let mainScreen = NSScreen.main else {
-                    throw ValidationError("No main screen found")
-                }
-                let screenFrame = mainScreen.frame
-                targetLocation = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
-                targetDescription = "Screen center"
-
-            } else if let coordString = self.resolvedCoordinates {
-                try await ensureFocused(
-                    snapshotId: nil,
-                    target: self.target,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-                // Parse coordinates
-                let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                let x = Double(parts[0])!
-                let y = Double(parts[1])!
-                targetLocation = CGPoint(x: x, y: y)
-                targetDescription = "Coordinates (\(Int(x)), \(Int(y)))"
-
-            } else if let elementId = on ?? id {
-                // Move to element by ID
-                var observation = await InteractionObservationContext.resolve(
-                    explicitSnapshot: self.snapshot,
-                    fallbackToLatest: true,
-                    snapshots: self.services.snapshots
-                )
-                observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
-                    observation,
-                    elementIds: [elementId],
-                    target: self.target,
-                    services: self.services,
-                    logger: self.logger
-                )
-                try await ensureFocused(
-                    snapshotId: observation.focusSnapshotId(for: self.target),
-                    target: self.target,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-
-                let detectionResult = try await observation.requireDetectionResult(using: self.services.snapshots)
-                guard let element = detectionResult.elements.findById(elementId) else {
-                    throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
-                }
-
-                targetLocation = try await WindowMovementTracking.adjustPoint(
-                    CGPoint(x: element.bounds.midX, y: element.bounds.midY),
-                    snapshotId: observation.snapshotId,
-                    snapshots: self.services.snapshots
-                )
-                targetDescription = self.formatElementInfo(element)
-
-            } else if let query = to {
-                // Find element by text/query
-                var observation = await InteractionObservationContext.resolve(
-                    explicitSnapshot: self.snapshot,
-                    fallbackToLatest: true,
-                    snapshots: self.services.snapshots
-                )
-                observation = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
-                    observation,
-                    query: query,
-                    target: self.target,
-                    services: self.services,
-                    logger: self.logger
-                )
-                let activeSnapshotId = try observation.requireSnapshot()
-                try await ensureFocused(
-                    snapshotId: observation.focusSnapshotId(for: self.target),
-                    target: self.target,
-                    options: self.focusOptions,
-                    services: self.services
-                )
-
-                try await observation.validateIfExplicit(using: self.services.snapshots)
-
-                // Wait for element to be available
-                let waitResult = try await AutomationServiceBridge.waitForElement(
-                    automation: self.services.automation,
-                    target: .query(query),
-                    timeout: 5.0,
-                    snapshotId: activeSnapshotId
-                )
-
-                guard waitResult.found, let element = waitResult.element else {
-                    throw PeekabooError.elementNotFound(
-                        "No element found matching '\(query)'"
-                    )
-                }
-
-                targetLocation = try await WindowMovementTracking.adjustPoint(
-                    CGPoint(x: element.bounds.midX, y: element.bounds.midY),
-                    snapshotId: activeSnapshotId,
-                    snapshots: self.services.snapshots
-                )
-                targetDescription = self.formatElementInfo(element)
-
-            } else {
-                throw ValidationError("Specify coordinates, --coords, --to, --on/--id, or --center")
-            }
+            let resolvedTarget = try await self.resolveTarget()
+            let targetLocation = resolvedTarget.location
+            let targetDescription = resolvedTarget.description
 
             // Get current mouse location for distance calculation
             let currentLocation = CGEvent(source: nil)?.location ?? CGPoint.zero
@@ -266,6 +155,7 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
                 duration: movement.duration,
                 smooth: movement.smooth,
                 profile: movement.profileName,
+                targetPoint: resolvedTarget.diagnostics,
                 executionTime: Date().timeIntervalSince(startTime)
             )
             output(result) {
@@ -284,6 +174,145 @@ struct MoveCommand: ErrorHandlingCommand, OutputFormattable {
             self.handleError(error)
             throw ExitCode.failure
         }
+    }
+
+    private func resolveTarget() async throws -> MoveTargetResolution {
+        if self.center {
+            try await self.focusForCoordinateTarget()
+            guard let mainScreen = NSScreen.main else {
+                throw ValidationError("No main screen found")
+            }
+            let screenFrame = mainScreen.frame
+            let location = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
+            return MoveTargetResolution(
+                location: location,
+                description: "Screen center",
+                diagnostics: InteractionTargetPointResolver.coordinate(
+                    location,
+                    source: .screenCenter
+                ).diagnostics
+            )
+        }
+
+        if let coordString = self.resolvedCoordinates {
+            try await self.focusForCoordinateTarget()
+            let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            let x = Double(parts[0])!
+            let y = Double(parts[1])!
+            let location = CGPoint(x: x, y: y)
+            return MoveTargetResolution(
+                location: location,
+                description: "Coordinates (\(Int(x)), \(Int(y)))",
+                diagnostics: InteractionTargetPointResolver.coordinate(
+                    location,
+                    source: .coordinates
+                ).diagnostics
+            )
+        }
+
+        if let elementId = on ?? id {
+            return try await self.resolveElementTarget(elementId: elementId)
+        }
+
+        if let query = to {
+            return try await self.resolveQueryTarget(query: query)
+        }
+
+        throw ValidationError("Specify coordinates, --coords, --to, --on/--id, or --center")
+    }
+
+    private func focusForCoordinateTarget() async throws {
+        try await ensureFocused(
+            snapshotId: nil,
+            target: self.target,
+            options: self.focusOptions,
+            services: self.services
+        )
+    }
+
+    private func resolveElementTarget(elementId: String) async throws -> MoveTargetResolution {
+        var observation = await InteractionObservationContext.resolve(
+            explicitSnapshot: self.snapshot,
+            fallbackToLatest: true,
+            snapshots: self.services.snapshots
+        )
+        observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
+            observation,
+            elementIds: [elementId],
+            target: self.target,
+            services: self.services,
+            logger: self.logger
+        )
+        try await ensureFocused(
+            snapshotId: observation.focusSnapshotId(for: self.target),
+            target: self.target,
+            options: self.focusOptions,
+            services: self.services
+        )
+
+        let detectionResult = try await observation.requireDetectionResult(using: self.services.snapshots)
+        guard let element = detectionResult.elements.findById(elementId) else {
+            throw PeekabooError.elementNotFound("Element with ID '\(elementId)' not found")
+        }
+
+        let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+            element: element,
+            elementId: elementId,
+            snapshotId: observation.snapshotId,
+            snapshots: self.services.snapshots
+        )
+        return MoveTargetResolution(
+            location: resolution.point,
+            description: self.formatElementInfo(element),
+            diagnostics: resolution.diagnostics
+        )
+    }
+
+    private func resolveQueryTarget(query: String) async throws -> MoveTargetResolution {
+        var observation = await InteractionObservationContext.resolve(
+            explicitSnapshot: self.snapshot,
+            fallbackToLatest: true,
+            snapshots: self.services.snapshots
+        )
+        observation = try await InteractionObservationRefresher.refreshForMissingQueryIfNeeded(
+            observation,
+            query: query,
+            target: self.target,
+            services: self.services,
+            logger: self.logger
+        )
+        let activeSnapshotId = try observation.requireSnapshot()
+        try await ensureFocused(
+            snapshotId: observation.focusSnapshotId(for: self.target),
+            target: self.target,
+            options: self.focusOptions,
+            services: self.services
+        )
+
+        try await observation.validateIfExplicit(using: self.services.snapshots)
+
+        let waitResult = try await AutomationServiceBridge.waitForElement(
+            automation: self.services.automation,
+            target: .query(query),
+            timeout: 5.0,
+            snapshotId: activeSnapshotId
+        )
+
+        guard waitResult.found, let element = waitResult.element else {
+            throw PeekabooError.elementNotFound("No element found matching '\(query)'")
+        }
+
+        let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+            element: element,
+            elementId: element.id,
+            snapshotId: activeSnapshotId,
+            snapshots: self.services.snapshots
+        )
+        return MoveTargetResolution(
+            location: resolution.point,
+            description: self.formatElementInfo(element),
+            diagnostics: resolution.diagnostics
+        )
     }
 
     private func formatElementInfo(_ element: DetectedElement) -> String {
@@ -357,6 +386,7 @@ struct MoveResult: Codable {
     let duration: Int
     let smooth: Bool
     let profile: String
+    let targetPoint: InteractionTargetPointDiagnostics?
     let executionTime: TimeInterval
 
     init(
@@ -368,6 +398,7 @@ struct MoveResult: Codable {
         duration: Int,
         smooth: Bool,
         profile: String,
+        targetPoint: InteractionTargetPointDiagnostics? = nil,
         executionTime: TimeInterval
     ) {
         self.success = success
@@ -378,6 +409,7 @@ struct MoveResult: Codable {
         self.duration = duration
         self.smooth = smooth
         self.profile = profile
+        self.targetPoint = targetPoint
         self.executionTime = executionTime
     }
 }
@@ -454,4 +486,10 @@ private struct MovementParameters {
     let steps: Int
     let smooth: Bool
     let profileName: String
+}
+
+private struct MoveTargetResolution {
+    let location: CGPoint
+    let description: String
+    let diagnostics: InteractionTargetPointDiagnostics?
 }

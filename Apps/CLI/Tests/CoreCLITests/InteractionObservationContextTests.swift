@@ -391,6 +391,34 @@ struct InteractionObservationContextTests {
         )
 
         #expect(point == CGPoint(x: 120, y: 95))
+
+        let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+            element: Self.buttonElement(id: "B1", label: "Save"),
+            elementId: "B1",
+            snapshotId: snapshotId,
+            snapshots: snapshots
+        )
+
+        #expect(resolution.point == CGPoint(x: 70, y: 37))
+        #expect(resolution.diagnostics.source == "element")
+        #expect(resolution.diagnostics.elementId == "B1")
+        #expect(resolution.diagnostics.snapshotId == snapshotId)
+        #expect(resolution.diagnostics.original == InteractionPoint(CGPoint(x: 50, y: 32)))
+        #expect(resolution.diagnostics.resolved == InteractionPoint(CGPoint(x: 70, y: 37)))
+        #expect(resolution.diagnostics.windowAdjustment?.status == "adjusted")
+        #expect(resolution.diagnostics.windowAdjustment?.delta == InteractionPoint(CGPoint(x: 20, y: 5)))
+    }
+
+    @Test
+    func `Target point diagnostics describe coordinate targets`() {
+        let point = CGPoint(x: 10, y: 20)
+        let resolution = InteractionTargetPointResolver.coordinate(point, source: .coordinates)
+
+        #expect(resolution.point == point)
+        #expect(resolution.diagnostics.source == "coordinates")
+        #expect(resolution.diagnostics.original == InteractionPoint(point))
+        #expect(resolution.diagnostics.resolved == InteractionPoint(point))
+        #expect(resolution.diagnostics.windowAdjustment == nil)
     }
 
     private static func buttonElement(id: String) -> DetectedElement {

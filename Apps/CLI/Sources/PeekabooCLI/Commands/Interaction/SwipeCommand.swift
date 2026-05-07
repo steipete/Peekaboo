@@ -122,7 +122,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             )
 
             // Get source and destination points
-            let sourcePoint = try await resolvePoint(
+            let sourceResolution = try await resolvePoint(
                 elementId: from,
                 coords: fromCoords,
                 snapshotId: observation.snapshotId,
@@ -130,13 +130,15 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 waitTimeout: 5.0
             )
 
-            let destPoint = try await resolvePoint(
+            let destResolution = try await resolvePoint(
                 elementId: to,
                 coords: toCoords,
                 snapshotId: observation.snapshotId,
                 description: "to",
                 waitTimeout: 5.0
             )
+            let sourcePoint = sourceResolution.point
+            let destPoint = destResolution.point
 
             let distance = hypot(destPoint.x - sourcePoint.x, destPoint.y - sourcePoint.y)
             let profileSelection = CursorMovementProfileSelection(
@@ -189,6 +191,8 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 duration: movement.duration,
                 steps: movement.steps,
                 profile: movement.profileName,
+                fromTargetPoint: sourceResolution.diagnostics,
+                toTargetPoint: destResolution.diagnostics,
                 executionTime: Date().timeIntervalSince(startTime)
             )
             output(outputPayload) {
@@ -213,7 +217,7 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         snapshotId: String?,
         description: String,
         waitTimeout: TimeInterval
-    ) async throws -> CGPoint {
+    ) async throws -> InteractionTargetPointResolution {
         if let coordString = coords {
             // Parse coordinates
             let parts = coordString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -223,7 +227,10 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             else {
                 throw ValidationError("Invalid coordinates format: '\(coordString)'. Expected 'x,y'")
             }
-            return CGPoint(x: x, y: y)
+            return InteractionTargetPointResolver.coordinate(
+                CGPoint(x: x, y: y),
+                source: .coordinates
+            )
         } else if let element = elementId, let activeSnapshotId = snapshotId {
             _ = try await SnapshotValidation.requireDetectionResult(
                 snapshotId: activeSnapshotId,
@@ -247,12 +254,9 @@ struct SwipeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 throw PeekabooError.elementNotFound("Element '\(element)' found but has no bounds")
             }
 
-            let center = CGPoint(
-                x: foundElement.bounds.origin.x + foundElement.bounds.width / 2,
-                y: foundElement.bounds.origin.y + foundElement.bounds.height / 2
-            )
-            return try await WindowMovementTracking.adjustPoint(
-                center,
+            return try await InteractionTargetPointResolver.elementCenterResolution(
+                element: foundElement,
+                elementId: element,
                 snapshotId: activeSnapshotId,
                 snapshots: self.services.snapshots
             )
@@ -274,6 +278,8 @@ struct SwipeResult: Codable {
     let duration: Int
     let steps: Int
     let profile: String
+    let fromTargetPoint: InteractionTargetPointDiagnostics?
+    let toTargetPoint: InteractionTargetPointDiagnostics?
     let executionTime: TimeInterval
 }
 

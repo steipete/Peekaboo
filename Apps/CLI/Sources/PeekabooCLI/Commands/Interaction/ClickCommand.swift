@@ -318,37 +318,48 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
             // Prepare result
             let clickLocation: CGPoint
             let clickedElement: String?
+            let targetPointDiagnostics: InteractionTargetPointDiagnostics?
 
             switch clickTarget {
             case let .elementId(id):
                 if let element = waitResult.element {
-                    clickLocation = try await WindowMovementTracking.adjustPoint(
-                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                    let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+                        element: element,
+                        elementId: id,
                         snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
                         snapshots: self.services.snapshots
                     )
+                    clickLocation = resolution.point
+                    targetPointDiagnostics = resolution.diagnostics
                     clickedElement = self.formatElementInfo(element)
                 } else {
                     // Shouldn't happen but handle gracefully
                     clickLocation = .zero
+                    targetPointDiagnostics = nil
                     clickedElement = "Element ID: \(id)"
                 }
 
             case let .coordinates(point):
                 clickLocation = point
+                targetPointDiagnostics = InteractionTargetPointResolver.coordinate(point, source: .coordinates)
+                    .diagnostics
                 clickedElement = nil
 
             case let .query(query):
                 if let element = waitResult.element {
-                    clickLocation = try await WindowMovementTracking.adjustPoint(
-                        CGPoint(x: element.bounds.midX, y: element.bounds.midY),
+                    let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+                        element: element,
+                        elementId: element.id,
                         snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
                         snapshots: self.services.snapshots
                     )
+                    clickLocation = resolution.point
+                    targetPointDiagnostics = resolution.diagnostics
                     clickedElement = self.formatElementInfo(element)
                 } else {
                     // Use a default description
                     clickLocation = .zero
+                    targetPointDiagnostics = nil
                     clickedElement = "Element matching: \(query)"
                 }
             }
@@ -360,7 +371,8 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
                 clickLocation: clickLocation,
                 waitTime: waitResult.waitTime,
                 executionTime: Date().timeIntervalSince(startTime),
-                targetApp: appName
+                targetApp: appName,
+                targetPoint: targetPointDiagnostics
             )
 
             if let observationForInvalidation {
@@ -528,6 +540,7 @@ struct ClickResult: Codable {
     let waitTime: Double
     let executionTime: TimeInterval
     let targetApp: String
+    let targetPoint: InteractionTargetPointDiagnostics?
 
     init(
         success: Bool,
@@ -535,7 +548,8 @@ struct ClickResult: Codable {
         clickLocation: CGPoint,
         waitTime: Double,
         executionTime: TimeInterval,
-        targetApp: String
+        targetApp: String,
+        targetPoint: InteractionTargetPointDiagnostics? = nil
     ) {
         self.success = success
         self.clickedElement = clickedElement
@@ -543,6 +557,7 @@ struct ClickResult: Codable {
         self.waitTime = waitTime
         self.executionTime = executionTime
         self.targetApp = targetApp
+        self.targetPoint = targetPoint
     }
 }
 
