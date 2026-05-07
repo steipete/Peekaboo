@@ -141,7 +141,19 @@ public final class DesktopObservationService: DesktopObservationServiceProtocol 
                 scale: options.scale)
 
         case .menubarPopover:
-            throw DesktopObservationError.unsupportedTarget("menubar popover")
+            if let windowID = target.window?.windowID {
+                return try await self.screenCapture.captureWindow(
+                    windowID: CGWindowID(windowID),
+                    visualizerMode: options.visualizerMode,
+                    scale: options.scale)
+            }
+            guard let bounds = target.bounds else {
+                throw DesktopObservationError.targetNotFound("menu bar popover bounds")
+            }
+            return try await self.screenCapture.captureArea(
+                bounds,
+                visualizerMode: options.visualizerMode,
+                scale: options.scale)
         }
     }
 

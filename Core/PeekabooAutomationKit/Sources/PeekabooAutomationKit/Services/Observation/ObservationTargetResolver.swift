@@ -50,8 +50,8 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         case .menubar:
             try self.resolveMenuBar()
 
-        case .menubarPopover:
-            ResolvedObservationTarget(kind: .menubarPopover)
+        case let .menubarPopover(hints):
+            try self.resolveMenuBarPopover(hints: hints)
         }
     }
 
@@ -254,6 +254,45 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             kind: .menubar,
             bounds: bounds,
             captureScaleHint: screen.scaleFactor)
+    }
+
+    private func resolveMenuBarPopover(hints: [String]) throws -> ResolvedObservationTarget {
+        guard let screens = self.screens?.listScreens(), !screens.isEmpty else {
+            throw DesktopObservationError.targetNotFound("menu bar popover screens")
+        }
+
+        let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        guard let popover = ObservationMenuBarPopoverResolver.resolve(
+            hints: hints,
+            windowList: windowList,
+            screens: screens)
+        else {
+            throw DesktopObservationError.targetNotFound("menu bar popover")
+        }
+
+        let app = ApplicationIdentity(
+            processIdentifier: popover.ownerPID,
+            bundleIdentifier: nil,
+            name: popover.ownerName ?? "Unknown")
+        let window = WindowIdentity(
+            windowID: Int(popover.windowID),
+            title: popover.title ?? "",
+            bounds: popover.bounds,
+            index: 0)
+        let context = WindowContext(
+            applicationName: app.name,
+            applicationBundleId: app.bundleIdentifier,
+            applicationProcessId: app.processIdentifier,
+            windowTitle: window.title,
+            windowID: window.windowID,
+            windowBounds: window.bounds)
+
+        return ResolvedObservationTarget(
+            kind: .menubarPopover,
+            app: app,
+            window: window,
+            bounds: popover.bounds,
+            detectionContext: context)
     }
 
     public nonisolated static func menuBarBounds(for screen: ScreenInfo) -> CGRect {

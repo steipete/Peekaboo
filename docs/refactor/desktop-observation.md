@@ -64,10 +64,11 @@ Landed:
 - CLI and MCP observation-backed outputs now expose structured observation timings and diagnostics.
 - Remaining CLI app-window filtering for `image`, live `capture`, and `window list` now uses observation target selection.
 - Menu bar strip capture for CLI `image --app menubar` and MCP `image` now runs through observation.
+- Menu bar popover window-list resolution and capture now runs through observation.
 
 Still intentionally incomplete:
 
-- menubar popover observation targets;
+- menu bar popover OCR and click-to-open behavior under observation;
 - annotation output under the observation writer;
 - OCR as a first-class observation enhancement;
 - further extraction of `ScreenCaptureService` internals;
@@ -87,7 +88,7 @@ Goal: `DesktopObservationService.observe` is the only behavioral path for deskto
 
 Next slices:
 
-1. Add menubar-popover targets to observation instead of keeping them as `see` special cases.
+1. Move CLI menu bar popover OCR/click-to-open behavior into observation instead of keeping it as `see` special cases.
 2. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
 3. Keep shrinking legacy command-level capture code after bridge paths disappear.
 
