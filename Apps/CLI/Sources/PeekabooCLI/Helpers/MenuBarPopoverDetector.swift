@@ -1,11 +1,25 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import PeekabooCore
 
-struct MenuBarPopoverCandidate {
-    let windowId: Int
-    let ownerPID: pid_t
-    let bounds: CGRect
+typealias MenuBarPopoverCandidate = ObservationMenuBarPopoverCandidate
+
+extension ObservationMenuBarPopoverCandidate {
+    var windowId: Int {
+        Int(self.windowID)
+    }
+
+    init(windowId: Int, ownerPID: pid_t, bounds: CGRect) {
+        self.init(
+            windowID: CGWindowID(windowId),
+            ownerPID: ownerPID,
+            ownerName: nil,
+            title: nil,
+            bounds: bounds,
+            layer: 0
+        )
+    }
 }
 
 enum MenuBarPopoverDetector {
@@ -61,9 +75,12 @@ enum MenuBarPopoverDetector {
 
             candidates.append(
                 MenuBarPopoverCandidate(
-                    windowId: windowId,
+                    windowID: CGWindowID(windowId),
                     ownerPID: ownerPIDValue,
-                    bounds: bounds
+                    ownerName: ownerName,
+                    title: title.isEmpty ? nil : title,
+                    bounds: bounds,
+                    layer: layer
                 )
             )
         }

@@ -26,6 +26,16 @@ public struct ObservationMenuBarPopoverCandidate: Sendable, Equatable {
     }
 }
 
+public struct ObservationMenuBarPopoverWindowInfo: Sendable, Equatable {
+    public let ownerName: String?
+    public let title: String?
+
+    public init(ownerName: String?, title: String?) {
+        self.ownerName = ownerName
+        self.title = title
+    }
+}
+
 enum ObservationMenuBarPopoverResolver {
     static func resolve(
         hints: [String],

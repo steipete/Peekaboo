@@ -4,52 +4,50 @@ import PeekabooCore
 
 @MainActor
 extension SeeCommand {
-    func menuBarWindowList() -> [[String: Any]]? {
-        CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements],
-            kCGNullWindowID
-        ) as? [[String: Any]]
+    func menuBarWindowSnapshot() -> ObservationMenuBarPopoverSnapshot {
+        ObservationMenuBarWindowCatalog.currentPopoverSnapshot(
+            screens: self.services.screens.listScreens()
+        )
     }
 
     func resolveInitialCandidates(
         context: MenuBarPopoverContext,
-        windowList: [[String: Any]]
+        snapshot: ObservationMenuBarPopoverSnapshot
     ) -> MenuBarCandidateState {
-        let filteredWindowList: [[String: Any]] = if context.canFilterByOwnerPid {
-            windowList.filter { info in
-                guard let ownerPID = self.ownerPid(from: info) else { return false }
-                return context.ownerPidSet.contains(ownerPID)
+        let filteredCandidates: [MenuBarPopoverCandidate] = if context.canFilterByOwnerPid {
+            snapshot.candidates.filter { candidate in
+                context.ownerPidSet.contains(candidate.ownerPID)
             }
         } else {
-            windowList
+            snapshot.candidates
         }
 
         let usedFilteredWindowList = context.canFilterByOwnerPid &&
-            !filteredWindowList.isEmpty &&
-            filteredWindowList.count != windowList.count
-        let candidatesWindowList = usedFilteredWindowList ? filteredWindowList : windowList
+            !filteredCandidates.isEmpty &&
+            filteredCandidates.count != snapshot.candidates.count
+        let baseCandidates = usedFilteredWindowList ? filteredCandidates : snapshot.candidates
 
         var candidates = self.menuBarPopoverCandidates(
-            windowList: candidatesWindowList,
+            candidates: baseCandidates,
             ownerPID: context.preferredOwnerPid
         )
         if candidates.isEmpty, context.preferredOwnerPid != nil {
             candidates = self.menuBarPopoverCandidates(
-                windowList: candidatesWindowList,
+                candidates: baseCandidates,
                 ownerPID: nil
             )
         }
 
         return MenuBarCandidateState(
             candidates: candidates,
-            windowList: candidatesWindowList,
+            windowInfoMap: snapshot.windowInfoByID,
             usedFilteredWindowList: usedFilteredWindowList
         )
     }
 
     func relaxCandidatesIfNeeded(
         context: MenuBarPopoverContext,
-        fullWindowList: [[String: Any]],
+        snapshot: ObservationMenuBarPopoverSnapshot,
         state: MenuBarCandidateState
     ) -> MenuBarCandidateState {
         guard state.candidates.isEmpty,
@@ -61,26 +59,26 @@ extension SeeCommand {
         self.logger.debug("Relaxing menu bar popover filter to full window list")
 
         var candidates = self.menuBarPopoverCandidates(
-            windowList: fullWindowList,
+            candidates: snapshot.candidates,
             ownerPID: context.preferredOwnerPid
         )
         if candidates.isEmpty, context.preferredOwnerPid != nil {
             candidates = self.menuBarPopoverCandidates(
-                windowList: fullWindowList,
+                candidates: snapshot.candidates,
                 ownerPID: nil
             )
         }
 
         return MenuBarCandidateState(
             candidates: candidates,
-            windowList: fullWindowList,
+            windowInfoMap: snapshot.windowInfoByID,
             usedFilteredWindowList: false
         )
     }
 
     func applyOwnerNameFallbackIfNeeded(
         context: MenuBarPopoverContext,
-        fullWindowList: [[String: Any]],
+        snapshot: ObservationMenuBarPopoverSnapshot,
         state: MenuBarCandidateState
     ) -> MenuBarCandidateState {
         guard let preferredOwnerName = context.preferredOwnerName,
@@ -89,28 +87,27 @@ extension SeeCommand {
             return state
         }
 
-        let windowInfoMap = MenuBarPopoverResolver.windowInfoById(from: state.windowList)
         let normalized = preferredOwnerName.lowercased()
         let ownerMatches = state.candidates.filter { candidate in
-            let ownerName = windowInfoMap[candidate.windowId]?.ownerName?.lowercased() ?? ""
+            let ownerName = state.windowInfoMap[candidate.windowId]?.ownerName?.lowercased() ?? ""
             return ownerName == normalized || ownerName.contains(normalized)
         }
         guard ownerMatches.isEmpty else { return state }
 
         var candidates = self.menuBarPopoverCandidates(
-            windowList: fullWindowList,
+            candidates: snapshot.candidates,
             ownerPID: context.preferredOwnerPid
         )
         if candidates.isEmpty, context.preferredOwnerPid != nil {
             candidates = self.menuBarPopoverCandidates(
-                windowList: fullWindowList,
+                candidates: snapshot.candidates,
                 ownerPID: nil
             )
         }
 
         return MenuBarCandidateState(
             candidates: candidates,
-            windowList: fullWindowList,
+            windowInfoMap: snapshot.windowInfoByID,
             usedFilteredWindowList: false
         )
     }
@@ -134,101 +131,21 @@ extension SeeCommand {
     }
 
     private func menuBarPopoverCandidates(
-        windowList: [[String: Any]],
+        candidates: [MenuBarPopoverCandidate],
         ownerPID: pid_t?
     ) -> [MenuBarPopoverCandidate] {
-        let screens = self.services.screens.listScreens().map { screen in
-            MenuBarPopoverDetector.ScreenBounds(
-                frame: screen.frame,
-                visibleFrame: screen.visibleFrame
-            )
-        }
-
-        return MenuBarPopoverDetector.candidates(
-            windowList: windowList,
-            screens: screens,
-            ownerPID: ownerPID
-        )
+        guard let ownerPID else { return candidates }
+        return candidates.filter { $0.ownerPID == ownerPID }
     }
 
     func menuBarPopoverCandidatesByBand(
-        windowList: [[String: Any]],
+        snapshot _: ObservationMenuBarPopoverSnapshot,
         preferredX: CGFloat
     ) -> [MenuBarPopoverCandidate] {
-        let screens = self.services.screens.listScreens().map { screen in
-            MenuBarPopoverDetector.ScreenBounds(
-                frame: screen.frame,
-                visibleFrame: screen.visibleFrame
-            )
-        }
-        let bandHalfWidth: CGFloat = 260
-        var candidates: [MenuBarPopoverCandidate] = []
-
-        for windowInfo in windowList {
-            guard let bounds = self.windowBounds(from: windowInfo) else { continue }
-            let windowId = windowInfo[kCGWindowNumber as String] as? Int ?? 0
-            if windowId == 0 { continue }
-
-            if bounds.width < 40 || bounds.height < 40 { continue }
-            if bounds.maxX < preferredX - bandHalfWidth || bounds.minX > preferredX + bandHalfWidth { continue }
-
-            let screen = self.screenContainingWindow(bounds: bounds, screens: screens)
-            if let screen {
-                let menuBarHeight = self.menuBarHeight(for: screen)
-                let maxHeight = screen.frame.height * 0.85
-                if bounds.height > maxHeight { continue }
-
-                let topEdge = screen.visibleFrame.maxY
-                if bounds.maxY < topEdge - 48 && bounds.minY > menuBarHeight + 48 { continue }
-            }
-
-            let ownerPID = self.ownerPid(from: windowInfo) ?? -1
-            candidates.append(
-                MenuBarPopoverCandidate(
-                    windowId: windowId,
-                    ownerPID: ownerPID,
-                    bounds: bounds
-                )
-            )
-        }
-
-        return candidates
-    }
-
-    private func screenContainingWindow(
-        bounds: CGRect,
-        screens: [MenuBarPopoverDetector.ScreenBounds]
-    ) -> MenuBarPopoverDetector.ScreenBounds? {
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        if let screen = screens.first(where: { $0.frame.contains(center) }) {
-            return screen
-        }
-
-        var bestScreen: MenuBarPopoverDetector.ScreenBounds?
-        var maxOverlap: CGFloat = 0
-        for screen in screens {
-            let intersection = screen.frame.intersection(bounds)
-            let overlapArea = intersection.width * intersection.height
-            if overlapArea > maxOverlap {
-                maxOverlap = overlapArea
-                bestScreen = screen
-            }
-        }
-
-        return bestScreen
-    }
-
-    private func ownerPid(from windowInfo: [String: Any]) -> pid_t? {
-        if let number = windowInfo[kCGWindowOwnerPID as String] as? NSNumber {
-            return pid_t(number.intValue)
-        }
-        if let intValue = windowInfo[kCGWindowOwnerPID as String] as? Int {
-            return pid_t(intValue)
-        }
-        if let pidValue = windowInfo[kCGWindowOwnerPID as String] as? pid_t {
-            return pidValue
-        }
-        return nil
+        ObservationMenuBarWindowCatalog.currentBandCandidates(
+            preferredX: preferredX,
+            screens: self.services.screens.listScreens()
+        )
     }
 
     func menuBarAppHint() -> String? {
@@ -313,17 +230,5 @@ extension SeeCommand {
             }
         }
         return nil
-    }
-
-    private func windowBounds(from windowInfo: [String: Any]) -> CGRect? {
-        guard let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any],
-              let x = boundsDict["X"] as? CGFloat,
-              let y = boundsDict["Y"] as? CGFloat,
-              let width = boundsDict["Width"] as? CGFloat,
-              let height = boundsDict["Height"] as? CGFloat
-        else {
-            return nil
-        }
-        return CGRect(x: x, y: y, width: width, height: height)
     }
 }

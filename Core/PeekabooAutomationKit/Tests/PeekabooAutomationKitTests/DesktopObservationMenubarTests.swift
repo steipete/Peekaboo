@@ -83,7 +83,7 @@ final class DesktopObservationMenubarTests: XCTestCase {
                 id: 1,
                 ownerPID: 100,
                 ownerName: "Other",
-                bounds: CGRect(x: 100, y: 940, width: 260, height: 120)),
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180)),
             Self.windowInfo(
                 id: 2,
                 ownerPID: 200,
@@ -114,7 +114,7 @@ final class DesktopObservationMenubarTests: XCTestCase {
                 id: 1,
                 ownerPID: 100,
                 ownerName: "Other",
-                bounds: CGRect(x: 100, y: 940, width: 260, height: 120)),
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180)),
         ]
 
         let candidate = ObservationMenuBarPopoverResolver.resolve(
@@ -123,6 +123,54 @@ final class DesktopObservationMenubarTests: XCTestCase {
             screens: [screen])
 
         XCTAssertNil(candidate)
+    }
+
+    func testMenuBarWindowCatalogBuildsTypedSnapshot() {
+        let screen = Self.primaryScreen()
+        let windows = [
+            Self.windowInfo(
+                id: 1,
+                ownerPID: 100,
+                ownerName: "Other",
+                bounds: CGRect(x: 100, y: 900, width: 260, height: 180)),
+            Self.windowInfo(
+                id: 2,
+                ownerPID: 200,
+                ownerName: "Trimmy",
+                title: "Menu",
+                bounds: CGRect(x: 1100, y: 860, width: 300, height: 220)),
+        ]
+
+        let snapshot = ObservationMenuBarWindowCatalog.snapshot(
+            windowList: windows,
+            screens: [screen])
+
+        XCTAssertEqual(snapshot.candidates.map(\.windowID), [1, 2])
+        XCTAssertEqual(snapshot.windowInfoByID[2]?.ownerName, "Trimmy")
+        XCTAssertEqual(snapshot.windowInfoByID[2]?.title, "Menu")
+    }
+
+    func testMenuBarWindowCatalogBandCandidatesUsePreferredX() {
+        let screen = Self.primaryScreen()
+        let windows = [
+            Self.windowInfo(
+                id: 1,
+                ownerPID: 100,
+                ownerName: "Far",
+                bounds: CGRect(x: 100, y: 940, width: 220, height: 160)),
+            Self.windowInfo(
+                id: 2,
+                ownerPID: 200,
+                ownerName: "Near",
+                bounds: CGRect(x: 1160, y: 940, width: 240, height: 180)),
+        ]
+
+        let candidates = ObservationMenuBarWindowCatalog.bandCandidates(
+            windowList: windows,
+            preferredX: 1200,
+            screens: [screen])
+
+        XCTAssertEqual(candidates.map(\.windowID), [2])
     }
 
     func testPopoverOCRSelectorMatchesCandidateWindow() async throws {

@@ -32,7 +32,7 @@ extension SeeCommand {
 
     struct MenuBarCandidateState {
         var candidates: [MenuBarPopoverCandidate]
-        var windowList: [[String: Any]]
+        var windowInfoMap: [Int: MenuBarPopoverWindowInfo]
         var usedFilteredWindowList: Bool
     }
 
@@ -40,24 +40,24 @@ extension SeeCommand {
         let context = try await self.makeMenuBarPopoverContext()
         self.logOpenMenuExtraIfNeeded(context)
 
-        guard let windowList = self.menuBarWindowList() else { return nil }
+        let snapshot = self.menuBarWindowSnapshot()
 
-        var state = self.resolveInitialCandidates(context: context, windowList: windowList)
+        var state = self.resolveInitialCandidates(context: context, snapshot: snapshot)
         state = self.relaxCandidatesIfNeeded(
             context: context,
-            fullWindowList: windowList,
+            snapshot: snapshot,
             state: state
         )
         state = self.applyOwnerNameFallbackIfNeeded(
             context: context,
-            fullWindowList: windowList,
+            snapshot: snapshot,
             state: state
         )
 
         if state.candidates.isEmpty {
             if let capture = try await self.fallbackCaptureForEmptyCandidates(
                 context: context,
-                windowList: windowList,
+                snapshot: snapshot,
                 state: &state
             ) {
                 return capture
@@ -115,7 +115,7 @@ extension SeeCommand {
 
     private func fallbackCaptureForEmptyCandidates(
         context: MenuBarPopoverContext,
-        windowList: [[String: Any]],
+        snapshot: ObservationMenuBarPopoverSnapshot,
         state: inout MenuBarCandidateState
     ) async throws -> MenuBarPopoverCapture? {
         if let openMenuCapture = try await self.captureMenuBarPopoverFromOpenMenu(
@@ -127,12 +127,12 @@ extension SeeCommand {
 
         if let preferredX = context.preferredX {
             let bandCandidates = self.menuBarPopoverCandidatesByBand(
-                windowList: windowList,
+                snapshot: snapshot,
                 preferredX: preferredX
             )
             if !bandCandidates.isEmpty {
                 state.candidates = bandCandidates
-                state.windowList = windowList
+                state.windowInfoMap = snapshot.windowInfoByID
                 state.usedFilteredWindowList = false
             }
         }
@@ -145,7 +145,7 @@ extension SeeCommand {
         allowAreaFallback: Bool,
         state: MenuBarCandidateState
     ) async throws -> MenuBarPopoverCapture? {
-        let windowInfoMap = MenuBarPopoverResolver.windowInfoById(from: state.windowList)
+        let windowInfoMap = state.windowInfoMap
         let selectionCandidates = self.selectCandidates(
             from: state.candidates,
             preferredOwnerName: context.preferredOwnerName,

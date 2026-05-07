@@ -1,10 +1,8 @@
 import CoreGraphics
 import Foundation
+import PeekabooCore
 
-struct MenuBarPopoverWindowInfo {
-    let ownerName: String?
-    let title: String?
-}
+typealias MenuBarPopoverWindowInfo = ObservationMenuBarPopoverWindowInfo
 
 enum MenuBarPopoverSelector {
     static func filterByOwnerName(

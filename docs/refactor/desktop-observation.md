@@ -620,13 +620,12 @@ Work:
 - done: split `ScreenCaptureService+Support.swift` into focused scale, engine fallback, app resolving, and ScreenCaptureKit gate helpers;
 - done: add `CaptureMetadata.diagnostics` for requested scale, native scale, output scale, final pixel size, engine, and fallback reason;
 - done: cover forced engine resolution and fallback diagnostics in pure tests;
-- in progress: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind observation/menu services;
+- done: migrate remaining `see` menu-bar candidate `CGWindowListCopyWindowInfo` work behind the shared observation window catalog;
 - keep `ScreenCaptureService.swift` under target size and split support files that exceed it.
 
 Recommended order:
 
-1. Move `SeeCommand+MenuBarCandidates` remaining CGWindow candidate work into observation, preserving current popover diagnostics.
-2. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
+1. Run live Retina `sips` checks and compare against `screencapture -l <windowID> -o -x`.
 
 Gate:
 
