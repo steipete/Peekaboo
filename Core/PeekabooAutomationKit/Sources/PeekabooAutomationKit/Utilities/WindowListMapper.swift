@@ -80,7 +80,9 @@ public final class WindowListMapper {
         }
 
         let content = try await withTimeout(seconds: 5.0) {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            try await ScreenCaptureKitCaptureGate.shareableContent(
+                excludingDesktopWindows: false,
+                onScreenWindowsOnly: false)
         }
         let descriptors = content.windows.map {
             SCWindowDescriptor(

@@ -539,7 +539,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         config.showsCursor = false
 
         return try await withTimeout(seconds: 3.0) {
-            try await SCScreenshotManager.captureImage(
+            try await ScreenCaptureKitCaptureGate.captureImage(
                 contentFilter: filter,
                 configuration: config)
         }
@@ -557,7 +557,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         config.showsCursor = false
 
         return try await withTimeout(seconds: 3.0) {
-            try await SCScreenshotManager.captureImage(
+            try await ScreenCaptureKitCaptureGate.captureImage(
                 contentFilter: filter,
                 configuration: config)
         }
@@ -625,7 +625,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             correlationId: correlationId)
 
         let content = try await withTimeout(seconds: 5.0) {
-            try await SCShareableContent.current
+            try await ScreenCaptureKitCaptureGate.currentShareableContent()
         }
         guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
             throw PeekabooError.invalidInput(
@@ -652,7 +652,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         config.showsCursor = false
 
         let image = try await withTimeout(seconds: 3.0) {
-            try await SCScreenshotManager.captureImage(
+            try await ScreenCaptureKitCaptureGate.captureImage(
                 contentFilter: filter,
                 configuration: config)
         }
@@ -727,7 +727,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
         {
             self.logger.debug("Fetching shareable content", correlationId: correlationId)
             let content = try await withTimeout(seconds: 5.0) {
-                try await SCShareableContent.current
+                try await ScreenCaptureKitCaptureGate.currentShareableContent()
             }
             let displays = content.displays
 
@@ -791,7 +791,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             scale: CaptureScalePreference) async throws -> CaptureResult
         {
             let content = try await withTimeout(seconds: 5.0) {
-                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+                try await ScreenCaptureKitCaptureGate.shareableContent(
+                    excludingDesktopWindows: false,
+                    onScreenWindowsOnly: false)
             }
 
             let appWindows = content.windows.filter { window in
@@ -905,7 +907,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             scale: CaptureScalePreference) async throws -> CaptureResult
         {
             let content = try await withTimeout(seconds: 5.0) {
-                try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+                try await ScreenCaptureKitCaptureGate.shareableContent(
+                    excludingDesktopWindows: false,
+                    onScreenWindowsOnly: false)
             }
 
             guard let targetWindow = content.windows.first(where: { $0.windowID == windowID }) else {
@@ -1015,7 +1019,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             scale: CaptureScalePreference) async throws -> CaptureResult
         {
             self.logger.debug("Finding display containing rect", correlationId: correlationId)
-            let content = try await SCShareableContent.current
+            let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
             guard let display = content.displays.first(where: { $0.frame.contains(rect) }) else {
                 self.logger.error(
                     "No display contains the specified area",
@@ -1112,7 +1116,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             config.showsCursor = false
 
             return try await withTimeout(seconds: 3.0) {
-                try await SCScreenshotManager.captureImage(
+                try await ScreenCaptureKitCaptureGate.captureImage(
                     contentFilter: filter,
                     configuration: config)
             }
@@ -1523,7 +1527,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             displayIndex: Int,
             correlationId: String) async throws -> CGImage
         {
-            let content = try await SCShareableContent.current
+            let content = try await ScreenCaptureKitCaptureGate.currentShareableContent()
             let displays = content.displays
             guard !displays.isEmpty else {
                 throw OperationError.captureFailed(reason: "No ScreenCaptureKit displays available")
@@ -1543,7 +1547,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            return try await SCScreenshotManager.captureImage(
+            return try await ScreenCaptureKitCaptureGate.captureImage(
                 contentFilter: filter,
                 configuration: self.makeScreenshotConfiguration())
         }
@@ -1579,7 +1583,9 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
             windowID: CGWindowID,
             correlationId: String) async throws -> CGImage
         {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            let content = try await ScreenCaptureKitCaptureGate.shareableContent(
+                excludingDesktopWindows: false,
+                onScreenWindowsOnly: false)
             guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
                 throw OperationError.captureFailed(
                     reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
@@ -1620,7 +1626,7 @@ public final class ScreenCaptureService: ScreenCaptureServiceProtocol {
                 ],
                 correlationId: correlationId)
 
-            return try await SCScreenshotManager.captureImage(
+            return try await ScreenCaptureKitCaptureGate.captureImage(
                 contentFilter: filter,
                 configuration: config)
         }

@@ -7,6 +7,7 @@ import AppKit
 import ApplicationServices
 @preconcurrency import AXorcist
 import CoreGraphics
+import Darwin
 import Foundation
 import PeekabooFoundation
 @preconcurrency import ScreenCaptureKit
@@ -117,7 +118,7 @@ struct ScreenRecordingPermissionChecker: ScreenRecordingPermissionEvaluating {
         // Fall back to probing ScreenCaptureKit which gives the ground-truth answer.
         logger.debug("CGPreflightScreenCaptureAccess returned false, probing SCShareableContent")
         do {
-            _ = try await SCShareableContent.current
+            _ = try await ScreenCaptureKitCaptureGate.currentShareableContent()
             logger.info("Screen recording permission granted (SCShareableContent probe)")
             return true
         } catch {
@@ -334,4 +335,71 @@ func withTimeout<T: Sendable>(
     operation: @escaping @Sendable () async throws -> T) async throws -> T
 {
     try await AXTimeoutHelper.withTimeout(seconds: seconds, operation: operation)
+}
+
+enum ScreenCaptureKitCaptureGate {
+    @MainActor private static var isCaptureActive = false
+
+    @MainActor
+    static func captureImage(
+        contentFilter: SCContentFilter,
+        configuration: SCStreamConfiguration) async throws -> CGImage
+    {
+        try await self.withExclusiveCapture {
+            try await SCScreenshotManager.captureImage(
+                contentFilter: contentFilter,
+                configuration: configuration)
+        }
+    }
+
+    @MainActor
+    static func currentShareableContent() async throws -> SCShareableContent {
+        try await self.withExclusiveCapture {
+            try await SCShareableContent.current
+        }
+    }
+
+    @MainActor
+    static func shareableContent(
+        excludingDesktopWindows: Bool,
+        onScreenWindowsOnly: Bool) async throws -> SCShareableContent
+    {
+        try await self.withExclusiveCapture {
+            try await SCShareableContent.excludingDesktopWindows(
+                excludingDesktopWindows,
+                onScreenWindowsOnly: onScreenWindowsOnly)
+        }
+    }
+
+    @MainActor
+    private static func withExclusiveCapture<T: Sendable>(
+        _ operation: () async throws -> T) async throws -> T
+    {
+        while self.isCaptureActive {
+            try Task.checkCancellation()
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        self.isCaptureActive = true
+        defer { self.isCaptureActive = false }
+
+        let path = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("boo.peekaboo.sckit-capture.lock")
+        let fd = open(path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard fd >= 0 else {
+            return try await operation()
+        }
+        defer { close(fd) }
+
+        while flock(fd, LOCK_EX | LOCK_NB) != 0 {
+            guard errno == EWOULDBLOCK || errno == EAGAIN else {
+                return try await operation()
+            }
+
+            try Task.checkCancellation()
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        defer { flock(fd, LOCK_UN) }
+
+        return try await operation()
+    }
 }
