@@ -73,6 +73,7 @@
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - Core service registry now keeps agent refresh/model selection and high-level automation helpers in focused companion files.
+- Window tool formatting now keeps base dispatch, window/screen result rendering, and Spaces result rendering in focused files.
 - `peekaboo space` list, switch, and move-window implementations now live in focused extension files, leaving the primary command file as registration, service wiring, and shared response types.
 - `peekaboo dock` launch, right-click, visibility, and list implementations now live in focused extension files, leaving the primary command file as registration, bindings, and shared error handling.
 - `peekaboo daemon` start, stop, status, and run implementations now live in focused extension files, leaving the primary command file as registration and shared daemon status support.
