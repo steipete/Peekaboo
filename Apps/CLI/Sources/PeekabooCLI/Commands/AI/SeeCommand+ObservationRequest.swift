@@ -5,6 +5,16 @@ import PeekabooCore
 @available(macOS 14.0, *)
 @MainActor
 extension SeeCommand {
+    func determineMode() -> PeekabooCore.CaptureMode {
+        if let mode = self.mode {
+            mode
+        } else if self.app != nil || self.pid != nil || self.windowTitle != nil || self.windowId != nil {
+            .window
+        } else {
+            .frontmost
+        }
+    }
+
     func observationTargetForCaptureWithDetectionIfPossible() throws -> DesktopObservationTargetRequest? {
         if self.menubar {
             let hint = self.menuBarAppHint()

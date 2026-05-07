@@ -81,6 +81,9 @@ Landed:
 - Menu-bar strip and popover observation diagnostics now share typed target-resolution metadata for source, bounds, hints, window IDs, and click-open fallbacks.
 - `peekaboo menubar list` and `peekaboo list menubar` now share the same JSON payload and text list formatting.
 - CLI `see` all-screens capture now uses the shared screen inventory instead of command-local ScreenCaptureKit display enumeration.
+- `peekaboo image` builds desktop observation requests through a dedicated command-support adapter.
+- `peekaboo see` builds desktop observation requests through a dedicated command-support adapter.
+- `peekaboo see` support types, output rendering, and screen-capture helpers are split out of the primary command file.
 
 Still incomplete:
 
@@ -100,8 +103,12 @@ ScreenCaptureApplicationResolver.swift: 75 lines
 ScreenCaptureKitCaptureGate.swift: 195 lines
 WatchCaptureSession.swift: 1091 lines
 ElementDetectionService.swift: 207 lines
-SeeCommand.swift: 1053 lines
-SeeCommand+ObservationRequest.swift: 130 lines
+SeeCommand.swift: 456 lines
+SeeCommand+CapturePipeline.swift: 225 lines
+SeeCommand+Output.swift: 204 lines
+SeeCommand+Types.swift: 204 lines
+SeeCommand+Screens.swift: 149 lines
+SeeCommand+ObservationRequest.swift: 140 lines
 ImageCommand.swift: 595 lines
 ImageCommand+ObservationRequest.swift: 56 lines
 ```
@@ -115,6 +122,151 @@ Current command-boundary audit:
 - Menu-bar click verification uses the shared observation window catalog instead of command-local `CGWindowListCopyWindowInfo`.
 
 Near-term rule: command code may mention `CGWindowID` as a user-facing identifier, but must not enumerate windows, displays, or ScreenCaptureKit objects directly.
+
+## Grand Execution Plan
+
+This is the full refactor sequence. Keep every phase shippable: one coherent behavior boundary, one changelog entry, targeted tests, then the broad gate.
+
+### Phase 1: Freeze Semantics
+
+Purpose: prevent CLI, MCP, and agent tools from drifting while code moves.
+
+Deliverables:
+
+- one table of target precedence for `screen`, `frontmost`, `app`, `pid`, `window-title`, `window-index`, `window-id`, `area`, `menubar`, and `menubarPopover`;
+- parity tests proving `image` and `see` construct equivalent observation targets for equivalent flags;
+- parity tests proving CLI and MCP request mapping agree;
+- diagnostics fixtures for skipped helper/offscreen/minimized windows;
+- docs for native Retina versus logical 1x behavior.
+
+Exit criteria:
+
+- behavior changes require updating tests first;
+- any legacy fallback path emits typed diagnostics explaining why observation did not handle it.
+
+### Phase 2: Observation Owns Desktop State
+
+Purpose: make one request-scoped inventory feed resolution, capture, detection, diagnostics, and interactions.
+
+Deliverables:
+
+- `DesktopStateSnapshot` is the only source for target resolution inside observation;
+- `ObservationTargetResolver` owns all app/window ranking and menubar target resolution;
+- window/application identity structs are used in observation results, snapshot metadata, CLI JSON, and MCP metadata;
+- command-level window ranking, app matching, display enumeration, and menu-bar window polling are deleted;
+- request-local cache invalidation rules are encoded near the snapshot builder.
+
+Exit criteria:
+
+- `image --app X` and `see --app X` choose the same window from the same ranked candidates;
+- `image --window-id N` and `see --window-id N` report the same identity fields;
+- commands cannot enumerate windows or displays directly.
+
+### Phase 3: Capture Becomes Plan Plus Operators
+
+Purpose: separate policy from macOS capture calls.
+
+Deliverables:
+
+- `ScreenCapturePlanner` is the only place deciding engine, scale, fallback eligibility, and source rectangles;
+- `ScreenCaptureService` is a facade over permission gate, planner, operators, scaler, and metadata builder;
+- operators contain platform calls only: ScreenCaptureKit, legacy CG capture, and future `screencapture` fallback if adopted;
+- capture metadata always includes requested scale, native scale, output scale, final pixel size, engine, fallback reason, and permission timing;
+- all pure capture decisions have tests without Screen Recording permission.
+
+Exit criteria:
+
+- `ScreenCaptureService.swift` stays under 500 lines;
+- no command imports `ScreenCaptureKit`, `AppKit`, `NSScreen`, or `NSWorkspace` for capture behavior;
+- live Retina checks are recorded against `screencapture -l <windowID> -o -x` on hardware that demonstrates native 2x output.
+
+### Phase 4: Detection Becomes Policy Plus Readers
+
+Purpose: make AX traversal fast, cancellable, and understandable.
+
+Deliverables:
+
+- `ElementDetectionService` orchestrates only;
+- traversal, descriptor reads, classification, result assembly, window fallback, web focus fallback, menu-bar elements, and cache state remain in dedicated collaborators;
+- direct detection callers use racing timeouts and cancellation;
+- sparse web fallback is triggered by explicit policy, not by incidental missing labels;
+- rich native windows never pay for web-content focus fallback.
+
+Exit criteria:
+
+- detection cannot hang indefinitely;
+- window-targeted `see` does not traverse all app windows;
+- `ElementDetectionService.swift` stays under 500 lines with policy tested outside the facade.
+
+### Phase 5: Output And Snapshot Side Effects Are Central
+
+Purpose: make all screenshot-derived artifacts predictable.
+
+Deliverables:
+
+- `ObservationOutputWriter` owns raw screenshot, annotated screenshot, OCR artifact, and snapshot registration side effects;
+- CLI/MCP renderers only render existing typed result fields;
+- output span names are stable and covered by tests;
+- annotation rendering uses one shared coordinate model.
+
+Exit criteria:
+
+- `see --annotate` and MCP `see` produce the same companion path policy;
+- snapshot metadata always references the resolved target identity and capture bounds;
+- output writing never prints directly.
+
+### Phase 6: Interactions Consume Observation
+
+Purpose: make `see -> click/type/scroll` fast and explainable.
+
+Deliverables:
+
+- `ObservationSnapshotStore` facade over the current snapshot manager;
+- action commands accept fresh observation context or snapshot ID;
+- missing/stale element IDs can observe-if-needed or fail with target/window diagnostics;
+- click/move/type/scroll/drag/hotkey/focus invalidate affected request caches;
+- action results include target-point and stale-snapshot diagnostics.
+
+Exit criteria:
+
+- repeated `see -> click -> type` avoids avoidable AX rescans;
+- stale snapshot failures identify the previous and current window identity;
+- action commands do not duplicate target resolution policy.
+
+### Phase 7: Command Surface Cleanup
+
+Purpose: make CLI/MCP files thin adapters.
+
+Deliverables:
+
+- `SeeCommand.swift` below 400 lines;
+- `ImageCommand.swift` below 400 lines;
+- command-support adapters for observation request mapping and result rendering;
+- no CLI command imports `AXorcist` unless it directly implements an action that must touch AX handles;
+- no CLI command imports platform capture frameworks;
+- command docs updated for diagnostics and timings.
+
+Exit criteria:
+
+- command files parse flags, call services, render typed results, and little else;
+- each helper file has one reason to change and stays under about 500 lines.
+
+### Phase 8: Module Extraction
+
+Purpose: split packages after boundaries are stable.
+
+Order:
+
+1. `PeekabooObservation`
+2. `PeekabooCapture`
+3. `PeekabooElementDetection`
+4. optional CLI command-support package
+
+Exit criteria:
+
+- extraction is mostly moving files and access modifiers;
+- package boundaries do not force semantic rewrites;
+- broad gate and live E2E still pass after each extraction.
 
 ## Non-Negotiable Invariants
 
@@ -715,6 +867,9 @@ Work:
 
 - delete obsolete bridge helpers;
 - started: move request mapping into small command-support adapters (`ImageCommand+ObservationRequest.swift`, `SeeCommand+ObservationRequest.swift`);
+- started: split large `see` support into focused files (`SeeCommand+Types.swift`, `SeeCommand+Output.swift`, `SeeCommand+ScreenCaptureBridge.swift`, `SeeCommand+Screens.swift`);
+- continue: move the remaining legacy capture/detection fallback body out of `SeeCommand.swift`;
+- continue: split `ImageCommand.swift` request mapping, output rendering, analysis, and local fallback code until the command shell is under target size;
 - archive stale refactor notes;
 - update command docs for changed diagnostics/timings;
 - only then consider module extraction.
