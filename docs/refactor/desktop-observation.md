@@ -50,6 +50,7 @@ Landed:
 - AX role mapping, actionability policy, shortcut role policy, and attribute assembly now live in `ElementClassifier`.
 - Batched AX descriptor reading and AX value coercion now live in `AXDescriptorReader`.
 - Element grouping and detection metadata assembly now live in `ElementDetectionResultBuilder`.
+- Sparse Chromium/Tauri web focus recovery now lives in `WebFocusFallback`.
 
 Still intentionally incomplete:
 
