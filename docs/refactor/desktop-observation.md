@@ -77,6 +77,7 @@ Landed:
 - Observation label placement keeps validation, scoring, debug rendering, and text-detection protocol glue in focused companions.
 - Window management keeps construction, state operations, geometry operations, listing, target resolution, title search, and close-presence polling in focused files.
 - Dialog service keeps construction/errors, public operations, button action resolution, element extraction, target resolution, classification, and file-dialog flows in focused files.
+- Process command models keep enum cases, interaction parameters, system parameters, and output DTOs in focused files.
 - Observation-backed CLI/MCP structured timings and diagnostics.
 - `peekaboo image --json` includes per-file observation diagnostics with timing spans, state snapshot summaries, warnings, and resolved target metadata.
 - Observation target selection for remaining CLI app-window filtering in `image`, live `capture`, and `window list`.
@@ -342,6 +343,10 @@ ProcessService+CaptureCommands.swift: 119 lines
 ProcessService+InteractionCommands.swift: 287 lines
 ProcessService+SystemCommands.swift: 382 lines
 ProcessService+ParameterParsing.swift: 197 lines
+ProcessCommandTypes.swift: 59 lines
+ProcessCommandInteractionParameters.swift: 161 lines
+ProcessCommandSystemParameters.swift: 147 lines
+ProcessCommandOutputTypes.swift: 71 lines
 ApplicationService.swift: 72 lines
 ApplicationService+Discovery.swift: 246 lines
 ApplicationService+Lifecycle.swift: 385 lines
