@@ -982,12 +982,7 @@ extension WindowCommand {
                     windows: self.services.windows,
                     target: target
                 )
-                let windows = WindowFilterHelper.filter(
-                    windows: rawWindows,
-                    appIdentifier: appIdentifier,
-                    mode: .list,
-                    logger: self.logger
-                )
+                let windows = ObservationTargetResolver.filteredWindows(from: rawWindows, mode: .list)
 
                 // Convert ServiceWindowInfo to WindowInfo for consistency
                 let windowInfos = windows.map { window in

@@ -219,7 +219,7 @@
 
 ### ✅ `window list` duplicate window IDs (fixed)
 - **Issue**: `polter peekaboo -- window list --app Playground --json-output` could include duplicate entries for the same `window_id` (especially with multiple fixture windows open), which made scripts unstable.
-- **Fix**: `WindowFilterHelper` now deduplicates windows by `windowID` after applying standard renderability filters.
+- **Fix**: `ObservationTargetResolver` now deduplicates windows by `windowID` after applying standard renderability filters.
 - **Evidence**: `.artifacts/playground-tools/20251218-022217-window-list-playground-dedup.json` (no duplicate `window_id` values).
 
 ### ✅ `menu click` (Fixtures window open)

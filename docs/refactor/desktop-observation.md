@@ -62,6 +62,7 @@ Landed:
 - ScreenCaptureKit and legacy capture operators now live in dedicated files.
 - Request-scoped `DesktopStateSnapshot` now feeds observation target resolution and diagnostics.
 - CLI and MCP observation-backed outputs now expose structured observation timings and diagnostics.
+- Remaining CLI app-window filtering for `image`, live `capture`, and `window list` now uses observation target selection.
 
 Still intentionally incomplete:
 
@@ -85,10 +86,9 @@ Goal: `DesktopObservationService.observe` is the only behavioral path for deskto
 
 Next slices:
 
-1. Finish moving app/window ranking out of command and MCP adapters.
-2. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
-3. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
-4. Keep shrinking legacy command-level capture code after bridge paths disappear.
+1. Add menubar and menubar-popover targets to observation instead of keeping them as `see` special cases.
+2. Move annotation and OCR artifact writing into `ObservationOutputWriter`.
+3. Keep shrinking legacy command-level capture code after bridge paths disappear.
 
 Stop when:
 

@@ -223,12 +223,7 @@ struct CaptureLiveCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFo
                 windows: self.services.windows,
                 target: .application(identifier)
             )
-            let renderable = WindowFilterHelper.filter(
-                windows: windows,
-                appIdentifier: identifier,
-                mode: .capture,
-                logger: self.logger
-            )
+            let renderable = ObservationTargetResolver.captureCandidates(from: windows)
             if let title = self.windowTitle,
                let match = renderable.first(where: { $0.title.localizedCaseInsensitiveContains(title) }) {
                 return match.index

@@ -239,8 +239,8 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
             windowCount: 0)
     }
 
-    public static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
-        let visible = windows.filter { WindowFiltering.isRenderable($0, mode: .capture) }
+    public nonisolated static func bestWindow(from windows: [ServiceWindowInfo]) -> ServiceWindowInfo? {
+        let visible = self.captureCandidates(from: windows)
 
         return visible.max { lhs, rhs in
             let lhsScore = self.windowScore(lhs)
@@ -252,7 +252,18 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         }
     }
 
-    private static func windowScore(_ window: ServiceWindowInfo) -> Double {
+    public nonisolated static func captureCandidates(from windows: [ServiceWindowInfo]) -> [ServiceWindowInfo] {
+        self.filteredWindows(from: windows, mode: .capture)
+    }
+
+    public nonisolated static func filteredWindows(
+        from windows: [ServiceWindowInfo],
+        mode: WindowFiltering.Mode) -> [ServiceWindowInfo]
+    {
+        self.deduplicate(windows.filter { WindowFiltering.isRenderable($0, mode: mode) })
+    }
+
+    private nonisolated static func windowScore(_ window: ServiceWindowInfo) -> Double {
         var score = 0.0
 
         if window.isMainWindow {
@@ -281,6 +292,18 @@ public final class ObservationTargetResolver: ObservationTargetResolving {
         score += max(0, 600 - Double(window.index) * 40)
 
         return score
+    }
+
+    private nonisolated static func deduplicate(_ windows: [ServiceWindowInfo]) -> [ServiceWindowInfo] {
+        var seenWindowIDs = Set<Int>()
+        var deduplicated: [ServiceWindowInfo] = []
+        deduplicated.reserveCapacity(windows.count)
+
+        for window in windows where seenWindowIDs.insert(window.windowID).inserted {
+            deduplicated.append(window)
+        }
+
+        return deduplicated
     }
 }
 

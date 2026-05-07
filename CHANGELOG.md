@@ -28,6 +28,7 @@
 - Split ScreenCaptureKit and legacy capture operators out of the screen capture facade.
 - Added request-scoped desktop state snapshots for observation target resolution and diagnostics.
 - Exposed structured desktop observation timings and diagnostics in CLI and MCP outputs.
+- Moved remaining CLI app-window filtering for image, live capture, and window listing into observation target selection.
 - `peekaboo hotkey --focus-background` can now send process-targeted hotkeys without activating the target app, with bridge permission support and docs. Thanks @prateek for [#112](https://github.com/steipete/Peekaboo/pull/112)!
 - `peekaboo completions` now emits zsh, bash, and fish completion scripts generated from Commander metadata. Thanks @jkker for [#96](https://github.com/steipete/Peekaboo/pull/96)!
 - Added subprocess/OpenClaw integration docs for local capture workarounds when the bridge host owns macOS permissions. Thanks @hnshah for [#97](https://github.com/steipete/Peekaboo/pull/97)!

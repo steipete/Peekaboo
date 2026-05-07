@@ -333,7 +333,7 @@ extension ImageCommand {
             target: .application(identifier)
         )
 
-        let filtered = self.filterRenderableWindows(windows, appIdentifier: identifier)
+        let filtered = ObservationTargetResolver.captureCandidates(from: windows)
 
         guard !filtered.isEmpty else {
             throw PeekabooError.windowNotFound(criteria: "No shareable windows for \(identifier)")
@@ -599,18 +599,6 @@ extension ImageCommand {
             return .title(windowTitle)
         }
         return .automatic
-    }
-
-    private func filterRenderableWindows(
-        _ windows: [ServiceWindowInfo],
-        appIdentifier: String
-    ) -> [ServiceWindowInfo] {
-        WindowFilterHelper.filter(
-            windows: windows,
-            appIdentifier: appIdentifier,
-            mode: .capture,
-            logger: self.logger
-        )
     }
 
     private static let filenameDateFormatter: ISO8601DateFormatter = {
