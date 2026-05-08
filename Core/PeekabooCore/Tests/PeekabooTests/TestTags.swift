@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -11,9 +12,17 @@ enum EnvironmentFlags {
         isEnabled("RUN_AUTOMATION_TESTS") || isEnabled("RUN_LOCAL_TESTS")
     }
 
-    /// Input-device automation (key/mouse) opt-in flag shared with the CLI suite.
+    /// Input-device automation (key/mouse) is a separate runtime opt-in.
+    /// PEEKABOO_INCLUDE_AUTOMATION_TESTS only compiles these tests into the target.
     @preconcurrency nonisolated static var runInputAutomationScenarios: Bool {
-        isEnabled("PEEKABOO_INCLUDE_AUTOMATION_TESTS")
+        guard self.inputAutomationRequested else { return false }
+        return InputAutomationSafety.canRunInCurrentDesktopSession()
+    }
+
+    @preconcurrency nonisolated static var inputAutomationRequested: Bool {
+        self.isEnabled("PEEKABOO_RUN_INPUT_AUTOMATION_TESTS") ||
+            isEnabled("RUN_INPUT_AUTOMATION_TESTS") ||
+            isEnabled("RUN_LOCAL_TESTS")
     }
 
     @preconcurrency nonisolated static var runScreenCaptureScenarios: Bool {
@@ -22,6 +31,47 @@ enum EnvironmentFlags {
 
     @preconcurrency nonisolated static var runAudioScenarios: Bool {
         isEnabled("PEEKABOO_AUDIO_TESTS")
+    }
+}
+
+enum InputAutomationSafety {
+    private static let defaultAllowedBundleIdentifiers: Set<String> = [
+        "boo.peekaboo.playground",
+        "boo.peekaboo.playground.debug",
+        "boo.peekaboo.peekaboo.testhost",
+    ]
+
+    static func canRunInCurrentDesktopSession(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        frontmostApplication: NSRunningApplication? = NSWorkspace.shared.frontmostApplication) -> Bool
+    {
+        if environment["PEEKABOO_ALLOW_UNSAFE_INPUT_AUTOMATION"]?.lowercased() == "true" {
+            return true
+        }
+
+        return self.isAllowedFrontmostApplication(
+            bundleIdentifier: frontmostApplication?.bundleIdentifier,
+            environment: environment)
+    }
+
+    static func isAllowedFrontmostApplication(
+        bundleIdentifier: String?,
+        environment: [String: String]) -> Bool
+    {
+        guard let bundleIdentifier, !bundleIdentifier.isEmpty else { return false }
+        return self.allowedBundleIdentifiers(environment: environment).contains(bundleIdentifier)
+    }
+
+    static func allowedBundleIdentifiers(environment: [String: String]) -> Set<String> {
+        let configured = environment["PEEKABOO_INPUT_AUTOMATION_ALLOWED_BUNDLE_IDS"]?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty } ?? []
+
+        guard !configured.isEmpty else {
+            return self.defaultAllowedBundleIdentifiers
+        }
+        return Set(configured)
     }
 }
 

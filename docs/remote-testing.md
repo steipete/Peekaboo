@@ -62,6 +62,17 @@ ssh steipete@peters-virtual-machine \
   'cd ~/Projects/peekaboo/Apps/CLI && PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test'
 ```
 
+`PEEKABOO_INCLUDE_AUTOMATION_TESTS=true` only compiles the automation test target. Tests
+that synthesize keyboard or mouse input require the additional
+`PEEKABOO_RUN_INPUT_AUTOMATION_TESTS=true` opt-in.
+
+Input automation has a second safety gate: the frontmost app must be one of the
+known test hosts (`boo.peekaboo.playground`, `boo.peekaboo.playground.debug`, or
+`boo.peekaboo.peekaboo.testhost`). This prevents typing/clicking into the
+operator's active app. To use another disposable host, set
+`PEEKABOO_INPUT_AUTOMATION_ALLOWED_BUNDLE_IDS=com.example.Host`. Only set
+`PEEKABOO_ALLOW_UNSAFE_INPUT_AUTOMATION=true` in a throwaway UI session.
+
 For **full local automation** (UI-driven cases that expect a real display) we added a convenience script to `package.json`. It builds the CLI, points tests at the actual binary, and sets the right env vars:
 
 ```bash
@@ -99,7 +110,7 @@ Warnings & learnings:
 2. `xcode-select -p` → `/Applications/Xcode.app/Contents/Developer`.
 3. `rsync … ./ steipete@peters-virtual-machine:Projects/peekaboo`.
 4. Safe suite: `swift test -Xswiftc -DPEEKABOO_SKIP_AUTOMATION`.
-5. Automation suite (optional): `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test` (watch for hangs).
+5. Automation suite (optional): `PEEKABOO_INCLUDE_AUTOMATION_TESTS=true swift test`; add `PEEKABOO_RUN_INPUT_AUTOMATION_TESTS=true` only with a frontmost allowed test host, or in a disposable UI session with `PEEKABOO_ALLOW_UNSAFE_INPUT_AUTOMATION=true`.
 6. Capture output for each run and file it in `/tmp` for later inspection.
 
 Following this flow we successfully ran the non-automation tests remotely; automation still needs stabilization once the VM finishes freezing issues.

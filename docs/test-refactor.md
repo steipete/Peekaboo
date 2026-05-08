@@ -35,4 +35,6 @@ so the entire “safe” matrix can execute without touching live macOS services
 ## 4. Verification
 - After each conversion, re-run the safe matrix (`pnpm run test:safe`) and the read
   automation pass (`PEEKABOO_INCLUDE_AUTOMATION_TESTS=true RUN_AUTOMATION_READ=true swift test`)
-  via tmux to ensure no regressions.
+  via tmux to ensure no regressions. Do not use input automation for this pass;
+  keyboard/mouse synthesis requires the separate `PEEKABOO_RUN_INPUT_AUTOMATION_TESTS=true`
+  opt-in.
