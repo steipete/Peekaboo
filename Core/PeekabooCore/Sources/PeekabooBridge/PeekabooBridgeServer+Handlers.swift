@@ -14,8 +14,8 @@ extension PeekabooBridgeServer {
             try await self.handleCoreRequest(request, peer: peer)
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea:
             try await self.handleCaptureRequest(request)
-        case .detectElements, .click, .type, .typeActions, .scroll, .hotkey, .targetedHotkey, .swipe, .drag,
-             .moveMouse, .waitForElement:
+        case .detectElements, .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey,
+             .targetedHotkey, .swipe, .drag, .moveMouse, .waitForElement:
             try await self.handleAutomationRequest(request)
         case .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow:
@@ -154,6 +154,28 @@ extension PeekabooBridgeServer {
                 cadence: payload.cadence,
                 snapshotId: payload.snapshotId)
             return .typeResult(result)
+        case let .setValue(payload):
+            guard let automation = self.services.automation as? any ElementActionAutomationServiceProtocol else {
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .operationNotSupported,
+                    message: "setValue is not supported by this bridge host")
+            }
+            let result = try await automation.setValue(
+                target: payload.target,
+                value: payload.value,
+                snapshotId: payload.snapshotId)
+            return .elementActionResult(result)
+        case let .performAction(payload):
+            guard let automation = self.services.automation as? any ElementActionAutomationServiceProtocol else {
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .operationNotSupported,
+                    message: "performAction is not supported by this bridge host")
+            }
+            let result = try await automation.performAction(
+                target: payload.target,
+                actionName: payload.actionName,
+                snapshotId: payload.snapshotId)
+            return .elementActionResult(result)
         case let .scroll(payload):
             try await self.services.automation.scroll(payload.request)
             return .ok

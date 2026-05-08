@@ -33,7 +33,8 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         supportsTargetedHotkeys: Bool = false,
         targetedHotkeyUnavailableReason: String? = nil,
         targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
-        supportsPostEventPermissionRequest: Bool = false)
+        supportsPostEventPermissionRequest: Bool = false,
+        supportsElementActions: Bool = false)
     {
         self.client = client
         self.supportsPostEventPermissionRequest = supportsPostEventPermissionRequest
@@ -41,11 +42,19 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         self.logging = LoggingService()
         self.screenCapture = RemoteScreenCaptureService(client: client)
         self.applications = RemoteApplicationService(client: client)
-        self.automation = RemoteUIAutomationService(
-            client: client,
-            supportsTargetedHotkeys: supportsTargetedHotkeys,
-            targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
-            targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
+        self.automation = if supportsElementActions {
+            RemoteElementActionUIAutomationService(
+                client: client,
+                supportsTargetedHotkeys: supportsTargetedHotkeys,
+                targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
+                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
+        } else {
+            RemoteUIAutomationService(
+                client: client,
+                supportsTargetedHotkeys: supportsTargetedHotkeys,
+                targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
+                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
+        }
         self.windows = RemoteWindowManagementService(client: client)
         let snapshotManager = RemoteSnapshotManager(client: client)
 

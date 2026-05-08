@@ -457,6 +457,39 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `Set value command binding`() throws {
+        let parsed = ParsedValues(
+            positional: ["Hello"],
+            options: [
+                "on": ["T1"],
+                "snapshot": ["abc"],
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: SetValueCommand.self, parsedValues: parsed)
+        #expect(command.value == "Hello")
+        #expect(command.on == "T1")
+        #expect(command.snapshot == "abc")
+    }
+
+    @Test
+    func `Perform action command binding`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: [
+                "on": ["B1"],
+                "action": ["AXPress"],
+                "snapshot": ["abc"],
+            ],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(ofType: PerformActionCommand.self, parsedValues: parsed)
+        #expect(command.on == "B1")
+        #expect(command.action == "AXPress")
+        #expect(command.snapshot == "abc")
+    }
+
+    @Test
     func `Press command binding`() throws {
         let parsed = ParsedValues(
             positional: ["cmd", "c"],

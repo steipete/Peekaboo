@@ -6,8 +6,8 @@ import PeekabooBridge
 import PeekabooFoundation
 
 @MainActor
-public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, TargetedHotkeyServiceProtocol {
-    private let client: PeekabooBridgeClient
+public class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, TargetedHotkeyServiceProtocol {
+    let client: PeekabooBridgeClient
     public let supportsTargetedHotkeys: Bool
     public let targetedHotkeyUnavailableReason: String?
     public let targetedHotkeyRequiresEventSynthesizingPermission: Bool
@@ -180,5 +180,21 @@ public final class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjust
     {
         // Currently unsupported over XPC; this path is rarely used by CLI.
         throw PeekabooError.operationError(message: "findElement is not available over XPC yet")
+    }
+}
+
+@MainActor
+public final class RemoteElementActionUIAutomationService: RemoteUIAutomationService,
+ElementActionAutomationServiceProtocol {
+    public func setValue(target: String, value: UIElementValue, snapshotId: String?) async throws
+        -> ElementActionResult
+    {
+        try await self.client.setValue(target: target, value: value, snapshotId: snapshotId)
+    }
+
+    public func performAction(target: String, actionName: String, snapshotId: String?) async throws
+        -> ElementActionResult
+    {
+        try await self.client.performAction(target: target, actionName: actionName, snapshotId: snapshotId)
     }
 }

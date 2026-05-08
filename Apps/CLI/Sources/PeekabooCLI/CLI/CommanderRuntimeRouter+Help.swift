@@ -66,6 +66,10 @@ extension CommanderRuntimeRouter {
             theme.bullet(
                 label: "--bridge-socket <path>",
                 description: "Override the Peekaboo Bridge socket path"
+            ),
+            theme.bullet(
+                label: "--input-strategy <mode>",
+                description: "Override UI input strategy: actionFirst | synthFirst | actionOnly | synthOnly"
             )
         ]
     }

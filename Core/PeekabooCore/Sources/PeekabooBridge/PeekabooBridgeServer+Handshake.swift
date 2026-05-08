@@ -20,7 +20,10 @@ extension PeekabooBridgeServer {
         guard self.supportedVersions.contains(payload.protocolVersion) else {
             throw PeekabooBridgeErrorEnvelope(
                 code: .versionMismatch,
-                message: "Protocol \(payload.protocolVersion.major).\(payload.protocolVersion.minor) is not supported")
+                message: """
+                Bridge protocol \(payload.protocolVersion.major).\(payload.protocolVersion.minor) is not supported by \
+                this host. Ask the user to relaunch Peekaboo so the bridge host updates, then retry.
+                """)
         }
 
         if let bundle = resolvedBundle,
@@ -95,6 +98,10 @@ extension PeekabooBridgeServer {
         if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 2) {
             compatible.remove(.requestPostEventPermission)
         }
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 3) {
+            compatible.remove(.setValue)
+            compatible.remove(.performAction)
+        }
         return compatible
     }
 
@@ -106,6 +113,10 @@ extension PeekabooBridgeServer {
         }
         if (self.services.automation as? any TargetedHotkeyServiceProtocol)?.supportsTargetedHotkeys != true {
             operations.remove(.targetedHotkey)
+        }
+        if self.services.automation as? any ElementActionAutomationServiceProtocol == nil {
+            operations.remove(.setValue)
+            operations.remove(.performAction)
         }
         return operations
     }

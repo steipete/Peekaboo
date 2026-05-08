@@ -59,6 +59,38 @@ enum AutomationServiceBridge {
         }.value
     }
 
+    static func setValue(
+        automation: any UIAutomationServiceProtocol,
+        target: String,
+        value: UIElementValue,
+        snapshotId: String?
+    ) async throws -> ElementActionResult {
+        try await Task { @MainActor in
+            guard let automation = automation as? any ElementActionAutomationServiceProtocol else {
+                throw PeekabooError.serviceUnavailable(
+                    "This automation host does not support direct accessibility value setting"
+                )
+            }
+            return try await automation.setValue(target: target, value: value, snapshotId: snapshotId)
+        }.value
+    }
+
+    static func performAction(
+        automation: any UIAutomationServiceProtocol,
+        target: String,
+        actionName: String,
+        snapshotId: String?
+    ) async throws -> ElementActionResult {
+        try await Task { @MainActor in
+            guard let automation = automation as? any ElementActionAutomationServiceProtocol else {
+                throw PeekabooError.serviceUnavailable(
+                    "This automation host does not support direct accessibility action invocation"
+                )
+            }
+            return try await automation.performAction(target: target, actionName: actionName, snapshotId: snapshotId)
+        }.value
+    }
+
     static func hotkey(automation: any UIAutomationServiceProtocol, keys: String, holdDuration: Int) async throws {
         try await Task { @MainActor in
             try await automation.hotkey(keys: keys, holdDuration: holdDuration)

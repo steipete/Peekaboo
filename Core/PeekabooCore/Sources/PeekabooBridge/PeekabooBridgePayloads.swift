@@ -80,6 +80,30 @@ public struct PeekabooBridgeTypeActionsRequest: Codable, Sendable {
     public let snapshotId: String?
 }
 
+public struct PeekabooBridgeSetValueRequest: Codable, Sendable {
+    public let target: String
+    public let value: UIElementValue
+    public let snapshotId: String?
+
+    public init(target: String, value: UIElementValue, snapshotId: String?) {
+        self.target = target
+        self.value = value
+        self.snapshotId = snapshotId
+    }
+}
+
+public struct PeekabooBridgePerformActionRequest: Codable, Sendable {
+    public let target: String
+    public let actionName: String
+    public let snapshotId: String?
+
+    public init(target: String, actionName: String, snapshotId: String?) {
+        self.target = target
+        self.actionName = actionName
+        self.snapshotId = snapshotId
+    }
+}
+
 public struct PeekabooBridgeScrollRequest: Codable, Sendable {
     public let request: ScrollRequest
 }

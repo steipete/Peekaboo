@@ -44,6 +44,8 @@ enum CommandRegistry {
         .init(type: SeeCommand.self, category: .vision),
         .init(type: ClickCommand.self, category: .interaction),
         .init(type: TypeCommand.self, category: .interaction),
+        .init(type: SetValueCommand.self, category: .interaction),
+        .init(type: PerformActionCommand.self, category: .interaction),
         .init(type: PressCommand.self, category: .interaction),
         .init(type: ScrollCommand.self, category: .interaction),
         .init(type: HotkeyCommand.self, category: .interaction),

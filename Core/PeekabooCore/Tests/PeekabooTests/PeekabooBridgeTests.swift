@@ -85,6 +85,8 @@ struct PeekabooBridgeTests {
         #expect(handshake.supportedOperations.contains(PeekabooBridgeOperation.permissionsStatus))
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.targetedHotkey))
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.requestPostEventPermission))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.setValue))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.performAction))
     }
 
     @Test
@@ -151,6 +153,8 @@ struct PeekabooBridgeTests {
         let handshake = try await client.handshake(client: identity)
 
         #expect(handshake.negotiatedVersion == previousVersion)
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.setValue))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.performAction))
     }
 
     @Test
@@ -262,6 +266,8 @@ struct PeekabooBridgeTests {
             return
         }
         #expect(envelope.code == PeekabooBridgeErrorCode.versionMismatch)
+        #expect(envelope.message.contains("relaunch Peekaboo"))
+        #expect(envelope.message.contains("bridge host updates"))
     }
 
     @Test
@@ -432,6 +438,78 @@ struct PeekabooBridgeTests {
 
         #expect(!handshake.supportedOperations.contains(.targetedHotkey))
         #expect(handshake.enabledOperations?.contains(.targetedHotkey) != true)
+    }
+
+    @Test
+    func `element actions are not advertised without automation capability`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubNonTargetedServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(!handshake.supportedOperations.contains(.setValue))
+        #expect(!handshake.supportedOperations.contains(.performAction))
+        #expect(handshake.enabledOperations?.contains(.setValue) != true)
+        #expect(handshake.enabledOperations?.contains(.performAction) != true)
+    }
+
+    @Test
+    func `element actions are advertised with automation capability`() async throws {
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: StubServices(),
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: "dev.peeka.cli",
+            teamIdentifier: "TEAMID",
+            processIdentifier: getpid(),
+            hostname: Host.current().name)
+
+        let request = PeekabooBridgeRequest.handshake(
+            .init(
+                protocolVersion: PeekabooBridgeConstants.protocolVersion,
+                client: identity,
+                requestedHostKind: .gui))
+
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let responseData = await server.decodeAndHandle(requestData, peer: nil)
+        let response = try self.decode(responseData)
+
+        guard case let .handshake(handshake) = response else {
+            Issue.record("Expected handshake response, got \(response)")
+            return
+        }
+
+        #expect(handshake.supportedOperations.contains(.setValue))
+        #expect(handshake.supportedOperations.contains(.performAction))
     }
 
     @Test
@@ -970,6 +1048,92 @@ extension PeekabooBridgeTests {
     }
 
     @Test
+    func `element action operations require accessibility permission`() {
+        #expect(PeekabooBridgeOperation.setValue.requiredPermissions == [.accessibility])
+        #expect(PeekabooBridgeOperation.performAction.requiredPermissions == [.accessibility])
+    }
+
+    @Test
+    @MainActor
+    func `remote services expose element actions only when handshake supports them`() {
+        let client = PeekabooBridgeClient(
+            socketPath: "/tmp/nonexistent-\(UUID().uuidString).sock",
+            requestTimeoutSec: 1)
+
+        let unsupported = RemotePeekabooServices(client: client, supportsElementActions: false)
+        let supported = RemotePeekabooServices(client: client, supportsElementActions: true)
+
+        #expect((unsupported.automation as? any ElementActionAutomationServiceProtocol) == nil)
+        #expect((supported.automation as? any ElementActionAutomationServiceProtocol) != nil)
+    }
+
+    @Test
+    func `bridge setValue forwards to automation service`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-set-value-\(UUID().uuidString).sock"
+        let services = await MainActor.run { StubServices() }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: services,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let remote = await MainActor.run {
+            RemoteElementActionUIAutomationService(
+                client: PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2))
+        }
+        let result = try await remote.setValue(target: "T1", value: .string("hello"), snapshotId: "S1")
+
+        #expect(result.target == "T1")
+        let call = await MainActor.run { services.automationStub.lastSetValue }
+        #expect(call?.target == "T1")
+        #expect(call?.value == .string("hello"))
+        #expect(call?.snapshotId == "S1")
+    }
+
+    @Test
+    func `bridge performAction forwards to automation service`() async throws {
+        let socketPath = "/tmp/peekaboo-bridge-perform-action-\(UUID().uuidString).sock"
+        let services = await MainActor.run { StubServices() }
+        let server = await MainActor.run {
+            PeekabooBridgeServer(
+                services: services,
+                hostKind: .gui,
+                allowlistedTeams: [],
+                allowlistedBundles: [])
+        }
+        let host = PeekabooBridgeHost(
+            socketPath: socketPath,
+            server: server,
+            allowedTeamIDs: [],
+            requestTimeoutSec: 2)
+
+        await host.start()
+        defer { Task { await host.stop() } }
+
+        let remote = await MainActor.run {
+            RemoteElementActionUIAutomationService(
+                client: PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: 2))
+        }
+        let result = try await remote.performAction(target: "B1", actionName: "AXPress", snapshotId: "S1")
+
+        #expect(result.actionName == "AXPress")
+        let call = await MainActor.run { services.automationStub.lastPerformAction }
+        #expect(call?.target == "B1")
+        #expect(call?.actionName == "AXPress")
+        #expect(call?.snapshotId == "S1")
+    }
+
+    @Test
     func `targeted hotkey is not advertised for unsupported remote automation services`() async throws {
         let server = await MainActor.run {
             PeekabooBridgeServer(
@@ -1124,7 +1288,7 @@ private final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-private final class StubAutomationService: TargetedHotkeyServiceProtocol {
+private final class StubAutomationService: TargetedHotkeyServiceProtocol, ElementActionAutomationServiceProtocol {
     struct Click { let target: ClickTarget; let type: ClickType }
     struct TargetedHotkey {
         let keys: String
@@ -1132,8 +1296,22 @@ private final class StubAutomationService: TargetedHotkeyServiceProtocol {
         let targetProcessIdentifier: pid_t?
     }
 
+    struct SetValue {
+        let target: String
+        let value: UIElementValue
+        let snapshotId: String?
+    }
+
+    struct PerformAction {
+        let target: String
+        let actionName: String
+        let snapshotId: String?
+    }
+
     private(set) var lastClick: Click?
     private(set) var lastProcessTargetedHotkey: TargetedHotkey?
+    private(set) var lastSetValue: SetValue?
+    private(set) var lastPerformAction: PerformAction?
     var targetedHotkeyError: (any Error)?
 
     func detectElements(in _: Data, snapshotId _: String?, windowContext _: WindowContext?) async throws
@@ -1163,6 +1341,20 @@ private final class StubAutomationService: TargetedHotkeyServiceProtocol {
         -> TypeResult
     {
         TypeResult(totalCharacters: actions.count, keyPresses: actions.count)
+    }
+
+    func setValue(target: String, value: UIElementValue, snapshotId: String?) async throws -> ElementActionResult {
+        self.lastSetValue = SetValue(target: target, value: value, snapshotId: snapshotId)
+        return ElementActionResult(
+            target: target,
+            actionName: "AXSetValue",
+            anchorPoint: nil,
+            newValue: value.displayString)
+    }
+
+    func performAction(target: String, actionName: String, snapshotId: String?) async throws -> ElementActionResult {
+        self.lastPerformAction = PerformAction(target: target, actionName: actionName, snapshotId: snapshotId)
+        return ElementActionResult(target: target, actionName: actionName, anchorPoint: nil)
     }
 
     func scroll(_ request: ScrollRequest) async throws {

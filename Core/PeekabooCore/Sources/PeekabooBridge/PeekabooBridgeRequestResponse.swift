@@ -16,6 +16,8 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case click(PeekabooBridgeClickRequest)
     case type(PeekabooBridgeTypeRequest)
     case typeActions(PeekabooBridgeTypeActionsRequest)
+    case setValue(PeekabooBridgeSetValueRequest)
+    case performAction(PeekabooBridgePerformActionRequest)
     case scroll(PeekabooBridgeScrollRequest)
     case hotkey(PeekabooBridgeHotkeyRequest)
     case targetedHotkey(PeekabooBridgeTargetedHotkeyRequest)
@@ -95,6 +97,8 @@ extension PeekabooBridgeRequest {
         case .click: .click
         case .type: .type
         case .typeActions: .typeActions
+        case .setValue: .setValue
+        case .performAction: .performAction
         case .scroll: .scroll
         case .hotkey: .hotkey
         case .targetedHotkey: .targetedHotkey
@@ -174,6 +178,7 @@ public enum PeekabooBridgeResponse: Codable, Sendable {
     case application(ServiceApplicationInfo)
     case bool(Bool)
     case typeResult(TypeResult)
+    case elementActionResult(ElementActionResult)
     case clickResult(ClickResult)
     case menuStructure(MenuStructure)
     case menuExtras([MenuExtraInfo])

@@ -23,9 +23,19 @@ extension CommandSignature {
             help: "Force local execution; skip remote hosts even if available"
         )
 
+        let inputStrategyOption = OptionDefinition.make(
+            label: "inputStrategy",
+            names: [
+                .long("input-strategy"),
+                .aliasLong("inputStrategy"),
+            ],
+            help: "Override UI input strategy: actionFirst, synthFirst, actionOnly, or synthOnly",
+            parsing: .singleValue
+        )
+
         return CommandSignature(
             arguments: base.arguments,
-            options: base.options + [bridgeSocketOption],
+            options: base.options + [bridgeSocketOption, inputStrategyOption],
             flags: base.flags + [noRemoteFlag],
             optionGroups: base.optionGroups
         )

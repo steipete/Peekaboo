@@ -43,6 +43,41 @@ extension PeekabooBridgeClient {
         }
     }
 
+    public func setValue(
+        target: String,
+        value: UIElementValue,
+        snapshotId: String?) async throws -> ElementActionResult
+    {
+        let payload = PeekabooBridgeSetValueRequest(target: target, value: value, snapshotId: snapshotId)
+        let response = try await self.send(.setValue(payload))
+        switch response {
+        case let .elementActionResult(result):
+            return result
+        case let .error(envelope):
+            throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected setValue response")
+        }
+    }
+
+    public func performAction(target: String, actionName: String, snapshotId: String?) async throws
+        -> ElementActionResult
+    {
+        let payload = PeekabooBridgePerformActionRequest(
+            target: target,
+            actionName: actionName,
+            snapshotId: snapshotId)
+        let response = try await self.send(.performAction(payload))
+        switch response {
+        case let .elementActionResult(result):
+            return result
+        case let .error(envelope):
+            throw envelope
+        default:
+            throw PeekabooBridgeErrorEnvelope(code: .invalidRequest, message: "Unexpected performAction response")
+        }
+    }
+
     public func scroll(_ request: ScrollRequest) async throws {
         try await self.sendExpectOK(.scroll(PeekabooBridgeScrollRequest(request: request)))
     }

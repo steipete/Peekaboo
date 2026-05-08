@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import PeekabooAutomation
 import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooCore
@@ -17,15 +18,18 @@ struct CommandRuntimeOptions {
     var jsonOutput = false
     var logLevel: LogLevel?
     var captureEnginePreference: String?
+    var inputStrategy: UIInputStrategy?
     var preferRemote = true
     var bridgeSocketPath: String?
+    var requiresElementActions = false
 
     func makeConfiguration() -> CommandRuntime.Configuration {
         CommandRuntime.Configuration(
             verbose: self.verbose,
             jsonOutput: self.jsonOutput,
             logLevel: self.logLevel,
-            captureEnginePreference: self.captureEnginePreference
+            captureEnginePreference: self.captureEnginePreference,
+            inputStrategy: self.inputStrategy
         )
     }
 }
@@ -40,6 +44,7 @@ struct CommandRuntime {
         var jsonOutput: Bool
         var logLevel: LogLevel?
         var captureEnginePreference: String?
+        var inputStrategy: UIInputStrategy?
     }
 
     let configuration: Configuration
@@ -108,7 +113,7 @@ struct CommandRuntime {
 extension CommandRuntime {
     @MainActor
     static func makeDefault(options: CommandRuntimeOptions) -> CommandRuntime {
-        let services = self.serviceOverride ?? PeekabooServices()
+        let services = self.serviceOverride ?? self.makeLocalServices(options: options)
         return CommandRuntime(configuration: options.makeConfiguration(), services: services)
     }
 
@@ -149,9 +154,17 @@ extension CommandRuntime {
     @MainActor
     private static func resolveServices(options: CommandRuntimeOptions)
     async -> (services: any PeekabooServiceProviding, hostDescription: String) {
-        let envNoRemote = ProcessInfo.processInfo.environment["PEEKABOO_NO_REMOTE"]
-        guard options.preferRemote, envNoRemote == nil else {
-            return (services: PeekabooServices(), hostDescription: "local (in-process)")
+        let environment = ProcessInfo.processInfo.environment
+        let envNoRemote = environment["PEEKABOO_NO_REMOTE"]
+        guard options.preferRemote,
+              envNoRemote == nil,
+              options.inputStrategy == nil,
+              !self.hasInputStrategyEnvironmentOverride(environment: environment),
+              !self.hasInputStrategyConfigOverride(
+                  input: PeekabooAutomation.ConfigurationManager.shared.getConfiguration()?.input
+              )
+        else {
+            return (services: self.makeLocalServices(options: options), hostDescription: "local (in-process)")
         }
 
         let explicitSocket = options.bridgeSocketPath
@@ -178,7 +191,7 @@ extension CommandRuntime {
             let client = PeekabooBridgeClient(socketPath: socketPath)
             do {
                 let handshake = try await client.handshake(client: identity, requestedHost: nil)
-                if handshake.supportedOperations.contains(.captureScreen) {
+                if self.supportsRemoteRequirements(for: handshake, options: options) {
                     let targetedHotkeyAvailability = self.targetedHotkeyAvailability(for: handshake)
                     let hostDescription = "remote \(handshake.hostKind.rawValue) via \(socketPath)" +
                         (handshake.build.map { " (build \($0))" } ?? "")
@@ -191,7 +204,8 @@ extension CommandRuntime {
                             targetedHotkeyAvailability.missingPermissions.contains(.postEvent),
                             supportsPostEventPermissionRequest: self.supportsPostEventPermissionRequest(
                                 for: handshake
-                            )
+                            ),
+                            supportsElementActions: self.supportsElementActions(for: handshake)
                         ),
                         hostDescription: hostDescription
                     )
@@ -201,11 +215,84 @@ extension CommandRuntime {
             }
         }
 
-        return (services: PeekabooServices(), hostDescription: "local (in-process)")
+        return (services: self.makeLocalServices(options: options), hostDescription: "local (in-process)")
+    }
+
+    @MainActor
+    private static func makeLocalServices(options: CommandRuntimeOptions) -> PeekabooServices {
+        PeekabooServices(
+            inputPolicy: PeekabooAutomation.ConfigurationManager.shared.getUIInputPolicy(
+                cliStrategy: options.inputStrategy
+            )
+        )
+    }
+
+    static func hasInputStrategyEnvironmentOverride(environment: [String: String]) -> Bool {
+        [
+            "PEEKABOO_INPUT_STRATEGY",
+            "PEEKABOO_CLICK_INPUT_STRATEGY",
+            "PEEKABOO_SCROLL_INPUT_STRATEGY",
+            "PEEKABOO_TYPE_INPUT_STRATEGY",
+            "PEEKABOO_HOTKEY_INPUT_STRATEGY",
+            "PEEKABOO_SET_VALUE_INPUT_STRATEGY",
+            "PEEKABOO_PERFORM_ACTION_INPUT_STRATEGY",
+        ].contains { key in
+            guard let value = environment[key] else {
+                return false
+            }
+            return UIInputStrategy(rawValue: value.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        }
+    }
+
+    static func hasInputStrategyConfigOverride(input: PeekabooAutomation.Configuration.InputConfig?) -> Bool {
+        guard let input else {
+            return false
+        }
+
+        if input.defaultStrategy != nil ||
+            input.click != nil ||
+            input.scroll != nil ||
+            input.type != nil ||
+            input.hotkey != nil ||
+            input.setValue != nil ||
+            input.performAction != nil {
+            return true
+        }
+
+        return input.perApp?.values.contains { appInput in
+            appInput.defaultStrategy != nil ||
+                appInput.click != nil ||
+                appInput.scroll != nil ||
+                appInput.type != nil ||
+                appInput.hotkey != nil ||
+                appInput.setValue != nil ||
+                appInput.performAction != nil
+        } ?? false
+    }
+
+    static func supportsRemoteRequirements(
+        for handshake: PeekabooBridgeHandshakeResponse,
+        options: CommandRuntimeOptions
+    ) -> Bool {
+        guard handshake.supportedOperations.contains(.captureScreen) else {
+            return false
+        }
+
+        if options.requiresElementActions && !self.supportsElementActions(for: handshake) {
+            return false
+        }
+
+        return true
     }
 
     static func supportsTargetedHotkeys(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
         self.targetedHotkeyAvailability(for: handshake).isEnabled
+    }
+
+    static func supportsElementActions(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 3) &&
+            handshake.supportedOperations.contains(.setValue) &&
+            handshake.supportedOperations.contains(.performAction)
     }
 
     static func supportsPostEventPermissionRequest(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {

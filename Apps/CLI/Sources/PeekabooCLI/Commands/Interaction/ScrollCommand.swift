@@ -115,7 +115,7 @@ struct ScrollCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsCon
                     + "target=\(self.on ?? "pointer") snapshot=\(observation.snapshotId ?? "latest")"
             )
 
-            // Keep result telemetry aligned with ScrollService.tickConfiguration.
+            // Keep result reporting aligned with ScrollService.tickConfiguration.
             let totalTicks = self.smooth ? self.amount * 10 : self.amount
 
             // Determine scroll location for output

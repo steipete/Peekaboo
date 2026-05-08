@@ -1,5 +1,6 @@
 import Commander
 import Foundation
+import PeekabooAutomationKit
 
 // MARK: - Binder
 
@@ -53,6 +54,19 @@ enum CommanderCLIBinder {
             !captureEngine.isEmpty {
             options.captureEnginePreference = captureEngine
         }
+        if let rawInputStrategy = values.singleOption("inputStrategy")?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !rawInputStrategy.isEmpty {
+            guard let strategy = UIInputStrategy(rawValue: rawInputStrategy) else {
+                throw CommanderBindingError.invalidArgument(
+                    label: "input-strategy",
+                    value: rawInputStrategy,
+                    reason: "expected one of \(UIInputStrategy.allCases.map(\.rawValue).joined(separator: ", "))"
+                )
+            }
+            options.inputStrategy = strategy
+            options.preferRemote = false
+        }
         if values.flag("no-remote") {
             options.preferRemote = false
         }
@@ -68,6 +82,9 @@ enum CommanderCLIBinder {
         }
         if let socketPath = explicitBridgeSocket, !socketPath.isEmpty {
             options.bridgeSocketPath = socketPath
+        }
+        if commandType == SetValueCommand.self || commandType == PerformActionCommand.self {
+            options.requiresElementActions = true
         }
         return options
     }
