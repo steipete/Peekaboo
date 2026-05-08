@@ -76,6 +76,7 @@ lib-cov/
 .c9/
 *.launch
 .settings/
+.claude/settings.local.json
 *.sublime-workspace
 *.sublime-project
 
