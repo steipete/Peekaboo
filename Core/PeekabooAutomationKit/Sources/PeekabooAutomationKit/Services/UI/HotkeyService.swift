@@ -16,7 +16,26 @@ public final class HotkeyService {
     let inputPolicy: UIInputPolicy
     private let actionInputDriver: any ActionInputDriving
 
-    public init(
+    public convenience init(
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        postEventAccessEvaluator: @escaping @MainActor @Sendable ()
+            -> Bool = { CGPreflightPostEventAccess() },
+        eventPoster: @escaping @MainActor @Sendable (CGEvent, pid_t) -> Void = { event, pid in
+            event.postToPid(pid)
+        },
+        runningApplicationResolver: @escaping @MainActor @Sendable (pid_t) -> NSRunningApplication? = {
+            NSRunningApplication(processIdentifier: $0)
+        })
+    {
+        self.init(
+            inputPolicy: inputPolicy,
+            actionInputDriver: ActionInputDriver(),
+            postEventAccessEvaluator: postEventAccessEvaluator,
+            eventPoster: eventPoster,
+            runningApplicationResolver: runningApplicationResolver)
+    }
+
+    init(
         inputPolicy: UIInputPolicy = .currentBehavior,
         actionInputDriver: any ActionInputDriving = ActionInputDriver(),
         postEventAccessEvaluator: @escaping @MainActor @Sendable ()

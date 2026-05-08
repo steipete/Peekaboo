@@ -142,6 +142,12 @@ AXorcist already has the raw operations needed:
 
 Important caveat: existing AXorcist action handlers validate advertised action support before invoking. The new action driver should not rely only on advertised actions. Some elements perform actions they do not advertise; some advertise actions that no-op. Try the action, classify the error, and fall back when appropriate.
 
+Boundary rule: AXorcist types stay inside `PeekabooAutomationKit` implementation code. CLI, MCP, bridge, and
+`PeekabooCore` surfaces should traffic in Peekaboo DTOs such as `ClickTarget`, `WindowContext`,
+`DetectedElement`, `UIInputExecutionResult`, and `WindowIdentityInfo`. If a helper takes or returns AXorcist
+`Element`, `AXWindowHandle`, `MouseButton`, `SpecialKey`, or `InputDriver`-shaped values, keep it internal or wrap
+it before it crosses the AutomationKit public API.
+
 ### Bridge Surface
 
 The bridge already centralizes permissioned automation behind a host:
@@ -290,6 +296,9 @@ protocol SyntheticInputDriving: Sendable {
 ```
 
 Start with the minimum methods needed by click, scroll, type, and hotkey. Broaden later.
+Keep these driver protocols and concrete adapters internal. Public service constructors should accept product-level
+configuration only; test-only dependency injection can stay `@testable`/internal so AXorcist adapter types are not
+exported as part of the AutomationKit API.
 
 ### Element Wrapper and Resolver
 

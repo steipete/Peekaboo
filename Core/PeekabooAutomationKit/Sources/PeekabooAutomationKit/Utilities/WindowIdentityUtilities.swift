@@ -89,18 +89,18 @@ public final class WindowIdentityService {
 
     // MARK: - CGWindowID Extraction
 
-    public func getWindowID(from element: Element) -> CGWindowID? {
+    func getWindowID(from element: Element) -> CGWindowID? {
         self.resolver.windowID(from: element)
     }
 
     // MARK: - AX Lookup
 
-    public func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> AXWindowHandle? {
+    func findWindow(byID windowID: CGWindowID, in app: NSRunningApplication) -> AXWindowHandle? {
         guard let element = self.resolver.findWindow(by: windowID, in: app) else { return nil }
         return AXWindowHandle(app: AXApp(app), element: element)
     }
 
-    public func findWindow(byID windowID: CGWindowID) -> AXWindowHandle? {
+    func findWindow(byID windowID: CGWindowID) -> AXWindowHandle? {
         guard let result = self.resolver.findWindow(by: windowID) else { return nil }
         return AXWindowHandle(app: AXApp(result.app), element: result.window)
     }
@@ -247,7 +247,7 @@ public final class WindowIdentityService {
 
     // MARK: - AX attribute helpers
 
-    public func windowIDFromAttribute(_ attribute: Any?) -> CGWindowID? {
+    func windowIDFromAttribute(_ attribute: Any?) -> CGWindowID? {
         if let number = attribute as? NSNumber {
             return CGWindowID(number.intValue)
         }

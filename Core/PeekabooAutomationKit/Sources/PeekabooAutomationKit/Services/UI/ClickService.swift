@@ -48,7 +48,19 @@ public final class ClickService {
     private let syntheticInputDriver: any SyntheticInputDriving
     private let automationElementResolver: AutomationElementResolver
 
-    public init(
+    public convenience init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior)
+    {
+        self.init(
+            snapshotManager: snapshotManager,
+            inputPolicy: inputPolicy,
+            actionInputDriver: ActionInputDriver(),
+            syntheticInputDriver: SyntheticInputDriver(),
+            automationElementResolver: AutomationElementResolver())
+    }
+
+    init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         inputPolicy: UIInputPolicy = .currentBehavior,
         actionInputDriver: any ActionInputDriving = ActionInputDriver(),

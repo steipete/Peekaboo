@@ -1,5 +1,4 @@
 import AppKit
-import AXorcist
 import CoreGraphics
 import Testing
 @testable import PeekabooAgentRuntime
@@ -21,14 +20,11 @@ struct WindowIdentityUtilitiesTests {
 
     @Test
     @MainActor
-    func `getWindowID from nil element returns nil`() {
+    func `getWindowInfo with invalid ID returns nil`() {
         let service = WindowIdentityService()
 
-        // Create a dummy Element that's not a window
-        let systemWide = Element.systemWide()
-        let result = service.getWindowID(from: systemWide)
-
-        #expect(result == nil)
+        #expect(service.getWindowInfo(windowID: 0) == nil)
+        #expect(service.getWindowInfo(windowID: 999_999_999) == nil)
     }
 
     @Test
@@ -77,14 +73,13 @@ struct WindowIdentityUtilitiesTests {
 
     @Test
     @MainActor
-    func `findWindow with invalid ID returns nil`() {
+    func `invalid windows do not surface public identity info`() {
         let service = WindowIdentityService()
 
-        let result = service.findWindow(byID: 0)
-        #expect(result == nil)
-
-        let result2 = service.findWindow(byID: 999_999_999)
-        #expect(result2 == nil)
+        #expect(service.windowExists(windowID: 0) == false)
+        #expect(service.getWindowInfo(windowID: 0) == nil)
+        #expect(service.windowExists(windowID: 999_999_999) == false)
+        #expect(service.getWindowInfo(windowID: 999_999_999) == nil)
     }
 
     // MARK: - WindowIdentityInfo Tests
@@ -228,7 +223,7 @@ struct WindowIdentityUtilitiesTests {
 
     @Test
     @MainActor
-    func `findWindow in specific app`() {
+    func `getWindows can round trip through public identity info`() {
         let service = WindowIdentityService()
 
         // Find Finder app
@@ -242,16 +237,9 @@ struct WindowIdentityUtilitiesTests {
         let windows = service.getWindows(for: finder)
 
         if let firstWindow = windows.first {
-            // Try to find it back
-            let handle = service.findWindow(byID: firstWindow.windowID, in: finder)
-
-            if handle != nil {
-                // Successfully found the window element
-                #expect(true)
-            } else {
-                // Window might have closed or AX API might not be available
-                #expect(true)
-            }
+            let info = service.getWindowInfo(windowID: firstWindow.windowID)
+            #expect(info?.windowID == firstWindow.windowID)
+            #expect(info?.ownerPID == finder.processIdentifier)
         }
     }
 }

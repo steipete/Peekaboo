@@ -6,8 +6,8 @@ import PeekabooFoundation
 
 /// Re-resolves snapshot/query targets to live AX elements for action invocation.
 @MainActor
-public struct AutomationElementResolver {
-    public init() {}
+struct AutomationElementResolver {
+    init() {}
 
     public func resolve(
         detectedElement: DetectedElement,

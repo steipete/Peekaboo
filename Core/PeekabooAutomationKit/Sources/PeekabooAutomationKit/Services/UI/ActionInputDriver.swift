@@ -5,7 +5,7 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
-public enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
+enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
     case actionUnsupported
     case attributeUnsupported
     case valueNotSettable
@@ -14,7 +14,7 @@ public enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
     case missingElement
 }
 
-public enum ActionInputError: Error, Equatable, Sendable {
+enum ActionInputError: Error, Equatable, Sendable {
     case unsupported(ActionInputUnsupportedReason)
     case staleElement
     case permissionDenied
@@ -23,7 +23,7 @@ public enum ActionInputError: Error, Equatable, Sendable {
 }
 
 extension ActionInputUnsupportedReason: LocalizedError {
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .actionUnsupported:
             "Accessibility action is not supported"
@@ -42,7 +42,7 @@ extension ActionInputUnsupportedReason: LocalizedError {
 }
 
 extension ActionInputError: LocalizedError {
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case let .unsupported(reason):
             reason.errorDescription
@@ -58,12 +58,12 @@ extension ActionInputError: LocalizedError {
     }
 }
 
-public struct ActionInputResult: Equatable, Sendable {
-    public var actionName: String?
-    public var anchorPoint: CGPoint?
-    public var elementRole: String?
+struct ActionInputResult: Equatable, Sendable {
+    var actionName: String?
+    var anchorPoint: CGPoint?
+    var elementRole: String?
 
-    public init(actionName: String? = nil, anchorPoint: CGPoint? = nil, elementRole: String? = nil) {
+    init(actionName: String? = nil, anchorPoint: CGPoint? = nil, elementRole: String? = nil) {
         self.actionName = actionName
         self.anchorPoint = anchorPoint
         self.elementRole = elementRole
@@ -71,7 +71,7 @@ public struct ActionInputResult: Equatable, Sendable {
 }
 
 @MainActor
-public protocol ActionInputDriving: Sendable {
+protocol ActionInputDriving: Sendable {
     func tryClick(element: AutomationElement) throws -> ActionInputResult
     func tryRightClick(element: AutomationElement) throws -> ActionInputResult
     func tryScroll(
@@ -86,18 +86,18 @@ public protocol ActionInputDriving: Sendable {
 
 /// Accessibility action implementation for action-first UI input.
 @MainActor
-public struct ActionInputDriver: ActionInputDriving {
-    public init() {}
+struct ActionInputDriver: ActionInputDriving {
+    init() {}
 
-    public func tryClick(element: AutomationElement) throws -> ActionInputResult {
+    func tryClick(element: AutomationElement) throws -> ActionInputResult {
         try self.performAction(AXActionNames.kAXPressAction, on: element)
     }
 
-    public func tryRightClick(element: AutomationElement) throws -> ActionInputResult {
+    func tryRightClick(element: AutomationElement) throws -> ActionInputResult {
         try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
     }
 
-    public func tryScroll(
+    func tryScroll(
         element: AutomationElement,
         direction: PeekabooFoundation.ScrollDirection,
         pages: Int) throws -> ActionInputResult
@@ -105,14 +105,14 @@ public struct ActionInputDriver: ActionInputDriving {
         try self.performScrollActions(element: element, direction: direction, pages: pages)
     }
 
-    public func trySetText(element: AutomationElement, text: String, replace: Bool) throws -> ActionInputResult {
+    func trySetText(element: AutomationElement, text: String, replace: Bool) throws -> ActionInputResult {
         guard replace else {
             throw ActionInputError.unsupported(.attributeUnsupported)
         }
         return try self.trySetValue(element: element, value: .string(text))
     }
 
-    public func tryHotkey(application: NSRunningApplication, keys: [String]) throws -> ActionInputResult {
+    func tryHotkey(application: NSRunningApplication, keys: [String]) throws -> ActionInputResult {
         let chord = try MenuHotkeyChord(keys: keys)
         let appElement = AXApp(application).element
         guard let menuBar = appElement.menuBarWithTimeout(timeout: 1.0).map(AutomationElement.init) else {
@@ -126,15 +126,15 @@ public struct ActionInputDriver: ActionInputDriving {
         return try self.performAction(AXActionNames.kAXPressAction, on: menuItem)
     }
 
-    public func trySetValue(element: AutomationElement, value: UIElementValue) throws -> ActionInputResult {
+    func trySetValue(element: AutomationElement, value: UIElementValue) throws -> ActionInputResult {
         try self.setValue(value, on: element)
     }
 
-    public func tryPerformAction(element: AutomationElement, actionName: String) throws -> ActionInputResult {
+    func tryPerformAction(element: AutomationElement, actionName: String) throws -> ActionInputResult {
         try self.performAction(actionName, on: element)
     }
 
-    public nonisolated static func classify(_ error: any Error) -> ActionInputError {
+    nonisolated static func classify(_ error: any Error) -> ActionInputError {
         if let actionError = error as? ActionInputError {
             return actionError
         }
@@ -146,7 +146,7 @@ public struct ActionInputDriver: ActionInputDriving {
         return .failed(error.localizedDescription)
     }
 
-    public nonisolated static func classify(_ error: AXError) -> ActionInputError {
+    nonisolated static func classify(_ error: AXError) -> ActionInputError {
         switch error {
         case .actionUnsupported:
             .unsupported(.actionUnsupported)
@@ -456,22 +456,22 @@ private struct MenuHotkeyChord: Equatable {
 
 #if DEBUG
 extension ActionInputDriver {
-    public func tryClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
+    func tryClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
         try self.performAction(AXActionNames.kAXPressAction, on: element)
     }
 
-    public func tryRightClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
+    func tryRightClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
         try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
     }
 
-    public func trySetValueForTesting(
+    func trySetValueForTesting(
         element: any AutomationElementRepresenting,
         value: UIElementValue) throws -> ActionInputResult
     {
         try self.setValue(value, on: element)
     }
 
-    public func tryScrollForTesting(
+    func tryScrollForTesting(
         element: any AutomationElementRepresenting,
         direction: PeekabooFoundation.ScrollDirection,
         pages: Int) throws -> ActionInputResult
@@ -479,14 +479,14 @@ extension ActionInputDriver {
         try self.performScrollActions(element: element, direction: direction, pages: pages)
     }
 
-    public func tryPerformActionForTesting(
+    func tryPerformActionForTesting(
         element: any AutomationElementRepresenting,
         actionName: String) throws -> ActionInputResult
     {
         try self.performAction(actionName, on: element)
     }
 
-    public func tryHotkeyForTesting(
+    func tryHotkeyForTesting(
         keys: [String],
         menuBar: any AutomationElementRepresenting) throws -> ActionInputResult
     {
@@ -497,18 +497,18 @@ extension ActionInputDriver {
         return try self.performAction(AXActionNames.kAXPressAction, on: menuItem)
     }
 
-    public nonisolated static func menuHotkeyChordForTesting(_ keys: [String]) throws
+    nonisolated static func menuHotkeyChordForTesting(_ keys: [String]) throws
         -> (key: String, modifiers: Set<String>)
     {
         let chord = try MenuHotkeyChord(keys: keys)
         return (chord.key, chord.modifiers)
     }
 
-    public nonisolated static func menuHotkeyModifiersForTesting(_ modifiers: Int) -> Set<String> {
+    nonisolated static func menuHotkeyModifiersForTesting(_ modifiers: Int) -> Set<String> {
         MenuHotkeyChord.modifiers(fromMenuItemModifiers: modifiers)
     }
 
-    public nonisolated static func setValueRejectionReasonForTesting(
+    nonisolated static func setValueRejectionReasonForTesting(
         role: String?,
         subrole: String? = nil,
         isValueSettable: Bool) -> ActionInputUnsupportedReason?
@@ -516,11 +516,11 @@ extension ActionInputDriver {
         self.setValueRejectionReason(role: role, subrole: subrole, isValueSettable: isValueSettable)
     }
 
-    public nonisolated static func shouldContinueTryingScrollActionForTesting(after error: ActionInputError) -> Bool {
+    nonisolated static func shouldContinueTryingScrollActionForTesting(after error: ActionInputError) -> Bool {
         self.shouldContinueTryingScrollAction(after: error)
     }
 
-    public nonisolated static func scrollFallbackErrorForTesting(from error: ActionInputError?) -> ActionInputError {
+    nonisolated static func scrollFallbackErrorForTesting(from error: ActionInputError?) -> ActionInputError {
         self.scrollFallbackError(from: error)
     }
 }

@@ -116,7 +116,7 @@ public final class UIAutomationService: TargetedHotkeyServiceProtocol {
             feedbackClient: feedbackClient)
     }
 
-    public init(
+    init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         loggingService: (any LoggingServiceProtocol)? = nil,
         searchPolicy: SearchPolicy = .balanced,

@@ -20,6 +20,20 @@ public final class TypeService {
     public convenience init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         clickService: ClickService? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior)
+    {
+        self.init(
+            snapshotManager: snapshotManager,
+            clickService: clickService,
+            inputPolicy: inputPolicy,
+            actionInputDriver: ActionInputDriver(),
+            syntheticInputDriver: SyntheticInputDriver(),
+            automationElementResolver: AutomationElementResolver())
+    }
+
+    convenience init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        clickService: ClickService? = nil,
         inputPolicy: UIInputPolicy = .currentBehavior,
         actionInputDriver: any ActionInputDriving = ActionInputDriver(),
         syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),

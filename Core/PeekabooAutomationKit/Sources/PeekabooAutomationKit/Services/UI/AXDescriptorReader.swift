@@ -49,7 +49,7 @@ import CoreGraphics
     ]
 
     @MainActor
-    public static func describe(_ element: Element) -> Descriptor? {
+    static func describe(_ element: Element) -> Descriptor? {
         guard let attributes = self.copyAttributes(for: element) else {
             return self.describeWithSingleAttributeReads(element)
         }

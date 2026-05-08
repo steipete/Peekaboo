@@ -16,7 +16,21 @@ public final class ScrollService {
     private let syntheticInputDriver: any SyntheticInputDriving
     private let automationElementResolver: AutomationElementResolver
 
-    public init(
+    public convenience init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        clickService: ClickService? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior)
+    {
+        self.init(
+            snapshotManager: snapshotManager,
+            clickService: clickService,
+            inputPolicy: inputPolicy,
+            actionInputDriver: ActionInputDriver(),
+            syntheticInputDriver: SyntheticInputDriver(),
+            automationElementResolver: AutomationElementResolver())
+    }
+
+    init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         clickService: ClickService? = nil,
         inputPolicy: UIInputPolicy = .currentBehavior,
