@@ -35,6 +35,11 @@ There is **no auto-launch** of Peekaboo.app.
   - protocol version negotiation
   - capability/operation advertisement
 
+Protocol `1.3` adds element action operations:
+
+- `setValue` for direct accessibility value mutation.
+- `performAction` for named accessibility action invocation.
+
 ## Security
 
 Peekaboo BridgeHost validates callers before processing any request:

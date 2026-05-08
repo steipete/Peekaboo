@@ -2,7 +2,7 @@
 summary: 'Simulate mouse wheel movement via peekaboo scroll'
 read_when:
   - 'panning long views or tables without dragging the scrollbar'
-  - 'needing scroll telemetry (direction, ticks) for automation logs'
+  - 'needing scroll result details (direction, ticks) for automation logs'
 ---
 
 # `peekaboo scroll`

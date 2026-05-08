@@ -14,6 +14,18 @@ This document explains how Peekaboo exposes its automation tools as an MCP serve
 Peekaboo runs as an MCP server over stdio, exposing its native tools (image, see, click, etc.) to external MCP clients such as Claude Desktop or Cursor.
 Peekaboo no longer hosts or manages external MCP servers; configure your MCP client to launch `peekaboo mcp` directly.
 
+Action-oriented UI tools include:
+
+- `click`, `scroll`, `type`, `hotkey` for the common interaction surface.
+- `set_value` for direct accessibility value mutation on settable fields and controls.
+- `perform_action` for invoking a named accessibility action such as `AXPress`, `AXShowMenu`, or `AXIncrement`.
+
+Call `see` first and pass element IDs through these tools when possible. Element-targeted calls preserve action-first routing; coordinate calls always use the synthetic path.
+The same action tools are available to CLI users as `peekaboo set-value` and `peekaboo perform-action`.
+`set_value` and `perform_action` are exposed only when their resolved input strategy enables action invocation
+(`actionFirst` or `actionOnly`). They are hidden under `synthFirst` or `synthOnly`, because these operations do not
+have a synthetic-input equivalent.
+
 Supported transports:
 - **stdio**: supported and default.
 - **http / sse**: recognized flags, but server transports are not implemented yet.

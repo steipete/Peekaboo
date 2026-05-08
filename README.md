@@ -17,6 +17,8 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 ## What you get
 - Pixel-accurate captures (windows, screens, menu bar) with optional Retina 2x scaling.
 - Natural-language agent that chains Peekaboo tools (see, click, type, scroll, hotkey, menu, window, app, dock, space).
+- Action-first UI automation for routine clicks/scrolls, with synthetic input fallback for apps that need it.
+- Direct accessibility tools for settable values and named actions (`set-value`, `perform-action`).
 - Menu and menubar discovery with structured JSON; no clicks required.
 - Multi-provider AI: GPT-5.1 family, Claude 4.x, Grok 4-fast (vision), Gemini 2.5, and local Ollama models.
 - MCP server for Claude Desktop and Cursor plus a native CLI; the same tools in both.
@@ -41,6 +43,12 @@ peekaboo image --mode screen --retina --path ~/Desktop/screen.png
 # Click a button by label (captures, resolves, and clicks in one go)
 peekaboo see --app Safari --json | jq -r '.data.snapshot_id' | read SNAPSHOT
 peekaboo click --on "Reload this page" --snapshot "$SNAPSHOT"
+
+# Directly set a text field value when the accessibility value is settable
+peekaboo set-value --on T1 --value "hello" --snapshot "$SNAPSHOT"
+
+# Invoke a named accessibility action on an element
+peekaboo perform-action --on B1 --action AXPress --snapshot "$SNAPSHOT"
 
 # Run a natural-language automation
 peekaboo agent "Open Notes and create a TODO list with three items"
@@ -85,6 +93,8 @@ For persistent setup and troubleshooting, see
 | [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json` | Capture and annotate UI, return snapshot + element IDs |
 | [click](docs/commands/click.md) | `--on <id/query>`, `--snapshot`, `--wait`, coords | Click by element ID, label, or coordinates |
 | [type](docs/commands/type.md) | `--text`, `--clear`, `--delay-ms` | Enter text with pacing options |
+| [set-value](docs/commands/set-value.md) | `--on <id/query>`, `--value`, `--snapshot` | Directly set a settable accessibility value |
+| [perform-action](docs/commands/perform-action.md) | `--on <id/query>`, `--action`, `--snapshot` | Invoke a named accessibility action |
 | [press](docs/commands/press.md) | key names, `--repeat` | Special keys and sequences |
 | [hotkey](docs/commands/hotkey.md) | combos like `cmd,shift,t` | Modifier combos (cmd/ctrl/alt/shift) |
 | [scroll](docs/commands/scroll.md) | `--on <id>`, `--direction up/down`, `--ticks` | Scroll views or elements |

@@ -34,6 +34,7 @@ Peekaboo resolves settings in this order (highest → lowest):
 | CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled CLI when testing custom builds. |
 | Tool allow-list | `tools.allow` | `PEEKABOO_ALLOW_TOOLS` | CSV or space list. If set, only these tools are exposed (env replaces config). |
 | Tool deny-list | `tools.deny` | `PEEKABOO_DISABLE_TOOLS` | CSV or space list. Always removed; env list is additive with config. |
+| UI input strategy | `input.*` | `PEEKABOO_INPUT_STRATEGY` and per-verb variants | Choose action invocation versus synthetic input. Built-in policy uses `actionFirst` for click/scroll and `synthFirst` for type/hotkey. |
 
 ## API Key Storage
 
@@ -52,9 +53,61 @@ Peekaboo resolves settings in this order (highest → lowest):
 - `PEEKABOO_DEFAULT_SAVE_PATH`: screenshot destination (created automatically).
 - `PEEKABOO_CLI_PATH`: point Peekaboo at a debug build (`.build/debug/peekaboo`) without copying binaries around.
 
+## UI Input Strategy
+
+Input strategy controls whether UI interactions use accessibility action invocation or synthetic input. The built-in
+policy keeps the global default at `synthFirst`, flips click and scroll to `actionFirst`, keeps type and hotkey at
+`synthFirst`, and exposes `setValue`/`performAction` as action-only operations.
+
+Precedence is `--input-strategy` CLI flag, then environment, then config file, then built-in default. The CLI flag forces local execution because the current bridge protocol does not forward per-call strategy overrides.
+
+Valid values:
+
+- `actionFirst`: try accessibility action invocation, fall back to synthetic input when unsupported.
+- `synthFirst`: use synthetic input first.
+- `actionOnly`: use action invocation only.
+- `synthOnly`: use synthetic input only.
+
+Config example:
+
+```json
+{
+  "input": {
+    "defaultStrategy": "synthFirst",
+    "click": "actionFirst",
+    "scroll": "actionFirst",
+    "type": "synthFirst",
+    "hotkey": "synthFirst",
+    "setValue": "actionOnly",
+    "performAction": "actionOnly",
+    "perApp": {
+      "com.googlecode.iterm2": {
+        "hotkey": "synthOnly"
+      }
+    }
+  }
+}
+```
+
+Environment variables:
+
+- `PEEKABOO_INPUT_STRATEGY`
+- `PEEKABOO_CLICK_INPUT_STRATEGY`
+- `PEEKABOO_SCROLL_INPUT_STRATEGY`
+- `PEEKABOO_TYPE_INPUT_STRATEGY`
+- `PEEKABOO_HOTKEY_INPUT_STRATEGY`
+- `PEEKABOO_SET_VALUE_INPUT_STRATEGY`
+- `PEEKABOO_PERFORM_ACTION_INPUT_STRATEGY`
+
+CLI override:
+
+```bash
+peekaboo click --on B1 --input-strategy actionFirst
+```
+
 ## Logging & Troubleshooting
 
-- `PEEKABOO_LOG_LEVEL=debug` (or `trace`) surfaces verbose telemetry.
+- `PEEKABOO_LOG_LEVEL=debug` (or `trace`) surfaces verbose input-path logs.
 - `PEEKABOO_LOG_FILE=/tmp/peekaboo.log` persists logs for sharing.
 - Tool filters: env `PEEKABOO_ALLOW_TOOLS` replaces config `tools.allow`; env `PEEKABOO_DISABLE_TOOLS` is additive with `tools.deny`. Deny wins if a tool appears in both. See [docs/security.md](security.md) for examples and risk guidance.
 
