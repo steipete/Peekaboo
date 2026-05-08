@@ -11,21 +11,153 @@ public final class ScrollService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ScrollService")
     private let snapshotManager: any SnapshotManagerProtocol
     private let clickService: ClickService
+    let inputPolicy: UIInputPolicy
+    private let actionInputDriver: any ActionInputDriving
+    private let syntheticInputDriver: any SyntheticInputDriving
+    private let automationElementResolver: AutomationElementResolver
 
-    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil, clickService: ClickService? = nil) {
+    public init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        clickService: ClickService? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving = ActionInputDriver(),
+        syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),
+        automationElementResolver: AutomationElementResolver = AutomationElementResolver())
+    {
         let manager = snapshotManager ?? SnapshotManager()
         self.snapshotManager = manager
-        self.clickService = clickService ?? ClickService(snapshotManager: manager)
+        self.clickService = clickService ?? ClickService(
+            snapshotManager: manager,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver)
+        self.inputPolicy = inputPolicy
+        self.actionInputDriver = actionInputDriver
+        self.syntheticInputDriver = syntheticInputDriver
+        self.automationElementResolver = automationElementResolver
     }
 
     /// Perform scroll operation
+    @discardableResult
     @MainActor
-    public func scroll(_ request: ScrollRequest) async throws {
+    public func scroll(_ request: ScrollRequest) async throws -> UIInputExecutionResult {
         let description =
             "Scroll requested - direction: \(request.direction), amount: \(request.amount), " +
             "smooth: \(request.smooth)"
         self.logger.debug("\(description, privacy: .public)")
+        let bundleIdentifier = await self.bundleIdentifier(snapshotId: request.snapshotId)
+        let strategy = self.inputPolicy.strategy(for: .scroll, bundleIdentifier: bundleIdentifier)
 
+        do {
+            let action: (() async throws -> ActionInputResult)? = if Self.requiresSyntheticScrollSemantics(request) {
+                {
+                    throw ActionInputError.unsupported(.actionUnsupported)
+                }
+            } else {
+                {
+                    try await self.performActionScroll(request, strategy: strategy)
+                }
+            }
+            let result = try await UIInputDispatcher.run(
+                verb: .scroll,
+                strategy: strategy,
+                bundleIdentifier: bundleIdentifier,
+                action: action,
+                synth: {
+                    try await self.performSyntheticScroll(request)
+                })
+            self.logger.debug("Scroll completed via \(result.path.rawValue, privacy: .public)")
+            return result
+        } catch {
+            throw error
+        }
+    }
+
+    nonisolated static func requiresSyntheticScrollSemantics(_ request: ScrollRequest) -> Bool {
+        request.smooth || request.delay > 0
+    }
+
+    private func performActionScroll(
+        _ request: ScrollRequest,
+        strategy: UIInputStrategy) async throws -> ActionInputResult
+    {
+        let detectionResult: ElementDetectionResult?
+        if let snapshotId = request.snapshotId {
+            detectionResult = try await self.snapshotManager.getDetectionResult(snapshotId: snapshotId)
+            if detectionResult == nil {
+                throw ActionInputError.staleElement
+            }
+        } else {
+            detectionResult = nil
+        }
+
+        guard let target = request.target?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !target.isEmpty
+        else {
+            throw ActionInputError.unsupported(.missingElement)
+        }
+        let pages = Self.actionScrollPages(amount: request.amount, strategy: strategy)
+
+        if let detectionResult {
+            if let detected = detectionResult.elements.findById(target) ??
+                Self.findDetectedElement(matching: target, in: detectionResult)
+            {
+                guard let element = self.automationElementResolver.resolve(
+                    detectedElement: detected,
+                    windowContext: detectionResult.metadata.windowContext)
+                else {
+                    throw ActionInputError.unsupported(.missingElement)
+                }
+
+                return try self.actionInputDriver.tryScroll(
+                    element: element,
+                    direction: request.direction,
+                    pages: pages)
+            }
+
+            throw NotFoundError.element(target)
+        }
+
+        if let element = self.automationElementResolver.resolve(query: target, windowContext: nil) {
+            return try self.actionInputDriver.tryScroll(
+                element: element,
+                direction: request.direction,
+                pages: pages)
+        }
+
+        throw ActionInputError.unsupported(.missingElement)
+    }
+
+    nonisolated static func actionScrollPages(amount: Int, strategy: UIInputStrategy) -> Int {
+        switch strategy {
+        case .actionFirst, .actionOnly:
+            max(1, abs(amount))
+        case .synthFirst, .synthOnly:
+            0
+        }
+    }
+
+    private static func findDetectedElement(matching query: String, in detectionResult: ElementDetectionResult)
+        -> DetectedElement?
+    {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return nil }
+
+        return detectionResult.elements.all.first { element in
+            [
+                element.label,
+                element.value,
+                element.attributes["title"],
+                element.attributes["description"],
+                element.attributes["identifier"],
+                element.attributes["placeholder"],
+            ].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+                .contains { $0 == query || $0.contains(query) }
+        }
+    }
+
+    private func performSyntheticScroll(_ request: ScrollRequest) async throws {
         let scrollPoint = try await self.resolveScrollPoint(request)
         let (deltaX, deltaY) = self.getScrollDeltas(for: request.direction)
         let context = ScrollExecutionContext(
@@ -36,7 +168,17 @@ public final class ScrollService {
             delay: request.delay)
 
         try await self.performScroll(context)
-        self.logger.debug("Scroll completed")
+    }
+
+    private func bundleIdentifier(snapshotId: String?) async -> String? {
+        if let snapshotId,
+           let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId),
+           let bundleIdentifier = detectionResult.metadata.windowContext?.applicationBundleId
+        {
+            return bundleIdentifier
+        }
+
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
     private func resolveScrollPoint(_ request: ScrollRequest) async throws -> CGPoint {
@@ -93,7 +235,7 @@ public final class ScrollService {
     }
 
     private func postScrollTick(context: ScrollExecutionContext, tickSize: Int) throws {
-        try InputDriver.scroll(
+        try self.syntheticInputDriver.scroll(
             deltaX: Double(context.deltas.deltaX * tickSize),
             deltaY: Double(context.deltas.deltaY * tickSize),
             at: context.startingPoint)
@@ -199,11 +341,11 @@ public final class ScrollService {
     }
 
     private func getCurrentMouseLocation() -> CGPoint {
-        InputDriver.currentLocation() ?? .zero
+        self.syntheticInputDriver.currentLocation() ?? .zero
     }
 
     private func moveMouseToPoint(_ point: CGPoint) async throws {
-        try InputDriver.move(to: point)
+        try self.syntheticInputDriver.move(to: point)
         // Small delay after move
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }

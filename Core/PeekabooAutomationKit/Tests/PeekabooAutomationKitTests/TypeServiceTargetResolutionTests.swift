@@ -4,6 +4,28 @@ import Testing
 
 struct TypeServiceTargetResolutionTests {
     @Test
+    @MainActor
+    func `action-first missing snapshot fails as stale instead of falling back`() async {
+        let service = TypeService(
+            snapshotManager: InMemorySnapshotManager(),
+            inputPolicy: UIInputPolicy(defaultStrategy: .actionFirst))
+
+        do {
+            try await service.type(
+                text: "hello",
+                target: "T1",
+                clearExisting: true,
+                typingDelay: 0,
+                snapshotId: "missing")
+            Issue.record("Expected stale element error for missing action snapshot.")
+        } catch let error as ActionInputError {
+            #expect(error == .staleElement)
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+    }
+
+    @Test
     func `special key mapping preserves raw SpecialKey semantics`() {
         #expect(TypeServiceSpecialKeyMapping.keyCode(for: .return) == 0x24)
         #expect(TypeServiceSpecialKeyMapping.keyCode(for: .enter) == 0x4C)

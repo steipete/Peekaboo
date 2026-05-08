@@ -2,6 +2,7 @@ import Foundation
 import os.log
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooFoundation
 import PeekabooVisualizer
@@ -124,7 +125,7 @@ public final class PeekabooServices {
 
     /// Initialize with default service implementations
     @MainActor
-    public init() {
+    public init(inputPolicy: UIInputPolicy? = nil) {
         self.logger.debug("🚀 Initializing PeekabooServices with default implementations")
 
         let logging = LoggingService()
@@ -139,7 +140,14 @@ public final class PeekabooServices {
         let screenCap = ScreenCaptureService(loggingService: logging)
         self.logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
 
-        let auto = UIAutomationService(snapshotManager: snapshots, loggingService: logging, searchPolicy: .balanced)
+        let configuration = ConfigurationManager.shared
+        self.logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
+
+        let auto = UIAutomationService(
+            snapshotManager: snapshots,
+            loggingService: logging,
+            searchPolicy: .balanced,
+            inputPolicy: inputPolicy ?? configuration.getUIInputPolicy())
         self.logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
 
         let windows = WindowManagementService(applicationService: apps)
@@ -182,8 +190,7 @@ public final class PeekabooServices {
         self.clipboard = clipboard
         self.logger.debug("\(AgentDisplayTokens.Status.success) ClipboardService initialized")
 
-        self.configuration = ConfigurationManager.shared
-        self.logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
+        self.configuration = configuration
 
         self.process = ProcessService(
             applicationService: apps,
@@ -215,7 +222,7 @@ public final class PeekabooServices {
 
     /// Initialize with default services but a custom snapshot manager (e.g. in-memory for long-lived host apps).
     @MainActor
-    public convenience init(snapshotManager: any SnapshotManagerProtocol) {
+    public convenience init(snapshotManager: any SnapshotManagerProtocol, inputPolicy: UIInputPolicy? = nil) {
         let logger = SystemLogger(subsystem: "boo.peekaboo.core", category: "Services")
         logger.debug("🚀 Initializing PeekabooServices with default implementations (custom snapshots)")
 
@@ -231,7 +238,14 @@ public final class PeekabooServices {
         let screenCap = ScreenCaptureService(loggingService: logging)
         logger.debug("\(AgentDisplayTokens.Status.success) ScreenCaptureService initialized")
 
-        let auto = UIAutomationService(snapshotManager: snapshots, loggingService: logging, searchPolicy: .balanced)
+        let configuration = ConfigurationManager.shared
+        logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
+
+        let auto = UIAutomationService(
+            snapshotManager: snapshots,
+            loggingService: logging,
+            searchPolicy: .balanced,
+            inputPolicy: inputPolicy ?? configuration.getUIInputPolicy())
         logger.debug("\(AgentDisplayTokens.Status.success) UIAutomationService initialized")
 
         let windows = WindowManagementService(applicationService: apps)
@@ -251,9 +265,6 @@ public final class PeekabooServices {
 
         let clipboard = ClipboardService()
         logger.debug("\(AgentDisplayTokens.Status.success) ClipboardService initialized")
-
-        let configuration = ConfigurationManager.shared
-        logger.debug("\(AgentDisplayTokens.Status.success) ConfigurationManager initialized")
 
         let process = ProcessService(
             applicationService: apps,

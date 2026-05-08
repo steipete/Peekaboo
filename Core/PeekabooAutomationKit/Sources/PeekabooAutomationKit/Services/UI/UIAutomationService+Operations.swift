@@ -146,10 +146,11 @@ extension UIAutomationService {
      */
     public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         self.logger.debug("Delegating click to ClickService")
-        try await self.clickService.click(target: target, clickType: clickType, snapshotId: snapshotId)
+        let result = try await self.clickService.click(target: target, clickType: clickType, snapshotId: snapshotId)
 
         // Show visual feedback if available
-        if let clickPoint = try await getClickPoint(for: target, snapshotId: snapshotId) {
+        let fallbackPoint = try await self.getClickPoint(for: target, snapshotId: snapshotId)
+        if let clickPoint = Self.visualFeedbackPoint(actionAnchor: result.anchorPoint, fallbackPoint: fallbackPoint) {
             _ = await self.feedbackClient.showClickFeedback(at: clickPoint, type: clickType)
         }
     }
@@ -171,5 +172,9 @@ extension UIAutomationService {
             return nil
         }
         return nil
+    }
+
+    nonisolated static func visualFeedbackPoint(actionAnchor: CGPoint?, fallbackPoint: CGPoint?) -> CGPoint? {
+        actionAnchor ?? fallbackPoint
     }
 }

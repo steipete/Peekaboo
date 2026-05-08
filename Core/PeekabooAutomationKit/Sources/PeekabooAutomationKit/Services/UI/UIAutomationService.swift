@@ -50,6 +50,10 @@ public final class UIAutomationService: TargetedHotkeyServiceProtocol {
     let screenCaptureService: ScreenCaptureService
 
     let feedbackClient: any AutomationFeedbackClient
+    public let inputPolicy: UIInputPolicy
+    let actionInputDriver: any ActionInputDriving
+    let syntheticInputDriver: any SyntheticInputDriving
+    let automationElementResolver: AutomationElementResolver
 
     // Search constraints to prevent unbounded AX traversals
     var searchLimits: UIAutomationSearchLimits
@@ -94,10 +98,32 @@ public final class UIAutomationService: TargetedHotkeyServiceProtocol {
      * - Important: All services are initialized on the main thread due to UI automation requirements
      * - Note: The visualizer connection is established asynchronously and failures are logged but not thrown
      */
+    public convenience init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        loggingService: (any LoggingServiceProtocol)? = nil,
+        searchPolicy: SearchPolicy = .balanced,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        feedbackClient: any AutomationFeedbackClient = NoopAutomationFeedbackClient())
+    {
+        self.init(
+            snapshotManager: snapshotManager,
+            loggingService: loggingService,
+            searchPolicy: searchPolicy,
+            inputPolicy: inputPolicy,
+            actionInputDriver: ActionInputDriver(),
+            syntheticInputDriver: SyntheticInputDriver(),
+            automationElementResolver: AutomationElementResolver(),
+            feedbackClient: feedbackClient)
+    }
+
     public init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         loggingService: (any LoggingServiceProtocol)? = nil,
         searchPolicy: SearchPolicy = .balanced,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving,
+        syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),
+        automationElementResolver: AutomationElementResolver,
         feedbackClient: any AutomationFeedbackClient = NoopAutomationFeedbackClient())
     {
         let manager = snapshotManager ?? SnapshotManager()
@@ -107,14 +133,37 @@ public final class UIAutomationService: TargetedHotkeyServiceProtocol {
 
         self.searchPolicy = searchPolicy
         self.searchLimits = UIAutomationSearchLimits.from(policy: searchPolicy)
+        self.inputPolicy = inputPolicy
+        self.actionInputDriver = actionInputDriver
+        self.syntheticInputDriver = syntheticInputDriver
+        self.automationElementResolver = automationElementResolver
         self.feedbackClient = feedbackClient
 
         // Initialize specialized services
         self.elementDetectionService = ElementDetectionService(snapshotManager: manager)
-        self.clickService = ClickService(snapshotManager: manager)
-        self.typeService = TypeService(snapshotManager: manager, clickService: nil)
-        self.scrollService = ScrollService(snapshotManager: manager, clickService: nil)
-        self.hotkeyService = HotkeyService()
+        self.clickService = ClickService(
+            snapshotManager: manager,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver)
+        self.typeService = TypeService(
+            snapshotManager: manager,
+            clickService: nil,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver)
+        self.scrollService = ScrollService(
+            snapshotManager: manager,
+            clickService: nil,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver)
+        self.hotkeyService = HotkeyService(
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver)
         self.gestureService = GestureService()
         let baseCaptureDeps = ScreenCaptureService.Dependencies.live()
         let captureDeps = ScreenCaptureService.Dependencies(

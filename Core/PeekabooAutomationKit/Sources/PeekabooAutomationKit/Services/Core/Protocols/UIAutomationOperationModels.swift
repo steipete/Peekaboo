@@ -147,6 +147,94 @@ public struct TypeResult: Sendable, Codable {
     }
 }
 
+/// Value payload for direct accessibility value mutation.
+public enum UIElementValue: Sendable, Codable, Equatable {
+    case bool(Bool)
+    case int(Int)
+    case double(Double)
+    case string(String)
+
+    public var displayString: String {
+        switch self {
+        case let .bool(value):
+            String(value)
+        case let .int(value):
+            String(value)
+        case let .double(value):
+            String(value)
+        case let .string(value):
+            value
+        }
+    }
+
+    var accessibilityValue: Any {
+        switch self {
+        case let .bool(value):
+            value
+        case let .int(value):
+            value
+        case let .double(value):
+            value
+        case let .string(value):
+            value
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(Bool.self) {
+            self = .bool(value)
+        } else if let value = try? container.decode(Int.self) {
+            self = .int(value)
+        } else if let value = try? container.decode(Double.self) {
+            self = .double(value)
+        } else if let value = try? container.decode(String.self) {
+            self = .string(value)
+        } else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "UIElementValue must be a boolean, number, or string")
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch self {
+        case let .bool(value):
+            try container.encode(value)
+        case let .int(value):
+            try container.encode(value)
+        case let .double(value):
+            try container.encode(value)
+        case let .string(value):
+            try container.encode(value)
+        }
+    }
+}
+
+/// Result returned by element-targeted accessibility action tools.
+public struct ElementActionResult: Sendable, Codable, Equatable {
+    public let target: String
+    public let actionName: String?
+    public let anchorPoint: CGPoint?
+    public let oldValue: String?
+    public let newValue: String?
+
+    public init(
+        target: String,
+        actionName: String?,
+        anchorPoint: CGPoint?,
+        oldValue: String? = nil,
+        newValue: String? = nil)
+    {
+        self.target = target
+        self.actionName = actionName
+        self.anchorPoint = anchorPoint
+        self.oldValue = oldValue
+        self.newValue = newValue
+    }
+}
+
 /// Criteria for searching UI elements
 public enum UIElementSearchCriteria: Sendable, Codable {
     case label(String)

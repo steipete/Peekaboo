@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooAutomationKit
 
 /// Root configuration structure for Peekaboo settings.
 /// Test comment for Poltergeist
@@ -12,6 +13,7 @@ public struct Configuration: Codable {
     public var logging: LoggingConfig?
     public var agent: AgentConfig?
     public var visualizer: VisualizerConfig?
+    public var input: InputConfig?
     public var tools: ToolConfig?
     public var customProviders: [String: CustomProvider]?
 
@@ -21,6 +23,7 @@ public struct Configuration: Codable {
         logging: LoggingConfig? = nil,
         agent: AgentConfig? = nil,
         visualizer: VisualizerConfig? = nil,
+        input: InputConfig? = nil,
         tools: ToolConfig? = nil,
         customProviders: [String: CustomProvider]? = nil)
     {
@@ -29,6 +32,7 @@ public struct Configuration: Codable {
         self.logging = logging
         self.agent = agent
         self.visualizer = visualizer
+        self.input = input
         self.tools = tools
         self.customProviders = customProviders
     }
@@ -183,6 +187,70 @@ public struct Configuration: Codable {
             self.dialogInteractionEnabled = dialogInteractionEnabled
             self.spaceTransitionEnabled = spaceTransitionEnabled
             self.ghostEasterEggEnabled = ghostEasterEggEnabled
+        }
+    }
+
+    /// Input strategy configuration for action invocation versus synthetic input.
+    ///
+    /// Lets users choose the default interaction delivery strategy, override individual verbs,
+    /// and force app-specific strategies when a target app has weak accessibility support.
+    public struct InputConfig: Codable, Equatable {
+        public var defaultStrategy: UIInputStrategy?
+        public var click: UIInputStrategy?
+        public var scroll: UIInputStrategy?
+        public var type: UIInputStrategy?
+        public var hotkey: UIInputStrategy?
+        public var setValue: UIInputStrategy?
+        public var performAction: UIInputStrategy?
+        public var perApp: [String: AppInputConfig]?
+
+        public init(
+            defaultStrategy: UIInputStrategy? = nil,
+            click: UIInputStrategy? = nil,
+            scroll: UIInputStrategy? = nil,
+            type: UIInputStrategy? = nil,
+            hotkey: UIInputStrategy? = nil,
+            setValue: UIInputStrategy? = nil,
+            performAction: UIInputStrategy? = nil,
+            perApp: [String: AppInputConfig]? = nil)
+        {
+            self.defaultStrategy = defaultStrategy
+            self.click = click
+            self.scroll = scroll
+            self.type = type
+            self.hotkey = hotkey
+            self.setValue = setValue
+            self.performAction = performAction
+            self.perApp = perApp
+        }
+    }
+
+    /// App-specific input strategy overrides.
+    public struct AppInputConfig: Codable, Equatable {
+        public var defaultStrategy: UIInputStrategy?
+        public var click: UIInputStrategy?
+        public var scroll: UIInputStrategy?
+        public var type: UIInputStrategy?
+        public var hotkey: UIInputStrategy?
+        public var setValue: UIInputStrategy?
+        public var performAction: UIInputStrategy?
+
+        public init(
+            defaultStrategy: UIInputStrategy? = nil,
+            click: UIInputStrategy? = nil,
+            scroll: UIInputStrategy? = nil,
+            type: UIInputStrategy? = nil,
+            hotkey: UIInputStrategy? = nil,
+            setValue: UIInputStrategy? = nil,
+            performAction: UIInputStrategy? = nil)
+        {
+            self.defaultStrategy = defaultStrategy
+            self.click = click
+            self.scroll = scroll
+            self.type = type
+            self.hotkey = hotkey
+            self.setValue = setValue
+            self.performAction = performAction
         }
     }
 

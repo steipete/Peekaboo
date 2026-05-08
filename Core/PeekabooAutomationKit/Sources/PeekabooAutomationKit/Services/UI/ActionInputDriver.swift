@@ -1,0 +1,527 @@
+import AppKit
+import ApplicationServices
+import AXorcist
+import CoreGraphics
+import Foundation
+import PeekabooFoundation
+
+public enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
+    case actionUnsupported
+    case attributeUnsupported
+    case valueNotSettable
+    case secureValueNotAllowed
+    case menuShortcutUnavailable
+    case missingElement
+}
+
+public enum ActionInputError: Error, Equatable, Sendable {
+    case unsupported(ActionInputUnsupportedReason)
+    case staleElement
+    case permissionDenied
+    case targetUnavailable
+    case failed(String)
+}
+
+extension ActionInputUnsupportedReason: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .actionUnsupported:
+            "Accessibility action is not supported"
+        case .attributeUnsupported:
+            "Accessibility attribute is not supported"
+        case .valueNotSettable:
+            "Accessibility value is not settable"
+        case .secureValueNotAllowed:
+            "Direct value setting is not allowed for secure text fields"
+        case .menuShortcutUnavailable:
+            "No menu item matches that shortcut"
+        case .missingElement:
+            "No accessibility element is available for action invocation"
+        }
+    }
+}
+
+extension ActionInputError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case let .unsupported(reason):
+            reason.errorDescription
+        case .staleElement:
+            "Accessibility element is stale; run see again"
+        case .permissionDenied:
+            "Accessibility permission is denied"
+        case .targetUnavailable:
+            "Accessibility target is unavailable"
+        case let .failed(reason):
+            reason
+        }
+    }
+}
+
+public struct ActionInputResult: Equatable, Sendable {
+    public var actionName: String?
+    public var anchorPoint: CGPoint?
+    public var elementRole: String?
+
+    public init(actionName: String? = nil, anchorPoint: CGPoint? = nil, elementRole: String? = nil) {
+        self.actionName = actionName
+        self.anchorPoint = anchorPoint
+        self.elementRole = elementRole
+    }
+}
+
+@MainActor
+public protocol ActionInputDriving: Sendable {
+    func tryClick(element: AutomationElement) throws -> ActionInputResult
+    func tryRightClick(element: AutomationElement) throws -> ActionInputResult
+    func tryScroll(
+        element: AutomationElement,
+        direction: PeekabooFoundation.ScrollDirection,
+        pages: Int) throws -> ActionInputResult
+    func trySetText(element: AutomationElement, text: String, replace: Bool) throws -> ActionInputResult
+    func tryHotkey(application: NSRunningApplication, keys: [String]) throws -> ActionInputResult
+    func trySetValue(element: AutomationElement, value: UIElementValue) throws -> ActionInputResult
+    func tryPerformAction(element: AutomationElement, actionName: String) throws -> ActionInputResult
+}
+
+/// Accessibility action implementation for action-first UI input.
+@MainActor
+public struct ActionInputDriver: ActionInputDriving {
+    public init() {}
+
+    public func tryClick(element: AutomationElement) throws -> ActionInputResult {
+        try self.performAction(AXActionNames.kAXPressAction, on: element)
+    }
+
+    public func tryRightClick(element: AutomationElement) throws -> ActionInputResult {
+        try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
+    }
+
+    public func tryScroll(
+        element: AutomationElement,
+        direction: PeekabooFoundation.ScrollDirection,
+        pages: Int) throws -> ActionInputResult
+    {
+        try self.performScrollActions(element: element, direction: direction, pages: pages)
+    }
+
+    public func trySetText(element: AutomationElement, text: String, replace: Bool) throws -> ActionInputResult {
+        guard replace else {
+            throw ActionInputError.unsupported(.attributeUnsupported)
+        }
+        return try self.trySetValue(element: element, value: .string(text))
+    }
+
+    public func tryHotkey(application: NSRunningApplication, keys: [String]) throws -> ActionInputResult {
+        let chord = try MenuHotkeyChord(keys: keys)
+        let appElement = AXApp(application).element
+        guard let menuBar = appElement.menuBarWithTimeout(timeout: 1.0).map(AutomationElement.init) else {
+            throw ActionInputError.unsupported(.missingElement)
+        }
+
+        guard let menuItem = self.findMenuItem(matching: chord, in: menuBar) else {
+            throw ActionInputError.unsupported(.menuShortcutUnavailable)
+        }
+
+        return try self.performAction(AXActionNames.kAXPressAction, on: menuItem)
+    }
+
+    public func trySetValue(element: AutomationElement, value: UIElementValue) throws -> ActionInputResult {
+        try self.setValue(value, on: element)
+    }
+
+    public func tryPerformAction(element: AutomationElement, actionName: String) throws -> ActionInputResult {
+        try self.performAction(actionName, on: element)
+    }
+
+    public nonisolated static func classify(_ error: any Error) -> ActionInputError {
+        if let actionError = error as? ActionInputError {
+            return actionError
+        }
+
+        if let systemError = error as? AccessibilitySystemError {
+            return self.classify(systemError.axError)
+        }
+
+        return .failed(error.localizedDescription)
+    }
+
+    public nonisolated static func classify(_ error: AXError) -> ActionInputError {
+        switch error {
+        case .actionUnsupported:
+            .unsupported(.actionUnsupported)
+        case .attributeUnsupported, .parameterizedAttributeUnsupported:
+            .unsupported(.attributeUnsupported)
+        case .invalidUIElement, .invalidUIElementObserver:
+            .staleElement
+        case .apiDisabled:
+            .permissionDenied
+        case .cannotComplete, .failure:
+            .targetUnavailable
+        default:
+            .failed(error.localizedDescription)
+        }
+    }
+
+    nonisolated static func setValueRejectionReason(
+        role: String?,
+        subrole: String?,
+        isValueSettable: Bool) -> ActionInputUnsupportedReason?
+    {
+        if role == "AXSecureTextField" || subrole == "AXSecureTextField" {
+            return .secureValueNotAllowed
+        }
+        if !isValueSettable {
+            return .valueNotSettable
+        }
+        return nil
+    }
+
+    nonisolated static func shouldContinueTryingScrollAction(after error: ActionInputError) -> Bool {
+        error.isUnsupported || error == .targetUnavailable
+    }
+
+    nonisolated static func scrollFallbackError(from error: ActionInputError?) -> ActionInputError {
+        if error == .targetUnavailable {
+            return .unsupported(.actionUnsupported)
+        }
+        return error ?? .unsupported(.actionUnsupported)
+    }
+
+    private func performAction(_ actionName: String, on element: any AutomationElementRepresenting)
+        throws -> ActionInputResult
+    {
+        do {
+            try element.performAutomationAction(actionName)
+            return ActionInputResult(
+                actionName: actionName,
+                anchorPoint: element.anchorPoint,
+                elementRole: element.role)
+        } catch {
+            throw Self.classify(error)
+        }
+    }
+
+    private func setValue(_ value: UIElementValue, on element: any AutomationElementRepresenting)
+        throws -> ActionInputResult
+    {
+        if let rejectionReason = Self.setValueRejectionReason(
+            role: element.role,
+            subrole: element.subrole,
+            isValueSettable: element.isValueSettable)
+        {
+            throw ActionInputError.unsupported(rejectionReason)
+        }
+
+        do {
+            try element.setAutomationValue(value)
+            return ActionInputResult(
+                actionName: AXActionNames.kAXSetValueAction,
+                anchorPoint: element.anchorPoint,
+                elementRole: element.role)
+        } catch {
+            throw Self.classify(error)
+        }
+    }
+
+    private func scrollActionNames(for direction: PeekabooFoundation.ScrollDirection) -> [String] {
+        switch direction {
+        case .up:
+            ["AXScrollUpByPage", "AXPageUp"]
+        case .down:
+            ["AXScrollDownByPage", "AXPageDown"]
+        case .left:
+            ["AXScrollLeftByPage", "AXPageLeft"]
+        case .right:
+            ["AXScrollRightByPage", "AXPageRight"]
+        }
+    }
+
+    private func performScrollActions(
+        element: any AutomationElementRepresenting,
+        direction: PeekabooFoundation.ScrollDirection,
+        pages: Int) throws -> ActionInputResult
+    {
+        let actions = self.scrollActionNames(for: direction)
+        var lastError: ActionInputError?
+        var performedActionName: String?
+
+        for _ in 0..<max(1, pages) {
+            var performed = false
+            for action in actions {
+                do {
+                    _ = try self.performAction(action, on: element)
+                    performedActionName = action
+                    performed = true
+                    break
+                } catch let error as ActionInputError {
+                    lastError = error
+                    if !Self.shouldContinueTryingScrollAction(after: error) {
+                        throw error
+                    }
+                }
+            }
+
+            if !performed {
+                throw Self.scrollFallbackError(from: lastError)
+            }
+        }
+
+        return ActionInputResult(
+            actionName: performedActionName,
+            anchorPoint: element.anchorPoint,
+            elementRole: element.role)
+    }
+
+    private func findMenuItem(
+        matching chord: MenuHotkeyChord,
+        in menuBar: any AutomationElementRepresenting) -> (any AutomationElementRepresenting)?
+    {
+        var remainingBudget = 600
+
+        for menuBarItem in menuBar.automationChildren {
+            guard remainingBudget > 0 else { return nil }
+            remainingBudget -= 1
+
+            guard let menu = menuBarItem.automationChildren.first(where: { $0.role == AXRoleNames.kAXMenuRole }) else {
+                continue
+            }
+
+            if let match = self.findMenuItem(
+                matching: chord,
+                inMenuChildren: menu.automationChildren,
+                budget: &remainingBudget)
+            {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    private func findMenuItem(
+        matching chord: MenuHotkeyChord,
+        inMenuChildren children: [any AutomationElementRepresenting],
+        budget: inout Int) -> (any AutomationElementRepresenting)?
+    {
+        for child in children {
+            guard budget > 0 else { return nil }
+            budget -= 1
+
+            if self.menuItem(child, matches: chord) {
+                return child
+            }
+
+            if let submenu = child.automationChildren.first(where: { $0.role == AXRoleNames.kAXMenuRole }),
+               let match = self.findMenuItem(
+                   matching: chord,
+                   inMenuChildren: submenu.automationChildren,
+                   budget: &budget)
+            {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    private func menuItem(_ element: any AutomationElementRepresenting, matches chord: MenuHotkeyChord) -> Bool {
+        guard element.role == AXRoleNames.kAXMenuItemRole else { return false }
+        guard element.isEnabled else { return false }
+
+        guard let commandCharacter = element.stringAttribute("AXMenuItemCmdChar"),
+              !commandCharacter.isEmpty
+        else {
+            return false
+        }
+
+        let modifiers = element.intAttribute("AXMenuItemCmdModifiers") ?? 0
+        return MenuHotkeyChord.normalizedCommandCharacter(commandCharacter) == chord.key &&
+            MenuHotkeyChord.modifiers(fromMenuItemModifiers: modifiers) == chord.modifiers
+    }
+}
+
+extension ActionInputError {
+    fileprivate var isUnsupported: Bool {
+        if case .unsupported = self {
+            return true
+        }
+        return false
+    }
+}
+
+private struct MenuHotkeyChord: Equatable {
+    let key: String
+    let modifiers: Set<String>
+
+    init(keys: [String]) throws {
+        var primaryKey: String?
+        var modifiers: Set<String> = []
+
+        for key in keys.map(Self.normalizedKey(_:)) where !key.isEmpty {
+            if let modifier = Self.modifierName(for: key) {
+                modifiers.insert(modifier)
+                continue
+            }
+
+            guard let commandCharacter = Self.commandCharacter(for: key) else {
+                throw ActionInputError.unsupported(.menuShortcutUnavailable)
+            }
+
+            if primaryKey != nil {
+                throw ActionInputError.unsupported(.menuShortcutUnavailable)
+            }
+            primaryKey = commandCharacter
+        }
+
+        guard let primaryKey else {
+            throw ActionInputError.unsupported(.menuShortcutUnavailable)
+        }
+
+        self.key = primaryKey
+        self.modifiers = modifiers
+    }
+
+    static func normalizedCommandCharacter(_ raw: String) -> String {
+        self.commandCharacter(for: raw) ?? raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    static func modifiers(fromMenuItemModifiers modifiers: Int) -> Set<String> {
+        var result: Set<String> = []
+        if modifiers & (1 << 3) == 0 { result.insert("cmd") }
+        if modifiers & (1 << 0) != 0 { result.insert("shift") }
+        if modifiers & (1 << 1) != 0 { result.insert("alt") }
+        if modifiers & (1 << 2) != 0 { result.insert("ctrl") }
+        return result
+    }
+
+    private static func normalizedKey(_ raw: String) -> String {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return Self.aliases[key] ?? key
+    }
+
+    private static func modifierName(for key: String) -> String? {
+        switch key {
+        case "cmd", "shift", "alt", "ctrl":
+            key
+        default:
+            nil
+        }
+    }
+
+    private static func commandCharacter(for key: String) -> String? {
+        let key = self.normalizedKey(key)
+        if key.count == 1 {
+            return key
+        }
+        return Self.namedCommandCharacters[key]
+    }
+
+    private static let aliases: [String: String] = [
+        "command": "cmd",
+        "control": "ctrl",
+        "option": "alt",
+        "opt": "alt",
+        "spacebar": "space",
+        "left_bracket": "leftbracket",
+        "[": "leftbracket",
+        "right_bracket": "rightbracket",
+        "]": "rightbracket",
+        "=": "equal",
+        "-": "minus",
+        "'": "quote",
+        ";": "semicolon",
+        "\\": "backslash",
+        ",": "comma",
+        "/": "slash",
+        ".": "period",
+        "`": "grave",
+    ]
+
+    private static let namedCommandCharacters: [String: String] = [
+        "space": " ",
+        "leftbracket": "[",
+        "rightbracket": "]",
+        "equal": "=",
+        "minus": "-",
+        "quote": "'",
+        "semicolon": ";",
+        "backslash": "\\",
+        "comma": ",",
+        "slash": "/",
+        "period": ".",
+        "grave": "`",
+    ]
+}
+
+#if DEBUG
+extension ActionInputDriver {
+    public func tryClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
+        try self.performAction(AXActionNames.kAXPressAction, on: element)
+    }
+
+    public func tryRightClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
+        try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
+    }
+
+    public func trySetValueForTesting(
+        element: any AutomationElementRepresenting,
+        value: UIElementValue) throws -> ActionInputResult
+    {
+        try self.setValue(value, on: element)
+    }
+
+    public func tryScrollForTesting(
+        element: any AutomationElementRepresenting,
+        direction: PeekabooFoundation.ScrollDirection,
+        pages: Int) throws -> ActionInputResult
+    {
+        try self.performScrollActions(element: element, direction: direction, pages: pages)
+    }
+
+    public func tryPerformActionForTesting(
+        element: any AutomationElementRepresenting,
+        actionName: String) throws -> ActionInputResult
+    {
+        try self.performAction(actionName, on: element)
+    }
+
+    public func tryHotkeyForTesting(
+        keys: [String],
+        menuBar: any AutomationElementRepresenting) throws -> ActionInputResult
+    {
+        let chord = try MenuHotkeyChord(keys: keys)
+        guard let menuItem = self.findMenuItem(matching: chord, in: menuBar) else {
+            throw ActionInputError.unsupported(.menuShortcutUnavailable)
+        }
+        return try self.performAction(AXActionNames.kAXPressAction, on: menuItem)
+    }
+
+    public nonisolated static func menuHotkeyChordForTesting(_ keys: [String]) throws
+        -> (key: String, modifiers: Set<String>)
+    {
+        let chord = try MenuHotkeyChord(keys: keys)
+        return (chord.key, chord.modifiers)
+    }
+
+    public nonisolated static func menuHotkeyModifiersForTesting(_ modifiers: Int) -> Set<String> {
+        MenuHotkeyChord.modifiers(fromMenuItemModifiers: modifiers)
+    }
+
+    public nonisolated static func setValueRejectionReasonForTesting(
+        role: String?,
+        subrole: String? = nil,
+        isValueSettable: Bool) -> ActionInputUnsupportedReason?
+    {
+        self.setValueRejectionReason(role: role, subrole: subrole, isValueSettable: isValueSettable)
+    }
+
+    public nonisolated static func shouldContinueTryingScrollActionForTesting(after error: ActionInputError) -> Bool {
+        self.shouldContinueTryingScrollAction(after: error)
+    }
+
+    public nonisolated static func scrollFallbackErrorForTesting(from error: ActionInputError?) -> ActionInputError {
+        self.scrollFallbackError(from: error)
+    }
+}
+#endif

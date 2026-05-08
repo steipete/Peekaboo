@@ -4,6 +4,7 @@ import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
 @testable import PeekabooCore
+@testable import PeekabooFoundation
 @testable import PeekabooVisualizer
 
 @Suite(
@@ -26,7 +27,9 @@ struct ClickServiceTests {
         @Test
         func `Click performs at specified screen coordinates without errors`() async throws {
             let snapshotManager = MockSnapshotManager()
-            let service = ClickService(snapshotManager: snapshotManager)
+            let service = ClickService(
+                snapshotManager: snapshotManager,
+                inputPolicy: UIInputPolicy(defaultStrategy: .synthFirst))
 
             let point = CGPoint(x: 100, y: 100)
 
@@ -71,7 +74,9 @@ struct ClickServiceTests {
 
             snapshotManager.primeDetectionResult(detectionResult)
 
-            let service = ClickService(snapshotManager: snapshotManager)
+            let service = ClickService(
+                snapshotManager: snapshotManager,
+                inputPolicy: UIInputPolicy(defaultStrategy: .synthFirst))
 
             // Should find element in session and click at its center
             try await service.click(
@@ -83,11 +88,13 @@ struct ClickServiceTests {
         @Test
         func `Click element by ID not found throws specific error`() async throws {
             let snapshotManager = MockSnapshotManager()
-            let service = ClickService(snapshotManager: snapshotManager)
+            let service = ClickService(
+                snapshotManager: snapshotManager,
+                inputPolicy: UIInputPolicy(defaultStrategy: .synthFirst))
             let nonExistentId = "non-existent-button"
 
-            // Should throw NotFoundError with specific element ID
-            await #expect(throws: NotFoundError.self) {
+            // NotFoundError factories now bridge to the public PeekabooError enum.
+            await #expect(throws: PeekabooError.self) {
                 try await service.click(
                     target: .elementId(nonExistentId),
                     clickType: .single,
@@ -154,7 +161,9 @@ struct ClickServiceTests {
 
         snapshotManager.primeDetectionResult(detectionResult)
 
-        let service = ClickService(snapshotManager: snapshotManager)
+        let service = ClickService(
+            snapshotManager: snapshotManager,
+            inputPolicy: UIInputPolicy(defaultStrategy: .synthFirst))
 
         // Should find element by query and click it
         try await service.click(

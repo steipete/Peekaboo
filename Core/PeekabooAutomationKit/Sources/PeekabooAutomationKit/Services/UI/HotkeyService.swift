@@ -1,3 +1,4 @@
+import AppKit
 import AXorcist
 import CoreGraphics
 import Darwin
@@ -11,32 +12,53 @@ public final class HotkeyService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "HotkeyService")
     private let postEventAccessEvaluator: @MainActor @Sendable () -> Bool
     private let eventPoster: @MainActor @Sendable (CGEvent, pid_t) -> Void
+    private let runningApplicationResolver: @MainActor @Sendable (pid_t) -> NSRunningApplication?
+    let inputPolicy: UIInputPolicy
+    private let actionInputDriver: any ActionInputDriving
 
     public init(
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving = ActionInputDriver(),
         postEventAccessEvaluator: @escaping @MainActor @Sendable ()
             -> Bool = { CGPreflightPostEventAccess() },
         eventPoster: @escaping @MainActor @Sendable (CGEvent, pid_t) -> Void = { event, pid in
             event.postToPid(pid)
+        },
+        runningApplicationResolver: @escaping @MainActor @Sendable (pid_t) -> NSRunningApplication? = {
+            NSRunningApplication(processIdentifier: $0)
         })
     {
+        self.inputPolicy = inputPolicy
+        self.actionInputDriver = actionInputDriver
         self.postEventAccessEvaluator = postEventAccessEvaluator
         self.eventPoster = eventPoster
+        self.runningApplicationResolver = runningApplicationResolver
     }
 
     /// Press a hotkey combination.
     /// Keys are comma-separated (e.g. "cmd,shift,4" or "ctrl,alt,backspace").
-    public func hotkey(keys: String, holdDuration: Int) async throws {
+    @discardableResult
+    public func hotkey(keys: String, holdDuration: Int) async throws -> UIInputExecutionResult {
         self.logger.debug("Hotkey requested: '\(keys)', hold: \(holdDuration)ms")
+        let parsedKeys = try self.parsedKeys(keys)
+        let application = NSWorkspace.shared.frontmostApplication
+        let bundleIdentifier = application?.bundleIdentifier
+        let result = try await UIInputDispatcher.run(
+            verb: .hotkey,
+            strategy: self.inputPolicy.strategy(for: .hotkey, bundleIdentifier: bundleIdentifier),
+            bundleIdentifier: bundleIdentifier,
+            action: {
+                guard let application else {
+                    throw ActionInputError.unsupported(.missingElement)
+                }
+                return try self.actionInputDriver.tryHotkey(application: application, keys: parsedKeys)
+            },
+            synth: {
+                try await self.performSyntheticHotkey(keys: parsedKeys, holdDuration: holdDuration)
+            })
 
-        try InputDriver.hotkey(
-            keys: self.parsedKeys(keys),
-            holdDuration: TimeInterval(max(0, holdDuration)) / 1000)
-
-        if holdDuration <= 0 {
-            try await Task.sleep(nanoseconds: 10_000_000)
-        }
-
-        self.logger.debug("Hotkey completed")
+        self.logger.debug("Hotkey completed via \(result.path.rawValue, privacy: .public)")
+        return result
     }
 
     /// Press a hotkey combination by posting the key event to a specific process.
@@ -44,30 +66,76 @@ public final class HotkeyService {
     /// This path avoids changing the frontmost application, but macOS delivers it differently
     /// from hardware keyboard input. Some apps only handle shortcuts for their key window and
     /// may ignore targeted events while in the background.
-    public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
+    @discardableResult
+    public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws
+        -> UIInputExecutionResult
+    {
         self.logger.debug(
             "Targeted hotkey requested: '\(keys)', hold: \(holdDuration)ms, pid: \(targetProcessIdentifier)")
 
-        guard targetProcessIdentifier > 0 else {
-            throw PeekabooError.invalidInput("Target process identifier must be greater than 0")
-        }
+        let parsedKeys = try self.parsedKeys(keys)
+        let application = self.runningApplicationResolver(targetProcessIdentifier)
+        let bundleIdentifier = application?.bundleIdentifier
+        let result = try await UIInputDispatcher.run(
+            verb: .hotkey,
+            strategy: self.inputPolicy.strategy(for: .hotkey, bundleIdentifier: bundleIdentifier),
+            bundleIdentifier: bundleIdentifier,
+            action: {
+                try Self.validateTargetProcess(targetProcessIdentifier)
+                guard let application else {
+                    throw ActionInputError.unsupported(.missingElement)
+                }
+                return try self.actionInputDriver.tryHotkey(application: application, keys: parsedKeys)
+            },
+            synth: {
+                try Self.validateTargetProcess(targetProcessIdentifier)
+                let plan = try self.makeHotkeyPlan(parsedKeys)
+                let holdNanoseconds = try Self.holdNanoseconds(for: holdDuration)
+                try await self.postHotkey(
+                    plan,
+                    holdNanoseconds: holdNanoseconds,
+                    targetProcessIdentifier: targetProcessIdentifier)
 
-        guard Self.isProcessAlive(targetProcessIdentifier) else {
-            throw PeekabooError.invalidInput("Target process identifier is not running: \(targetProcessIdentifier)")
-        }
+                if holdDuration <= 0 {
+                    try await Task.sleep(nanoseconds: 10_000_000)
+                }
+            })
 
+        self.logger.debug("Targeted hotkey completed via \(result.path.rawValue, privacy: .public)")
+        return result
+    }
+
+    private func performSyntheticHotkey(keys: [String], holdDuration: Int) async throws {
         let plan = try self.makeHotkeyPlan(keys)
         let holdNanoseconds = try Self.holdNanoseconds(for: holdDuration)
-        try await self.postHotkey(
-            plan,
-            holdNanoseconds: holdNanoseconds,
-            targetProcessIdentifier: targetProcessIdentifier)
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: plan.keyCode, keyDown: true),
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: plan.keyCode, keyDown: false)
+        else {
+            throw PeekabooError.operationError(message: "Failed to create keyboard events")
+        }
+
+        keyDown.flags = plan.modifierFlags
+        keyUp.flags = plan.modifierFlags
+        keyDown.post(tap: .cghidEventTap)
+        var keyUpPosted = false
+        defer {
+            if !keyUpPosted {
+                keyUp.post(tap: .cghidEventTap)
+            }
+        }
+
+        if holdNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: holdNanoseconds)
+        }
+
+        keyUp.post(tap: .cghidEventTap)
+        keyUpPosted = true
 
         if holdDuration <= 0 {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
-
-        self.logger.debug("Targeted hotkey completed")
     }
 
     private func postHotkey(_ plan: HotkeyPlan, holdNanoseconds: UInt64, targetProcessIdentifier: pid_t) async throws {
@@ -110,6 +178,16 @@ public final class HotkeyService {
         }
 
         return nanoseconds
+    }
+
+    private static func validateTargetProcess(_ targetProcessIdentifier: pid_t) throws {
+        guard targetProcessIdentifier > 0 else {
+            throw PeekabooError.invalidInput("Target process identifier must be greater than 0")
+        }
+
+        guard self.isProcessAlive(targetProcessIdentifier) else {
+            throw PeekabooError.invalidInput("Target process identifier is not running: \(targetProcessIdentifier)")
+        }
     }
 
     private static func isProcessAlive(_ processIdentifier: pid_t) -> Bool {

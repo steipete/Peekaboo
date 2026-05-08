@@ -162,3 +162,10 @@ extension TargetedHotkeyServiceProtocol {
         false
     }
 }
+
+/// Optional capability for automation services that can invoke accessibility actions directly.
+@MainActor
+public protocol ElementActionAutomationServiceProtocol: UIAutomationServiceProtocol {
+    func setValue(target: String, value: UIElementValue, snapshotId: String?) async throws -> ElementActionResult
+    func performAction(target: String, actionName: String, snapshotId: String?) async throws -> ElementActionResult
+}

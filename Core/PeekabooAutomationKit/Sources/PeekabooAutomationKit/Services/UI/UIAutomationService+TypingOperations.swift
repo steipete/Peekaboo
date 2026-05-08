@@ -83,7 +83,7 @@ extension UIAutomationService {
         snapshotId: String?) async throws
     {
         self.logger.debug("Delegating type to TypeService")
-        try await self.typeService.type(
+        _ = try await self.typeService.type(
             text: text,
             target: target,
             clearExisting: clearExisting,

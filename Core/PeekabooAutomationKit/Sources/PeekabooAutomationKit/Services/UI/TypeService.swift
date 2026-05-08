@@ -1,3 +1,4 @@
+import AppKit
 @preconcurrency import AXorcist
 import CoreGraphics
 import Foundation
@@ -11,40 +12,116 @@ public final class TypeService {
     let snapshotManager: any SnapshotManagerProtocol
     private let clickService: ClickService
     let cadenceRandom: any TypingCadenceRandomSource
+    let inputPolicy: UIInputPolicy
+    private let actionInputDriver: any ActionInputDriving
+    private let syntheticInputDriver: any SyntheticInputDriving
+    private let automationElementResolver: AutomationElementResolver
 
     public convenience init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
-        clickService: ClickService? = nil)
+        clickService: ClickService? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving = ActionInputDriver(),
+        syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),
+        automationElementResolver: AutomationElementResolver = AutomationElementResolver())
     {
         self.init(
             snapshotManager: snapshotManager,
             clickService: clickService,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver,
             randomSource: SystemTypingCadenceRandomSource())
     }
 
     init(
         snapshotManager: (any SnapshotManagerProtocol)? = nil,
         clickService: ClickService? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving = ActionInputDriver(),
+        syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),
+        automationElementResolver: AutomationElementResolver = AutomationElementResolver(),
         randomSource: any TypingCadenceRandomSource)
     {
         let manager = snapshotManager ?? SnapshotManager()
         self.snapshotManager = manager
-        self.clickService = clickService ?? ClickService(snapshotManager: manager)
+        self.clickService = clickService ?? ClickService(
+            snapshotManager: manager,
+            inputPolicy: inputPolicy,
+            actionInputDriver: actionInputDriver,
+            syntheticInputDriver: syntheticInputDriver,
+            automationElementResolver: automationElementResolver)
+        self.inputPolicy = inputPolicy
+        self.actionInputDriver = actionInputDriver
+        self.syntheticInputDriver = syntheticInputDriver
+        self.automationElementResolver = automationElementResolver
         self.cadenceRandom = randomSource
     }
 
     /// Type text with optional target and settings
+    @discardableResult
     @MainActor
     public func type(
         text: String,
         target: String?,
         clearExisting: Bool,
         typingDelay: Int,
-        snapshotId: String?) async throws
+        snapshotId: String?) async throws -> UIInputExecutionResult
     {
         self.logger
             .debug("Type requested - text: '\(text)', target: \(target ?? "current focus"), clear: \(clearExisting)")
+        let bundleIdentifier = await self.bundleIdentifier(snapshotId: snapshotId)
 
+        let result = try await UIInputDispatcher.run(
+            verb: .type,
+            strategy: self.inputPolicy.strategy(for: .type, bundleIdentifier: bundleIdentifier),
+            bundleIdentifier: bundleIdentifier,
+            action: {
+                try await self.performActionType(
+                    text: text,
+                    target: target,
+                    clearExisting: clearExisting,
+                    snapshotId: snapshotId)
+            },
+            synth: {
+                try await self.performSyntheticType(
+                    text: text,
+                    target: target,
+                    clearExisting: clearExisting,
+                    typingDelay: typingDelay,
+                    snapshotId: snapshotId)
+            })
+
+        self.logger.debug("Type completed via \(result.path.rawValue, privacy: .public)")
+        return result
+    }
+
+    private func performActionType(
+        text: String,
+        target: String?,
+        clearExisting: Bool,
+        snapshotId: String?) async throws -> ActionInputResult
+    {
+        guard let target,
+              let element = try await self.resolveAutomationElement(target: target, snapshotId: snapshotId)
+        else {
+            throw ActionInputError.unsupported(.missingElement)
+        }
+
+        return try self.actionInputDriver.trySetText(
+            element: element,
+            text: text,
+            replace: clearExisting)
+    }
+
+    private func performSyntheticType(
+        text: String,
+        target: String?,
+        clearExisting: Bool,
+        typingDelay: Int,
+        snapshotId: String?) async throws
+    {
         // If target specified, click on it first
         if let target {
             var elementFound = false
@@ -107,6 +184,29 @@ public final class TypeService {
         cadence: TypingCadence,
         snapshotId: String?) async throws -> TypeResult
     {
+        var result: TypeResult?
+        _ = try await UIInputDispatcher.run(
+            verb: .type,
+            strategy: self.inputPolicy.strategy(for: .type),
+            action: nil,
+            synth: {
+                result = try await self.performSyntheticTypeActions(
+                    actions,
+                    cadence: cadence,
+                    snapshotId: snapshotId)
+            })
+
+        guard let result else {
+            throw PeekabooError.operationError(message: "Type action execution did not produce a result")
+        }
+        return result
+    }
+
+    private func performSyntheticTypeActions(
+        _ actions: [TypeAction],
+        cadence: TypingCadence,
+        snapshotId _: String?) async throws -> TypeResult
+    {
         var totalChars = 0
         var keyPresses = 0
         var humanContext: HumanTypingContext?
@@ -153,15 +253,49 @@ public final class TypeService {
             keyPresses: keyPresses)
     }
 
+    private func resolveAutomationElement(target: String, snapshotId: String?) async throws -> AutomationElement? {
+        if let snapshotId {
+            guard let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId)
+            else {
+                throw ActionInputError.staleElement
+            }
+
+            if let element = detectionResult.elements.findById(target) ??
+                Self.resolveTargetElement(query: target, in: detectionResult)
+            {
+                guard let resolved = self.automationElementResolver.resolve(
+                    detectedElement: element,
+                    windowContext: detectionResult.metadata.windowContext)
+                else {
+                    throw ActionInputError.staleElement
+                }
+                return resolved
+            }
+        }
+
+        return self.automationElementResolver.resolve(query: target, windowContext: nil, requireTextInput: true)
+    }
+
+    private func bundleIdentifier(snapshotId: String?) async -> String? {
+        if let snapshotId,
+           let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId),
+           let bundleIdentifier = detectionResult.metadata.windowContext?.applicationBundleId
+        {
+            return bundleIdentifier
+        }
+
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
     // MARK: - Input Helpers
 
     private func clearCurrentField() async throws {
         self.logger.debug("Clearing current field")
 
-        try InputDriver.hotkey(keys: ["cmd", "a"])
+        try self.syntheticInputDriver.hotkey(keys: ["cmd", "a"], holdDuration: 0.1)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
 
-        try InputDriver.tapKey(.delete)
+        try self.syntheticInputDriver.tapKey(.delete, modifiers: [])
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
 
@@ -176,6 +310,6 @@ public final class TypeService {
     }
 
     private func typeCharacter(_ char: Character) async throws {
-        try InputDriver.type(String(char), delayPerCharacter: 0)
+        try self.syntheticInputDriver.type(String(char), delayPerCharacter: 0)
     }
 }

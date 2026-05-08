@@ -206,19 +206,19 @@ extension MenuService {
         var modifierSet: Set<String> = []
         var displayParts: [String] = []
 
-        if modifiers & (1 << 0) != 0 {
+        if modifiers & (1 << 3) == 0 {
             modifierSet.insert("cmd")
             displayParts.append("⌘")
         }
-        if modifiers & (1 << 1) != 0 {
+        if modifiers & (1 << 0) != 0 {
             modifierSet.insert("shift")
             displayParts.append("⇧")
         }
-        if modifiers & (1 << 2) != 0 {
+        if modifiers & (1 << 1) != 0 {
             modifierSet.insert("option")
             displayParts.append("⌥")
         }
-        if modifiers & (1 << 3) != 0 {
+        if modifiers & (1 << 2) != 0 {
             modifierSet.insert("ctrl")
             displayParts.append("⌃")
         }

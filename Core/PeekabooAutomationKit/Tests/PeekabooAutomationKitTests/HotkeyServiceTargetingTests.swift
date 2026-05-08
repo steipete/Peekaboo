@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Darwin
 import PeekabooFoundation
@@ -134,5 +135,85 @@ struct HotkeyServiceTargetingTests {
     @Test func `process liveness check rejects stale pids`() {
         #expect(HotkeyService.isProcessAliveForTesting(getpid()))
         #expect(!HotkeyService.isProcessAliveForTesting(pid_t(Int32.max)))
+    }
+
+    @Test func `action first targeted hotkey uses action driver when menu shortcut resolves`() async throws {
+        var postedEvents: [CGEventType] = []
+        let driver = RecordingHotkeyActionDriver(result: ActionInputResult(actionName: "AXPress"))
+        let service = HotkeyService(
+            inputPolicy: UIInputPolicy(defaultStrategy: .actionFirst),
+            actionInputDriver: driver,
+            postEventAccessEvaluator: { true },
+            eventPoster: { event, _ in postedEvents.append(event.type) },
+            runningApplicationResolver: { _ in NSRunningApplication.current })
+
+        try await service.hotkey(keys: "cmd,s", holdDuration: 0, targetProcessIdentifier: getpid())
+
+        #expect(driver.hotkeyCalls == [["cmd", "s"]])
+        #expect(postedEvents.isEmpty)
+    }
+
+    @Test func `action first targeted hotkey falls back to synth when menu shortcut is unavailable`() async throws {
+        var postedEvents: [CGEventType] = []
+        let driver = RecordingHotkeyActionDriver(error: .unsupported(.menuShortcutUnavailable))
+        let service = HotkeyService(
+            inputPolicy: UIInputPolicy(defaultStrategy: .actionFirst),
+            actionInputDriver: driver,
+            postEventAccessEvaluator: { true },
+            eventPoster: { event, _ in postedEvents.append(event.type) },
+            runningApplicationResolver: { _ in NSRunningApplication.current })
+
+        try await service.hotkey(keys: "cmd,s", holdDuration: 0, targetProcessIdentifier: getpid())
+
+        #expect(driver.hotkeyCalls == [["cmd", "s"]])
+        #expect(postedEvents == [.keyDown, .keyUp])
+    }
+}
+
+@MainActor
+private final class RecordingHotkeyActionDriver: ActionInputDriving {
+    private let result: ActionInputResult?
+    private let error: ActionInputError?
+    private(set) var hotkeyCalls: [[String]] = []
+
+    init(result: ActionInputResult? = nil, error: ActionInputError? = nil) {
+        self.result = result
+        self.error = error
+    }
+
+    func tryClick(element _: AutomationElement) throws -> ActionInputResult {
+        throw ActionInputError.unsupported(.actionUnsupported)
+    }
+
+    func tryRightClick(element _: AutomationElement) throws -> ActionInputResult {
+        throw ActionInputError.unsupported(.actionUnsupported)
+    }
+
+    func tryScroll(
+        element _: AutomationElement,
+        direction _: ScrollDirection,
+        pages _: Int) throws -> ActionInputResult
+    {
+        throw ActionInputError.unsupported(.actionUnsupported)
+    }
+
+    func trySetText(element _: AutomationElement, text _: String, replace _: Bool) throws -> ActionInputResult {
+        throw ActionInputError.unsupported(.attributeUnsupported)
+    }
+
+    func tryHotkey(application _: NSRunningApplication, keys: [String]) throws -> ActionInputResult {
+        self.hotkeyCalls.append(keys)
+        if let error {
+            throw error
+        }
+        return self.result ?? ActionInputResult(actionName: "AXPress")
+    }
+
+    func trySetValue(element _: AutomationElement, value _: UIElementValue) throws -> ActionInputResult {
+        throw ActionInputError.unsupported(.valueNotSettable)
+    }
+
+    func tryPerformAction(element _: AutomationElement, actionName _: String) throws -> ActionInputResult {
+        throw ActionInputError.unsupported(.actionUnsupported)
     }
 }

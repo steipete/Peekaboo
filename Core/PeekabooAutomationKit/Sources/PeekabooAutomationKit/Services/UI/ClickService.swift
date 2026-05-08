@@ -43,27 +43,47 @@ import PeekabooFoundation
 public final class ClickService {
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "ClickService")
     private let snapshotManager: any SnapshotManagerProtocol
+    let inputPolicy: UIInputPolicy
+    private let actionInputDriver: any ActionInputDriving
+    private let syntheticInputDriver: any SyntheticInputDriving
+    private let automationElementResolver: AutomationElementResolver
 
-    public init(snapshotManager: (any SnapshotManagerProtocol)? = nil) {
+    public init(
+        snapshotManager: (any SnapshotManagerProtocol)? = nil,
+        inputPolicy: UIInputPolicy = .currentBehavior,
+        actionInputDriver: any ActionInputDriving = ActionInputDriver(),
+        syntheticInputDriver: any SyntheticInputDriving = SyntheticInputDriver(),
+        automationElementResolver: AutomationElementResolver = AutomationElementResolver())
+    {
         self.snapshotManager = snapshotManager ?? SnapshotManager()
+        self.inputPolicy = inputPolicy
+        self.actionInputDriver = actionInputDriver
+        self.syntheticInputDriver = syntheticInputDriver
+        self.automationElementResolver = automationElementResolver
     }
 
     /// Perform a click operation
+    @discardableResult
     @MainActor
-    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+    public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws
+        -> UIInputExecutionResult
+    {
         self.logger.debug("Click requested - target: \(String(describing: target)), type: \(clickType)")
+        let bundleIdentifier = await self.bundleIdentifier(snapshotId: snapshotId)
 
         do {
-            switch target {
-            case let .elementId(id):
-                try await self.clickElementById(id: id, clickType: clickType, snapshotId: snapshotId)
-
-            case let .coordinates(point):
-                try await self.performClick(at: point, clickType: clickType)
-
-            case let .query(query):
-                try await self.clickElementByQuery(query: query, clickType: clickType, snapshotId: snapshotId)
-            }
+            let result = try await UIInputDispatcher.run(
+                verb: .click,
+                strategy: self.inputPolicy.strategy(for: .click, bundleIdentifier: bundleIdentifier),
+                bundleIdentifier: bundleIdentifier,
+                action: {
+                    try await self.performActionClick(target: target, clickType: clickType, snapshotId: snapshotId)
+                },
+                synth: {
+                    try await self.performSyntheticClick(target: target, clickType: clickType, snapshotId: snapshotId)
+                })
+            self.logger.debug("Click completed via \(result.path.rawValue, privacy: .public)")
+            return result
         } catch {
             self.logger.error("Click failed: \(error.localizedDescription)")
             throw error
@@ -71,6 +91,94 @@ public final class ClickService {
     }
 
     // MARK: - Private Methods
+
+    private func performActionClick(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?) async throws -> ActionInputResult
+    {
+        guard let element = try await self.resolveAutomationElement(target: target, snapshotId: snapshotId) else {
+            throw ActionInputError.unsupported(.missingElement)
+        }
+
+        switch clickType {
+        case .single:
+            return try self.actionInputDriver.tryClick(element: element)
+        case .right:
+            return try self.actionInputDriver.tryRightClick(element: element)
+        case .double:
+            throw ActionInputError.unsupported(.actionUnsupported)
+        }
+    }
+
+    private func performSyntheticClick(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        switch target {
+        case let .elementId(id):
+            try await self.clickElementById(id: id, clickType: clickType, snapshotId: snapshotId)
+
+        case let .coordinates(point):
+            try await self.performClick(at: point, clickType: clickType)
+
+        case let .query(query):
+            try await self.clickElementByQuery(query: query, clickType: clickType, snapshotId: snapshotId)
+        }
+    }
+
+    private func resolveAutomationElement(target: ClickTarget, snapshotId: String?) async throws -> AutomationElement? {
+        switch target {
+        case .coordinates:
+            return nil
+
+        case let .elementId(id):
+            guard let snapshotId else {
+                return nil
+            }
+            guard let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId)
+            else {
+                throw ActionInputError.staleElement
+            }
+            guard let element = detectionResult.elements.findById(id) else {
+                throw ActionInputError.unsupported(.missingElement)
+            }
+            guard let resolved = self.automationElementResolver.resolve(
+                detectedElement: element,
+                windowContext: detectionResult.metadata.windowContext)
+            else {
+                throw ActionInputError.unsupported(.missingElement)
+            }
+            return resolved
+
+        case let .query(query):
+            if let snapshotId {
+                guard let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId)
+                else {
+                    throw ActionInputError.staleElement
+                }
+                if let element = Self.resolveTargetElement(query: query, in: detectionResult) {
+                    guard let resolved = self.automationElementResolver.resolve(
+                        detectedElement: element,
+                        windowContext: detectionResult.metadata.windowContext)
+                    else {
+                        throw ActionInputError.unsupported(.missingElement)
+                    }
+                    return resolved
+                }
+            }
+
+            return self.findElementByQuery(query).map(AutomationElement.init)
+        }
+    }
+
+    private func bundleIdentifier(snapshotId: String?) async -> String? {
+        if let snapshotId,
+           let detectionResult = try? await self.snapshotManager.getDetectionResult(snapshotId: snapshotId),
+           let bundleIdentifier = detectionResult.metadata.windowContext?.applicationBundleId
+        {
+            return bundleIdentifier
+        }
+
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
 
     private func clickElementById(id: String, clickType: ClickType, snapshotId: String?) async throws {
         // Get element from snapshot
@@ -287,18 +395,18 @@ public final class ClickService {
 
         switch clickType {
         case .single:
-            try InputDriver.click(at: point, button: .left, count: 1)
+            try self.syntheticInputDriver.click(at: point, button: .left, count: 1)
         case .right:
-            try InputDriver.click(at: point, button: .right, count: 1)
+            try self.syntheticInputDriver.click(at: point, button: .right, count: 1)
         case .double:
-            try InputDriver.click(at: point, button: .left, count: 2)
+            try self.syntheticInputDriver.click(at: point, button: .left, count: 2)
         }
     }
 
     private func performForceClick(at point: CGPoint) async throws {
-        try InputDriver.move(to: point)
+        try self.syntheticInputDriver.move(to: point)
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
-        try InputDriver.pressHold(at: point, button: .left, duration: 0.5)
+        try self.syntheticInputDriver.pressHold(at: point, button: .left, duration: 0.5)
     }
 }
 

@@ -21,11 +21,11 @@ extension UIAutomationService {
      */
     public func scroll(_ request: ScrollRequest) async throws {
         self.logger.debug("Delegating scroll to ScrollService")
-        try await self.scrollService.scroll(request)
+        let result = try await self.scrollService.scroll(request)
 
-        let mouseLocation = NSEvent.mouseLocation
+        let feedbackPoint = result.anchorPoint ?? NSEvent.mouseLocation
         _ = await self.feedbackClient.showScrollFeedback(
-            at: mouseLocation,
+            at: feedbackPoint,
             direction: request.direction,
             amount: request.amount)
     }
@@ -62,7 +62,7 @@ extension UIAutomationService {
      */
     public func hotkey(keys: String, holdDuration: Int) async throws {
         self.logger.debug("Delegating hotkey to HotkeyService")
-        try await self.hotkeyService.hotkey(keys: keys, holdDuration: holdDuration)
+        _ = try await self.hotkeyService.hotkey(keys: keys, holdDuration: holdDuration)
 
         let keyArray = keys.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
         _ = await self.feedbackClient.showHotkeyDisplay(keys: keyArray, duration: 1.0)
@@ -70,7 +70,7 @@ extension UIAutomationService {
 
     public func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
         self.logger.debug("Delegating targeted hotkey to HotkeyService")
-        try await self.hotkeyService.hotkey(
+        _ = try await self.hotkeyService.hotkey(
             keys: keys,
             holdDuration: holdDuration,
             targetProcessIdentifier: targetProcessIdentifier)

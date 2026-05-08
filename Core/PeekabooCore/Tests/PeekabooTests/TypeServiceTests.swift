@@ -63,6 +63,11 @@ struct TypeServiceTests {
                 snapshotId: nil)
         } catch is NotFoundError {
             // Expected in test environment
+        } catch let error as PeekabooError {
+            guard case .elementNotFound = error else {
+                throw error
+            }
+            // Expected in test environment after NotFoundError factory migration.
         }
     }
 

@@ -1,4 +1,5 @@
 import Foundation
+import PeekabooAutomationKit
 import Tachikoma
 
 extension ConfigurationManager {
@@ -172,6 +173,66 @@ extension ConfigurationManager {
             defaultValue: 16384)
     }
 
+    /// Get UI input strategy policy with precedence: CLI args > env vars > config file > defaults.
+    public func getUIInputPolicy(cliStrategy: UIInputStrategy? = nil) -> UIInputPolicy {
+        let config = self.configuration?.input
+        let globalEnvStrategy = self.uiInputStrategyFromEnvironment("PEEKABOO_INPUT_STRATEGY")
+        let defaultStrategy = self.resolveUIInputStrategy(
+            cliStrategy: cliStrategy,
+            envStrategy: globalEnvStrategy,
+            configStrategy: config?.defaultStrategy,
+            defaultStrategy: .synthFirst)
+
+        let clickStrategy = self.resolveUIInputStrategyOverride(
+            cliStrategy: cliStrategy,
+            envVar: "PEEKABOO_CLICK_INPUT_STRATEGY",
+            globalEnvStrategy: globalEnvStrategy,
+            configStrategy: config?.click,
+            builtInStrategy: config?.defaultStrategy == nil ? .actionFirst : nil)
+        let scrollStrategy = self.resolveUIInputStrategyOverride(
+            cliStrategy: cliStrategy,
+            envVar: "PEEKABOO_SCROLL_INPUT_STRATEGY",
+            globalEnvStrategy: globalEnvStrategy,
+            configStrategy: config?.scroll,
+            builtInStrategy: config?.defaultStrategy == nil ? .actionFirst : nil)
+        let typeStrategy = self.resolveUIInputStrategyOverride(
+            cliStrategy: cliStrategy,
+            envVar: "PEEKABOO_TYPE_INPUT_STRATEGY",
+            globalEnvStrategy: globalEnvStrategy,
+            configStrategy: config?.type)
+        let hotkeyStrategy = self.resolveUIInputStrategyOverride(
+            cliStrategy: cliStrategy,
+            envVar: "PEEKABOO_HOTKEY_INPUT_STRATEGY",
+            globalEnvStrategy: globalEnvStrategy,
+            configStrategy: config?.hotkey)
+        let setValueStrategy = self.resolveUIInputStrategy(
+            cliStrategy: cliStrategy,
+            envStrategy: self.uiInputStrategyFromEnvironment("PEEKABOO_SET_VALUE_INPUT_STRATEGY") ??
+                globalEnvStrategy,
+            configStrategy: config?.setValue,
+            defaultStrategy: .actionOnly)
+        let performActionStrategy = self.resolveUIInputStrategy(
+            cliStrategy: cliStrategy,
+            envStrategy: self.uiInputStrategyFromEnvironment("PEEKABOO_PERFORM_ACTION_INPUT_STRATEGY") ??
+                globalEnvStrategy,
+            configStrategy: config?.performAction,
+            defaultStrategy: .actionOnly)
+
+        let explicitOverrides = self.explicitUIInputOverrides(
+            cliStrategy: cliStrategy,
+            globalEnvStrategy: globalEnvStrategy)
+
+        return UIInputPolicy(
+            defaultStrategy: defaultStrategy,
+            click: clickStrategy,
+            scroll: scrollStrategy,
+            type: typeStrategy,
+            hotkey: hotkeyStrategy,
+            setValue: setValueStrategy,
+            performAction: performActionStrategy,
+            perApp: self.resolvedAppInputPolicies(from: config?.perApp, explicitOverrides: explicitOverrides))
+    }
+
     /// Test method to verify module interface
     public func testMethod() -> String {
         "test"
@@ -198,5 +259,74 @@ extension ConfigurationManager {
         guard let firstProvider = components.first else { return nil }
         let parts = firstProvider.split(separator: "/")
         return parts.first.map(String.init)
+    }
+
+    private func resolveUIInputStrategy(
+        cliStrategy: UIInputStrategy?,
+        envStrategy: UIInputStrategy?,
+        configStrategy: UIInputStrategy?,
+        defaultStrategy: UIInputStrategy) -> UIInputStrategy
+    {
+        cliStrategy ?? envStrategy ?? configStrategy ?? defaultStrategy
+    }
+
+    private func resolveUIInputStrategyOverride(
+        cliStrategy: UIInputStrategy?,
+        envVar: String,
+        globalEnvStrategy: UIInputStrategy?,
+        configStrategy: UIInputStrategy?,
+        builtInStrategy: UIInputStrategy? = nil) -> UIInputStrategy?
+    {
+        cliStrategy ?? self.uiInputStrategyFromEnvironment(envVar) ?? globalEnvStrategy ?? configStrategy ??
+            builtInStrategy
+    }
+
+    private func uiInputStrategyFromEnvironment(_ envVar: String) -> UIInputStrategy? {
+        guard let value = self.environmentValue(for: envVar) else { return nil }
+        return UIInputStrategy(rawValue: value.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private func explicitUIInputOverrides(
+        cliStrategy: UIInputStrategy?,
+        globalEnvStrategy: UIInputStrategy?) -> AppUIInputPolicy
+    {
+        let click = cliStrategy ?? self.uiInputStrategyFromEnvironment("PEEKABOO_CLICK_INPUT_STRATEGY") ??
+            globalEnvStrategy
+        let scroll = cliStrategy ?? self.uiInputStrategyFromEnvironment("PEEKABOO_SCROLL_INPUT_STRATEGY") ??
+            globalEnvStrategy
+        let type = cliStrategy ?? self.uiInputStrategyFromEnvironment("PEEKABOO_TYPE_INPUT_STRATEGY") ??
+            globalEnvStrategy
+        let hotkey = cliStrategy ?? self.uiInputStrategyFromEnvironment("PEEKABOO_HOTKEY_INPUT_STRATEGY") ??
+            globalEnvStrategy
+        let setValue = cliStrategy ?? self.uiInputStrategyFromEnvironment("PEEKABOO_SET_VALUE_INPUT_STRATEGY") ??
+            globalEnvStrategy
+        let performAction = cliStrategy ??
+            self.uiInputStrategyFromEnvironment("PEEKABOO_PERFORM_ACTION_INPUT_STRATEGY") ??
+            globalEnvStrategy
+
+        return AppUIInputPolicy(
+            click: click,
+            scroll: scroll,
+            type: type,
+            hotkey: hotkey,
+            setValue: setValue,
+            performAction: performAction)
+    }
+
+    private func resolvedAppInputPolicies(
+        from config: [String: Configuration.AppInputConfig]?,
+        explicitOverrides: AppUIInputPolicy) -> [String: AppUIInputPolicy]
+    {
+        guard let config else { return [:] }
+        return config.mapValues { appConfig in
+            AppUIInputPolicy(
+                defaultStrategy: appConfig.defaultStrategy,
+                click: explicitOverrides.click ?? appConfig.click,
+                scroll: explicitOverrides.scroll ?? appConfig.scroll,
+                type: explicitOverrides.type ?? appConfig.type,
+                hotkey: explicitOverrides.hotkey ?? appConfig.hotkey,
+                setValue: explicitOverrides.setValue ?? appConfig.setValue,
+                performAction: explicitOverrides.performAction ?? appConfig.performAction)
+        }
     }
 }
