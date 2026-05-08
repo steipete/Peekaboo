@@ -174,6 +174,15 @@ struct HotkeyServiceTests {
     }
 
     @Test
+    func `Hotkey parser accepts comma space and plus separators`() throws {
+        let service = HotkeyService()
+
+        #expect(try service.parsedKeysForTesting("cmd,s") == ["cmd", "s"])
+        #expect(try service.parsedKeysForTesting("cmd s") == ["cmd", "s"])
+        #expect(try service.parsedKeysForTesting("cmd+s") == ["cmd", "s"])
+    }
+
+    @Test
     func `Empty hotkey strings throw invalid input`() async {
         let service = HotkeyService()
         await #expect(throws: PeekabooError.self) {

@@ -144,7 +144,7 @@ struct EnhancedErrorIntegrationTests {
     @Test(
         .enabled(if: ProcessInfo.processInfo.environment["RUN_INTEGRATION_TESTS"] != nil)
     )
-    func `Invalid hotkey format shows examples`() async throws {
+    func `Invalid hotkey shows examples`() async throws {
         let services = await MainActor.run { PeekabooServices() }
         guard let agent = services.agent else {
             Issue.record("Agent service not available")
@@ -153,7 +153,7 @@ struct EnhancedErrorIntegrationTests {
 
         let delegate = TestEventDelegate()
         _ = try await agent.executeTask(
-            "Press hotkey 'cmd+shift+a'", // Wrong format
+            "Press hotkey 'cmd+shift'", // Missing primary key
             maxSteps: 10,
             dryRun: false,
             queueMode: .oneAtATime,
@@ -164,14 +164,14 @@ struct EnhancedErrorIntegrationTests {
         let hasFormatError = events.contains { event in
             if case let .toolCallCompleted(name, result) = event,
                name == "hotkey" {
-                return result.contains("Use commas") ||
-                    result.contains("cmd,shift,a") ||
-                    result.contains("instead of '+'")
+                return result.contains("Invalid hotkey") ||
+                    result.contains("primary") ||
+                    result.contains("cmd,shift,a")
             }
             return false
         }
 
-        #expect(hasFormatError, "Should suggest comma format")
+        #expect(hasFormatError, "Should explain invalid hotkey")
     }
 }
 

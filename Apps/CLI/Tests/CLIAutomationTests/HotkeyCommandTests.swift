@@ -15,6 +15,10 @@ import Testing
         let command2 = try HotkeyCommand.parse(["--keys", "cmd a"])
         #expect(command2.resolvedKeys == "cmd a")
 
+        // Test plus-separated format
+        let commandPlus = try HotkeyCommand.parse(["--keys", "cmd+s"])
+        #expect(commandPlus.resolvedKeys == "cmd+s")
+
         // Test with custom hold duration
         let command3 = try HotkeyCommand.parse(["--keys", "cmd,v", "--hold-duration", "100"])
         #expect(command3.resolvedKeys == "cmd,v")
@@ -63,6 +67,9 @@ import Testing
         // Test mixed case handling
         let command3 = try HotkeyCommand.parse(["--keys", "CMD,C"])
         #expect(command3.resolvedKeys == "CMD,C") // Original case preserved
+
+        let command4 = try HotkeyCommand.parse(["--keys", "cmd+shift+t"])
+        #expect(command4.resolvedKeys == "cmd+shift+t")
     }
 
     @Test func `complex hotkeys`() throws {
@@ -85,6 +92,9 @@ import Testing
 
         let positionalSpace = try HotkeyCommand.parse(["cmd shift t"])
         #expect(positionalSpace.resolvedKeys == "cmd shift t")
+
+        let positionalPlus = try HotkeyCommand.parse(["cmd+shift+t"])
+        #expect(positionalPlus.resolvedKeys == "cmd+shift+t")
     }
 
     @Test func `positional overrides option`() throws {
@@ -143,6 +153,20 @@ import Testing
         let call = try #require(calls.first)
         #expect(call.keys == "cmd,l")
         #expect(call.targetProcessIdentifier == 4321)
+    }
+
+    @Test func `plus separated hotkey is normalized before automation`() async throws {
+        let context = await self.makeContext()
+
+        let result = try await self.runHotkey(
+            arguments: ["cmd+s", "--pid", "4321", "--focus-background"],
+            context: context
+        )
+
+        #expect(result.exitStatus == 0)
+        let calls = await self.automationState(context) { $0.targetedHotkeyCalls }
+        let call = try #require(calls.first)
+        #expect(call.keys == "cmd,s")
     }
 
     @Test func `background hotkey pid does not require app lookup`() async throws {

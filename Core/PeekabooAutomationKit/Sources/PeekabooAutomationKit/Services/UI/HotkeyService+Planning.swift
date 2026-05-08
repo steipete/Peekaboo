@@ -13,8 +13,8 @@ extension HotkeyService {
 
     func parsedKeys(_ keys: String) throws -> [String] {
         let parsed = keys
-            .split(separator: ",")
-            .map { HotkeyKey.normalizedName(for: String($0)) }
+            .components(separatedBy: CharacterSet(charactersIn: ",+").union(.whitespacesAndNewlines))
+            .map { HotkeyKey.normalizedName(for: $0) }
             .filter { !$0.isEmpty }
         guard !parsed.isEmpty else { throw PeekabooError.invalidInput("Hotkey string is empty") }
         return parsed

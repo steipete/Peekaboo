@@ -7,10 +7,10 @@ import PeekabooFoundation
 @available(macOS 14.0, *)
 @MainActor
 struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
-    @Argument(help: "Keys to press (comma-separated or space-separated)")
+    @Argument(help: "Keys to press (comma-, plus-, or space-separated)")
     var keysArgument: String?
 
-    @Option(name: .customLong("keys"), help: "Keys to press (comma-separated or space-separated)")
+    @Option(name: .customLong("keys"), help: "Keys to press (comma-, plus-, or space-separated)")
     var keysOption: String?
 
     @OptionGroup var target: InteractionTargetOptions
@@ -73,13 +73,7 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
                 throw ValidationError("No keys specified")
             }
 
-            let keyNames: [String] = if keysString.contains(",") {
-                // Comma-separated format: "cmd,c" or "cmd, c"
-                keysString.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-            } else {
-                // Space-separated format: "cmd c" or "cmd a"
-                keysString.split(separator: " ").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-            }
+            let keyNames = Self.parseKeyNames(keysString)
 
             guard !keyNames.isEmpty else {
                 throw ValidationError("No keys specified")
@@ -177,6 +171,13 @@ struct HotkeyCommand: ErrorHandlingCommand, OutputFormattable {
         }
     }
 
+    private static func parseKeyNames(_ keysString: String) -> [String] {
+        keysString
+            .components(separatedBy: CharacterSet(charactersIn: ",+").union(.whitespacesAndNewlines))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+    }
+
     private func resolveBackgroundHotkeyProcessIdentifier() async throws -> pid_t {
         if self.target.windowId != nil || self.target.windowTitle != nil || self.target.windowIndex != nil {
             throw ValidationError("--focus-background supports --app or --pid")
@@ -232,8 +233,10 @@ extension HotkeyCommand: ParsableCommand {
 
                     EXAMPLES:
                       peekaboo hotkey "cmd,c"               # Copy (comma-separated, positional)
+                      peekaboo hotkey "cmd+c"               # Copy (plus-separated, positional)
                       peekaboo hotkey "cmd space"           # Spotlight (space-separated, positional)
                       peekaboo hotkey --keys "cmd,c"          # Copy (comma-separated)
+                      peekaboo hotkey --keys "cmd+c"          # Copy (plus-separated)
                       peekaboo hotkey --keys "cmd c"          # Copy (space-separated)
                       peekaboo hotkey --keys "cmd,v"          # Paste
                       peekaboo hotkey --keys "cmd a"          # Select all
