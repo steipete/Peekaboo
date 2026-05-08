@@ -178,6 +178,7 @@ struct SwipePathView: View {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     VStack {
         SwipePathView(
@@ -197,3 +198,4 @@ struct SwipePathView: View {
             .background(Color.black.opacity(0.1))
     }
 }
+#endif

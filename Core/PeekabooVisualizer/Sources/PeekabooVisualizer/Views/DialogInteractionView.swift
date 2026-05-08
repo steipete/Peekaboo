@@ -222,6 +222,7 @@ extension DialogActionType {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     VStack(spacing: 50) {
         DialogInteractionView(
@@ -246,3 +247,4 @@ extension DialogActionType {
             .background(Color.black.opacity(0.1))
     }
 }
+#endif

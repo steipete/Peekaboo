@@ -180,7 +180,7 @@ struct AnnotatedScreenshotView: View {
 
 // MARK: - Preview
 
-#if DEBUG
+#if DEBUG && !SWIFT_PACKAGE
 #Preview("Annotated Screenshot") {
     // Create sample data
     let sampleElements = [

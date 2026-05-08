@@ -112,6 +112,7 @@ struct MouseTrailView: View {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     MouseTrailView(
         from: CGPoint(x: 100, y: 100),
@@ -120,3 +121,4 @@ struct MouseTrailView: View {
         .frame(width: 400, height: 400)
         .background(Color.black.opacity(0.1))
 }
+#endif

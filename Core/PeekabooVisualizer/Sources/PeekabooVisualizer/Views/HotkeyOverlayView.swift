@@ -272,6 +272,7 @@ extension Array {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     VStack(spacing: 50) {
         HotkeyOverlayView(keys: ["Cmd", "C"])
@@ -287,3 +288,4 @@ extension Array {
             .background(Color.black.opacity(0.1))
     }
 }
+#endif

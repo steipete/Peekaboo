@@ -85,7 +85,7 @@ struct ScreenshotFlashView: View {
 
 // MARK: - Preview
 
-#if DEBUG
+#if DEBUG && !SWIFT_PACKAGE
 #Preview("Normal Flash") {
     ScreenshotFlashView(showGhost: false, intensity: 1.0)
         .frame(width: 400, height: 300)

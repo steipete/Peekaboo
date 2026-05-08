@@ -152,6 +152,7 @@ struct MenuItemView: View {
 
 // Removed - already defined in HotkeyOverlayView.swift
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     VStack(spacing: 50) {
         MenuNavigationView(
@@ -170,3 +171,4 @@ struct MenuItemView: View {
             .background(Color.black.opacity(0.1))
     }
 }
+#endif

@@ -319,7 +319,7 @@ struct SpecialKeyView: View {
 
 // MARK: - Preview
 
-#if DEBUG
+#if DEBUG && !SWIFT_PACKAGE
 #Preview("Modern Theme") {
     TypeAnimationView(
         keys: ["H", "e", "l", "l", "o", " ", "W", "o", "r", "l", "d"],
