@@ -192,6 +192,8 @@ struct MCPToolRegistryIntegrationTests {
             makeNativeTool(SeeTool.init),
             makeNativeTool(ClickTool.init),
             makeNativeTool(TypeTool.init),
+            makeNativeTool(SetValueTool.init),
+            makeNativeTool(PerformActionTool.init),
             makeNativeTool(ScrollTool.init),
             makeNativeTool(HotkeyTool.init),
             makeNativeTool(SwipeTool.init),
@@ -207,7 +209,7 @@ struct MCPToolRegistryIntegrationTests {
         ])
 
         let tools = registry.allTools()
-        #expect(tools.count == 20)
+        #expect(tools.count == 22)
 
         // Verify some key tools are present
         let imageToolExists = registry.tool(named: "image") != nil

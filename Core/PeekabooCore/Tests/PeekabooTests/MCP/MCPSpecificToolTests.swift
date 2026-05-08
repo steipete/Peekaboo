@@ -366,6 +366,8 @@ struct MCPToolDescriptionTests {
             makeTestTool(SeeTool.init),
             makeTestTool(ClickTool.init),
             makeTestTool(TypeTool.init),
+            makeTestTool(SetValueTool.init),
+            makeTestTool(PerformActionTool.init),
             makeTestTool(MCPAgentTool.init),
         ]
 
@@ -399,6 +401,8 @@ struct MCPToolDescriptionTests {
             makeTestTool(SeeTool.init),
             makeTestTool(ClickTool.init),
             makeTestTool(TypeTool.init),
+            makeTestTool(SetValueTool.init),
+            makeTestTool(PerformActionTool.init),
             makeTestTool(ScrollTool.init),
             makeTestTool(HotkeyTool.init),
             makeTestTool(SwipeTool.init),

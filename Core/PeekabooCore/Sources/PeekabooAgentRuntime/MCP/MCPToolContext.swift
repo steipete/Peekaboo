@@ -1,7 +1,6 @@
 import Foundation
 import PeekabooAutomation
 import PeekabooAutomationKit
-import PeekabooFoundation
 
 /// Lightweight dependency container for MCP tools so they no longer reach for
 /// global singletons directly. Each tool can receive the subset of

@@ -1,6 +1,7 @@
 import Foundation
 import os.log
 import PeekabooAutomation
+import PeekabooAutomationKit
 import Tachikoma
 import TachikomaMCP
 
@@ -38,11 +39,14 @@ public struct ToolFilters: Sendable {
 public enum ToolFiltering {
     /// Resolve filters from environment + config with the defined precedence rules.
     public static func currentFilters(configuration: ConfigurationManager = .shared) -> ToolFilters {
-        let env = ProcessInfo.processInfo.environment
-        let envAllow = self.parseList(env["PEEKABOO_ALLOW_TOOLS"])
-        let envDeny = self.parseList(env["PEEKABOO_DISABLE_TOOLS"])
+        self.filters(
+            config: configuration.getConfiguration(),
+            environment: ProcessInfo.processInfo.environment)
+    }
 
-        let config = configuration.getConfiguration()
+    static func filters(config: Configuration?, environment: [String: String]) -> ToolFilters {
+        let envAllow = self.parseList(environment["PEEKABOO_ALLOW_TOOLS"])
+        let envDeny = self.parseList(environment["PEEKABOO_DISABLE_TOOLS"])
         let configAllow = config?.tools?.allow ?? []
         let configDeny = config?.tools?.deny ?? []
 
@@ -78,6 +82,15 @@ public enum ToolFiltering {
         self.apply(tools, filters: filters, log: log) { $0.name }
     }
 
+    /// Remove tools that are unavailable under the current input strategy policy.
+    public static func applyInputStrategyAvailability(
+        _ tools: [AgentTool],
+        policy: UIInputPolicy,
+        log: ((String) -> Void)? = nil) -> [AgentTool]
+    {
+        self.applyInputStrategyAvailability(tools, policy: policy, log: log) { $0.name }
+    }
+
     /// Filter MCPTool list.
     public static func apply(
         _ tools: [any MCPTool],
@@ -85,6 +98,15 @@ public enum ToolFiltering {
         log: ((String) -> Void)? = nil) -> [any MCPTool]
     {
         self.apply(tools, filters: filters, log: log) { $0.name }
+    }
+
+    /// Remove MCP tools that are unavailable under the current input strategy policy.
+    public static func applyInputStrategyAvailability(
+        _ tools: [any MCPTool],
+        policy: UIInputPolicy,
+        log: ((String) -> Void)? = nil) -> [any MCPTool]
+    {
+        self.applyInputStrategyAvailability(tools, policy: policy, log: log) { $0.name }
     }
 
     // MARK: - Helpers
@@ -140,6 +162,40 @@ public enum ToolFiltering {
         return filtered
     }
 
+    private static func applyInputStrategyAvailability<T>(
+        _ tools: [T],
+        policy: UIInputPolicy,
+        log: ((String) -> Void)?,
+        nameProvider: (T) -> String) -> [T]
+    {
+        tools.filter { tool in
+            let name = self.normalize(nameProvider(tool))
+            let isAvailable = switch name {
+            case "set_value":
+                self.supportsActionInvocation(policy: policy, verb: .setValue)
+            case "perform_action":
+                self.supportsActionInvocation(policy: policy, verb: .performAction)
+            default:
+                true
+            }
+
+            if !isAvailable, let log {
+                log("Tool '\(name)' not exposed because input strategy disables action invocation.")
+            }
+            return isAvailable
+        }
+    }
+
+    private static func supportsActionInvocation(policy: UIInputPolicy, verb: UIInputVerb) -> Bool {
+        if policy.strategy(for: verb).supportsActionInvocation {
+            return true
+        }
+
+        return policy.perApp.keys.contains { bundleIdentifier in
+            policy.strategy(for: verb, bundleIdentifier: bundleIdentifier).supportsActionInvocation
+        }
+    }
+
     private static func parseList(_ raw: String?) -> [String]? {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return nil
@@ -155,5 +211,16 @@ public enum ToolFiltering {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "-", with: "_")
             .lowercased()
+    }
+}
+
+extension UIInputStrategy {
+    fileprivate var supportsActionInvocation: Bool {
+        switch self {
+        case .actionFirst, .actionOnly:
+            true
+        case .synthFirst, .synthOnly:
+            false
+        }
     }
 }

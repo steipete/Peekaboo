@@ -22,8 +22,10 @@ extension PeekabooAgentService {
         name: String? = nil,
         description: String? = nil) -> AgentTool
     {
-        AgentTool(
-            name: name ?? tool.name,
+        let toolName = name ?? tool.name
+
+        return AgentTool(
+            name: toolName,
             description: description ?? tool.description,
             parameters: self.convertMCPSchemaToAgentSchema(tool.inputSchema),
             execute: { arguments in
@@ -59,6 +61,14 @@ extension PeekabooAgentService {
 
     public func createTypeTool() -> AgentTool {
         self.makeAgentTool(from: TypeTool(context: self.makeToolContext()))
+    }
+
+    public func createSetValueTool() -> AgentTool {
+        self.makeAgentTool(from: SetValueTool(context: self.makeToolContext()))
+    }
+
+    public func createPerformActionTool() -> AgentTool {
+        self.makeAgentTool(from: PerformActionTool(context: self.makeToolContext()))
     }
 
     public func createScrollTool() -> AgentTool {

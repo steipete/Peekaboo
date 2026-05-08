@@ -127,20 +127,27 @@ public struct TypeTool: MCPTool {
 
         try await self.focusIfNeeded(targetContext: targetContext, request: request, automation: automation)
         let actions = try self.buildActions(for: request)
+        let effectiveSnapshotId = targetContext?.snapshot.id ?? request.snapshotId
         let typeResult = try await automation.typeActions(
             actions,
             cadence: request.cadence,
-            snapshotId: request.snapshotId)
+            snapshotId: effectiveSnapshotId)
 
+        let invalidatedSnapshotId = await UISnapshotManager.shared.invalidateActiveSnapshot(id: effectiveSnapshotId)
         let executionTime = Date().timeIntervalSince(startTime)
         let message = self.buildSummary(
             request: request,
             executionTime: executionTime,
             result: typeResult)
-        let baseMeta: Value = .object([
+        var baseMetaDict: [String: Value] = [
             "execution_time": .double(executionTime),
             "characters_typed": .double(Double(typeResult.totalCharacters)),
-        ])
+        ]
+        if let invalidatedSnapshotId {
+            baseMetaDict["invalidated_snapshot"] = .string(invalidatedSnapshotId)
+            baseMetaDict["requires_fresh_see"] = .bool(true)
+        }
+        let baseMeta: Value = .object(baseMetaDict)
         let summary = self.buildEventSummary(
             request: request,
             targetContext: targetContext)
@@ -160,11 +167,10 @@ public struct TypeTool: MCPTool {
         guard let context = targetContext else { return }
 
         let element = context.element
-        let clickLocation = CGPoint(x: element.frame.midX, y: element.frame.midY)
         try await automation.click(
-            target: .coordinates(clickLocation),
+            target: .elementId(element.id),
             clickType: .single,
-            snapshotId: request.snapshotId)
+            snapshotId: context.snapshot.id)
         try await Task.sleep(nanoseconds: 100_000_000)
     }
 

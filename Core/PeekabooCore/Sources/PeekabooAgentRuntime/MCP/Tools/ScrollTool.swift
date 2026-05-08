@@ -124,9 +124,10 @@ public struct ScrollTool: MCPTool {
             target: target.elementId,
             smooth: request.smooth,
             delay: request.delay,
-            snapshotId: request.snapshotId)
+            snapshotId: target.snapshotId)
         try await automation.scroll(serviceRequest)
 
+        let invalidatedSnapshotId = await UISnapshotManager.shared.invalidateActiveSnapshot(id: target.snapshotId)
         let executionTime = Date().timeIntervalSince(startTime)
         let scrollDescription = request.smooth ? "smooth scroll" : "scroll"
         let duration = String(format: "%.2f", executionTime) + "s"
@@ -139,13 +140,23 @@ public struct ScrollTool: MCPTool {
             scrollDirection: request.direction.rawValue,
             scrollAmount: Double(request.amount),
             notes: target.description)
-        return ToolResponse.text(message, meta: ToolEventSummary.merge(summary: summary, into: nil))
+        var baseMeta: [String: Value] = [:]
+        if let invalidatedSnapshotId {
+            baseMeta["invalidated_snapshot"] = .string(invalidatedSnapshotId)
+            baseMeta["requires_fresh_see"] = .bool(true)
+        }
+        let meta = baseMeta.isEmpty ? nil : Value.object(baseMeta)
+        return ToolResponse.text(message, meta: ToolEventSummary.merge(summary: summary, into: meta))
     }
 
     @MainActor
     private func resolveTargetDescription(request: ScrollToolRequest) async throws -> ScrollTargetDescription {
         guard let elementId = request.elementId else {
-            return ScrollTargetDescription(elementId: nil, description: "at current mouse position", appName: nil)
+            return ScrollTargetDescription(
+                elementId: nil,
+                description: "at current mouse position",
+                appName: nil,
+                snapshotId: request.snapshotId)
         }
 
         guard let snapshot = await self.getSnapshot(id: request.snapshotId) else {
@@ -162,7 +173,8 @@ public struct ScrollTool: MCPTool {
         return ScrollTargetDescription(
             elementId: elementId,
             description: description,
-            appName: snapshot.applicationName)
+            appName: snapshot.applicationName,
+            snapshotId: snapshot.id)
     }
 }
 
@@ -179,6 +191,7 @@ private struct ScrollTargetDescription {
     let elementId: String?
     let description: String
     let appName: String?
+    let snapshotId: String?
 }
 
 private struct ScrollToolValidationError: Error {

@@ -448,6 +448,369 @@ struct MCPToolExecutionTests {
     }
 
     @Test
+    func `Click tool preserves element target for automation service`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setUIElements([
+            UIElement(
+                id: "B1",
+                elementId: "B1",
+                role: "button",
+                title: "OK",
+                label: "OK",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "button",
+                identifier: nil,
+                frame: CGRect(x: 10, y: 20, width: 80, height: 30),
+                isActionable: true),
+        ])
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "B1",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.count == 1)
+        #expect(calls.first?.snapshotId == snapshotId)
+        if case let .elementId(id) = calls.first?.target {
+            #expect(id == "B1")
+        } else {
+            Issue.record("Expected ClickTool to forward .elementId, not coordinates")
+        }
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `Click tool forwards latest snapshot id when snapshot argument is omitted`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setUIElements([
+            UIElement(
+                id: "B1",
+                elementId: "B1",
+                role: "button",
+                title: "OK",
+                label: "OK",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "button",
+                identifier: nil,
+                frame: CGRect(x: 10, y: 20, width: 80, height: 30),
+                isActionable: true),
+        ])
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["on": "B1"]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.first?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `Click tool preserves resolved query element target for automation service`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setUIElements([
+            UIElement(
+                id: "B1",
+                elementId: "B1",
+                role: "button",
+                title: "OK",
+                label: "OK",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "button",
+                identifier: nil,
+                frame: CGRect(x: 10, y: 20, width: 80, height: 30),
+                isActionable: false),
+            UIElement(
+                id: "B2",
+                elementId: "B2",
+                role: "button",
+                title: "OK",
+                label: "OK",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "button",
+                identifier: nil,
+                frame: CGRect(x: 110, y: 20, width: 80, height: 30),
+                isActionable: true),
+        ])
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "query": "OK",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.count == 1)
+        #expect(calls.first?.snapshotId == snapshotId)
+        if case let .elementId(id) = calls.first?.target {
+            #expect(id == "B2")
+        } else {
+            Issue.record("Expected ClickTool query click to forward resolved .elementId")
+        }
+    }
+
+    @Test
+    func `Click tool invalidates latest snapshot after coordinate click`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["coords": "40,50"]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.first?.snapshotId == nil)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `Click tool invalidates explicit snapshot after coordinate click`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let explicitSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let explicitSnapshotId = await explicitSnapshot.id
+        let latestSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let latestSnapshotId = await latestSnapshot.id
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "coords": "40,50",
+            "snapshot": explicitSnapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.first?.snapshotId == nil)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: explicitSnapshotId)
+        let stillLatest = await UISnapshotManager.shared.getSnapshot(id: latestSnapshotId)
+        #expect(invalidated == nil)
+        #expect(stillLatest != nil)
+    }
+
+    @Test
+    func `Type tool preserves element target when focusing before typing`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setUIElements([
+            UIElement(
+                id: "T1",
+                elementId: "T1",
+                role: "textField",
+                title: nil,
+                label: "Name",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "text field",
+                identifier: nil,
+                frame: CGRect(x: 10, y: 20, width: 160, height: 30),
+                isActionable: true),
+        ])
+
+        let tool = TypeTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "T1",
+            "text": "hello",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.clickCalls }
+        #expect(calls.count == 1)
+        #expect(calls.first?.snapshotId == snapshotId)
+        if case let .elementId(id) = calls.first?.target {
+            #expect(id == "T1")
+        } else {
+            Issue.record("Expected TypeTool focus click to forward .elementId, not coordinates")
+        }
+    }
+
+    @Test
+    func `Type tool invalidates latest snapshot after focused typing`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let tool = TypeTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["text": "hello"]))
+
+        #expect(response.isError == false)
+        let typeSnapshotId = await MainActor.run { automation.lastTypeSnapshotId }
+        #expect(typeSnapshotId == nil)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `Type tool invalidates explicit snapshot after focused typing`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let explicitSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let explicitSnapshotId = await explicitSnapshot.id
+        let latestSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let latestSnapshotId = await latestSnapshot.id
+
+        let tool = TypeTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "text": "hello",
+            "snapshot": explicitSnapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let typeSnapshotId = await MainActor.run { automation.lastTypeSnapshotId }
+        #expect(typeSnapshotId == explicitSnapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: explicitSnapshotId)
+        let stillLatest = await UISnapshotManager.shared.getSnapshot(id: latestSnapshotId)
+        #expect(invalidated == nil)
+        #expect(stillLatest != nil)
+    }
+
+    @Test
+    func `Scroll tool invalidates latest snapshot after pointer-position scroll`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let tool = ScrollTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: ["direction": "down"]))
+
+        #expect(response.isError == false)
+        let requests = await MainActor.run { automation.scrollRequests }
+        #expect(requests.first?.snapshotId == nil)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `Scroll tool invalidates explicit snapshot after pointer-position scroll`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let explicitSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let explicitSnapshotId = await explicitSnapshot.id
+        let latestSnapshot = await UISnapshotManager.shared.createSnapshot()
+        let latestSnapshotId = await latestSnapshot.id
+
+        let tool = ScrollTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "direction": "down",
+            "snapshot": explicitSnapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let requests = await MainActor.run { automation.scrollRequests }
+        #expect(requests.first?.snapshotId == explicitSnapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: explicitSnapshotId)
+        let stillLatest = await UISnapshotManager.shared.getSnapshot(id: latestSnapshotId)
+        #expect(invalidated == nil)
+        #expect(stillLatest != nil)
+    }
+
+    @Test
+    func `set_value tool calls element action service`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = SetValueTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "T1",
+            "value": "hello",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.setValueCalls.first }
+        #expect(call?.target == "T1")
+        #expect(call?.value == .string("hello"))
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `set_value tool forwards latest snapshot id when snapshot argument is omitted`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = SetValueTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "T1",
+            "value": "hello",
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.setValueCalls.first }
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `perform_action tool validates request shape`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = PerformActionTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let missing = try await tool.execute(arguments: ToolArguments(raw: ["on": "B1"]))
+        #expect(missing.isError == true)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "B1",
+            "action": "AXPress",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.performActionCalls.first }
+        #expect(call?.target == "B1")
+        #expect(call?.actionName == "AXPress")
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
     func `Move tool center uses screen and cursor services`() async throws {
         let automation = await MainActor.run {
             MockAutomationService(accessibilityGranted: true, currentMouseLocation: CGPoint(x: 10, y: 20))
@@ -578,10 +941,20 @@ private enum MCPToolTestHelpers {
 // MARK: - Mock Services
 
 @MainActor
-private final class MockAutomationService: UIAutomationServiceProtocol {
+private class MockAutomationService: UIAutomationServiceProtocol {
+    struct ClickCall {
+        let target: ClickTarget
+        let clickType: ClickType
+        let snapshotId: String?
+    }
+
     private let accessibilityGranted: Bool
     private let detectionResult: ElementDetectionResult?
     private let mockCurrentMouseLocation: CGPoint?
+    private(set) var clickCalls: [ClickCall] = []
+    private(set) var scrollRequests: [ScrollRequest] = []
+    private(set) var lastTypeActions: [TypeAction]?
+    private(set) var lastTypeSnapshotId: String?
     var lastCadence: TypingCadence?
     private(set) var lastHotkeyKeys: String?
     private(set) var lastHotkeyHoldDuration: Int?
@@ -609,21 +982,27 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
         throw PeekabooError.notImplemented("mock detectElements")
     }
 
-    func click(target _: ClickTarget, clickType _: ClickType, snapshotId _: String?) async throws {}
+    func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+        self.clickCalls.append(ClickCall(target: target, clickType: clickType, snapshotId: snapshotId))
+    }
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async
     throws {}
 
     func typeActions(
-        _: [TypeAction],
+        _ actions: [TypeAction],
         cadence: TypingCadence,
-        snapshotId _: String?) async throws -> TypeResult
+        snapshotId: String?) async throws -> TypeResult
     {
+        self.lastTypeActions = actions
         self.lastCadence = cadence
+        self.lastTypeSnapshotId = snapshotId
         return TypeResult(totalCharacters: 0, keyPresses: 0)
     }
 
-    func scroll(_: ScrollRequest) async throws {}
+    func scroll(_ request: ScrollRequest) async throws {
+        self.scrollRequests.append(request)
+    }
 
     func hotkey(keys: String, holdDuration: Int) async throws {
         self.lastHotkeyKeys = keys
@@ -669,6 +1048,42 @@ private final class MockAutomationService: UIAutomationServiceProtocol {
 
     func findElement(matching _: UIElementSearchCriteria, in _: String?) async throws -> DetectedElement {
         throw PeekabooError.elementNotFound("mock find element")
+    }
+}
+
+@MainActor
+private final class MockElementActionAutomationService: MockAutomationService, ElementActionAutomationServiceProtocol {
+    struct SetValueCall {
+        let target: String
+        let value: UIElementValue
+        let snapshotId: String?
+    }
+
+    struct PerformActionCall {
+        let target: String
+        let actionName: String
+        let snapshotId: String?
+    }
+
+    private(set) var setValueCalls: [SetValueCall] = []
+    private(set) var performActionCalls: [PerformActionCall] = []
+
+    func setValue(target: String, value: UIElementValue, snapshotId: String?) async throws -> ElementActionResult {
+        self.setValueCalls.append(SetValueCall(target: target, value: value, snapshotId: snapshotId))
+        return ElementActionResult(
+            target: target,
+            actionName: "AXSetValue",
+            anchorPoint: CGPoint(x: 10, y: 20),
+            oldValue: nil,
+            newValue: value.displayString)
+    }
+
+    func performAction(target: String, actionName: String, snapshotId: String?) async throws -> ElementActionResult {
+        self.performActionCalls.append(PerformActionCall(
+            target: target,
+            actionName: actionName,
+            snapshotId: snapshotId))
+        return ElementActionResult(target: target, actionName: actionName, anchorPoint: CGPoint(x: 10, y: 20))
     }
 }
 
@@ -877,7 +1292,9 @@ private final class MockApplicationService: ApplicationServiceProtocol {
 struct MCPToolErrorHandlingTests {
     @Test
     func `Tool handles invalid argument types gracefully`() async throws {
-        try await MCPToolTestHelpers.withContext {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+
+        try await MCPToolTestHelpers.withContext(automation: automation) {
             let tool = TypeTool()
 
             // Pass number where string expected
@@ -889,6 +1306,13 @@ struct MCPToolErrorHandlingTests {
             // TypeTool should convert number to string
             #expect(response.isError == false)
         }
+
+        let capturedActions = await MainActor.run { automation.lastTypeActions }
+        guard case let .text(value)? = capturedActions?.first else {
+            Issue.record("Expected TypeTool to call the injected mock with converted text.")
+            return
+        }
+        #expect(value == "12345")
     }
 
     @Test

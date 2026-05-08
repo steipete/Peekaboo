@@ -73,15 +73,18 @@ public struct ClickTool: MCPTool {
         do {
             let resolution = try await self.resolveClickTarget(for: request)
             try await self.performClick(
-                at: resolution.location,
-                snapshotId: request.snapshotId,
+                target: resolution.automationTarget,
+                snapshotId: resolution.snapshotId,
                 intent: request.intent)
 
+            let invalidatedSnapshotId = await UISnapshotManager.shared
+                .invalidateActiveSnapshot(id: resolution.snapshotIdToInvalidate)
             let executionTime = Date().timeIntervalSince(startTime)
             return self.buildResponse(
                 intent: request.intent,
                 resolution: resolution,
-                executionTime: executionTime)
+                executionTime: executionTime,
+                invalidatedSnapshotId: invalidatedSnapshotId)
         } catch let error as ClickToolError {
             return ToolResponse.error(error.message)
         } catch {
@@ -100,33 +103,42 @@ public struct ClickTool: MCPTool {
         switch request.target {
         case let .coordinates(raw):
             let point = try self.parseCoordinates(raw)
-            return ClickResolution(location: point, elementDescription: nil)
+            return ClickResolution(
+                location: point,
+                automationTarget: .coordinates(point),
+                elementDescription: nil,
+                snapshotId: nil,
+                snapshotIdToInvalidate: request.snapshotId)
         case let .elementId(identifier):
             let snapshot = try await self.requireSnapshot(id: request.snapshotId)
             let element = try await self.requireElement(id: identifier, snapshot: snapshot)
             return ClickResolution(
                 location: element.centerPoint,
+                automationTarget: .elementId(identifier),
                 elementDescription: element.humanDescription,
                 targetApp: snapshot.applicationName,
                 windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
-                elementLabel: element.displayLabel)
+                elementLabel: element.displayLabel,
+                snapshotId: snapshot.id)
         case let .query(text):
             let snapshot = try await self.requireSnapshot(id: request.snapshotId)
             let element = try await self.findElement(matching: text, snapshot: snapshot)
             return ClickResolution(
                 location: element.centerPoint,
+                automationTarget: .elementId(element.id),
                 elementDescription: element.humanDescription,
                 targetApp: snapshot.applicationName,
                 windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
-                elementLabel: element.displayLabel)
+                elementLabel: element.displayLabel,
+                snapshotId: snapshot.id)
         }
     }
 
-    private func performClick(at location: CGPoint, snapshotId: String?, intent: ClickIntent) async throws {
+    private func performClick(target: ClickTarget, snapshotId: String?, intent: ClickIntent) async throws {
         try await self.context.automation.click(
-            target: .coordinates(location),
+            target: target,
             clickType: intent.automationType,
             snapshotId: snapshotId)
     }
@@ -134,7 +146,8 @@ public struct ClickTool: MCPTool {
     private func buildResponse(
         intent: ClickIntent,
         resolution: ClickResolution,
-        executionTime: TimeInterval) -> ToolResponse
+        executionTime: TimeInterval,
+        invalidatedSnapshotId: String?) -> ToolResponse
     {
         var message = "\(AgentDisplayTokens.Status.success) \(intent.displayVerb)"
         if let element = resolution.elementDescription {
@@ -143,7 +156,7 @@ public struct ClickTool: MCPTool {
         message += " at (\(Int(resolution.location.x)), \(Int(resolution.location.y)))"
         message += " in \(String(format: "%.2f", executionTime))s"
 
-        let metaDict: [String: Value] = [
+        var metaDict: [String: Value] = [
             "click_location": .object([
                 "x": .double(Double(resolution.location.x)),
                 "y": .double(Double(resolution.location.y)),
@@ -151,6 +164,10 @@ public struct ClickTool: MCPTool {
             "execution_time": .double(executionTime),
             "clicked_element": resolution.elementDescription.map(Value.string) ?? .null,
         ]
+        if let invalidatedSnapshotId {
+            metaDict["invalidated_snapshot"] = .string(invalidatedSnapshotId)
+            metaDict["requires_fresh_see"] = .bool(true)
+        }
 
         let summary = ToolEventSummary(
             targetApp: resolution.targetApp,
@@ -245,26 +262,35 @@ private enum ClickRequestTarget {
 
 private struct ClickResolution {
     let location: CGPoint
+    let automationTarget: ClickTarget
     let elementDescription: String?
     let targetApp: String?
     let windowTitle: String?
     let elementRole: String?
     let elementLabel: String?
+    let snapshotId: String?
+    let snapshotIdToInvalidate: String?
 
     init(
         location: CGPoint,
+        automationTarget: ClickTarget,
         elementDescription: String?,
         targetApp: String? = nil,
         windowTitle: String? = nil,
         elementRole: String? = nil,
-        elementLabel: String? = nil)
+        elementLabel: String? = nil,
+        snapshotId: String?,
+        snapshotIdToInvalidate: String? = nil)
     {
         self.location = location
+        self.automationTarget = automationTarget
         self.elementDescription = elementDescription
         self.targetApp = targetApp
         self.windowTitle = windowTitle
         self.elementRole = elementRole
         self.elementLabel = elementLabel
+        self.snapshotId = snapshotId
+        self.snapshotIdToInvalidate = snapshotIdToInvalidate ?? snapshotId
     }
 }
 

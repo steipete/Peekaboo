@@ -5,6 +5,7 @@
 
 import Foundation
 import MCP
+import PeekabooAutomation
 import Tachikoma
 
 // MARK: - Tool Creation Helpers
@@ -107,15 +108,28 @@ extension PeekabooAgentService {
         let tools = self.createAgentTools()
 
         let filters = ToolFiltering.currentFilters()
-        let filtered = ToolFiltering.apply(
-            tools,
-            filters: filters,
+        let filtered = ToolFiltering.applyInputStrategyAvailability(
+            ToolFiltering.apply(
+                tools,
+                filters: filters,
+                log: { [logger] message in
+                    logger.notice("\(message, privacy: .public)")
+                }),
+            policy: self.runtimeInputPolicy(),
             log: { [logger] message in
                 logger.notice("\(message, privacy: .public)")
             })
 
         self.logToolsetDetails(filtered, model: model)
         return filtered
+    }
+
+    private func runtimeInputPolicy() -> UIInputPolicy {
+        if let automation = self.services.automation as? UIAutomationService {
+            return automation.inputPolicy
+        }
+
+        return self.services.configuration.getUIInputPolicy()
     }
 
     private func logToolsetDetails(_ tools: [AgentTool], model: LanguageModel) {
@@ -148,6 +162,8 @@ extension PeekabooAgentService {
         // UI automation tools
         agentTools.append(createClickTool())
         agentTools.append(createTypeTool())
+        agentTools.append(createSetValueTool())
+        agentTools.append(createPerformActionTool())
         agentTools.append(createScrollTool())
         agentTools.append(createHotkeyTool())
         agentTools.append(createDragTool())

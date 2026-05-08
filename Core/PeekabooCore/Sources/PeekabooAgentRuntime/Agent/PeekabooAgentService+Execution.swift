@@ -186,34 +186,126 @@ extension PeekabooAgentService {
         let tools = await self.buildToolset(for: model)
         self.logModelUsage(model, prefix: "")
 
-        let response = try await generateText(
+        let configuration = StreamingLoopConfiguration(
             model: model,
-            messages: context.messages,
-            tools: tools.isEmpty ? nil : tools,
-            maxSteps: maxSteps)
+            tools: tools,
+            sessionId: context.id,
+            eventHandler: nil,
+            enhancementOptions: nil)
+
+        let outcome = try await self.runGenerationLoop(
+            configuration: configuration,
+            maxSteps: maxSteps,
+            initialMessages: context.messages)
 
         let endTime = Date()
         let executionTime = endTime.timeIntervalSince(context.executionStart)
-        let finalMessages = context.messages + [ModelMessage.assistant(response.text)]
 
         try self.saveCompletedSession(
             context: context,
             model: model,
-            finalMessages: finalMessages,
+            finalMessages: outcome.messages,
             endTime: endTime,
-            toolCallCount: 0,
-            usage: nil)
+            toolCallCount: outcome.toolCallCount,
+            usage: outcome.usage)
 
         return AgentExecutionResult(
-            content: response.text,
-            messages: finalMessages,
+            content: outcome.content,
+            messages: outcome.messages,
             sessionId: context.id,
-            usage: nil,
+            usage: outcome.usage,
             metadata: self.makeExecutionMetadata(
                 model: model,
                 executionTime: executionTime,
-                toolCallCount: 0,
+                toolCallCount: outcome.toolCallCount,
                 startTime: context.executionStart,
                 endTime: endTime))
+    }
+
+    func runGenerationLoop(
+        configuration: StreamingLoopConfiguration,
+        maxSteps: Int,
+        initialMessages: [ModelMessage]) async throws -> StreamingLoopOutcome
+    {
+        var state = StreamingLoopState(messages: initialMessages)
+        let toolContext = ToolHandlingContext(
+            model: configuration.model,
+            tools: configuration.tools,
+            eventHandler: configuration.eventHandler,
+            sessionId: configuration.sessionId)
+
+        let resolvedConfiguration = TachikomaConfiguration.resolve(.current)
+        let provider = try resolvedConfiguration.makeProvider(for: configuration.model)
+        var totalInputTokens = 0
+        var totalOutputTokens = 0
+        var totalInputCost = 0.0
+        var totalOutputCost = 0.0
+        var hasUsage = false
+
+        for stepIndex in 0..<maxSteps {
+            self.logStreamingStepStart(stepIndex, tools: configuration.tools)
+
+            let request = ProviderRequest(
+                messages: state.messages,
+                tools: configuration.tools.isEmpty ? nil : configuration.tools,
+                settings: self.generationSettings(for: configuration.model))
+            let response = try await provider.generateText(request: request)
+
+            state.content += response.text
+            if let usage = response.usage {
+                hasUsage = true
+                totalInputTokens += usage.inputTokens
+                totalOutputTokens += usage.outputTokens
+                if let cost = usage.cost {
+                    totalInputCost += cost.input
+                    totalOutputCost += cost.output
+                }
+                let totalCost = totalInputCost > 0 || totalOutputCost > 0
+                    ? Usage.Cost(input: totalInputCost, output: totalOutputCost)
+                    : nil
+                state.usage = Usage(inputTokens: totalInputTokens, outputTokens: totalOutputTokens, cost: totalCost)
+            }
+
+            let toolCalls = response.toolCalls ?? []
+            if toolCalls.isEmpty {
+                self.appendFinalStep(
+                    text: response.text,
+                    to: &state.messages,
+                    steps: &state.steps,
+                    stepIndex: stepIndex)
+                break
+            }
+
+            let step = try await self.handleToolCalls(
+                stepText: response.text,
+                toolCalls: toolCalls,
+                context: toolContext,
+                currentMessages: &state.messages,
+                stepIndex: stepIndex)
+            state.steps.append(step)
+            state.toolCallCount += step.toolResults.count
+
+            if let stopReason = self.turnBoundaryStopReason(from: step.toolResults) {
+                if state.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    state.content = stopReason
+                }
+                break
+            }
+
+            if response.finishReason != .toolCalls, response.finishReason != .stop {
+                break
+            }
+        }
+
+        if !hasUsage {
+            state.usage = nil
+        }
+
+        return StreamingLoopOutcome(
+            content: state.content,
+            messages: state.messages,
+            steps: state.steps,
+            usage: state.usage,
+            toolCallCount: state.toolCallCount)
     }
 }

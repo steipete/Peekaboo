@@ -33,6 +33,22 @@ struct PeekabooMCPServerTests {
     }
 
     @Test
+    @MainActor
+    func `Server filters action-only tools with runtime input policy`() async throws {
+        let services = PeekabooServices(inputPolicy: UIInputPolicy(
+            defaultStrategy: .synthOnly,
+            setValue: .synthOnly,
+            performAction: .synthOnly))
+        services.installAgentRuntimeDefaults()
+
+        let server = try await PeekabooMCPServer()
+        let names = await server.registeredToolNamesForTesting()
+
+        #expect(!names.contains("set_value"))
+        #expect(!names.contains("perform_action"))
+    }
+
+    @Test
     func `Server handles ListTools request`() async throws {
         // This test would require setting up a mock transport
         // and sending actual MCP protocol messages

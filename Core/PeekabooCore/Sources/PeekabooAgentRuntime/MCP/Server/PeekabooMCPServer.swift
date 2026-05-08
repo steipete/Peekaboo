@@ -1,6 +1,7 @@
 import Foundation
 import MCP
 import os.log
+import PeekabooAutomation
 import TachikomaMCP
 
 /// Transport types supported by the MCP server
@@ -128,43 +129,51 @@ public actor PeekabooMCPServer {
         let filters = ToolFiltering.currentFilters()
 
         let logger = self.logger
-        let nativeTools: [any MCPTool] = ToolFiltering.apply(
-            [
-                // Core tools
-                ImageTool(context: context),
-                AnalyzeTool(),
-                ListTool(context: context),
-                PermissionsTool(context: context),
-                SleepTool(),
+        let inputPolicy = await self.runtimeInputPolicy()
+        let nativeTools: [any MCPTool] = ToolFiltering.applyInputStrategyAvailability(
+            ToolFiltering.apply(
+                [
+                    // Core tools
+                    ImageTool(context: context),
+                    AnalyzeTool(),
+                    ListTool(context: context),
+                    PermissionsTool(context: context),
+                    SleepTool(),
 
-                // UI automation tools
-                SeeTool(context: context),
-                ClickTool(context: context),
-                TypeTool(context: context),
-                ScrollTool(context: context),
-                HotkeyTool(context: context),
-                SwipeTool(context: context),
-                DragTool(context: context),
-                MoveTool(context: context),
+                    // UI automation tools
+                    SeeTool(context: context),
+                    ClickTool(context: context),
+                    TypeTool(context: context),
+                    SetValueTool(context: context),
+                    PerformActionTool(context: context),
+                    ScrollTool(context: context),
+                    HotkeyTool(context: context),
+                    SwipeTool(context: context),
+                    DragTool(context: context),
+                    MoveTool(context: context),
 
-                // App management tools
-                AppTool(context: context),
-                WindowTool(context: context),
-                MenuTool(context: context),
+                    // App management tools
+                    AppTool(context: context),
+                    WindowTool(context: context),
+                    MenuTool(context: context),
 
-                // System tools
-                ClipboardTool(context: context),
-                PasteTool(context: context),
-                // RunTool(), // Removed: Security risk - allows arbitrary script execution
-                // CleanTool(), // Removed: Internal maintenance tool, not for external use
+                    // System tools
+                    ClipboardTool(context: context),
+                    PasteTool(context: context),
+                    // RunTool(), // Removed: Security risk - allows arbitrary script execution
+                    // CleanTool(), // Removed: Internal maintenance tool, not for external use
 
-                // Advanced tools
-                MCPAgentTool(context: context),
-                DockTool(context: context),
-                DialogTool(context: context),
-                SpaceTool(context: context),
-            ],
-            filters: filters,
+                    // Advanced tools
+                    MCPAgentTool(context: context),
+                    DockTool(context: context),
+                    DialogTool(context: context),
+                    SpaceTool(context: context),
+                ],
+                filters: filters,
+                log: { message in
+                    logger.notice("\(message, privacy: .public)")
+                }),
+            policy: inputPolicy,
             log: { message in
                 logger.notice("\(message, privacy: .public)")
             })
@@ -173,6 +182,20 @@ public actor PeekabooMCPServer {
 
         let toolCount = await self.toolRegistry.allTools().count
         self.logger.info("Registered \(toolCount) tools")
+    }
+
+    private func runtimeInputPolicy() async -> UIInputPolicy {
+        await MainActor.run {
+            if let automation = self.toolContext.automation as? UIAutomationService {
+                return automation.inputPolicy
+            }
+
+            return ConfigurationManager.shared.getUIInputPolicy()
+        }
+    }
+
+    func registeredToolNamesForTesting() async -> [String] {
+        await self.toolRegistry.allTools().map(\.name).sorted()
     }
 
     public func serve(transport: TransportType, port: Int = 8080) async throws {
