@@ -38,6 +38,7 @@
     "prepare-release": "node scripts/prepare-release.js",
     "release:mac-app": "./scripts/release-macos-app.sh",
     "docs:list": "node scripts/docs-list.mjs",
+    "docs:site": "node scripts/build-docs-site.mjs",
     "lint:docs": "node scripts/docs-lint.mjs",
     "polter": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules script -q /dev/null node ../poltergeist/dist/polter.js",
     "polter:dev": "cd /Users/steipete/Projects/Peekaboo && FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules pnpm --dir ../poltergeist exec tsx ../poltergeist/src/polter.ts",

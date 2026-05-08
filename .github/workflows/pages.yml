@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "docs/site/**"
+      - "docs/**"
+      - "scripts/build-docs-site.mjs"
+      - "scripts/docs-site-assets.mjs"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -14,27 +16,30 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
 
-      - name: Build static site
-        run: |
-          rm -rf _site
-          mkdir -p _site
-          cp -R docs/site/* _site/
+      - name: Build docs site
+        run: node scripts/build-docs-site.mjs
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -47,5 +52,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
-
+        uses: actions/deploy-pages@v5
