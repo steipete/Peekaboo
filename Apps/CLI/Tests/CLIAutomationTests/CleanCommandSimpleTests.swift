@@ -39,6 +39,26 @@ struct CleanCommandSimpleTests {
     }
 
     @Test
+    func `Clean dry-run alone previews default older-than cleanup`() throws {
+        let command = try CleanCommand.parse(["--dry-run"])
+
+        #expect(command.allSnapshots == false)
+        #expect(command.olderThan == nil)
+        #expect(command.snapshot == nil)
+        #expect(command.dryRun == true)
+        #expect(command.effectiveOlderThan == 24)
+    }
+
+    @Test
+    func `Clean dry-run keeps explicit cleanup target`() throws {
+        let olderThan = try CleanCommand.parse(["--older-than", "48", "--dry-run"])
+        let snapshot = try CleanCommand.parse(["--snapshot", "abc", "--dry-run"])
+
+        #expect(olderThan.effectiveOlderThan == 48)
+        #expect(snapshot.effectiveOlderThan == nil)
+    }
+
+    @Test
     func `Clean command parses json-output flag`() throws {
         let command = try CleanCommand.parse(["--all-snapshots", "--json"])
         #expect(command.allSnapshots == true)

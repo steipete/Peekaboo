@@ -32,6 +32,120 @@ func withTimeout<T: Sendable>(
     }
 }
 
+private final class TimeoutRace<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private nonisolated(unsafe) var continuation: CheckedContinuation<T, any Error>?
+    private nonisolated(unsafe) var pendingResult: Result<T, any Error>?
+    private nonisolated(unsafe) var completed = false
+
+    nonisolated func setContinuation(_ continuation: CheckedContinuation<T, any Error>) {
+        let pendingResult: Result<T, any Error>?
+        self.lock.lock()
+        if self.completed {
+            pendingResult = self.pendingResult
+            self.pendingResult = nil
+        } else {
+            pendingResult = nil
+            self.continuation = continuation
+        }
+        self.lock.unlock()
+
+        if let pendingResult {
+            continuation.resume(with: pendingResult)
+        }
+    }
+
+    nonisolated func resume(with result: Result<T, any Error>) {
+        let continuation: CheckedContinuation<T, any Error>?
+        self.lock.lock()
+        if self.completed {
+            self.lock.unlock()
+            return
+        }
+        self.completed = true
+        continuation = self.continuation
+        self.continuation = nil
+        if continuation == nil {
+            self.pendingResult = result
+        }
+        self.lock.unlock()
+
+        continuation?.resume(with: result)
+    }
+}
+
+/// Race an operation against a wall-clock timeout, even if the operation ignores cancellation.
+func withCommandTimeout<T: Sendable>(
+    seconds: TimeInterval,
+    operationName: String,
+    operation: @escaping @Sendable () async throws -> T
+) async throws -> T {
+    guard seconds > 0 else {
+        throw PeekabooError.invalidInput("Timeout must be greater than 0 seconds")
+    }
+
+    let race = TimeoutRace<T>()
+    let workTask = Task {
+        do {
+            let value = try await operation()
+            race.resume(with: .success(value))
+        } catch {
+            race.resume(with: .failure(error))
+        }
+    }
+
+    let timeoutTask = Task.detached {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        workTask.cancel()
+        race.resume(with: .failure(PeekabooError.timeout(operation: operationName, duration: seconds)))
+    }
+
+    return try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { continuation in
+            race.setContinuation(continuation)
+        }
+    } onCancel: {
+        workTask.cancel()
+        timeoutTask.cancel()
+    }
+}
+
+@MainActor
+func withMainActorCommandTimeout<T: Sendable>(
+    seconds: TimeInterval,
+    operationName: String,
+    operation: @escaping @MainActor () async throws -> T
+) async throws -> T {
+    guard seconds > 0 else {
+        throw PeekabooError.invalidInput("Timeout must be greater than 0 seconds")
+    }
+
+    let race = TimeoutRace<T>()
+    let workTask = Task { @MainActor in
+        do {
+            let value = try await operation()
+            race.resume(with: .success(value))
+        } catch {
+            race.resume(with: .failure(error))
+        }
+    }
+
+    let timeoutTask = Task.detached {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        workTask.cancel()
+        race.resume(with: .failure(PeekabooError.timeout(operation: operationName, duration: seconds)))
+    }
+
+    return try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { continuation in
+            race.setContinuation(continuation)
+        }
+    } onCancel: {
+        workTask.cancel()
+        timeoutTask.cancel()
+    }
+}
+
 // MARK: - Window Target Extensions
 
 extension WindowIdentificationOptions {

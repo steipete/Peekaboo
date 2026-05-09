@@ -46,6 +46,11 @@ extension DialogCommand.FileSubcommand: CommanderSignatureProviding {
                     help: "Button to click after entering path/name (omit or 'default' to click OKButton)",
                     long: "select"
                 ),
+                .commandOption(
+                    "timeoutSeconds",
+                    help: "Maximum time to spend handling the file dialog",
+                    long: "timeout-seconds"
+                ),
             ],
             flags: [
                 .commandFlag(

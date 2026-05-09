@@ -1,6 +1,7 @@
 import Commander
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 extension DialogCommand {
     // MARK: - Handle File Dialog
@@ -23,6 +24,9 @@ extension DialogCommand {
 
         @Flag(name: .long, help: "Ensure file dialogs are expanded (Show Details) before setting --path")
         var ensureExpanded = false
+
+        @Option(help: "Maximum time to spend handling the file dialog")
+        var timeoutSeconds: TimeInterval = 20
 
         @OptionGroup var target: InteractionTargetOptions
         @OptionGroup var focusOptions: FocusCommandOptions
@@ -66,13 +70,24 @@ extension DialogCommand {
                 )
 
                 let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
-                let result = try await self.services.dialogs.handleFileDialog(
-                    path: self.path,
-                    filename: self.name,
-                    actionButton: self.select,
-                    ensureExpanded: self.ensureExpanded,
-                    appName: appHint
-                )
+                let dialogs = self.services.dialogs
+                let path = self.path
+                let name = self.name
+                let select = self.select
+                let ensureExpanded = self.ensureExpanded
+
+                let result = try await withMainActorCommandTimeout(
+                    seconds: self.timeoutSeconds,
+                    operationName: "dialog file"
+                ) {
+                    try await dialogs.handleFileDialog(
+                        path: path,
+                        filename: name,
+                        actionButton: select,
+                        ensureExpanded: ensureExpanded,
+                        appName: appHint
+                    )
+                }
 
                 if self.jsonOutput {
                     outputSuccessCodable(data: self.makeOutput(from: result), logger: self.outputLogger)
@@ -99,6 +114,21 @@ extension DialogCommand {
 
             } catch let error as DialogError {
                 handleDialogServiceError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)
+                throw ExitCode(1)
+            } catch let error as PeekabooError {
+                let code: ErrorCode = switch error {
+                case .timeout:
+                    .TIMEOUT
+                case .invalidInput:
+                    .INVALID_INPUT
+                default:
+                    .UNKNOWN_ERROR
+                }
+                if self.jsonOutput {
+                    outputError(message: error.localizedDescription, code: code, logger: self.outputLogger)
+                } else {
+                    fputs("❌ \(error.localizedDescription)\n", stderr)
+                }
                 throw ExitCode(1)
             } catch {
                 handleGenericError(error, jsonOutput: self.jsonOutput, logger: self.outputLogger)

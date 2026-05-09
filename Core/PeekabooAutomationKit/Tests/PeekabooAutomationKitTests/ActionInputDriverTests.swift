@@ -216,6 +216,24 @@ struct ActionInputDriverTests {
 
     @MainActor
     @Test
+    func `right click target unavailable becomes fallback eligible`() throws {
+        let element = MockAutomationElement(
+            role: AXRoleNames.kAXButtonRole,
+            actionNames: [AXActionNames.kAXShowMenuAction],
+            actionErrors: [AXActionNames.kAXShowMenuAction: AccessibilitySystemError(.cannotComplete)])
+
+        do {
+            _ = try ActionInputDriver().tryRightClickForTesting(element: element)
+            Issue.record("Expected right-click action to request synthetic fallback")
+        } catch let error as ActionInputError {
+            #expect(error == .unsupported(.actionUnsupported))
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+    }
+
+    @MainActor
+    @Test
     func `text field action click focuses when press is unavailable`() throws {
         let element = MockAutomationElement(
             role: AXRoleNames.kAXTextFieldRole,

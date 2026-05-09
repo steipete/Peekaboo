@@ -87,6 +87,9 @@ extension DialogCommand.FileSubcommand: CommanderBindableCommand {
         self.path = values.singleOption("path")
         self.name = values.singleOption("name")
         self.select = values.singleOption("select")
+        if let timeoutSeconds: TimeInterval = try values.decodeOption("timeoutSeconds", as: TimeInterval.self) {
+            self.timeoutSeconds = timeoutSeconds
+        }
         self.ensureExpanded = values.flag("ensureExpanded")
         try values.fillInteractionTargetOptions(into: &self.target)
         self.focusOptions = try values.makeFocusOptions()

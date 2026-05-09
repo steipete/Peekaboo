@@ -72,6 +72,16 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
         self.configuration.jsonOutput
     }
 
+    var effectiveOlderThan: Int? {
+        if let olderThan {
+            return olderThan
+        }
+        if self.dryRun, !self.allSnapshots, self.snapshot == nil {
+            return 24
+        }
+        return nil
+    }
+
     @MainActor
     mutating func run(using runtime: CommandRuntime) async throws {
         self.runtime = runtime
@@ -79,7 +89,8 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         do {
             // Validate options
-            let optionCount = [allSnapshots, olderThan != nil, self.snapshot != nil].count { $0 }
+            let effectiveOlderThan = self.effectiveOlderThan
+            let optionCount = [allSnapshots, effectiveOlderThan != nil, self.snapshot != nil].count { $0 }
             guard optionCount == 1 else {
                 throw ValidationError("Specify exactly one of: --all-snapshots, --older-than, or --snapshot")
             }
@@ -89,7 +100,7 @@ struct CleanCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
             if self.allSnapshots {
                 result = try await self.services.files.cleanAllSnapshots(dryRun: self.dryRun)
-            } else if let hours = olderThan {
+            } else if let hours = effectiveOlderThan {
                 result = try await self.services.files.cleanOldSnapshots(hours: hours, dryRun: self.dryRun)
             } else if let snapshotId = snapshot {
                 result = try await self.services.files.cleanSpecificSnapshot(

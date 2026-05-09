@@ -162,6 +162,10 @@
 - Snapshot-backed UIAX actions now preserve app/window context when rehydrating snapshots, so `actionOnly` element clicks resolve in the captured app instead of the frontmost app.
 - `peekaboo click` now accepts the shared `--input-strategy` runtime override so action-only and synth-only paths can be tested directly.
 - `peekaboo click --input-strategy actionOnly` now focuses editable text controls via `AXFocused` when they do not expose `AXPress`, matching Computer Use-style element targeting more closely.
+- `peekaboo click --right` now falls back to a synthetic right-click when `AXShowMenu` cannot complete on the target element.
+- `peekaboo clean --dry-run` now previews the documented default cleanup scope instead of requiring an explicit cleanup target.
+- `peekaboo run` scripts now create parent directories for legacy `see` step output paths before writing screenshots.
+- `peekaboo dialog file` now has `--timeout-seconds` and returns a `TIMEOUT` JSON error instead of hanging indefinitely on wedged save/open panels.
 - `peekaboo hotkey` now accepts plus-separated shortcuts such as `cmd+s`, matching common CLI shorthand and the help text while still supporting comma and space separators.
 - `peekaboo type` is more reliable in VM and headless launch paths because printable ASCII input now uses physical key events instead of Unicode-only events.
 - SwiftPM debug builds now skip SwiftUI preview macros when building from Command Line Tools without full Xcode preview plugin support.

@@ -75,4 +75,42 @@ struct DialogFileJSONOutputTests {
         #expect(response.data.buttonClicked == "Save")
         #expect(response.data.pathNavigationMethod == "path_textfield_typed+fallback_go_to_folder")
     }
+
+    @Test
+    func `dialog file returns timeout JSON when service hangs`() async throws {
+        let elements = DialogElements(
+            dialogInfo: DialogInfo(
+                title: "Save",
+                role: "AXWindow",
+                subrole: "AXDialog",
+                isFileDialog: true,
+                bounds: .init(x: 0, y: 0, width: 420, height: 320)
+            ),
+            buttons: [],
+            textFields: [],
+            staticTexts: []
+        )
+
+        let dialogService = StubDialogService(elements: elements)
+        dialogService.handleFileDialogDelay = 2.0
+
+        let services = TestServicesFactory.makePeekabooServices(dialogs: dialogService)
+        let result = try await InProcessCommandRunner.run(
+            [
+                "dialog", "file",
+                "--path", "/tmp",
+                "--name", "out.txt",
+                "--select", "Save",
+                "--timeout-seconds", "1",
+                "--json",
+            ],
+            services: services
+        )
+
+        let output = result.stdout.isEmpty ? result.stderr : result.stdout
+        let response = try JSONDecoder().decode(JSONResponse.self, from: Data(output.utf8))
+        #expect(result.exitStatus == 1)
+        #expect(response.success == false)
+        #expect(response.error?.code == "TIMEOUT")
+    }
 }

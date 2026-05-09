@@ -39,6 +39,42 @@ final class ProcessServiceCaptureScriptTests: XCTestCase {
         }
         XCTAssertEqual(screenshotPath, outputURL.path)
     }
+
+    func testScreenshotPathCreatesParentDirectories() async throws {
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-script-shot-\(UUID().uuidString)")
+            .appendingPathComponent("nested")
+            .appendingPathComponent("shot.png")
+        let processService = ProcessService(
+            applicationService: UnusedApplicationService(),
+            screenCaptureService: StaticScreenCaptureService(),
+            snapshotManager: InMemorySnapshotManager(),
+            uiAutomationService: UnusedUIAutomationService(),
+            windowManagementService: UnusedWindowManagementService(),
+            menuService: UnusedMenuService(),
+            dockService: UnusedDockService(),
+            clipboardService: ClipboardService(pasteboard: NSPasteboard.withUniqueName()))
+        defer {
+            try? FileManager.default.removeItem(at: outputURL.deletingLastPathComponent().deletingLastPathComponent())
+        }
+
+        let result = try await processService.executeStep(
+            ScriptStep(stepId: "shot", comment: nil, command: "see", params: .screenshot(.init(
+                path: outputURL.path,
+                mode: "frontmost",
+                annotate: false))),
+            snapshotId: nil)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
+        XCTAssertEqual(try Data(contentsOf: outputURL), StaticScreenCaptureService.imageData)
+        guard case let .data(output) = result.output else {
+            return XCTFail("Expected structured output")
+        }
+        guard case let .success(screenshotPath)? = output["screenshot_path"] else {
+            return XCTFail("Expected screenshot_path output")
+        }
+        XCTAssertEqual(screenshotPath, outputURL.path)
+    }
 }
 
 @available(macOS 14.0, *)

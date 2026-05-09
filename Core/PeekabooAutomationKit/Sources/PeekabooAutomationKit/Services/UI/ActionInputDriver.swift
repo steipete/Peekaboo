@@ -103,7 +103,7 @@ struct ActionInputDriver: ActionInputDriving {
     }
 
     func tryRightClick(element: AutomationElement) throws -> ActionInputResult {
-        try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
+        try self.tryRightClick(element)
     }
 
     func tryScroll(
@@ -235,6 +235,14 @@ struct ActionInputDriver: ActionInputDriving {
                 elementRole: element.role)
         } catch {
             throw Self.classify(error)
+        }
+    }
+
+    private func tryRightClick(_ element: any AutomationElementRepresenting) throws -> ActionInputResult {
+        do {
+            return try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
+        } catch ActionInputError.targetUnavailable {
+            throw ActionInputError.unsupported(.actionUnsupported)
         }
     }
 
@@ -508,7 +516,7 @@ extension ActionInputDriver {
     }
 
     func tryRightClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
-        try self.performAction(AXActionNames.kAXShowMenuAction, on: element)
+        try self.tryRightClick(element)
     }
 
     func trySetValueForTesting(

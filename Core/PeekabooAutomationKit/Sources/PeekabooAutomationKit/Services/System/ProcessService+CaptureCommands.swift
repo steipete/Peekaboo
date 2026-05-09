@@ -64,6 +64,9 @@ extension ProcessService {
             return captureResult.savedPath ?? ""
         }
         let resolvedPath = PathResolver.expandPath(outputPath)
+        try FileManager.default.createDirectory(
+            at: URL(fileURLWithPath: resolvedPath).deletingLastPathComponent(),
+            withIntermediateDirectories: true)
         try captureResult.imageData.write(to: URL(fileURLWithPath: resolvedPath))
         return resolvedPath
     }
