@@ -379,10 +379,10 @@ function checkPackageSize() {
       sizeInBytes = parseFloat(sizeStr);
     }
     
-    const maxSizeInBytes = 32 * 1024 * 1024; // Includes the bundled Swift CLI binary.
+    const maxSizeInBytes = 64 * 1024 * 1024; // Includes the bundled universal Swift CLI binary.
     
     if (sizeInBytes > maxSizeInBytes) {
-      logWarning(`Package size (${sizeStr}) exceeds 32MB threshold`);
+      logWarning(`Package size (${sizeStr}) exceeds 64MB threshold`);
       logWarning('Consider reviewing included files to reduce package size');
     } else {
       logSuccess(`Package size (${sizeStr}) is within acceptable limits`);
