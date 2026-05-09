@@ -5,14 +5,10 @@ import PeekabooCore
 
 extension ListCommand {
     @MainActor
-    struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvablePositional,
+    struct WindowsSubcommand: ErrorHandlingCommand, OutputFormattable, ApplicationResolvable,
     RuntimeOptionsConfigurable {
         @Option(name: .long, help: "Target application name, bundle ID, or 'PID:12345'")
-        var app: String
-
-        var positionalAppIdentifier: String {
-            self.app
-        }
+        var app: String?
 
         @Option(name: .long, help: "Target application by process ID")
         var pid: Int32?
@@ -177,11 +173,13 @@ extension ListCommand.WindowsSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension ListCommand.WindowsSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        guard let resolvedApp = values.singleOption("app") else {
+        let resolvedApp = values.singleOption("app")
+        let resolvedPID = try values.decodeOption("pid", as: Int32.self)
+        guard resolvedApp != nil || resolvedPID != nil else {
             throw CommanderBindingError.missingArgument(label: "app")
         }
         self.app = resolvedApp
-        self.pid = try values.decodeOption("pid", as: Int32.self)
+        self.pid = resolvedPID
         self.includeDetails = values.singleOption("includeDetails")
     }
 }

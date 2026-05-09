@@ -271,6 +271,21 @@ struct CommanderBinderCommandBindingTests {
     }
 
     @Test
+    func `List windows binding accepts pid without app`() throws {
+        let parsed = ParsedValues(
+            positional: [],
+            options: ["pid": ["123"]],
+            flags: []
+        )
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: ListCommand.WindowsSubcommand.self,
+            parsedValues: parsed
+        )
+        #expect(command.app == nil)
+        #expect(command.pid == 123)
+    }
+
+    @Test
     func `Permissions status binding`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         _ = try CommanderCLIBinder.instantiateCommand(
