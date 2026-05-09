@@ -67,6 +67,23 @@ function exec(command, options = {}) {
   }
 }
 
+function npmEnv() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase().startsWith('npm_config_')) {
+      delete env[key];
+    }
+  }
+  return env;
+}
+
+function execNpm(command, options = {}) {
+  return exec(command, {
+    env: npmEnv(),
+    ...options
+  });
+}
+
 function execWithOutput(command, description) {
   try {
     log(`Running: ${description}...`, colors.cyan);
@@ -148,21 +165,21 @@ function checkTypeScript() {
   rmSync(join(projectRoot, 'dist'), { recursive: true, force: true });
 
   // Run ESLint
-  if (!execWithOutput('npm run lint', 'ESLint')) {
+  if (!execWithOutput('pnpm run lint', 'ESLint')) {
     logError('ESLint found violations');
     return false;
   }
   logSuccess('ESLint passed');
 
   // Type check
-  if (!execWithOutput('npm run build', 'TypeScript compilation')) {
+  if (!execWithOutput('pnpm run build', 'TypeScript compilation')) {
     logError('TypeScript compilation failed');
     return false;
   }
   logSuccess('TypeScript compilation successful');
 
   // Run TypeScript tests
-  if (!execWithOutput('npm test', 'TypeScript tests')) {
+  if (!execWithOutput('pnpm test', 'TypeScript tests')) {
     logError('TypeScript tests failed');
     return false;
   }
@@ -175,7 +192,7 @@ function checkSwift() {
   logStep('Swift Checks');
 
   // Run SwiftFormat
-  if (!execWithOutput('npm run format:swift', 'SwiftFormat')) {
+  if (!execWithOutput('pnpm run format:swift', 'SwiftFormat')) {
     logError('SwiftFormat failed');
     return false;
   }
@@ -190,7 +207,7 @@ function checkSwift() {
   }
 
   // Run SwiftLint
-  if (!execWithOutput('npm run lint:swift', 'SwiftLint')) {
+  if (!execWithOutput('pnpm run lint:swift', 'SwiftLint')) {
     logError('SwiftLint found violations');
     return false;
   }
@@ -247,7 +264,7 @@ function checkVersionAvailability() {
   log(`Checking if ${packageName}@${version} is already published...`, colors.cyan);
 
   // Check if version exists on npm
-  const existingVersions = exec(`npm view ${packageName} versions --json`, { allowFailure: true });
+  const existingVersions = execNpm(`npm view ${packageName} versions --json`, { allowFailure: true });
   
   if (existingVersions) {
     try {
@@ -342,7 +359,7 @@ function checkPackageSize() {
 
   // Create a temporary package to get accurate size
   log('Calculating package size...', colors.cyan);
-  const packOutput = exec('npm pack --dry-run 2>&1');
+  const packOutput = execNpm('npm pack --dry-run 2>&1');
   
   // Extract size information
   const unpackedMatch = packOutput.match(/unpacked size: ([^\n]+)/);
@@ -695,7 +712,7 @@ function buildAndVerifyPackage() {
 
   // Create package
   log('Creating npm package...', colors.cyan);
-  const packOutput = exec('npm pack --dry-run 2>&1');
+  const packOutput = execNpm('npm pack --dry-run 2>&1');
   
   // Parse package details
   const sizeMatch = packOutput.match(/package size: ([^\n]+)/);

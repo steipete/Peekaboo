@@ -32,31 +32,46 @@ func withTimeout<T: Sendable>(
     }
 }
 
-private final class TimeoutRace<T: Sendable>: @unchecked Sendable {
+private typealias TimeoutRaceResult = Result<any Sendable, any Error>
+
+private final class TimeoutRace: @unchecked Sendable {
     private let lock = NSLock()
-    private nonisolated(unsafe) var continuation: CheckedContinuation<T, any Error>?
-    private nonisolated(unsafe) var pendingResult: Result<T, any Error>?
+    private nonisolated(unsafe) var continuation: (@Sendable (TimeoutRaceResult) -> Void)?
+    private nonisolated(unsafe) var pendingResult: TimeoutRaceResult?
     private nonisolated(unsafe) var completed = false
 
-    nonisolated func setContinuation(_ continuation: CheckedContinuation<T, any Error>) {
-        let pendingResult: Result<T, any Error>?
+    nonisolated func setContinuation<T: Sendable>(_ continuation: CheckedContinuation<T, any Error>) {
+        let pendingResult: TimeoutRaceResult?
         self.lock.lock()
         if self.completed {
             pendingResult = self.pendingResult
             self.pendingResult = nil
         } else {
             pendingResult = nil
-            self.continuation = continuation
+            self.continuation = { result in
+                switch result {
+                case let .success(value):
+                    guard let value = value as? T else {
+                        continuation
+                            .resume(throwing: PeekabooError.operationError(message: "Timeout result type mismatch"))
+                        return
+                    }
+                    continuation.resume(returning: value)
+                case let .failure(error):
+                    continuation.resume(throwing: error)
+                }
+            }
         }
         self.lock.unlock()
 
         if let pendingResult {
-            continuation.resume(with: pendingResult)
+            self.resume(continuation: continuation, with: pendingResult)
         }
     }
 
-    nonisolated func resume(with result: Result<T, any Error>) {
-        let continuation: CheckedContinuation<T, any Error>?
+    nonisolated func resume<T: Sendable>(with result: Result<T, any Error>) {
+        let result = result.map { value in value as any Sendable }
+        let continuation: (@Sendable (TimeoutRaceResult) -> Void)?
         self.lock.lock()
         if self.completed {
             self.lock.unlock()
@@ -70,7 +85,23 @@ private final class TimeoutRace<T: Sendable>: @unchecked Sendable {
         }
         self.lock.unlock()
 
-        continuation?.resume(with: result)
+        continuation?(result)
+    }
+
+    private nonisolated func resume<T: Sendable>(
+        continuation: CheckedContinuation<T, any Error>,
+        with result: TimeoutRaceResult
+    ) {
+        switch result {
+        case let .success(value):
+            guard let value = value as? T else {
+                continuation.resume(throwing: PeekabooError.operationError(message: "Timeout result type mismatch"))
+                return
+            }
+            continuation.resume(returning: value)
+        case let .failure(error):
+            continuation.resume(throwing: error)
+        }
     }
 }
 
@@ -84,20 +115,23 @@ func withCommandTimeout<T: Sendable>(
         throw PeekabooError.invalidInput("Timeout must be greater than 0 seconds")
     }
 
-    let race = TimeoutRace<T>()
+    let race = TimeoutRace()
     let workTask = Task {
         do {
             let value = try await operation()
             race.resume(with: .success(value))
         } catch {
-            race.resume(with: .failure(error))
+            race.resume(with: Result<T, any Error>.failure(error))
         }
     }
 
     let timeoutTask = Task.detached {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         workTask.cancel()
-        race.resume(with: .failure(PeekabooError.timeout(operation: operationName, duration: seconds)))
+        race.resume(with: Result<T, any Error>.failure(PeekabooError.timeout(
+            operation: operationName,
+            duration: seconds
+        )))
     }
 
     return try await withTaskCancellationHandler {
@@ -120,20 +154,23 @@ func withMainActorCommandTimeout<T: Sendable>(
         throw PeekabooError.invalidInput("Timeout must be greater than 0 seconds")
     }
 
-    let race = TimeoutRace<T>()
+    let race = TimeoutRace()
     let workTask = Task { @MainActor in
         do {
             let value = try await operation()
             race.resume(with: .success(value))
         } catch {
-            race.resume(with: .failure(error))
+            race.resume(with: Result<T, any Error>.failure(error))
         }
     }
 
     let timeoutTask = Task.detached {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
         workTask.cancel()
-        race.resume(with: .failure(PeekabooError.timeout(operation: operationName, duration: seconds)))
+        race.resume(with: Result<T, any Error>.failure(PeekabooError.timeout(
+            operation: operationName,
+            duration: seconds
+        )))
     }
 
     return try await withTaskCancellationHandler {

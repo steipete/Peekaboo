@@ -103,7 +103,7 @@ else
     CLI_TARBALL_NAME="peekaboo-macos-arm64.tar.gz"
 fi
 
-if ! npm run "$BUILD_SCRIPT"; then
+if ! pnpm run "$BUILD_SCRIPT"; then
     echo -e "${RED}❌ Swift build failed!${NC}"
     exit 1
 fi
@@ -169,7 +169,7 @@ tar -czf "$RELEASE_DIR/$CLI_TARBALL_NAME" "$CLI_ARTIFACT_DIR"
 # Create npm package tarball
 echo -e "${BLUE}Creating npm package...${NC}"
 cd "$PROJECT_ROOT"
-NPM_PACK_OUTPUT=$(npm pack --pack-destination "$RELEASE_DIR" 2>&1)
+NPM_PACK_OUTPUT=$(pnpm pack --pack-destination "$RELEASE_DIR" 2>&1)
 NPM_PACKAGE=$(echo "$NPM_PACK_OUTPUT" | grep -o '[^ ]*\.tgz' | tail -1)
 NPM_PACKAGE_PATH="$RELEASE_DIR/$(basename "$NPM_PACKAGE")"
 
@@ -262,9 +262,9 @@ if [ "$PUBLISH_NPM" = true ]; then
     
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [ -n "$NPM_TAG" ]; then
-            npm publish "$NPM_PACKAGE_PATH" --tag "$NPM_TAG"
+            pnpm publish "$NPM_PACKAGE_PATH" --tag "$NPM_TAG"
         else
-            npm publish "$NPM_PACKAGE_PATH"
+            pnpm publish "$NPM_PACKAGE_PATH"
         fi
         echo -e "${GREEN}✅ Published to npm!${NC}"
     else
