@@ -232,6 +232,7 @@ struct ActionInputDriverTests {
         #expect(result.elementRole == AXRoleNames.kAXTextFieldRole)
     }
 
+    @MainActor
     @Test
     func `focus click target classification is limited to focusable inputs`() {
         #expect(ActionInputDriver.canFocusForClickForTesting(

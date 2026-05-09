@@ -493,7 +493,18 @@ private struct MenuHotkeyChord: Equatable {
 #if DEBUG
 extension ActionInputDriver {
     func tryClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
-        try self.performAction(AXActionNames.kAXPressAction, on: element)
+        do {
+            return try self.performAction(AXActionNames.kAXPressAction, on: element)
+        } catch let error as ActionInputError
+            where error == .unsupported(.actionUnsupported) &&
+            Self.canFocusForClick(
+                role: element.role,
+                subrole: element.subrole,
+                isValueSettable: element.isValueSettable,
+                isFocusedSettable: element.isFocusedSettable)
+        {
+            return try self.focusForClick(element)
+        }
     }
 
     func tryRightClickForTesting(element: any AutomationElementRepresenting) throws -> ActionInputResult {
