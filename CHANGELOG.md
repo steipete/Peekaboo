@@ -175,6 +175,10 @@
 - `peekaboo set-value` now reports unsupported direct value writes as `INVALID_INPUT` with the target element named instead of surfacing an internal Swift error.
 - `peekaboo config add-provider --dry-run` and `remove-provider --dry-run` now preserve the config file when invoked through the Commander CLI path.
 - `peekaboo config add` now exits nonzero when credential validation fails or times out, matching its JSON `success: false` response.
+- Explicit stale snapshots now report the JSON error code `SNAPSHOT_STALE` instead of falling through to `UNKNOWN_ERROR`.
+- Bridge transport timeouts now report the JSON error code `TIMEOUT` instead of `INTERNAL_SWIFT_ERROR`.
+- `peekaboo see --json` now emits a single structured error response for capture and detection failures instead of occasionally printing two JSON objects.
+- `peekaboo type --text`, `peekaboo press --key`, and `peekaboo set-value --value` now work as aliases for their positional arguments.
 - Peekaboo.app no longer crashes at launch on macOS 26 when the hidden Settings helper window is created.
 - `peekaboo hotkey` now accepts plus-separated shortcuts such as `cmd+s`, matching common CLI shorthand and the help text while still supporting comma and space separators.
 - `peekaboo type` is more reliable in VM and headless launch paths because printable ASCII input now uses physical key events instead of Unicode-only events.

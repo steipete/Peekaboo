@@ -3,7 +3,9 @@
 //  PeekabooCLI
 //
 
+import Foundation
 import Testing
+@testable import PeekabooBridge
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
@@ -30,6 +32,18 @@ struct FocusErrorMappingTests {
     @Test
     func `timeout waiting for condition maps to TIMEOUT`() {
         let code = errorCode(for: .timeoutWaitingForCondition)
+        #expect(code == .TIMEOUT)
+    }
+
+    @Test
+    func `bridge timeout maps to TIMEOUT`() {
+        let code = errorCode(for: PeekabooBridgeErrorEnvelope(code: .timeout, message: "Timed out"))
+        #expect(code == .TIMEOUT)
+    }
+
+    @Test
+    func `POSIX timeout maps to TIMEOUT`() {
+        let code = errorCode(for: POSIXError(.ETIMEDOUT))
         #expect(code == .TIMEOUT)
     }
 }

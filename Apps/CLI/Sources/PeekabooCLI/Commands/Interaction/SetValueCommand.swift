@@ -132,7 +132,7 @@ extension SetValueCommand: AsyncRuntimeCommand {}
 @MainActor
 extension SetValueCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.value = try values.decodeOptionalPositional(0, label: "value")
+        self.value = try values.decodeOptionalPositional(0, label: "value") ?? values.singleOption("value")
         self.on = values.singleOption("on")
         self.snapshot = values.singleOption("snapshot")
     }
@@ -145,6 +145,7 @@ extension SetValueCommand: CommanderSignatureProviding {
                 .make(label: "value", help: "Value to set", isOptional: true),
             ],
             options: [
+                .commandOption("value", help: "Value to set (alternative to positional argument)", long: "value"),
                 .commandOption("on", help: "Element ID or query to set", long: "on"),
                 .commandOption("snapshot", help: "Snapshot ID (uses latest if not specified)", long: "snapshot"),
             ]

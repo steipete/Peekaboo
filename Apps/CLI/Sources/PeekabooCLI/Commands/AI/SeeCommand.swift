@@ -147,113 +147,105 @@ struct SeeCommand: ApplicationResolvable, ErrorHandlingCommand, RuntimeOptionsCo
                     "error": error.localizedDescription,
                 ]
             )
-            throw error
+            self.handleError(error)
+            throw ExitCode.failure
         }
     }
 
     private func runImpl(startTime: Date, logger: Logger) async throws {
-        do {
-            // ScreenCaptureService performs the authoritative permission check inside each capture path.
-            // Avoid duplicating that TCC probe here; `see` is often called in latency-sensitive loops.
+        // ScreenCaptureService performs the authoritative permission check inside each capture path.
+        // Avoid duplicating that TCC probe here; `see` is often called in latency-sensitive loops.
 
-            // Perform capture and element detection
-            logger.verbose("Starting capture and detection phase", category: "Capture")
-            let captureResult = try await performCaptureWithDetection()
-            logger.verbose("Capture completed successfully", category: "Capture", metadata: [
-                "snapshotId": captureResult.snapshotId,
-                "elementCount": captureResult.elements.all.count,
-                "screenshotSize": self.getFileSize(captureResult.screenshotPath) ?? 0,
-            ])
+        // Perform capture and element detection
+        logger.verbose("Starting capture and detection phase", category: "Capture")
+        let captureResult = try await performCaptureWithDetection()
+        logger.verbose("Capture completed successfully", category: "Capture", metadata: [
+            "snapshotId": captureResult.snapshotId,
+            "elementCount": captureResult.elements.all.count,
+            "screenshotSize": self.getFileSize(captureResult.screenshotPath) ?? 0,
+        ])
 
-            // Generate annotated screenshot if requested
-            var annotatedPath = captureResult.annotatedPath
-            let annotationsAllowed = self.allowsAnnotationForCurrentCapture()
-            if self.annotate, !annotationsAllowed {
-                self.logger.info("Annotation is disabled for full screen captures due to performance constraints")
-            }
-            if self.annotate, annotatedPath == nil, annotationsAllowed {
-                logger.operationStart("generate_annotations")
-                annotatedPath = try await self.generateAnnotatedScreenshot(
-                    snapshotId: captureResult.snapshotId,
-                    originalPath: captureResult.screenshotPath
-                )
-                if let annotatedPath,
-                   annotatedPath != captureResult.screenshotPath {
-                    try await self.services.snapshots.storeAnnotatedScreenshot(
-                        snapshotId: captureResult.snapshotId,
-                        annotatedScreenshotPath: annotatedPath
-                    )
-                }
-                logger.operationComplete("generate_annotations", metadata: [
-                    "annotatedPath": annotatedPath ?? "none",
-                ])
-            }
-            if self.annotate, annotationsAllowed, annotatedPath == nil, !self.jsonOutput {
-                print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
-            } else if self.annotate, annotationsAllowed, let annotatedPath, !self.jsonOutput {
-                let interactableElements = captureResult.elements.all.filter(\.isEnabled)
-                print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
-                self.logger.verbose("Annotated screenshot path: \(annotatedPath)")
-            }
-
-            // Perform AI analysis if requested
-            var analysisResult: SeeAnalysisData?
-            if let prompt = analyze {
-                // Pre-analysis diagnostics
-                let fileSize = (try? FileManager.default
-                    .attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
-                logger.verbose(
-                    "Starting AI analysis",
-                    category: "AI",
-                    metadata: [
-                        "imagePath": captureResult.screenshotPath,
-                        "imageSizeBytes": fileSize,
-                        "promptLength": prompt.count
-                    ]
-                )
-                logger.operationStart("ai_analysis", metadata: ["promptPreview": String(prompt.prefix(80))])
-                logger.startTimer("ai_generate")
-                analysisResult = try await self.performAnalysisDetailed(
-                    imagePath: captureResult.screenshotPath,
-                    prompt: prompt
-                )
-                logger.stopTimer("ai_generate")
-                logger.operationComplete(
-                    "ai_analysis",
-                    success: analysisResult != nil,
-                    metadata: [
-                        "provider": analysisResult?.provider ?? "unknown",
-                        "model": analysisResult?.model ?? "unknown"
-                    ]
-                )
-            }
-
-            // Output results
-            let executionTime = Date().timeIntervalSince(startTime)
-            logger.operationComplete("see_command", metadata: [
-                "executionTimeMs": Int(executionTime * 1000),
-                "success": true,
-            ])
-
-            let context = SeeCommandRenderContext(
-                snapshotId: captureResult.snapshotId,
-                screenshotPath: captureResult.screenshotPath,
-                annotatedPath: annotatedPath,
-                metadata: captureResult.metadata,
-                elements: captureResult.elements,
-                analysis: analysisResult,
-                executionTime: executionTime,
-                observation: captureResult.observation
-            )
-            await self.renderResults(context: context)
-
-        } catch {
-            logger.operationComplete("see_command", success: false, metadata: [
-                "error": error.localizedDescription,
-            ])
-            self.handleError(error) // Use protocol's error handling
-            throw ExitCode.failure
+        // Generate annotated screenshot if requested
+        var annotatedPath = captureResult.annotatedPath
+        let annotationsAllowed = self.allowsAnnotationForCurrentCapture()
+        if self.annotate, !annotationsAllowed {
+            self.logger.info("Annotation is disabled for full screen captures due to performance constraints")
         }
+        if self.annotate, annotatedPath == nil, annotationsAllowed {
+            logger.operationStart("generate_annotations")
+            annotatedPath = try await self.generateAnnotatedScreenshot(
+                snapshotId: captureResult.snapshotId,
+                originalPath: captureResult.screenshotPath
+            )
+            if let annotatedPath,
+               annotatedPath != captureResult.screenshotPath {
+                try await self.services.snapshots.storeAnnotatedScreenshot(
+                    snapshotId: captureResult.snapshotId,
+                    annotatedScreenshotPath: annotatedPath
+                )
+            }
+            logger.operationComplete("generate_annotations", metadata: [
+                "annotatedPath": annotatedPath ?? "none",
+            ])
+        }
+        if self.annotate, annotationsAllowed, annotatedPath == nil, !self.jsonOutput {
+            print("\(AgentDisplayTokens.Status.warning)  No interactive UI elements found to annotate")
+        } else if self.annotate, annotationsAllowed, let annotatedPath, !self.jsonOutput {
+            let interactableElements = captureResult.elements.all.filter(\.isEnabled)
+            print("📝 Created annotated screenshot with \(interactableElements.count) interactive elements")
+            self.logger.verbose("Annotated screenshot path: \(annotatedPath)")
+        }
+
+        // Perform AI analysis if requested
+        var analysisResult: SeeAnalysisData?
+        if let prompt = analyze {
+            // Pre-analysis diagnostics
+            let fileSize = (try? FileManager.default
+                .attributesOfItem(atPath: captureResult.screenshotPath)[.size] as? Int) ?? 0
+            logger.verbose(
+                "Starting AI analysis",
+                category: "AI",
+                metadata: [
+                    "imagePath": captureResult.screenshotPath,
+                    "imageSizeBytes": fileSize,
+                    "promptLength": prompt.count
+                ]
+            )
+            logger.operationStart("ai_analysis", metadata: ["promptPreview": String(prompt.prefix(80))])
+            logger.startTimer("ai_generate")
+            analysisResult = try await self.performAnalysisDetailed(
+                imagePath: captureResult.screenshotPath,
+                prompt: prompt
+            )
+            logger.stopTimer("ai_generate")
+            logger.operationComplete(
+                "ai_analysis",
+                success: analysisResult != nil,
+                metadata: [
+                    "provider": analysisResult?.provider ?? "unknown",
+                    "model": analysisResult?.model ?? "unknown"
+                ]
+            )
+        }
+
+        // Output results
+        let executionTime = Date().timeIntervalSince(startTime)
+        logger.operationComplete("see_command", metadata: [
+            "executionTimeMs": Int(executionTime * 1000),
+            "success": true,
+        ])
+
+        let context = SeeCommandRenderContext(
+            snapshotId: captureResult.snapshotId,
+            screenshotPath: captureResult.screenshotPath,
+            annotatedPath: annotatedPath,
+            metadata: captureResult.metadata,
+            elements: captureResult.elements,
+            analysis: analysisResult,
+            executionTime: executionTime,
+            observation: captureResult.observation
+        )
+        await self.renderResults(context: context)
     }
 
     func getFileSize(_ path: String) -> Int? {

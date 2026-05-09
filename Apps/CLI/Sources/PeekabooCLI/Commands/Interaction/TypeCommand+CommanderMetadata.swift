@@ -12,6 +12,11 @@ extension TypeCommand: CommanderSignatureProviding {
             ],
             options: [
                 .commandOption(
+                    "textOption",
+                    help: "Text to type (alternative to positional argument)",
+                    long: "text"
+                ),
+                .commandOption(
                     "snapshot",
                     help: "Snapshot ID (uses latest if not specified)",
                     long: "snapshot"

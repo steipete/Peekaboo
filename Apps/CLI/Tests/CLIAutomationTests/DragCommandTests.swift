@@ -83,6 +83,7 @@ struct DragCommandTests {
         #expect(ErrorCode.NO_POINT_SPECIFIED.rawValue == "NO_POINT_SPECIFIED")
         #expect(ErrorCode.INVALID_COORDINATES.rawValue == "INVALID_COORDINATES")
         #expect(ErrorCode.SNAPSHOT_NOT_FOUND.rawValue == "SNAPSHOT_NOT_FOUND")
+        #expect(ErrorCode.SNAPSHOT_STALE.rawValue == "SNAPSHOT_STALE")
     }
 
     @Test

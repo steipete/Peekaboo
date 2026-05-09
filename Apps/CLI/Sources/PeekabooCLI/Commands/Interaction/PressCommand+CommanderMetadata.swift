@@ -7,10 +7,15 @@ extension PressCommand: CommanderSignatureProviding {
                 .make(
                     label: "keys",
                     help: "Key(s) to press",
-                    isOptional: false
+                    isOptional: true
                 ),
             ],
             options: [
+                .commandOption(
+                    "key",
+                    help: "Key to press (alternative to positional argument)",
+                    long: "key"
+                ),
                 .commandOption(
                     "count",
                     help: "Repeat count for all keys",

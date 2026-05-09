@@ -1,5 +1,6 @@
 import Commander
 import Foundation
+import PeekabooBridge
 import PeekabooCore
 import PeekabooFoundation
 
@@ -49,6 +50,10 @@ extension ErrorHandlingCommand {
             self.mapCaptureErrorToCode(captureError)
         case let observationError as DesktopObservationError:
             self.mapObservationErrorToCode(observationError)
+        case let bridgeError as PeekabooBridgeErrorEnvelope:
+            errorCode(for: bridgeError)
+        case let posixError as POSIXError:
+            errorCode(for: posixError)
         case is Commander.ValidationError:
             .VALIDATION_ERROR
         default:
@@ -101,6 +106,8 @@ extension ErrorHandlingCommand {
             .SESSION_NOT_FOUND
         case .snapshotNotFound:
             .SNAPSHOT_NOT_FOUND
+        case .snapshotStale:
+            .SNAPSHOT_STALE
         case .menuNotFound:
             .MENU_BAR_NOT_FOUND
         case .menuItemNotFound:
@@ -221,5 +228,23 @@ func errorCode(for focusError: FocusError) -> ErrorCode {
         .TIMEOUT
     default:
         .WINDOW_NOT_FOUND
+    }
+}
+
+func errorCode(for bridgeError: PeekabooBridgeErrorEnvelope) -> ErrorCode {
+    switch bridgeError.code {
+    case .timeout:
+        .TIMEOUT
+    default:
+        .INTERNAL_SWIFT_ERROR
+    }
+}
+
+func errorCode(for posixError: POSIXError) -> ErrorCode {
+    switch posixError.code {
+    case .ETIMEDOUT:
+        .TIMEOUT
+    default:
+        .INTERNAL_SWIFT_ERROR
     }
 }

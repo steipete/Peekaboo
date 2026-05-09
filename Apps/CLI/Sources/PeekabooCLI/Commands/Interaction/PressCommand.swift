@@ -218,10 +218,15 @@ extension PressCommand: AsyncRuntimeCommand {}
 @MainActor
 extension PressCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        guard !values.positional.isEmpty else {
+        let resolvedKeys = if values.positional.isEmpty {
+            values.singleOption("key").map { [$0] } ?? []
+        } else {
+            values.positional
+        }
+        guard !resolvedKeys.isEmpty else {
             throw CommanderBindingError.missingArgument(label: "keys")
         }
-        self.keys = values.positional
+        self.keys = resolvedKeys
         self.target = try values.makeInteractionTargetOptions()
         if let count: Int = try values.decodeOption("count", as: Int.self) {
             self.count = count
