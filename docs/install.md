@@ -34,14 +34,14 @@ This is the form you point Codex, Claude Code, and Cursor at. See [MCP.md](MCP.m
 
 ## Mac app
 
-The full menu-bar app (visualizer, permission flows, status item) is on the [Releases](https://github.com/steipete/Peekaboo/releases/latest) page. The bundled CLI lives at `/Applications/Peekaboo.app/Contents/MacOS/peekaboo`; symlink it if you want it on your `PATH` without Homebrew.
+The full menu-bar app (visualizer, permission flows, status item) is on the [Releases](https://github.com/openclaw/Peekaboo/releases/latest) page. The bundled CLI lives at `/Applications/Peekaboo.app/Contents/MacOS/peekaboo`; symlink it if you want it on your `PATH` without Homebrew.
 
 ## Build from source
 
 Requires macOS 26.1+, Xcode 26+, Swift 6.2.
 
 ```bash
-git clone --recurse-submodules https://github.com/steipete/Peekaboo.git
+git clone --recurse-submodules https://github.com/openclaw/Peekaboo.git
 cd Peekaboo
 pnpm install
 pnpm run build:cli         # debug build

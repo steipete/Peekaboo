@@ -8,7 +8,7 @@ const root = process.cwd();
 const docsDir = path.join(root, "docs");
 const staticDir = path.join(docsDir, "static");
 const outDir = path.join(root, "_site");
-const repoBase = "https://github.com/steipete/Peekaboo";
+const repoBase = "https://github.com/openclaw/Peekaboo";
 const repoEditBase = `${repoBase}/edit/main/docs`;
 const cname = readCname();
 const siteBase = cname ? `https://${cname}` : "";
@@ -298,12 +298,20 @@ function markdownToHtml(markdown, currentRel) {
     if (trimmed.endsWith("|") && !trimmed.endsWith("\\|")) trimmed = trimmed.slice(0, -1);
     const cells = [];
     let current = "";
-    let inCode = false;
+    let codeFence = "";
     for (let idx = 0; idx < trimmed.length; idx++) {
       const char = trimmed[idx];
       if (char === "`") {
-        inCode = !inCode;
-        current += char;
+        let runEnd = idx + 1;
+        while (trimmed[runEnd] === "`") runEnd += 1;
+        const run = trimmed.slice(idx, runEnd);
+        if (!codeFence) {
+          codeFence = run;
+        } else if (run === codeFence) {
+          codeFence = "";
+        }
+        current += run;
+        idx = runEnd - 1;
         continue;
       }
       if (char === "\\" && trimmed[idx + 1] === "|") {
@@ -311,7 +319,7 @@ function markdownToHtml(markdown, currentRel) {
         idx += 1;
         continue;
       }
-      if (char === "|" && !inCode) {
+      if (char === "|" && !codeFence) {
         cells.push(current.trim().replace(/\\\|/g, "|"));
         current = "";
         continue;

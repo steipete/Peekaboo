@@ -9,7 +9,7 @@ Canonical documentation:
 - Command index: https://peekaboo.sh/commands/
 - MCP setup: https://peekaboo.sh/MCP.html
 - Security and tool hardening: https://peekaboo.sh/security.html
-- Source: https://github.com/steipete/Peekaboo
+- Source: https://github.com/openclaw/Peekaboo
 
 Recommended agent workflow:
 1. Check `peekaboo --version` and `peekaboo permissions status`.
