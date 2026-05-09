@@ -12,11 +12,10 @@ CODESIGN_TIMESTAMP="${CODESIGN_TIMESTAMP:-auto}"
 ARM64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-arm64"
 X86_64_BINARY_TEMP="$PROJECT_ROOT/${FINAL_BINARY_NAME}-x86_64"
 
-# Swift compiler flags for size optimization
-# -Osize: Optimize for binary size.
-# -wmo: Whole Module Optimization, allows more aggressive optimizations.
-# -Xlinker -dead_strip: Remove dead code at the linking stage.
-SWIFT_OPTIMIZATION_FLAGS="-Xswiftc -Osize -Xswiftc -wmo -Xlinker -dead_strip"
+# Swift compiler flags for size optimization.
+# Keep WMO off by default; Swift 6.3.2 can hang or crash the release build here.
+# Override SWIFT_OPTIMIZATION_FLAGS when explicitly testing a different compiler.
+SWIFT_OPTIMIZATION_FLAGS="${SWIFT_OPTIMIZATION_FLAGS:--Xswiftc -Osize -Xlinker -dead_strip}"
 
 if command -v xcbeautify >/dev/null 2>&1; then
     USE_XCBEAUTIFY=1
