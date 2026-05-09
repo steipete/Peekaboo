@@ -5,7 +5,7 @@ import CoreGraphics
 import Foundation
 import PeekabooFoundation
 
-enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
+enum ActionInputUnsupportedReason: String, Codable, Equatable {
     case actionUnsupported
     case attributeUnsupported
     case valueNotSettable
@@ -14,7 +14,7 @@ enum ActionInputUnsupportedReason: String, Codable, Equatable, Sendable {
     case missingElement
 }
 
-enum ActionInputError: Error, Equatable, Sendable {
+enum ActionInputError: Error, Equatable {
     case unsupported(ActionInputUnsupportedReason)
     case staleElement
     case permissionDenied
@@ -58,7 +58,7 @@ extension ActionInputError: LocalizedError {
     }
 }
 
-struct ActionInputResult: Equatable, Sendable {
+struct ActionInputResult: Equatable {
     var actionName: String?
     var anchorPoint: CGPoint?
     var elementRole: String?
@@ -87,10 +87,19 @@ protocol ActionInputDriving: Sendable {
 /// Accessibility action implementation for action-first UI input.
 @MainActor
 struct ActionInputDriver: ActionInputDriving {
-    init() {}
-
     func tryClick(element: AutomationElement) throws -> ActionInputResult {
-        try self.performAction(AXActionNames.kAXPressAction, on: element)
+        do {
+            return try self.performAction(AXActionNames.kAXPressAction, on: element)
+        } catch let error as ActionInputError
+            where error == .unsupported(.actionUnsupported) &&
+            Self.canFocusForClick(
+                role: element.role,
+                subrole: element.subrole,
+                isValueSettable: element.isValueSettable,
+                isFocusedSettable: element.isFocusedSettable)
+        {
+            return try self.focusForClick(element)
+        }
     }
 
     func tryRightClick(element: AutomationElement) throws -> ActionInputResult {
@@ -181,6 +190,21 @@ struct ActionInputDriver: ActionInputDriving {
         error.isUnsupported || error == .targetUnavailable
     }
 
+    nonisolated static func canFocusForClick(
+        role: String?,
+        subrole: String?,
+        isValueSettable: Bool,
+        isFocusedSettable: Bool) -> Bool
+    {
+        guard isFocusedSettable else { return false }
+        switch role {
+        case "AXTextField", "AXTextArea", "AXComboBox":
+            return true
+        default:
+            return subrole == "AXSearchField" || isValueSettable
+        }
+    }
+
     nonisolated static func scrollFallbackError(from error: ActionInputError?) -> ActionInputError {
         if error == .targetUnavailable {
             return .unsupported(.actionUnsupported)
@@ -195,6 +219,18 @@ struct ActionInputDriver: ActionInputDriving {
             try element.performAutomationAction(actionName)
             return ActionInputResult(
                 actionName: actionName,
+                anchorPoint: element.anchorPoint,
+                elementRole: element.role)
+        } catch {
+            throw Self.classify(error)
+        }
+    }
+
+    private func focusForClick(_ element: any AutomationElementRepresenting) throws -> ActionInputResult {
+        do {
+            try element.setAutomationFocused(true)
+            return ActionInputResult(
+                actionName: AXAttributeNames.kAXFocusedAttribute,
                 anchorPoint: element.anchorPoint,
                 elementRole: element.role)
         } catch {
@@ -514,6 +550,19 @@ extension ActionInputDriver {
         isValueSettable: Bool) -> ActionInputUnsupportedReason?
     {
         self.setValueRejectionReason(role: role, subrole: subrole, isValueSettable: isValueSettable)
+    }
+
+    nonisolated static func canFocusForClickForTesting(
+        role: String?,
+        subrole: String? = nil,
+        isValueSettable: Bool,
+        isFocusedSettable: Bool) -> Bool
+    {
+        self.canFocusForClick(
+            role: role,
+            subrole: subrole,
+            isValueSettable: isValueSettable,
+            isFocusedSettable: isFocusedSettable)
     }
 
     nonisolated static func shouldContinueTryingScrollActionForTesting(after error: ActionInputError) -> Bool {

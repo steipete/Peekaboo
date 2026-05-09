@@ -216,6 +216,40 @@ struct ActionInputDriverTests {
 
     @MainActor
     @Test
+    func `text field action click focuses when press is unavailable`() throws {
+        let element = MockAutomationElement(
+            role: AXRoleNames.kAXTextFieldRole,
+            frame: CGRect(x: 10, y: 20, width: 30, height: 40),
+            isValueSettable: true,
+            isFocusedSettable: true)
+
+        let result = try ActionInputDriver().tryClickForTesting(element: element)
+
+        #expect(element.performedActions.isEmpty)
+        #expect(element.setFocusedValues == [true])
+        #expect(result.actionName == AXAttributeNames.kAXFocusedAttribute)
+        #expect(result.anchorPoint == CGPoint(x: 25, y: 40))
+        #expect(result.elementRole == AXRoleNames.kAXTextFieldRole)
+    }
+
+    @Test
+    func `focus click target classification is limited to focusable inputs`() {
+        #expect(ActionInputDriver.canFocusForClickForTesting(
+            role: AXRoleNames.kAXTextFieldRole,
+            isValueSettable: true,
+            isFocusedSettable: true))
+        #expect(!ActionInputDriver.canFocusForClickForTesting(
+            role: AXRoleNames.kAXButtonRole,
+            isValueSettable: false,
+            isFocusedSettable: true))
+        #expect(!ActionInputDriver.canFocusForClickForTesting(
+            role: AXRoleNames.kAXTextFieldRole,
+            isValueSettable: true,
+            isFocusedSettable: false))
+    }
+
+    @MainActor
+    @Test
     func `mock element can exercise direct value setter without live AX`() throws {
         let element = MockAutomationElement(
             role: AXRoleNames.kAXTextFieldRole,
@@ -319,6 +353,7 @@ private final class MockAutomationElement: AutomationElementRepresenting, @unche
 
     let actionNames: [String]
     let isValueSettable: Bool
+    let isFocusedSettable: Bool
     let isEnabled: Bool
     let isFocused: Bool
     let isOffscreen: Bool
@@ -332,6 +367,7 @@ private final class MockAutomationElement: AutomationElementRepresenting, @unche
     private let actionErrors: [String: any Error]
     var performedActions: [String] = []
     var setValues: [UIElementValue] = []
+    var setFocusedValues: [Bool] = []
 
     var automationChildren: [any AutomationElementRepresenting] {
         self.children
@@ -348,6 +384,7 @@ private final class MockAutomationElement: AutomationElementRepresenting, @unche
         value: Any? = nil,
         actionNames: [String] = [],
         isValueSettable: Bool = false,
+        isFocusedSettable: Bool = false,
         isEnabled: Bool = true,
         isFocused: Bool = false,
         isOffscreen: Bool = false,
@@ -366,6 +403,7 @@ private final class MockAutomationElement: AutomationElementRepresenting, @unche
         self.value = value
         self.actionNames = actionNames
         self.isValueSettable = isValueSettable
+        self.isFocusedSettable = isFocusedSettable
         self.isEnabled = isEnabled
         self.isFocused = isFocused
         self.isOffscreen = isOffscreen
@@ -391,6 +429,13 @@ private final class MockAutomationElement: AutomationElementRepresenting, @unche
         }
         self.value = value.displayString
         self.setValues.append(value)
+    }
+
+    func setAutomationFocused(_ focused: Bool) throws {
+        guard self.isFocusedSettable else {
+            throw AccessibilitySystemError(.attributeUnsupported)
+        }
+        self.setFocusedValues.append(focused)
     }
 
     func stringAttribute(_ name: String) -> String? {

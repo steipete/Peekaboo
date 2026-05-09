@@ -21,6 +21,7 @@ protocol AutomationElementRepresenting: Sendable {
     var stringValue: String? { get }
     var actionNames: [String] { get }
     var isValueSettable: Bool { get }
+    var isFocusedSettable: Bool { get }
     var isEnabled: Bool { get }
     var isFocused: Bool { get }
     var isOffscreen: Bool { get }
@@ -29,12 +30,13 @@ protocol AutomationElementRepresenting: Sendable {
 
     func performAutomationAction(_ actionName: String) throws
     func setAutomationValue(_ value: UIElementValue) throws
+    func setAutomationFocused(_ focused: Bool) throws
     func stringAttribute(_ name: String) -> String?
     func intAttribute(_ name: String) -> Int?
 }
 
 /// Typed wrapper around an accessibility element used by action-first input paths.
-struct AutomationElement: Sendable, AutomationElementRepresenting {
+struct AutomationElement: AutomationElementRepresenting {
     let element: Element
 
     init(_ element: Element) {
@@ -101,6 +103,11 @@ struct AutomationElement: Sendable, AutomationElementRepresenting {
     }
 
     @MainActor
+    var isFocusedSettable: Bool {
+        self.element.isAttributeSettable(named: AXAttributeNames.kAXFocusedAttribute)
+    }
+
+    @MainActor
     var isEnabled: Bool {
         self.element.isEnabled() ?? true
     }
@@ -153,6 +160,17 @@ struct AutomationElement: Sendable, AutomationElementRepresenting {
             self.element.underlyingElement,
             AXAttributeNames.kAXValueAttribute as CFString,
             value.accessibilityValue as CFTypeRef)
+        guard error == .success else {
+            throw AccessibilitySystemError(error)
+        }
+    }
+
+    @MainActor
+    func setAutomationFocused(_ focused: Bool) throws {
+        let error = AXUIElementSetAttributeValue(
+            self.element.underlyingElement,
+            AXAttributeNames.kAXFocusedAttribute as CFString,
+            (focused ? kCFBooleanTrue : kCFBooleanFalse) as CFTypeRef)
         guard error == .success else {
             throw AccessibilitySystemError(error)
         }
