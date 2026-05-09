@@ -58,6 +58,27 @@ struct WindowMovementTrackingTests {
 
     @Test
     @MainActor
+    func `Allows tiny window size jitter`() {
+        let snapshot = UIAutomationSnapshot(
+            windowBounds: CGRect(x: 100, y: 100, width: 200, height: 200),
+            windowID: 98)
+
+        let tracker = StubWindowTracker(bounds: CGRect(x: 110, y: 120, width: 203, height: 204))
+        WindowMovementTracking.provider = tracker
+        defer { WindowMovementTracking.provider = nil }
+
+        let result = WindowMovementTracking.adjustPoint(CGPoint(x: 150, y: 150), snapshot: snapshot)
+        switch result {
+        case let .adjusted(point, delta):
+            #expect(delta == CGPoint(x: 10, y: 20))
+            #expect(point == CGPoint(x: 160, y: 170))
+        default:
+            Issue.record("Expected adjusted point for tiny size jitter, got \(result)")
+        }
+    }
+
+    @Test
+    @MainActor
     func `Returns stale when tracked window disappears`() {
         let snapshot = UIAutomationSnapshot(
             applicationBundleId: "com.apple.TextEdit",

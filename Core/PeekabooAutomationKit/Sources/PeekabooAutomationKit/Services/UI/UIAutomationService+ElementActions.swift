@@ -15,10 +15,18 @@ extension UIAutomationService: ElementActionAutomationServiceProtocol {
             strategy: self.inputPolicy.strategy(for: .setValue, bundleIdentifier: resolved.bundleIdentifier),
             bundleIdentifier: resolved.bundleIdentifier,
             action: {
-                try self.actionInputDriver.trySetValue(element: resolved.element, value: value)
+                do {
+                    return try self.actionInputDriver.trySetValue(element: resolved.element, value: value)
+                } catch let error as ActionInputError where error.isUnsupportedValueMutation {
+                    throw PeekabooError.invalidInput(Self.unsupportedSetValueMessage(
+                        target: resolved.description,
+                        reason: error.localizedDescription))
+                }
             },
             synth: {
-                throw ActionInputError.unsupported(.actionUnsupported)
+                throw PeekabooError.invalidInput(Self.unsupportedSetValueMessage(
+                    target: resolved.description,
+                    reason: "Direct value setting is not supported for this element."))
             })
         let newValue = self.safeValueDescription(resolved.element.value) ?? value.displayString
 
@@ -157,6 +165,10 @@ extension UIAutomationService: ElementActionAutomationServiceProtocol {
         return "Action '\(actionName)' is not supported by \(target). Available actions: \(available)."
     }
 
+    nonisolated static func unsupportedSetValueMessage(target: String, reason: String) -> String {
+        "Cannot set value on \(target): \(reason)"
+    }
+
     private func safeValueDescription(_ value: Any?) -> String? {
         switch value {
         case let value as String:
@@ -181,6 +193,18 @@ extension ActionInputError {
     fileprivate var isUnsupportedActionInvocation: Bool {
         switch self {
         case .unsupported(.actionUnsupported), .unsupported(.attributeUnsupported):
+            true
+        case .unsupported, .staleElement, .permissionDenied, .targetUnavailable, .failed:
+            false
+        }
+    }
+
+    fileprivate var isUnsupportedValueMutation: Bool {
+        switch self {
+        case .unsupported(.attributeUnsupported),
+             .unsupported(.valueNotSettable),
+             .unsupported(.secureValueNotAllowed),
+             .unsupported(.missingElement):
             true
         case .unsupported, .staleElement, .permissionDenied, .targetUnavailable, .failed:
             false

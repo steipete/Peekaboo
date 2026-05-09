@@ -17,6 +17,7 @@ public protocol WindowTrackingProviding: AnyObject, Sendable {
 public enum WindowMovementTracking {
     private static let logger = Logger(subsystem: "boo.peekaboo.core", category: "WindowMovementTracking")
     private static let identityService = WindowIdentityService()
+    private static let toleratedSizeJitter: CGFloat = 4
 
     public weak static var provider: (any WindowTrackingProviding)?
 
@@ -39,7 +40,7 @@ public enum WindowMovementTracking {
                 """)
         }
 
-        if currentBounds.size != snapshotBounds.size {
+        if self.sizeChangedMeaningfully(from: snapshotBounds.size, to: currentBounds.size) {
             let identity = self.windowIdentityDescription(snapshot: snapshot, windowID: windowID)
             let message = """
             Snapshot window changed size (\(identity)). \
@@ -96,6 +97,11 @@ public enum WindowMovementTracking {
             return provider.windowBounds(for: windowID)
         }
         return self.identityService.getWindowInfo(windowID: windowID)?.bounds
+    }
+
+    private static func sizeChangedMeaningfully(from snapshotSize: CGSize, to currentSize: CGSize) -> Bool {
+        abs(currentSize.width - snapshotSize.width) > self.toleratedSizeJitter ||
+            abs(currentSize.height - snapshotSize.height) > self.toleratedSizeJitter
     }
 
     private static func windowIdentityDescription(

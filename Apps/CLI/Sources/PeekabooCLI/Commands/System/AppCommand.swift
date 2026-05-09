@@ -364,7 +364,7 @@ ApplicationResolvablePositional, ApplicationResolver {}
 @MainActor
 extension AppCommand.HideSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.app = try values.requireOption("app", as: String.self)
+        self.app = try Self.resolveAppArgument(values, label: "app")
         self.pid = try values.decodeOption("pid", as: Int32.self)
     }
 }
@@ -374,9 +374,31 @@ ApplicationResolvablePositional, ApplicationResolver {}
 @MainActor
 extension AppCommand.UnhideSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
-        self.app = try values.requireOption("app", as: String.self)
+        self.app = try AppCommand.HideSubcommand.resolveAppArgument(values, label: "app")
         self.pid = try values.decodeOption("pid", as: Int32.self)
         self.activate = values.flag("activate")
+    }
+}
+
+extension AppCommand.HideSubcommand {
+    fileprivate static func resolveAppArgument(_ values: CommanderBindableValues, label: String) throws -> String {
+        let positional = values.positionalValue(at: 0)
+        let option = values.singleOption(label)
+
+        switch (positional, option) {
+        case let (positional?, option?) where positional != option:
+            throw CommanderBindingError.invalidArgument(
+                label: label,
+                value: "\(positional), \(option)",
+                reason: "Provide app either positionally or with --app, not both"
+            )
+        case let (positional?, _):
+            return positional
+        case let (_, option?):
+            return option
+        default:
+            throw CommanderBindingError.missingArgument(label: label)
+        }
     }
 }
 

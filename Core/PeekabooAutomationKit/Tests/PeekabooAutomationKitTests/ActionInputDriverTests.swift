@@ -179,6 +179,16 @@ struct ActionInputDriverTests {
         #expect(message.contains("AXPress, AXShowMenu"))
     }
 
+    @Test
+    func `unsupported set value message includes target and reason`() {
+        let message = UIAutomationService.unsupportedSetValueMessage(
+            target: "elem_2 other: scroll area",
+            reason: "Accessibility value is not settable")
+
+        #expect(message.contains("elem_2 other: scroll area"))
+        #expect(message.contains("Accessibility value is not settable"))
+    }
+
     @MainActor
     @Test
     func `element actions reject missing explicit snapshot instead of live lookup`() async throws {

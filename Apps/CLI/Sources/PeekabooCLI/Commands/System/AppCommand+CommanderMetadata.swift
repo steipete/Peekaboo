@@ -78,6 +78,13 @@ extension AppCommand.QuitSubcommand: CommanderSignatureProviding {
 extension AppCommand.HideSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            arguments: [
+                .make(
+                    label: "app",
+                    help: "Application to hide",
+                    isOptional: true
+                ),
+            ],
             options: [
                 .commandOption(
                     "app",
@@ -97,6 +104,13 @@ extension AppCommand.HideSubcommand: CommanderSignatureProviding {
 extension AppCommand.UnhideSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            arguments: [
+                .make(
+                    label: "app",
+                    help: "Application to unhide",
+                    isOptional: true
+                ),
+            ],
             options: [
                 .commandOption(
                     "app",
