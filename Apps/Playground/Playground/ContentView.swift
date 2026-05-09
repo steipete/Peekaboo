@@ -464,9 +464,11 @@ struct DialogTestingView: View {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     ContentView()
         .environmentObject(ActionLogger.shared)
         .environmentObject(PlaygroundTabRouter())
         .frame(width: 1200, height: 800)
 }
+#endif

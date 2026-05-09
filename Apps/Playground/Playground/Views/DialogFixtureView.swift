@@ -262,7 +262,9 @@ struct DialogFixtureView: View {
     }
 }
 
+#if DEBUG && !SWIFT_PACKAGE
 #Preview {
     DialogFixtureView()
         .environmentObject(ActionLogger.shared)
 }
+#endif
