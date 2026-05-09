@@ -166,6 +166,7 @@
 - `peekaboo clean --dry-run` now previews the documented default cleanup scope instead of requiring an explicit cleanup target.
 - `peekaboo run` scripts now create parent directories for legacy `see` step output paths before writing screenshots.
 - `peekaboo dialog file` now has `--timeout-seconds` and returns a `TIMEOUT` JSON error instead of hanging indefinitely on wedged save/open panels.
+- Peekaboo.app no longer crashes at launch on macOS 26 when the hidden Settings helper window is created.
 - `peekaboo hotkey` now accepts plus-separated shortcuts such as `cmd+s`, matching common CLI shorthand and the help text while still supporting comma and space separators.
 - `peekaboo type` is more reliable in VM and headless launch paths because printable ASCII input now uses physical key events instead of Unicode-only events.
 - SwiftPM debug builds now skip SwiftUI preview macros when building from Command Line Tools without full Xcode preview plugin support.

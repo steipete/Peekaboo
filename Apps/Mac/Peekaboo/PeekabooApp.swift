@@ -96,7 +96,7 @@ struct PeekabooApp: App {
                 }
         }
         .windowResizability(.contentSize)
-        .defaultSize(width: 1, height: 1)
+        .defaultSize(width: 64, height: 64)
         .windowStyle(.hiddenTitleBar)
         .commandsRemoved() // Remove from File menu
 

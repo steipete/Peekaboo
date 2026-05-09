@@ -112,7 +112,7 @@ struct HiddenWindowView: View {
 
     var body: some View {
         Color.clear
-            .frame(width: 1, height: 1)
+            .frame(width: 64, height: 64)
             .onReceive(NotificationCenter.default.publisher(for: .openSettingsRequest)) { _ in
                 Task { @MainActor in
                     self.openSettings()
@@ -125,6 +125,7 @@ struct HiddenWindowView: View {
                 {
                     window.isExcludedFromWindowsMenu = true
                     window.title = "" // Remove title to ensure it doesn't show anywhere
+                    window.orderOut(nil)
                 }
             }
     }
