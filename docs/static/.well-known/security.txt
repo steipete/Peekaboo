@@ -1,0 +1,4 @@
+Contact: https://github.com/steipete/Peekaboo/security
+Preferred-Languages: en
+Canonical: https://peekaboo.sh/.well-known/security.txt
+Policy: https://github.com/steipete/Peekaboo/security/policy

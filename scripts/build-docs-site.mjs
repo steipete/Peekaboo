@@ -298,14 +298,20 @@ function markdownToHtml(markdown, currentRel) {
     if (trimmed.endsWith("|") && !trimmed.endsWith("\\|")) trimmed = trimmed.slice(0, -1);
     const cells = [];
     let current = "";
+    let inCode = false;
     for (let idx = 0; idx < trimmed.length; idx++) {
       const char = trimmed[idx];
+      if (char === "`") {
+        inCode = !inCode;
+        current += char;
+        continue;
+      }
       if (char === "\\" && trimmed[idx + 1] === "|") {
         current += "\\|";
         idx += 1;
         continue;
       }
-      if (char === "|") {
+      if (char === "|" && !inCode) {
         cells.push(current.trim().replace(/\\\|/g, "|"));
         current = "";
         continue;
@@ -319,7 +325,7 @@ function markdownToHtml(markdown, currentRel) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = line.match(/^```([\w+-]+)?\s*$/);
+    const fenceMatch = line.match(/^\s{0,3}```([\w+-]+)?\s*$/);
     if (fenceMatch) {
       flushParagraph();
       closeList();
@@ -574,7 +580,8 @@ function pageCanonicalUrl(page) {
 
 function writeSitemap() {
   if (!siteBase) return;
-  const urls = pages.map((page) => `  <url><loc>${escapeHtml(pageCanonicalUrl(page))}</loc></url>`).join("\n");
+  const canonicalUrls = [...new Set(pages.map((page) => pageCanonicalUrl(page)))].sort();
+  const urls = canonicalUrls.map((url) => `  <url><loc>${escapeHtml(url)}</loc></url>`).join("\n");
   fs.writeFileSync(
     path.join(outDir, "sitemap.xml"),
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
