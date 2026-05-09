@@ -55,7 +55,7 @@ Each element has `id`, `role`, `label`, `frame`, and `actions`. Pass an `id` to 
 
 ```bash
 peekaboo click --label "Address and search bar" --app Safari
-peekaboo type "github.com/steipete/Peekaboo" --press-return
+peekaboo type "github.com/openclaw/Peekaboo" --press-return
 ```
 
 Coordinates also work: `peekaboo click --at 480,120`. See [automation.md](automation.md) for the full input vocabulary.

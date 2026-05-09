@@ -4,6 +4,7 @@
 
 ### Changed
 - Consolidated MCP installation docs into the main MCP page and removed stale standalone Claude Desktop and MCP best-practices pages from the docs site.
+- Added docs-site agent metadata, social preview assets, and security discovery files, with GitHub links moved to the OpenClaw-owned repository. Thanks @williamclay8 for #115.
 
 ## [3.0.0] - 2026-05-09
 
