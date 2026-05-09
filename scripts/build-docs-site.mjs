@@ -68,8 +68,6 @@ const sections = [
     [
       "MCP.md",
       "commands/mcp.md",
-      "install-mcp-claude-desktop.md",
-      "mcp-best-practices.md",
     ],
   ],
   [
@@ -79,7 +77,6 @@ const sections = [
       "engine.md",
       "daemon.md",
       "bridge-host.md",
-      "concurrency.md",
     ],
   ],
   [

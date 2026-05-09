@@ -7,7 +7,7 @@ read_when:
 
 # Model Context Protocol (MCP) in Peekaboo
 
-This document explains how Peekaboo exposes its automation tools as an MCP server and how to start it from the CLI.
+This document explains how Peekaboo exposes its automation tools as an MCP server and how to install it in MCP clients.
 
 ## Overview
 
@@ -27,8 +27,75 @@ The same action tools are available to CLI users as `peekaboo set-value` and `pe
 have a synthetic-input equivalent.
 
 Supported transports:
+
 - **stdio**: supported and default.
 - **http / sse**: recognized flags, but server transports are not implemented yet.
+
+## Install in MCP clients
+
+Most MCP clients can launch Peekaboo through either the npm package or a local binary.
+
+Use npm when you want the published release:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": ["-y", "@steipete/peekaboo", "mcp"]
+    }
+  }
+}
+```
+
+Use a local binary when developing Peekaboo or testing a checkout:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "/path/to/peekaboo",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+If your client supports environment variables, add provider and logging settings under `env`:
+
+```json
+{
+  "mcpServers": {
+    "peekaboo": {
+      "command": "npx",
+      "args": ["-y", "@steipete/peekaboo", "mcp"],
+      "env": {
+        "PEEKABOO_AI_PROVIDERS": "openai/gpt-5.1,anthropic/claude-opus-4",
+        "PEEKABOO_LOG_LEVEL": "info"
+      }
+    }
+  }
+}
+```
+
+Common environment variables:
+
+- `PEEKABOO_AI_PROVIDERS`: comma-separated provider list.
+- `PEEKABOO_LOG_LEVEL`: `debug`, `info`, `warn`, or `error`.
+- `OPENAI_API_KEY`: OpenAI API key for GPT models.
+- `ANTHROPIC_API_KEY`: Anthropic API key for Claude models.
+- `X_AI_API_KEY` or `XAI_API_KEY`: xAI API key for Grok models.
+- `PEEKABOO_OLLAMA_BASE_URL`: Ollama server URL, defaults to `http://localhost:11434`.
+
+## Verify client setup
+
+Run the server manually first:
+
+```
+peekaboo mcp
+```
+
+Then restart your MCP client and ask it to list available tools or take a screenshot. Peekaboo should expose the same native tools that `peekaboo tools` reports.
 
 ## CLI usage
 
@@ -65,3 +132,7 @@ The MCP `image` tool stores logical 1x captures by default. Pass `scale: "native
 
 - Ensure Screen Recording + Accessibility permissions are granted (`peekaboo permissions status`).
 - If the MCP client cannot connect, confirm you are launching Peekaboo with `mcp` or `mcp serve` and that the client is using stdio transport.
+- Use absolute binary paths for local checkouts.
+- Confirm the binary is executable (`chmod +x /path/to/peekaboo`).
+- Set `PEEKABOO_LOG_LEVEL=debug` while diagnosing startup issues.
+- Check Peekaboo logs with `./scripts/pblog.sh -f` from a source checkout.

@@ -30,7 +30,7 @@ The npm package wraps the same CLI plus an MCP shim, so you can launch the serve
 npx -y @steipete/peekaboo mcp
 ```
 
-This is the form you point Codex, Claude Code, and Cursor at. See [MCP.md](MCP.md) and [install-mcp-claude-desktop.md](install-mcp-claude-desktop.md).
+This is the form you point Codex, Claude Code, and Cursor at. See [MCP.md](MCP.md).
 
 ## Mac app
 

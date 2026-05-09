@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Consolidated MCP installation docs into the main MCP page and removed stale standalone Claude Desktop and MCP best-practices pages from the docs site.
+
 ## [3.0.0] - 2026-05-09
 
 ### Highlights
