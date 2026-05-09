@@ -7,9 +7,7 @@ import PeekabooFoundation
 /// Re-resolves snapshot/query targets to live AX elements for action invocation.
 @MainActor
 struct AutomationElementResolver {
-    init() {}
-
-    public func resolve(
+    func resolve(
         detectedElement: DetectedElement,
         windowContext: WindowContext?) -> AutomationElement?
     {
@@ -19,7 +17,7 @@ struct AutomationElementResolver {
         }
     }
 
-    public func resolve(
+    func resolve(
         query: String,
         windowContext: WindowContext?,
         requireTextInput: Bool = false) -> AutomationElement?

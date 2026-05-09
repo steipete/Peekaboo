@@ -17,8 +17,6 @@ protocol SyntheticInputDriving: Sendable {
 /// Thin injectable wrapper over AXorcist's low-level synthetic input helpers.
 @MainActor
 struct SyntheticInputDriver: SyntheticInputDriving {
-    init() {}
-
     func click(at point: CGPoint, button: MouseButton = .left, count: Int = 1) throws {
         try InputDriver.click(at: point, button: button, count: count)
     }

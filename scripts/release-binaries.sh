@@ -192,38 +192,28 @@ fi
 
 # Step 7: Create release notes
 echo -e "\n${BLUE}Generating release notes...${NC}"
-cat > "$RELEASE_DIR/release-notes.md" << EOF
-# Peekaboo v${VERSION}
-
-## Installation
-
-### Homebrew (Recommended)
-\`\`\`bash
-brew tap steipete/tap
-brew install peekaboo
-\`\`\`
-
-### Direct Download
-\`\`\`bash
-curl -L https://github.com/steipete/peekaboo/releases/download/v${VERSION}/${CLI_TARBALL_NAME} | tar xz
-sudo mv ${CLI_ARTIFACT_DIR}/peekaboo /usr/local/bin/
-\`\`\`
-
-### npm (includes MCP server)
-\`\`\`bash
-npm install -g @steipete/peekaboo
-\`\`\`
-
-## What's New
-
-[Add changelog entries here]
-
-## Checksums
-
-\`\`\`
-$(cat checksums.txt 2>/dev/null || echo "See checksums.txt")
-\`\`\`
-EOF
+if ! awk -v version="$VERSION" '
+    $0 ~ "^## \\[?" version "\\]?" {
+        in_section = 1
+        found = 1
+        print
+        next
+    }
+    in_section && /^## / {
+        exit
+    }
+    in_section {
+        print
+    }
+    END {
+        if (!found) {
+            exit 1
+        }
+    }
+' "$PROJECT_ROOT/CHANGELOG.md" > "$RELEASE_DIR/release-notes.md"; then
+    echo -e "${RED}❌ Could not extract v${VERSION} notes from CHANGELOG.md${NC}"
+    exit 1
+fi
 
 # Step 8: Display results
 echo -e "\n${GREEN}✅ Release artifacts created successfully!${NC}"

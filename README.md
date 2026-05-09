@@ -2,7 +2,7 @@
 
 ![Peekaboo Banner](assets/peekaboo.png)
 
-[![npm package](https://img.shields.io/badge/npm_package-3.0.0--beta1-brightgreen?logo=npm&logoColor=white&style=flat-square)](https://www.npmjs.com/package/@steipete/peekaboo)
+[![npm package](https://img.shields.io/badge/npm_package-3.0.0-brightgreen?logo=npm&logoColor=white&style=flat-square)](https://www.npmjs.com/package/@steipete/peekaboo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ffd60a?style=flat-square)](https://opensource.org/licenses/MIT)
 [![macOS 15.0+ (Sequoia)](https://img.shields.io/badge/macOS-15.0%2B_(Sequoia)-0078d7?logo=apple&logoColor=white&style=flat-square)](https://www.apple.com/macos/)
 [![Swift 6.2](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white&style=flat-square)](https://swift.org/)
@@ -12,7 +12,6 @@
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-0088cc?style=flat-square)](https://deepwiki.com/steipete/peekaboo)
 
 Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI automation to macOS. Version 3 adds native agent flows and multi-screen automation across the CLI and MCP server.
-> Note: v3 is currently in beta (3.0.0-beta4) and has a few known issues; see the changelog for details.
 
 ## What you get
 - Pixel-accurate captures (windows, screens, menu bar) with optional Retina 2x scaling.

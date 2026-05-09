@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-05-09
+
+### Highlights
+- Native action-first automation is now the default path for supported UI controls, with synthetic input as a fallback. This makes element clicks, text entry, scrolling, value setting, and accessibility actions more reliable across real macOS apps.
+- Screenshot and UI detection flows now share the desktop observation pipeline across CLI and MCP, including structured diagnostics, timing spans, resolved target metadata, OCR, annotation output, and snapshot registration.
+- Window, app, menu bar, Dock, dialog, Space, clipboard, run, and capture commands now use shared service boundaries and consistent JSON envelopes, making automation output easier to script and debug.
+- Element-targeted interactions now preserve snapshot window context, refresh stale implicit snapshots once, and report target-point diagnostics, so follow-up clicks and gestures keep working after windows move or refresh.
+- Capture and detection performance improved substantially: local read-only commands avoid bridge probes by default, app/window selection has faster paths, ScreenCaptureKit work is gated under concurrency, and `see` avoids redundant AX traversal/probes.
+- CLI usability is better: shell completions, public kebab-case help placeholders, directory-aware output paths, home-directory path expansion, clear validation failures, and stricter unexpected-argument handling.
+- Peekaboo.app release, Sparkle update, Homebrew sync, and generated docs-site automation are now wired into the release flow.
+- Major v3 internals were split into focused files across CLI, Core services, MCP tools, bridge transport, agent runtime, capture, observation, UI automation, and visualizer code so future fixes are smaller and easier to review.
+
 ### Added
 - Expanded the repo-local `peekaboo` skill with UIAX/action vs synthetic input testing workflows, Calculator smoke tests, and validation commands.
 - Peekaboo Inspector now surfaces AX descriptions and keyboard shortcuts, making description-only controls easier to inspect and search.
@@ -170,6 +182,7 @@
 - `peekaboo clean --dry-run` now previews the documented default cleanup scope instead of requiring an explicit cleanup target.
 - `peekaboo run` scripts now create parent directories for legacy `see` step output paths before writing screenshots.
 - `peekaboo dialog file` now has `--timeout-seconds` and returns a `TIMEOUT` JSON error instead of hanging indefinitely on wedged save/open panels.
+- `peekaboo dialog list` now has `--timeout-seconds` and returns structured JSON instead of hanging or crashing when Accessibility stalls while searching for dialogs.
 - `peekaboo list windows --pid` now works without also requiring `--app`, matching the command help and `window list --pid`.
 - `peekaboo app hide <app>` and `peekaboo app unhide <app>` now accept the positional app form shown by the CLI examples, while keeping `--app`.
 - Snapshot-backed interactions now tolerate tiny macOS window-size jitter instead of failing as stale when a window drifts by only a few pixels between `see` and the follow-up action.

@@ -86,6 +86,13 @@ extension DialogCommand.DismissSubcommand: CommanderSignatureProviding {
 extension DialogCommand.ListSubcommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            options: [
+                .commandOption(
+                    "timeoutSeconds",
+                    help: "Maximum time to spend listing dialog elements",
+                    long: "timeout-seconds"
+                ),
+            ],
             optionGroups: [
                 InteractionTargetOptions.commanderSignature(),
                 FocusCommandOptions.commanderSignature(),

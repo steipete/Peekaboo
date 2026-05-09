@@ -116,6 +116,9 @@ extension DialogCommand.ListSubcommand: AsyncRuntimeCommand {}
 @MainActor
 extension DialogCommand.ListSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
+        if let timeoutSeconds: TimeInterval = try values.decodeOption("timeoutSeconds", as: TimeInterval.self) {
+            self.timeoutSeconds = timeoutSeconds
+        }
         try values.fillInteractionTargetOptions(into: &self.target)
         self.focusOptions = try values.makeFocusOptions()
     }

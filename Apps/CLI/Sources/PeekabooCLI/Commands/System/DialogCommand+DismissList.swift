@@ -105,6 +105,9 @@ extension DialogCommand {
             abstract: "List elements in current dialog using DialogService"
         )
 
+        @Option(name: .long, help: "Maximum time to spend listing dialog elements in seconds")
+        var timeoutSeconds: TimeInterval = 5
+
         @OptionGroup var target: InteractionTargetOptions
         @OptionGroup var focusOptions: FocusCommandOptions
         @RuntimeStorage private var runtime: CommandRuntime?
@@ -148,10 +151,17 @@ extension DialogCommand {
 
                 let resolvedWindowTitle = try await self.target.resolveWindowTitleOptional(services: self.services)
                 let appHint = try await DialogCommand.resolveDialogAppHint(target: self.target, services: self.services)
-                let elements = try await self.services.dialogs.listDialogElements(
-                    windowTitle: resolvedWindowTitle,
-                    appName: appHint
-                )
+                let dialogService = self.services.dialogs
+                let timeoutSeconds = self.timeoutSeconds
+                let elements = try await withMainActorCommandTimeout(
+                    seconds: timeoutSeconds,
+                    operationName: "dialog list"
+                ) {
+                    try await dialogService.listDialogElements(
+                        windowTitle: resolvedWindowTitle,
+                        appName: appHint
+                    )
+                }
 
                 if self.jsonOutput {
                     let textFields = elements.textFields.map { field in
