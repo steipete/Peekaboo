@@ -144,7 +144,7 @@ Common helpers:
    - `peekaboo agent` builds on top of those tools: it plans via GPT‑5/Sonnet, emits progress (Visualizer + stderr), and stores session history so users can resume or inspect steps. Agents always call the public CLI tools, so debugging any failure is as simple as rerunning the emitted sequence manually.
 
 4. **MCP Server**
-   - Running `peekaboo mcp` or `peekaboo mcp serve` lets Claude Desktop / MCP Inspector consume Peekaboo tools directly.
+   - Running `peekaboo mcp` or `peekaboo mcp serve` lets Codex, Claude Code, Cursor, or MCP Inspector consume Peekaboo tools directly.
 
 ---
 

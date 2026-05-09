@@ -20,7 +20,7 @@ Peekaboo brings high-fidelity screen capture, AI analysis, and complete GUI auto
 - Direct accessibility tools for settable values and named actions (`set-value`, `perform-action`).
 - Menu and menubar discovery with structured JSON; no clicks required.
 - Multi-provider AI: GPT-5.1 family, Claude 4.x, Grok 4-fast (vision), Gemini 2.5, and local Ollama models.
-- MCP server for Claude Desktop and Cursor plus a native CLI; the same tools in both.
+- MCP server for Codex, Claude Code, and Cursor plus a native CLI; the same tools in both.
 - Configurable, testable workflows with reproducible sessions and strict typing.
 - Requires macOS Screen Recording + Accessibility permissions (see [docs/permissions.md](docs/permissions.md)).
 
@@ -52,10 +52,10 @@ peekaboo perform-action --on B1 --action AXPress --snapshot "$SNAPSHOT"
 # Run a natural-language automation
 peekaboo agent "Open Notes and create a TODO list with three items"
 
-# Run as an MCP server (Claude/Cursor)
+# Run as an MCP server (Codex, Claude Code, Cursor)
 npx -y @steipete/peekaboo
 
-# Minimal Claude Desktop config snippet (Developer → Edit Config):
+# Minimal MCP client config snippet:
 # {
 #   "mcpServers": {
 #     "peekaboo": {

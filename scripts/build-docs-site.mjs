@@ -528,9 +528,10 @@ function layout({ page, html, toc, prev, next, sectionName }) {
   <title>${escapeHtml(titleSuffix)}</title>
   <meta name="description" content="${escapeAttr(description)}">
   <meta name="theme-color" content="#07080a">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   ${socialMeta}
   <link rel="icon" href="${rootPrefix}favicon.svg" type="image/svg+xml">
+  <script>try{const t=localStorage.getItem('peekaboo-theme');document.documentElement.dataset.theme=t==='light'||t==='dark'?t:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark')}catch{document.documentElement.dataset.theme='dark'}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..800&family=Recursive:wght@300..800&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
@@ -547,6 +548,9 @@ function layout({ page, html, toc, prev, next, sectionName }) {
           <span class="mark" aria-hidden="true"></span>
           <span><strong>${escapeHtml(productName)}</strong><small>macOS automation docs</small></span>
         </a>
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme" aria-pressed="false">
+          <span class="theme-toggle__icon" aria-hidden="true"></span><span data-theme-label>Dark</span>
+        </button>
       </div>
       <label class="search"><span>Search</span><input id="doc-search" type="search" placeholder="capture, click, agent, mcp"></label>
       <nav>${navHtml(page)}</nav>

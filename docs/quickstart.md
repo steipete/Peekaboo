@@ -72,7 +72,7 @@ Watch the visualizer overlay as it works. Pause/resume with `peekaboo agent --re
 
 ## 6. (Optional) Wire up MCP
 
-Want Claude Desktop or Cursor to drive Peekaboo? Drop this into your MCP client config:
+Want Codex, Claude Code, or Cursor to drive Peekaboo? Drop this into your MCP client config:
 
 ```json
 {
@@ -85,7 +85,7 @@ Want Claude Desktop or Cursor to drive Peekaboo? Drop this into your MCP client 
 }
 ```
 
-Full setup, including environment variables and provider keys, is in [install-mcp-claude-desktop.md](install-mcp-claude-desktop.md).
+Full setup, including environment variables and provider keys, is in [MCP.md](MCP.md).
 
 ## What next?
 

@@ -85,5 +85,5 @@ Three primitives, four lines. The agent does the same thing under the hood — i
 ## Going further
 
 - [Agent overview](commands/agent.md) — let Peekaboo plan input sequences from a goal.
-- [MCP](MCP.md) — expose all of the above to Claude Desktop, Cursor, and Codex.
+- [MCP](MCP.md) — expose all of the above to Codex, Claude Code, and Cursor.
 - [Architecture](ARCHITECTURE.md) — how the input pipeline routes through Bridge and Daemon.

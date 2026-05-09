@@ -7,7 +7,7 @@ read_when:
 
 # Manual MCP Testing (mcporter)
 
-Use this checklist to exercise the Swift MCP server with mcporter. It mirrors the Oracle smokes but targets the Peekaboo CLI (`peekaboo mcp serve`) so we can validate stdio transport, tool schemas, and basic automation without relying on Claude/Cursor.
+Use this checklist to exercise the Swift MCP server with mcporter. It mirrors the Oracle smokes but targets the Peekaboo CLI (`peekaboo mcp serve`) so we can validate stdio transport, tool schemas, and basic automation without relying on Codex, Claude Code, or Cursor.
 
 ## Quick setup
 - Build the CLI: `pnpm run build:cli` (or `pnpm run build:swift` for release binaries).

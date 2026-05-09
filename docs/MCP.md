@@ -11,7 +11,7 @@ This document explains how Peekaboo exposes its automation tools as an MCP serve
 
 ## Overview
 
-Peekaboo runs as an MCP server over stdio, exposing its native tools (image, see, click, etc.) to external MCP clients such as Claude Desktop or Cursor.
+Peekaboo runs as an MCP server over stdio, exposing its native tools (image, see, click, etc.) to external MCP clients such as Codex, Claude Code, or Cursor.
 Peekaboo no longer hosts or manages external MCP servers; configure your MCP client to launch `peekaboo mcp` directly.
 
 Action-oriented UI tools include:

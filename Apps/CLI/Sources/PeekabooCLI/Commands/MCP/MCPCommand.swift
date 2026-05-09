@@ -15,7 +15,7 @@ struct MCPCommand: ParsableCommand {
         abstract: "Model Context Protocol server operations",
         discussion: """
         The MCP command runs Peekaboo as an MCP server, exposing its tools to AI clients
-        like Claude and Cursor.
+        like Codex, Claude Code, and Cursor.
 
         EXAMPLES:
           peekaboo mcp                          # Start MCP server on stdio

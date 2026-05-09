@@ -9,7 +9,7 @@ read_when:
 
 # Peekaboo documentation
 
-Peekaboo is a macOS automation toolkit for humans and agents. It captures pixels, reads the accessibility tree, drives input, and ships an agent runtime plus an MCP server so AI clients (Claude Desktop, Cursor, Codex, etc.) can drive the desktop with the same primitives you'd use from the shell.
+Peekaboo is a macOS automation toolkit for humans and agents. It captures pixels, reads the accessibility tree, drives input, and ships an agent runtime plus an MCP server so AI clients (Codex, Claude Code, Cursor) can drive the desktop with the same primitives you'd use from the shell.
 
 > **TL;DR** — `brew install steipete/tap/peekaboo`, grant Screen Recording + Accessibility, then `peekaboo agent "open Safari and search for Peekaboo"`.
 
@@ -25,7 +25,7 @@ Peekaboo is a macOS automation toolkit for humans and agents. It captures pixels
 - **[Capture & vision](commands/capture.md)** — pixel-accurate screen, window, and menu-bar capture; annotated AX maps.
 - **[Automation](automation.md)** — click, type, scroll, drag, hotkeys, menus, dialogs, windows, Spaces.
 - **[Agent](commands/agent.md)** — natural-language plan/act loop with provider switching, resumable sessions, and visualizer feedback.
-- **[MCP](MCP.md)** — expose every Peekaboo tool over stdio for Claude Desktop, Cursor, Codex, and other MCP clients.
+- **[MCP](MCP.md)** — expose every Peekaboo tool over stdio for Codex, Claude Code, and Cursor.
 
 ## Reference
 
@@ -39,7 +39,7 @@ Peekaboo is a macOS automation toolkit for humans and agents. It captures pixels
 | Surface | Use it for | Entry point |
 | --- | --- | --- |
 | **CLI** | scripts, ad-hoc captures, CI | `brew install steipete/tap/peekaboo` |
-| **MCP server** | Claude Desktop, Cursor, Codex CLI | `npx @steipete/peekaboo mcp` |
+| **MCP server** | Codex, Claude Code, Cursor | `npx @steipete/peekaboo mcp` |
 | **Mac app** | menu-bar visualizer, permission prompts | [Releases](https://github.com/steipete/Peekaboo/releases/latest) |
 | **Library** | embed in Swift apps and tools | `Core/PeekabooCore` (Swift Package) |
 
