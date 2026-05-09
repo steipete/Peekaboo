@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Added
-- Expanded the repo-local `peekaboo-cli` skill with UIAX/action vs synthetic input testing workflows, Calculator smoke tests, and validation commands.
+- Expanded the repo-local `peekaboo` skill with UIAX/action vs synthetic input testing workflows, Calculator smoke tests, and validation commands.
 - Peekaboo Inspector now surfaces AX descriptions and keyboard shortcuts, making description-only controls easier to inspect and search.
 - `peekaboo see --json` now includes element bounds in each `ui_elements` entry again.
 - Added `DesktopObservationService` and the desktop observation refactor plan as the shared path toward unified screenshot capture, target resolution, timings, and optional AX detection.

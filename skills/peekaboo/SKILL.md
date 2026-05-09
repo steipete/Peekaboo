@@ -1,10 +1,10 @@
 ---
-name: peekaboo-cli
+name: peekaboo
 description: Use Peekaboo's live CLI and repo workflows for macOS desktop automation: screenshots, UI maps, app/window control, UIAX/action vs synthetic/CAEvent input paths, typing, menus, clipboard, permissions, MCP diagnostics, Inspector parity, and local validation. Use when a task needs current macOS UI state, direct desktop control, or changes to the Peekaboo repo.
 allowed-tools: Bash(peekaboo:*), Bash(pkb:*), Bash(pnpm:*), Bash(swift:*), Bash(swiftformat:*), Bash(swiftlint:*), Bash(node scripts/docs-list.mjs:*), Bash(ruby:*), Bash(rg:*)
 ---
 
-# Peekaboo CLI
+# Peekaboo
 
 Peekaboo is a macOS automation CLI and agent runtime. Prefer the freshly built repo binary and canonical docs over copied command references; command surfaces move fast.
 
