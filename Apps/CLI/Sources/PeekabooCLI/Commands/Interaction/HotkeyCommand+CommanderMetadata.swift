@@ -3,6 +3,13 @@ import Commander
 extension HotkeyCommand: CommanderSignatureProviding {
     static func commanderSignature() -> CommandSignature {
         CommandSignature(
+            arguments: [
+                .make(
+                    label: "keys",
+                    help: "Keys to press (comma-, plus-, or space-separated)",
+                    isOptional: true
+                ),
+            ],
             options: [
                 .commandOption(
                     "keys",

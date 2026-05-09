@@ -117,6 +117,26 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo tools rejects unexpected positional arguments in JSON mode`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+        let result = try await TestChildProcess.runPeekaboo(["tools", "extra", "--json", "--no-remote"])
+        #expect(result.status == .exited(1))
+        #expect(result.standardError.isEmpty)
+
+        let data = Data(result.standardOutput.utf8)
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let json = object as? [String: Any],
+              let error = json["error"] as? [String: Any] else {
+            Issue.record("Expected JSON parse-error output from tools command.")
+            return
+        }
+
+        #expect(json["success"] as? Bool == false)
+        #expect(error["code"] as? String == "INVALID_ARGUMENT")
+        #expect((error["message"] as? String)?.contains("Unexpected argument: extra") == true)
+    }
+
+    @Test
     func `peekaboo commander emits diagnostics JSON`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["commander", "--json", "--no-remote"])

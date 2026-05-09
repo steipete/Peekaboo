@@ -162,6 +162,7 @@
 - The docs site now publishes generated documentation pages at the site root and writes the sitemap from the generated page set.
 
 ### Fixed
+- Commander-backed CLI commands without positional arguments now reject unexpected trailing tokens instead of silently ignoring them.
 - Snapshot-backed UIAX actions now preserve app/window context when rehydrating snapshots, so `actionOnly` element clicks resolve in the captured app instead of the frontmost app.
 - `peekaboo click` now accepts the shared `--input-strategy` runtime override so action-only and synth-only paths can be tested directly.
 - `peekaboo click --input-strategy actionOnly` now focuses editable text controls via `AXFocused` when they do not expose `AXPress`, matching Computer Use-style element targeting more closely.
