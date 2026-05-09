@@ -6,7 +6,7 @@ import { css, faviconSvg, js } from "./docs-site-assets.mjs";
 
 const root = process.cwd();
 const docsDir = path.join(root, "docs");
-const siteSrcDir = path.join(docsDir, "site");
+const staticDir = path.join(docsDir, "static");
 const outDir = path.join(root, "_site");
 const repoBase = "https://github.com/steipete/Peekaboo";
 const repoEditBase = `${repoBase}/edit/main/docs`;
@@ -126,7 +126,6 @@ const buildExcludes = [
   /^tool-formatter-architecture\.md$/,
   /^tui\.md$/,
   /^restore\.md$/,
-  /^poltergeist\.md$/,
   /^homebrew-setup\.md$/,
   /^oauth\.md$/,
   /^audio\.md$/,
@@ -135,7 +134,6 @@ const buildExcludes = [
   /^service-api-reference\.md$/,
   /^error-handling-guide\.md$/,
   /^mcp-testing\.md$/,
-  /^security\.md$/,
 ];
 
 fs.rmSync(outDir, { recursive: true, force: true });
@@ -171,7 +169,7 @@ const sectionByRel = new Map();
 for (const section of nav) for (const page of section.pages) sectionByRel.set(page.rel, section.name);
 const orderedPages = nav.flatMap((s) => s.pages);
 
-// Build sub-pages under /docs/<rel>.html
+// Build pages directly at site root (index.md -> /, install.md -> /install.html, ...).
 for (const page of pages) {
   const html = markdownToHtml(page.markdown, page.rel);
   const toc = tocFromHtml(html);
@@ -179,24 +177,25 @@ for (const page of pages) {
   const prev = idx > 0 ? orderedPages[idx - 1] : null;
   const next = idx >= 0 && idx < orderedPages.length - 1 ? orderedPages[idx + 1] : null;
   const sectionName = sectionByRel.get(page.rel) || "Reference";
-  const pageOut = path.join(outDir, "docs", page.outRel);
+  const pageOut = path.join(outDir, page.outRel);
   fs.mkdirSync(path.dirname(pageOut), { recursive: true });
   fs.writeFileSync(pageOut, layout({ page, html, toc, prev, next, sectionName }), "utf8");
 }
 
-// Copy hand-built landing site (root index.html, css, js, images, etc.)
-copyTree(siteSrcDir, outDir);
+// Copy static assets (404.html, robots.txt, sitemap.xml, social images, etc.)
+copyTree(staticDir, outDir);
 
 // Site-wide assets used by docs sub-pages
 fs.writeFileSync(path.join(outDir, "favicon.svg"), faviconSvg(), "utf8");
 fs.writeFileSync(path.join(outDir, ".nojekyll"), "", "utf8");
 if (cname) fs.writeFileSync(path.join(outDir, "CNAME"), cname, "utf8");
+writeSitemap();
 validateLinks(outDir);
 console.log(`built docs site: ${path.relative(root, outDir)}`);
 
 function readCname() {
   for (const candidate of [
-    path.join(siteSrcDir, "CNAME"),
+    path.join(staticDir, "CNAME"),
     path.join(docsDir, "CNAME"),
     path.join(root, "CNAME"),
   ]) {
@@ -250,7 +249,7 @@ function allMarkdown(dir) {
     .readdirSync(dir, { withFileTypes: true })
     .flatMap((entry) => {
       const full = path.join(dir, entry.name);
-      if (entry.name === "site") return [];
+      if (entry.name === "static") return [];
       if (entry.isDirectory()) return allMarkdown(full);
       return entry.name.endsWith(".md") ? [full] : [];
     })
@@ -495,9 +494,8 @@ function standardHero(page, sectionName, editUrl, homeHref) {
 }
 
 function layout({ page, html, toc, prev, next, sectionName }) {
-  // Pages live under /docs/<outRel>; root home is at "../" depth.
-  const docOutRel = `docs/${page.outRel}`;
-  const depth = docOutRel.split("/").length - 1;
+  // Pages live at site root: index.html at /, others at /<outRel>.
+  const depth = page.outRel.split("/").length - 1;
   const rootPrefix = depth ? "../".repeat(depth) : "";
   const homeHref = rootPrefix || "./";
   const editUrl = `${repoEditBase}/${page.rel}`;
@@ -567,9 +565,20 @@ function layout({ page, html, toc, prev, next, sectionName }) {
 }
 
 function pageCanonicalUrl(page) {
-  if (!siteBase) return `docs/${page.outRel}`;
+  if (!siteBase) return page.outRel;
+  if (page.outRel === "index.html") return `${siteBase}/`;
   const rel = page.outRel.endsWith("/index.html") ? page.outRel.slice(0, -"index.html".length) : page.outRel;
-  return `${siteBase}/docs/${rel}`;
+  return `${siteBase}/${rel}`;
+}
+
+function writeSitemap() {
+  if (!siteBase) return;
+  const urls = pages.map((page) => `  <url><loc>${escapeHtml(pageCanonicalUrl(page))}</loc></url>`).join("\n");
+  fs.writeFileSync(
+    path.join(outDir, "sitemap.xml"),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+    "utf8",
+  );
 }
 
 function tagHtml([tag, k1, v1, k2, v2]) {
@@ -802,7 +811,11 @@ function validateLinks(outputDir) {
       if (/^(#|https?:|mailto:|tel:|javascript:)/.test(href)) continue;
       if (placeholderHrefs.test(href)) continue;
       const [rawPath, anchor = ""] = href.split("#");
-      const targetPath = rawPath ? path.resolve(path.dirname(file), rawPath) : file;
+      const targetPath = rawPath
+        ? rawPath.startsWith("/")
+          ? path.join(outputDir, rawPath.slice(1))
+          : path.resolve(path.dirname(file), rawPath)
+        : file;
       const target =
         fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()
           ? path.join(targetPath, "index.html")

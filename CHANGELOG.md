@@ -158,6 +158,9 @@
 - Added a thin `peekaboo-cli` agent skill that points agents at live CLI help and canonical command docs. Thanks @terryso for [#98](https://github.com/steipete/Peekaboo/pull/98)!
 - Release automation now dispatches the centralized Homebrew tap updater and waits for the matching tap workflow run. Thanks @dinakars777 for [#110](https://github.com/steipete/Peekaboo/pull/110)!
 
+### Changed
+- The docs site now publishes generated documentation pages at the site root and writes the sitemap from the generated page set.
+
 ### Fixed
 - Snapshot-backed UIAX actions now preserve app/window context when rehydrating snapshots, so `actionOnly` element clicks resolve in the captured app instead of the frontmost app.
 - `peekaboo click` now accepts the shared `--input-strategy` runtime override so action-only and synth-only paths can be tested directly.

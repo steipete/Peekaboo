@@ -264,6 +264,6 @@ peekaboo space move-window --pid 12345 --to 2
 
 ## See Also
 
-- [Command Reference](../README.md#commands) - Full command documentation
-- [Agent Integration](./agent-integration.md) - Using Peekaboo with AI agents
-- [Scripting Guide](./scripting.md) - Automation examples
+- [Command index](commands/README.md) - Full command documentation
+- [Agent chat](agent-chat.md) - Using Peekaboo with AI agents
+- [Automation guide](automation.md) - Scripting and automation patterns

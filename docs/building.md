@@ -51,7 +51,7 @@ pnpm run prepare-release
 
 ## Poltergeist Watcher
 
-Peekaboo’s repo already includes [docs/poltergeist.md](docs/poltergeist.md) with tuning tips. Typical workflow:
+Peekaboo’s repo already includes [poltergeist.md](poltergeist.md) with tuning tips. Typical workflow:
 
 ```bash
 pnpm run poltergeist:haunt   # start watcher

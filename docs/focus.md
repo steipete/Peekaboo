@@ -405,7 +405,7 @@ This allows commands to quickly locate and focus the correct window without sear
 
 ## See Also
 
-- [GUI Automation Guide](gui-automation.md)
+- [Automation guide](automation.md)
 - [Space Command Reference](commands/space.md)
 - [Window Command Reference](commands/window.md)
-- [Troubleshooting Guide](troubleshooting.md)
+- [Permissions](permissions.md)
