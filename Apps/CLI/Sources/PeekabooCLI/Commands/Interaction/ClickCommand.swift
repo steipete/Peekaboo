@@ -7,7 +7,7 @@ import PeekabooFoundation
 /// Click on UI elements identified in the current snapshot using intelligent element finding and smart waiting.
 @available(macOS 14.0, *)
 @MainActor
-struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
+struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfigurable {
     @Argument(help: "Element text or query to click")
     var query: String?
 
@@ -37,6 +37,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     @OptionGroup var focusOptions: FocusCommandOptions
 
     @RuntimeStorage private var runtime: CommandRuntime?
+    var runtimeOptions = CommandRuntimeOptions()
 
     private var resolvedRuntime: CommandRuntime {
         guard let runtime else {
@@ -58,7 +59,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable {
     }
 
     var jsonOutput: Bool {
-        self.resolvedRuntime.configuration.jsonOutput
+        self.runtime?.configuration.jsonOutput ?? self.runtimeOptions.jsonOutput
     }
 
     @MainActor

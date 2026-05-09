@@ -394,7 +394,8 @@ struct CommanderBinderCommandBindingTests {
                 "snapshot": ["abc"],
                 "on": ["B1"],
                 "app": ["Safari"],
-                "waitFor": ["2500"]
+                "waitFor": ["2500"],
+                "inputStrategy": ["actionOnly"]
             ],
             flags: ["double", "noAutoFocus"]
         )
@@ -406,6 +407,7 @@ struct CommanderBinderCommandBindingTests {
         #expect(command.waitFor == 2500)
         #expect(command.double == true)
         #expect(command.focusOptions.noAutoFocus == true)
+        #expect(command.runtimeOptions.inputStrategy == .actionOnly)
     }
 
     @Test

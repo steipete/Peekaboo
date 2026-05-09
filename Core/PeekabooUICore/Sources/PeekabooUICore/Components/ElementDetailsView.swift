@@ -115,8 +115,14 @@ public struct ElementDetailsView: View {
             if let value = element.value {
                 InfoRow(label: "Value", value: value)
             }
+            if let description = element.description {
+                InfoRow(label: "Description", value: description)
+            }
             if let help = element.help {
                 InfoRow(label: "Help", value: help)
+            }
+            if let shortcut = element.keyboardShortcut {
+                InfoRow(label: "Keyboard Shortcut", value: shortcut)
             }
             if let selectedText = element.selectedText {
                 InfoRow(label: "Selected Text", value: selectedText)
@@ -246,6 +252,15 @@ public struct ElementDetailsView: View {
         }
         if let value = element.value {
             info += "\nValue: \(value)"
+        }
+        if let description = element.description {
+            info += "\nDescription: \(description)"
+        }
+        if let help = element.help {
+            info += "\nHelp: \(help)"
+        }
+        if let shortcut = element.keyboardShortcut {
+            info += "\nKeyboard Shortcut: \(shortcut)"
         }
 
         return info

@@ -76,6 +76,7 @@ extension SeeCommand {
                 role_description: element.attributes["roleDescription"],
                 help: element.attributes["help"],
                 identifier: element.attributes["identifier"],
+                bounds: UIElementBounds(element.bounds),
                 is_actionable: element.isEnabled,
                 keyboard_shortcut: element.attributes["keyboardShortcut"]
             )

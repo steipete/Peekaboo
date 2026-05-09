@@ -89,6 +89,7 @@ public final class OverlayManager {
         public let title: String?
         public let label: String?
         public let value: String?
+        public let description: String?
         public let frame: CGRect
         public let isActionable: Bool
         public let elementID: String
@@ -105,9 +106,10 @@ public final class OverlayManager {
         public let identifier: String?
         public let selectedText: String?
         public let numberOfCharacters: Int?
+        public let keyboardShortcut: String?
 
         public var displayName: String {
-            self.title ?? self.label ?? self.value ?? self.role
+            self.title ?? self.label ?? self.value ?? self.description ?? self.help ?? self.role
         }
 
         @MainActor
@@ -285,6 +287,7 @@ public final class OverlayManager {
                 title: elements[i].title,
                 label: elements[i].label,
                 value: elements[i].value,
+                description: elements[i].description,
                 frame: elements[i].frame,
                 isActionable: elements[i].isActionable,
                 elementID: id,
@@ -298,7 +301,8 @@ public final class OverlayManager {
                 className: elements[i].className,
                 identifier: elements[i].identifier,
                 selectedText: elements[i].selectedText,
-                numberOfCharacters: elements[i].numberOfCharacters)
+                numberOfCharacters: elements[i].numberOfCharacters,
+                keyboardShortcut: elements[i].keyboardShortcut)
         }
 
         return elements
@@ -359,6 +363,7 @@ public final class OverlayManager {
             title: element.title(),
             label: element.label(),
             value: element.value() as? String,
+            description: element.descriptionText(),
             frame: frame,
             isActionable: element.isActionSupported("AXPress"),
             elementID: "", // Will be set later
@@ -372,7 +377,8 @@ public final class OverlayManager {
             className: nil,
             identifier: element.identifier(),
             selectedText: element.selectedText(),
-            numberOfCharacters: element.numberOfCharacters())
+            numberOfCharacters: element.numberOfCharacters(),
+            keyboardShortcut: element.keyboardShortcut())
     }
 
     private func updateHoveredElement() async {

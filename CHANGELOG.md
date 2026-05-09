@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Expanded the repo-local `peekaboo-cli` skill with UIAX/action vs synthetic input testing workflows, Calculator smoke tests, and validation commands.
+- Peekaboo Inspector now surfaces AX descriptions and keyboard shortcuts, making description-only controls easier to inspect and search.
+- `peekaboo see --json` now includes element bounds in each `ui_elements` entry again.
 - Added `DesktopObservationService` and the desktop observation refactor plan as the shared path toward unified screenshot capture, target resolution, timings, and optional AX detection.
 - Added an observation output writer so desktop observation requests can save raw screenshots and report output paths through the shared result.
 - Routed `peekaboo image` screenshot persistence through the shared desktop observation output writer.
@@ -156,6 +159,8 @@
 - Release automation now dispatches the centralized Homebrew tap updater and waits for the matching tap workflow run. Thanks @dinakars777 for [#110](https://github.com/steipete/Peekaboo/pull/110)!
 
 ### Fixed
+- Snapshot-backed UIAX actions now preserve app/window context when rehydrating snapshots, so `actionOnly` element clicks resolve in the captured app instead of the frontmost app.
+- `peekaboo click` now accepts the shared `--input-strategy` runtime override so action-only and synth-only paths can be tested directly.
 - `peekaboo hotkey` now accepts plus-separated shortcuts such as `cmd+s`, matching common CLI shorthand and the help text while still supporting comma and space separators.
 - `peekaboo type` is more reliable in VM and headless launch paths because printable ASCII input now uses physical key events instead of Unicode-only events.
 - SwiftPM debug builds now skip SwiftUI preview macros when building from Command Line Tools without full Xcode preview plugin support.

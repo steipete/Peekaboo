@@ -223,6 +223,26 @@ extension SnapshotManager {
         return warnings
     }
 
+    func windowContext(from snapshotData: UIAutomationSnapshot) -> WindowContext? {
+        guard snapshotData.applicationName != nil ||
+            snapshotData.applicationBundleId != nil ||
+            snapshotData.applicationProcessId != nil ||
+            snapshotData.windowTitle != nil ||
+            snapshotData.windowID != nil ||
+            snapshotData.windowBounds != nil
+        else {
+            return nil
+        }
+
+        return WindowContext(
+            applicationName: snapshotData.applicationName,
+            applicationBundleId: snapshotData.applicationBundleId,
+            applicationProcessId: snapshotData.applicationProcessId,
+            windowTitle: snapshotData.windowTitle,
+            windowID: snapshotData.windowID.map(Int.init),
+            windowBounds: snapshotData.windowBounds)
+    }
+
     func countScreenshots(in snapshotURL: URL) -> Int {
         let files = try? FileManager.default.contentsOfDirectory(at: snapshotURL, includingPropertiesForKeys: nil)
         return files?.count(where: { $0.pathExtension == "png" }) ?? 0

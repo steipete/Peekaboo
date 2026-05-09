@@ -191,7 +191,11 @@ public struct AllElementsView: View {
             let matchesSearch = self.searchText.isEmpty ||
                 element.displayName.localizedCaseInsensitiveContains(self.searchText) ||
                 element.elementID.localizedCaseInsensitiveContains(self.searchText) ||
-                element.role.localizedCaseInsensitiveContains(self.searchText)
+                element.role.localizedCaseInsensitiveContains(self.searchText) ||
+                element.description?.localizedCaseInsensitiveContains(self.searchText) == true ||
+                element.help?.localizedCaseInsensitiveContains(self.searchText) == true ||
+                element.identifier?.localizedCaseInsensitiveContains(self.searchText) == true ||
+                element.keyboardShortcut?.localizedCaseInsensitiveContains(self.searchText) == true
 
             return matchesCategory && matchesActionable && matchesSearch
         }
@@ -309,6 +313,13 @@ struct ElementRow: View {
                 Text(self.element.role)
                     .font(.caption2)
                     .foregroundColor(.secondary)
+
+                if let detail = self.secondaryDetail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -344,6 +355,19 @@ struct ElementRow: View {
         .onTapGesture {
             self.overlayManager.selectedElement = self.element
         }
+    }
+
+    private var secondaryDetail: String? {
+        if let description = element.description, !description.isEmpty, description != element.displayName {
+            return description
+        }
+        if let help = element.help, !help.isEmpty, help != element.displayName {
+            return help
+        }
+        if let shortcut = element.keyboardShortcut, !shortcut.isEmpty {
+            return "Shortcut: \(shortcut)"
+        }
+        return nil
     }
 }
 

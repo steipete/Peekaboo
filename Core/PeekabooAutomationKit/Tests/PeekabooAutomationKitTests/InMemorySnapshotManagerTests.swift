@@ -33,6 +33,43 @@ struct InMemorySnapshotManagerTests {
         #expect(snapshots.contains { $0.id == first } == false)
     }
 
+    @Test
+    func `getDetectionResult preserves window context for action re-resolution`() async throws {
+        let manager = InMemorySnapshotManager()
+        let snapshotId = try await manager.createSnapshot()
+        let context = WindowContext(
+            applicationName: "Calculator",
+            applicationBundleId: "com.apple.calculator",
+            applicationProcessId: 123,
+            windowTitle: "Calculator",
+            windowID: 456,
+            windowBounds: CGRect(x: 10, y: 20, width: 300, height: 200))
+        let element = DetectedElement(
+            id: "elem_1",
+            type: .button,
+            label: "Clear",
+            bounds: CGRect(x: 30, y: 40, width: 50, height: 30),
+            attributes: ["identifier": "Clear"])
+        let result = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/calc.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(
+                detectionTime: 0.01,
+                elementCount: 1,
+                method: "test",
+                windowContext: context))
+
+        try await manager.storeDetectionResult(snapshotId: snapshotId, result: result)
+
+        let hydrated = try await manager.getDetectionResult(snapshotId: snapshotId)
+        #expect(hydrated?.metadata.windowContext?.applicationBundleId == "com.apple.calculator")
+        #expect(hydrated?.metadata.windowContext?.applicationProcessId == 123)
+        #expect(hydrated?.metadata.windowContext?.windowTitle == "Calculator")
+        #expect(hydrated?.metadata.windowContext?.windowID == 456)
+        #expect(hydrated?.metadata.windowContext?.windowBounds == CGRect(x: 10, y: 20, width: 300, height: 200))
+    }
+
     private static func screenshotRequest(snapshotId: String, path: String) -> SnapshotScreenshotRequest {
         SnapshotScreenshotRequest(
             snapshotId: snapshotId,

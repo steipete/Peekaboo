@@ -51,8 +51,23 @@ struct UIElementSummary: Codable {
     let role_description: String?
     let help: String?
     let identifier: String?
+    let bounds: UIElementBounds
     let is_actionable: Bool
     let keyboard_shortcut: String?
+}
+
+struct UIElementBounds: Codable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+
+    init(_ rect: CGRect) {
+        self.x = rect.origin.x
+        self.y = rect.origin.y
+        self.width = rect.size.width
+        self.height = rect.size.height
+    }
 }
 
 struct SeeAnalysisData: Codable {

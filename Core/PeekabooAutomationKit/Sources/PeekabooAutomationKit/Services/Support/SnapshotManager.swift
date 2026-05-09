@@ -116,7 +116,8 @@ public final class SnapshotManager: SnapshotManagerProtocol {
             detectionTime: Date().timeIntervalSince(snapshotData.lastUpdateTime),
             elementCount: snapshotData.uiMap.count,
             method: "snapshot-cache",
-            warnings: self.buildWarnings(from: snapshotData))
+            warnings: self.buildWarnings(from: snapshotData),
+            windowContext: self.windowContext(from: snapshotData))
 
         return ElementDetectionResult(
             snapshotId: snapshotId,

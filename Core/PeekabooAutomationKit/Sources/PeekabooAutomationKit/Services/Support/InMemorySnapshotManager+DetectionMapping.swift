@@ -103,7 +103,8 @@ extension InMemorySnapshotManager {
             detectionTime: Date().timeIntervalSince(snapshotData.lastUpdateTime),
             elementCount: snapshotData.uiMap.count,
             method: "memory-cache",
-            warnings: self.buildWarnings(from: snapshotData))
+            warnings: self.buildWarnings(from: snapshotData),
+            windowContext: self.windowContext(from: snapshotData))
 
         return ElementDetectionResult(
             snapshotId: snapshotId,
@@ -212,5 +213,25 @@ extension InMemorySnapshotManager {
             warnings.append("AX_IDENTIFIER:\(axIdentifier)")
         }
         return warnings
+    }
+
+    private func windowContext(from snapshotData: UIAutomationSnapshot) -> WindowContext? {
+        guard snapshotData.applicationName != nil ||
+            snapshotData.applicationBundleId != nil ||
+            snapshotData.applicationProcessId != nil ||
+            snapshotData.windowTitle != nil ||
+            snapshotData.windowID != nil ||
+            snapshotData.windowBounds != nil
+        else {
+            return nil
+        }
+
+        return WindowContext(
+            applicationName: snapshotData.applicationName,
+            applicationBundleId: snapshotData.applicationBundleId,
+            applicationProcessId: snapshotData.applicationProcessId,
+            windowTitle: snapshotData.windowTitle,
+            windowID: snapshotData.windowID.map(Int.init),
+            windowBounds: snapshotData.windowBounds)
     }
 }
