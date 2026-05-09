@@ -170,6 +170,8 @@
 - `peekaboo app hide <app>` and `peekaboo app unhide <app>` now accept the positional app form shown by the CLI examples, while keeping `--app`.
 - Snapshot-backed interactions now tolerate tiny macOS window-size jitter instead of failing as stale when a window drifts by only a few pixels between `see` and the follow-up action.
 - `peekaboo set-value` now reports unsupported direct value writes as `INVALID_INPUT` with the target element named instead of surfacing an internal Swift error.
+- `peekaboo config add-provider --dry-run` and `remove-provider --dry-run` now preserve the config file when invoked through the Commander CLI path.
+- `peekaboo config add` now exits nonzero when credential validation fails or times out, matching its JSON `success: false` response.
 - Peekaboo.app no longer crashes at launch on macOS 26 when the hidden Settings helper window is created.
 - `peekaboo hotkey` now accepts plus-separated shortcuts such as `cmd+s`, matching common CLI shorthand and the help text while still supporting comma and space separators.
 - `peekaboo type` is more reliable in VM and headless launch paths because printable ASCII input now uses physical key events instead of Unicode-only events.

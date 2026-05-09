@@ -225,7 +225,7 @@ struct CommanderBinderAppConfigTests {
                 "description": ["Multi-provider"],
                 "headers": ["x-demo:yes"]
             ],
-            flags: ["force"]
+            flags: ["force", "dryRun"]
         )
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.AddProviderCommand.self,
@@ -239,17 +239,19 @@ struct CommanderBinderAppConfigTests {
         #expect(command.description == "Multi-provider")
         #expect(command.headers == "x-demo:yes")
         #expect(command.force == true)
+        #expect(command.dryRun == true)
     }
 
     @Test
     func `Config remove provider binding`() throws {
-        let parsed = ParsedValues(positional: ["openrouter"], options: [:], flags: ["force"])
+        let parsed = ParsedValues(positional: ["openrouter"], options: [:], flags: ["force", "dryRun"])
         let command = try CommanderCLIBinder.instantiateCommand(
             ofType: ConfigCommand.RemoveProviderCommand.self,
             parsedValues: parsed
         )
         #expect(command.providerId == "openrouter")
         #expect(command.force == true)
+        #expect(command.dryRun == true)
     }
 
     @Test

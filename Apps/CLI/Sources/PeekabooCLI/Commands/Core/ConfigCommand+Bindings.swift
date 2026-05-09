@@ -92,7 +92,7 @@ extension ConfigCommand.AddProviderCommand: CommanderBindableCommand {
         self.description = values.singleOption("description")
         self.headers = values.singleOption("headers")
         self.force = values.flag("force")
-        self.dryRun = values.flag("dry-run")
+        self.dryRun = values.flag("dryRun")
     }
 }
 
@@ -121,7 +121,7 @@ extension ConfigCommand.RemoveProviderCommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.providerId = try values.decodePositional(0, label: "providerId")
         self.force = values.flag("force")
-        self.dryRun = values.flag("dry-run")
+        self.dryRun = values.flag("dryRun")
     }
 }
 

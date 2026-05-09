@@ -47,11 +47,13 @@ extension ConfigCommand {
                     code: "VALIDATION_FAILED",
                     message: "[warn] Stored credential but validation failed: \(reason)"
                 )
+                throw ExitCode.failure
             case let .timeout(seconds):
                 self.output.error(
                     code: "VALIDATION_TIMEOUT",
                     message: "[warn] Stored credential but validation timed out after \(Int(seconds))s"
                 )
+                throw ExitCode.failure
             }
         }
     }
