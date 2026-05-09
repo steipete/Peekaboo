@@ -217,10 +217,12 @@ function checkSwift() {
   log('Checking for Swift compiler warnings...', colors.cyan);
   let swiftBuildOutput = '';
   try {
-    // Capture build output to check for warnings
-    swiftBuildOutput = execSync('cd Apps/CLI && swift build --arch arm64 -c release 2>&1', {
+    // Capture build output to check for warnings. Start from a clean SwiftPM
+    // state so an interrupted release build cannot poison the next preflight.
+    swiftBuildOutput = execSync('cd Apps/CLI && swift package reset && swift build --arch arm64 -c release 2>&1', {
       cwd: projectRoot,
-      encoding: 'utf8'
+      encoding: 'utf8',
+      timeout: 600_000
     });
   } catch (error) {
     logError('Swift build failed during analyzer check');
