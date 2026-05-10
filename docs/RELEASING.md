@@ -84,9 +84,9 @@ The main release script runs this step automatically. Use this section only to d
 ## 6) Post-publish verification
 - [ ] `polter peekaboo --version` to confirm the stamped build date matches the new tag.
 - [ ] `npm view @steipete/peekaboo dist-tags` to ensure `latest` matches the new beta.
-- [ ] Homebrew tap: update `steipete/homebrew-tap` formula for Peekaboo with new URL + SHA256, commit, push, then `brew install steipete/tap/peekaboo && peekaboo --version`.
+- [ ] Homebrew tap: confirm the `Update Homebrew Formula` release workflow dispatched `steipete/homebrew-tap` and completed successfully.
 - [ ] npm install: `npm install -g @steipete/peekaboo@latest` then `peekaboo --version` (or `npx @steipete/peekaboo@latest --version` for a no-install smoke).
-- [ ] Homebrew verify (after tap update): `brew update && brew upgrade steipete/tap/peekaboo && peekaboo --version` and **leave Homebrew-installed** at the end.
+- [ ] Homebrew verify: `brew update && brew upgrade steipete/tap/peekaboo && peekaboo --version` and **leave Homebrew-installed** at the end.
 - [ ] Fresh-temp smoke: `rm -rf /tmp/peekaboo-empty && mkdir /tmp/peekaboo-empty && cd /tmp/peekaboo-empty && npx peekaboo@<version> --help` (no runner; outside repo). Ensure CLI/help prints and exits 0.
 
 ## Quick status helpers

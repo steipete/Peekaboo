@@ -38,8 +38,8 @@ jobs:
             --ref main \
             -f formula=peekaboo \
             -f tag="$RELEASE_TAG" \
-            -f repository=steipete/peekaboo \
-            -f macos_artifact="peekaboo-macos-arm64.tar.gz" \
+            -f repository="${{ github.repository }}" \
+            -f macos_artifact="peekaboo-macos-universal.tar.gz" \
             -f request_id="$request_id"
 
           run_id=""
