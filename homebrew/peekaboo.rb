@@ -10,7 +10,7 @@ class Peekaboo < Formula
   depends_on macos: :sequoia
 
   def install
-    bin.install "peekaboo-macos-universal/peekaboo" => "peekaboo"
+    bin.install "peekaboo" => "peekaboo"
   end
 
   def post_install
