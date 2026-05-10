@@ -54,9 +54,9 @@ enum TestChildProcess {
 
         let packageRoot = Self.packageRootURL()
         let potentialPaths = [
+            packageRoot.appendingPathComponent(Self.currentArchitectureBuildPath),
             packageRoot.appendingPathComponent(".build/debug/peekaboo"),
-            packageRoot.appendingPathComponent(".build/arm64-apple-macosx/debug/peekaboo"),
-            packageRoot.appendingPathComponent(".build/x86_64-apple-macosx/debug/peekaboo")
+            packageRoot.appendingPathComponent(Self.fallbackArchitectureBuildPath)
         ]
 
         if let match = potentialPaths.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) {
@@ -79,6 +79,24 @@ enum TestChildProcess {
             url.deleteLastPathComponent()
         }
         return url
+    }
+
+    private static var currentArchitectureBuildPath: String {
+        #if arch(arm64)
+        ".build/arm64-apple-macosx/debug/peekaboo"
+        #elseif arch(x86_64)
+        ".build/x86_64-apple-macosx/debug/peekaboo"
+        #else
+        ".build/debug/peekaboo"
+        #endif
+    }
+
+    private static var fallbackArchitectureBuildPath: String {
+        #if arch(arm64)
+        ".build/x86_64-apple-macosx/debug/peekaboo"
+        #else
+        ".build/arm64-apple-macosx/debug/peekaboo"
+        #endif
     }
 }
 
