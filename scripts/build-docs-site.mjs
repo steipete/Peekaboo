@@ -561,7 +561,7 @@ function layout({ page, html, toc, prev, next, sectionName }) {
           <span><strong>${escapeHtml(productName)}</strong><small>macOS automation docs</small></span>
         </a>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch color theme" aria-pressed="false">
-          <span class="theme-toggle__icon" aria-hidden="true"></span><span data-theme-label>Dark</span>
+          <span class="theme-toggle__icon" aria-hidden="true"></span>
         </button>
       </div>
       <label class="search"><span>Search</span><input id="doc-search" type="search" placeholder="capture, click, agent, mcp"></label>

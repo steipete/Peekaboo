@@ -124,7 +124,7 @@ a:hover{opacity:.85;text-decoration:underline;text-underline-offset:.2em}
 .brand strong{display:block;font-family:var(--serif);font-size:1.15rem;line-height:1;font-weight:600;letter-spacing:0.01em;color:var(--ink)}
 .brand small{display:block;color:var(--muted);font-size:.74rem;margin-top:4px;font-weight:400}
 
-.theme-toggle{display:inline-flex;align-items:center;gap:7px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);font:600 .74rem/1 var(--sans);cursor:pointer;padding:0 9px;transition:border-color .15s,color .15s,background .15s}
+.theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);cursor:pointer;padding:0;transition:border-color .15s,color .15s,background .15s}
 .theme-toggle:hover{border-color:var(--ecto);color:var(--ink);background:var(--panel2)}
 .theme-toggle:focus-visible{outline:0;box-shadow:0 0 0 3px var(--accent-soft);border-color:var(--ecto)}
 .theme-toggle__icon{width:14px;height:14px;border-radius:50%;border:2px solid var(--moon);box-shadow:inset -4px -3px 0 var(--moon);transition:background .15s,box-shadow .15s,border-color .15s}
@@ -244,13 +244,11 @@ export function js() {
   return `
 const root=document.documentElement;
 const themeToggle=document.querySelector('[data-theme-toggle]');
-const themeLabel=document.querySelector('[data-theme-label]');
 const themeMedia=window.matchMedia('(prefers-color-scheme: light)');
 function storedTheme(){try{const theme=localStorage.getItem('peekaboo-theme');return theme==='light'||theme==='dark'?theme:null}catch{return null}}
 function systemTheme(){return themeMedia.matches?'light':'dark'}
 function applyTheme(theme){
   root.dataset.theme=theme;
-  if(themeLabel)themeLabel.textContent=theme==='light'?'Light':'Dark';
   themeToggle?.setAttribute('aria-pressed',theme==='dark'?'true':'false');
 }
 applyTheme(root.dataset.theme||storedTheme()||systemTheme());
