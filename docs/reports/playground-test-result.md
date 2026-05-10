@@ -22,7 +22,7 @@ This document tracks comprehensive testing of all Peekaboo CLI commands using th
 ## Test Environment
 
 - **Date**: 2025-01-28
-- **Peekaboo Version**: 3.0.0 (main/7c2117b, built: 2026-05-09T12:00:00+01:00)
+- **Peekaboo Version**: 3.1.0 (main/29b698d, built: 2026-05-10T18:58:00+01:00)
 - **Test App**: Playground (boo.peekaboo.mac.debug)
 - **macOS Version**: Darwin 25.0.0
 - **Poltergeist Status**: Active and monitoring

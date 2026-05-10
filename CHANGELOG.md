@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.0] - Unreleased
+## [3.1.0] - 2026-05-10
 
 ### Changed
 - Refreshed the agent model catalog through Tachikoma: defaults now use GPT-5.5, Claude Opus 4.7, Gemini 3.1, latest Mistral, and Grok 4.3, while stale GPT-4.x/GPT-5.1/GPT-5.2, Claude 3.x, and old Grok IDs are rejected.
