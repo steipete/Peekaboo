@@ -36,12 +36,14 @@ read_when:
 
 ## 3) Release artifacts
 - [ ] `pnpm run prepare-release` (validates versions, changelog, and Swift/TS entry points).
-- [ ] `./scripts/release-binaries.sh --create-github-release --publish-npm` (Default: universal arm64+x86_64 binary + npm package; use `--arm64-only` to skip Intel support).
+- [ ] `./scripts/release-binaries.sh --create-github-release --publish-npm` (Default: universal arm64+x86_64 binary, npm package, signed/notarized `Peekaboo.app` zip, Sparkle appcast update, and checksums; use `--arm64-only` to skip Intel support or `--skip-mac-app` for CLI-only emergency releases).
 - [ ] Verify `dist/` outputs and the generated checksum files.
 - [ ] `npm pack --dry-run` to inspect the npm tarball if release scripts changed.
 
 ## 3b) macOS app (Sparkle)
 Peekaboo’s macOS app now ships Sparkle updates (Settings → About). Updates are **disabled** unless the app is a bundled `.app` and **Developer ID signed** (see `Apps/Mac/Peekaboo/Core/Updater.swift`).
+
+The main release script runs this step automatically. Use this section only to dry-run, repair, or upload the app zip for an existing release.
 
 - [ ] Ensure `Apps/Mac/Peekaboo/Info.plist` has `SUFeedURL`, `SUPublicEDKey`, and `SUEnableAutomaticChecks` set (defaults are already wired to the repo appcast).
 - [ ] Ensure release credentials are available:

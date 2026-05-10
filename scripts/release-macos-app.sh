@@ -15,7 +15,7 @@ SIGN_IDENTITY="${SIGN_IDENTITY:-Developer ID Application: Peter Steinberger (Y5P
 SPARKLE_PRIVATE_KEY_FILE="${SPARKLE_PRIVATE_KEY_FILE:-$HOME/Library/CloudStorage/Dropbox/Backup/Sparkle/sparkle-private-key-KEEP-SECURE.txt}"
 APPCAST_PATH="${APPCAST_PATH:-$ROOT_DIR/appcast.xml}"
 MINIMUM_SYSTEM_VERSION="${MINIMUM_SYSTEM_VERSION:-15.0}"
-REPOSITORY_SLUG="${REPOSITORY_SLUG:-steipete/Peekaboo}"
+REPOSITORY_SLUG="${REPOSITORY_SLUG:-openclaw/Peekaboo}"
 
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
 TAG="v${VERSION}"
@@ -242,7 +242,19 @@ if [[ "$NOTARIZE" == true ]]; then
     [[ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]] || fail "APP_STORE_CONNECT_API_KEY_P8 missing"
 
     KEY_FILE="$NOTARY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-    printf '%s\n' "$APP_STORE_CONNECT_API_KEY_P8" > "$KEY_FILE"
+    APP_STORE_CONNECT_API_KEY_P8="$APP_STORE_CONNECT_API_KEY_P8" node > "$KEY_FILE" <<'EOF'
+const raw = process.env.APP_STORE_CONNECT_API_KEY_P8 ?? "";
+let pem = raw.replace(/\\n/g, "\n").trim();
+if (!pem.includes("\n")) {
+  const match = pem.match(/^(-----BEGIN [^-]+-----)\s*(.+?)\s*(-----END [^-]+-----)$/);
+  if (match) {
+    const body = match[2].replace(/\s+/g, "");
+    const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
+    pem = `${match[1]}\n${wrapped}\n${match[3]}`;
+  }
+}
+process.stdout.write(`${pem}\n`);
+EOF
     chmod 600 "$KEY_FILE"
     xcrun notarytool submit "$NOTARY_ZIP" \
       --key "$KEY_FILE" \

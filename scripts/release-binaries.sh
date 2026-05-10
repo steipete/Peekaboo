@@ -24,6 +24,9 @@ SKIP_CHECKS=false
 CREATE_GITHUB_RELEASE=false
 PUBLISH_NPM=false
 UNIVERSAL=true
+INCLUDE_MAC_APP=true
+MAC_APP_NOTARIZE=true
+MAC_APP_APPCAST=true
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -47,6 +50,18 @@ while [[ $# -gt 0 ]]; do
             UNIVERSAL=true
             shift
             ;;
+        --skip-mac-app)
+            INCLUDE_MAC_APP=false
+            shift
+            ;;
+        --no-notarize-mac-app)
+            MAC_APP_NOTARIZE=false
+            shift
+            ;;
+        --no-appcast)
+            MAC_APP_APPCAST=false
+            shift
+            ;;
         --help)
             echo "Usage: $0 [options]"
             echo "Options:"
@@ -55,6 +70,9 @@ while [[ $# -gt 0 ]]; do
             echo "  --publish-npm          Publish to npm after building"
             echo "  --arm64-only           Build arm64-only binary"
             echo "  --universal            Build universal (arm64+x86_64) binary (default)"
+            echo "  --skip-mac-app         Skip Peekaboo.app zip, Sparkle appcast, and app checksum"
+            echo "  --no-notarize-mac-app  Build/sign app zip without Apple notarization"
+            echo "  --no-appcast           Do not update appcast.xml"
             echo "  --help                 Show this help message"
             exit 0
             ;;
@@ -190,7 +208,29 @@ else
     echo -e "${YELLOW}⚠️  shasum not found, skipping checksum generation${NC}"
 fi
 
-# Step 7: Create release notes
+# Step 7: Build/sign/notarize macOS app zip and append checksum
+MAC_APP_ZIP_PATH=""
+if [ "$INCLUDE_MAC_APP" = true ]; then
+    echo -e "\n${BLUE}Building Peekaboo.app release zip...${NC}"
+    MAC_APP_ARGS=()
+    if [ "$MAC_APP_NOTARIZE" = false ]; then
+        MAC_APP_ARGS+=(--no-notarize)
+    fi
+    if [ "$MAC_APP_APPCAST" = false ]; then
+        MAC_APP_ARGS+=(--no-appcast)
+    fi
+    if ! "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_APP_ARGS[@]}"; then
+        echo -e "${RED}❌ macOS app release failed!${NC}"
+        exit 1
+    fi
+    MAC_APP_ZIP_PATH="$RELEASE_DIR/Peekaboo-${VERSION}.app.zip"
+    if [ ! -f "$MAC_APP_ZIP_PATH" ]; then
+        echo -e "${RED}❌ Expected macOS app artifact missing: $MAC_APP_ZIP_PATH${NC}"
+        exit 1
+    fi
+fi
+
+# Step 8: Create release notes
 echo -e "\n${BLUE}Generating release notes...${NC}"
 if ! awk -v version="$VERSION" '
     $0 ~ "^## \\[?" version "\\]?" {
@@ -215,13 +255,13 @@ if ! awk -v version="$VERSION" '
     exit 1
 fi
 
-# Step 8: Display results
+# Step 9: Display results
 echo -e "\n${GREEN}✅ Release artifacts created successfully!${NC}"
 echo -e "${BLUE}Release directory: ${RELEASE_DIR}${NC}"
 echo -e "${BLUE}Artifacts:${NC}"
 ls -la "$RELEASE_DIR"
 
-# Step 9: Create GitHub release (if requested)
+# Step 10: Create GitHub release (if requested)
 if [ "$CREATE_GITHUB_RELEASE" = true ]; then
     echo -e "\n${BLUE}Creating GitHub release draft...${NC}"
     
@@ -229,21 +269,28 @@ if [ "$CREATE_GITHUB_RELEASE" = true ]; then
         echo -e "${RED}❌ GitHub CLI (gh) not found. Install with: brew install gh${NC}"
         exit 1
     fi
-    
+
+    RELEASE_ASSETS=(
+        "$RELEASE_DIR/$CLI_TARBALL_NAME"
+        "$NPM_PACKAGE_PATH"
+    )
+    if [ -n "$MAC_APP_ZIP_PATH" ]; then
+        RELEASE_ASSETS+=("$MAC_APP_ZIP_PATH")
+    fi
+    RELEASE_ASSETS+=("$RELEASE_DIR/checksums.txt")
+
     # Create release
     gh release create "v${VERSION}" \
         --draft \
         --title "v${VERSION}" \
         --notes-file "$RELEASE_DIR/release-notes.md" \
-        "$RELEASE_DIR/$CLI_TARBALL_NAME" \
-        "$NPM_PACKAGE_PATH" \
-        "$RELEASE_DIR/checksums.txt"
+        "${RELEASE_ASSETS[@]}"
     
     echo -e "${GREEN}✅ GitHub release draft created!${NC}"
-    echo -e "${BLUE}Edit the release at: https://github.com/steipete/peekaboo/releases${NC}"
+    echo -e "${BLUE}Edit the release at: https://github.com/openclaw/Peekaboo/releases${NC}"
 fi
 
-# Step 10: Publish to npm (if requested)
+# Step 11: Publish to npm (if requested)
 if [ "$PUBLISH_NPM" = true ]; then
     echo -e "\n${BLUE}Publishing to npm...${NC}"
     NPM_TAG=""

@@ -4,10 +4,24 @@
      xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
     <title>Peekaboo</title>
-    <link>https://raw.githubusercontent.com/steipete/Peekaboo/main/appcast.xml</link>
+    <link>https://raw.githubusercontent.com/openclaw/Peekaboo/main/appcast.xml</link>
     <description>Peekaboo macOS app updates (Sparkle)</description>
     <language>en</language>
 
+    <item>
+      <title>Peekaboo 3.0.0</title>
+      <link>https://github.com/openclaw/Peekaboo/releases/tag/v3.0.0</link>
+      <sparkle:releaseNotesLink>https://github.com/openclaw/Peekaboo/releases/tag/v3.0.0</sparkle:releaseNotesLink>
+      <pubDate>Sun, 10 May 2026 06:19:41 +0000</pubDate>
+      <enclosure
+        url="https://github.com/openclaw/Peekaboo/releases/download/v3.0.0/Peekaboo-3.0.0.app.zip"
+        sparkle:version="1"
+        sparkle:shortVersionString="3.0.0"
+        sparkle:minimumSystemVersion="15.0"
+        length="15163019"
+        type="application/octet-stream"
+        sparkle:edSignature="8SgqHM5WCwDZyIEGoMTRNy7WfkHuMLKZ5cqdRkArMU5N1yyCGeJHrScoHccV1HHHgnHiLA6DHtdT2FF/sryuDg==" />
+    </item>
     <item>
       <title>Peekaboo 3.0.0-beta4</title>
       <link>https://github.com/steipete/Peekaboo/releases/tag/v3.0.0-beta4</link>
