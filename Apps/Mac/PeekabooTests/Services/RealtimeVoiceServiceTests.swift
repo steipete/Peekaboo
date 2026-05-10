@@ -27,7 +27,7 @@ struct RealtimeVoiceServiceTests {
 
     @Test
     func `Service initializes with correct dependencies`() throws {
-        let (agentService, sessionStore, settings) = try try self.createMockDependencies()
+        let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         let service = RealtimeVoiceService(
             agentService: agentService,
@@ -47,7 +47,7 @@ struct RealtimeVoiceServiceTests {
 
     @Test
     func `Service loads voice preference from settings`() throws {
-        let (agentService, sessionStore, settings) = try try self.createMockDependencies()
+        let (agentService, sessionStore, settings) = try self.createMockDependencies()
 
         // Set a voice preference in settings
         settings.realtimeVoice = "echo"
