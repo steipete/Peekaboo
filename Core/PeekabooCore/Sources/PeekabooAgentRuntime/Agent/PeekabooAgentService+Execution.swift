@@ -10,7 +10,7 @@ import Tachikoma
 extension PeekabooAgentService {
     func generationSettings(for model: LanguageModel) -> GenerationSettings {
         switch model {
-        case .openai(.gpt55), .openai(.gpt52), .openai(.gpt51), .openai(.gpt5):
+        case .openai(.gpt55), .openai(.gpt54), .openai(.gpt54Mini), .openai(.gpt54Nano), .openai(.gpt5):
             GenerationSettings(
                 maxTokens: 4096,
                 providerOptions: .init(openai: .init(verbosity: .medium)))

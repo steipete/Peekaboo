@@ -24,7 +24,7 @@ extension AgentCommand {
             }
         case let .google(model):
             if Self.supportedGoogleInputs.contains(model) {
-                return .google(.gemini3Flash)
+                return .google(.gemini31ProPreview)
             }
         default:
             break
@@ -45,30 +45,31 @@ extension AgentCommand {
 
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
         .gpt55,
-        .gpt51,
-        .gpt52,
+        .gpt54,
+        .gpt54Mini,
+        .gpt54Nano,
         .gpt5,
         .gpt5Pro,
         .gpt5Mini,
         .gpt5Nano,
-        .gpt5Thinking,
-        .gpt5ThinkingMini,
-        .gpt5ThinkingNano,
-        .gpt5ChatLatest,
     ]
 
     private static let supportedAnthropicInputs: Set<LanguageModel.Anthropic> = [
         .opus47,
-        .sonnet45,
-        .sonnet4,
-        .sonnet4Thinking,
         .opus45,
         .opus4,
-        .opus4Thinking,
+        .sonnet46,
+        .sonnet45,
+        .haiku45,
     ]
 
     private static let supportedGoogleInputs: Set<LanguageModel.Google> = [
+        .gemini31ProPreview,
+        .gemini31FlashLite,
         .gemini3Flash,
+        .gemini25Pro,
+        .gemini25Flash,
+        .gemini25FlashLite,
     ]
 
     private static var allowedModelList: String {

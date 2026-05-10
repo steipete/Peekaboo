@@ -22,7 +22,7 @@ struct PeekabooAIServiceCoordinateTests {
 
         let normalized = PeekabooAIService.normalizeCoordinateTextIfNeeded(
             text,
-            model: "gpt-5.1",
+            model: "gpt-5.5",
             imageSize: CGSize(width: 1920, height: 1080))
 
         #expect(normalized == text)

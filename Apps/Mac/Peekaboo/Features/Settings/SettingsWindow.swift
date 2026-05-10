@@ -235,9 +235,9 @@ struct AISettingsView: View {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
             ("openai", [
                 ("gpt-5.5", "GPT-5.5"),
-                ("gpt-5.1", "GPT-5.1"),
-                ("gpt-5.1-mini", "GPT-5.1 mini"),
-                ("gpt-5.1-nano", "GPT-5.1 nano"),
+                ("gpt-5.4", "GPT-5.4"),
+                ("gpt-5.4-mini", "GPT-5.4 mini"),
+                ("gpt-5.4-nano", "GPT-5.4 nano"),
                 ("gpt-5", "GPT-5"),
                 ("gpt-5-mini", "GPT-5 mini"),
             ]),
@@ -247,9 +247,11 @@ struct AISettingsView: View {
                 ("claude-haiku-4.5", "Claude Haiku 4.5"),
             ]),
             ("grok", [
-                ("grok-4", "Grok 4"),
+                ("grok-4.3", "Grok 4.3"),
             ]),
             ("google", [
+                ("gemini-3.1-pro-preview", "Gemini 3.1 Pro Preview"),
+                ("gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite"),
                 ("gemini-3-flash", "Gemini 3 Flash"),
             ]),
             ("ollama", self.ollamaModelOptions),
@@ -271,11 +273,11 @@ struct AISettingsView: View {
             // OpenAI models
             "gpt-5.5": "Flagship GPT-5.5 model with 400K context and upgraded tool " +
                 "usage + reasoning.",
-            "gpt-5.1": "Flagship GPT-5.1 model with 400K context and upgraded tool " +
+            "gpt-5.4": "GPT-5.4 model with 400K context and upgraded tool " +
                 "usage + reasoning.",
-            "gpt-5.1-mini": "Cost-optimized GPT-5.1 Mini with identical tools + 400K context " +
+            "gpt-5.4-mini": "Cost-optimized GPT-5.4 Mini with identical tools + 400K context " +
                 "at a friendlier price.",
-            "gpt-5.1-nano": "Ultra-low latency GPT-5.1 Nano tuned for snappy agent runs and " +
+            "gpt-5.4-nano": "Ultra-low latency GPT-5.4 Nano tuned for snappy agent runs and " +
                 "tool calling.",
             "gpt-5": "Flagship GPT-5 model with 400K context and best-in-class " +
                 "coding + automation skills.",
@@ -288,7 +290,9 @@ struct AISettingsView: View {
                 "tuned for long-running automation tasks.",
             "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with " +
                 "the updated reasoning stack.",
-            "grok-4": "xAI's latest Grok model for reasoning-heavy automation and visual tasks.",
+            "grok-4.3": "xAI's latest Grok model for reasoning-heavy automation tasks.",
+            "gemini-3.1-pro-preview": "Google Gemini 3.1 Pro Preview for multimodal agent runs.",
+            "gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite for low-latency agent runs.",
             "gemini-3-flash": "Google Gemini Flash tuned for fast, lower-latency multimodal agent runs.",
             // Ollama models
             "llava:latest": "Open-source multimodal model that runs locally. Good for " +

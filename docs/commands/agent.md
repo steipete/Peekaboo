@@ -16,7 +16,7 @@ read_when:
 | `--chat` | Force the interactive chat loop even when stdin/stdout are not TTYs. |
 | `--dry-run` | Emit the planned steps without actually invoking tools. |
 | `--max-steps <n>` | Cap how many tool invocations the agent may issue before aborting (default: 100). |
-| `--model gpt-5.1|claude-sonnet-4.5|gemini-3-flash` | Override the default model (`gpt-5.1`). Input is validated against the allowed list. |
+| `--model gpt-5.5|claude-opus-4.7|gemini-3.1-pro-preview` | Override the default model (`gpt-5.5`). Input is validated against the allowed list. |
 | `--resume` / `--resume-session <id>` | Continue the most recent session or a specific session ID. |
 | `--list-sessions` | Print cached sessions (id, task, timestamps, message count) instead of running anything. |
 | `--no-cache` | Always create a fresh session even if one is already active. |
@@ -45,8 +45,8 @@ For automation flows that cannot attach to a TTY, pass both `--chat` and standar
 
 ## Examples
 ```bash
-# Let the agent sign into Slack using GPT-5.1 with verbose tracing
-peekaboo agent "Check Slack mentions" --model gpt-5.1 --verbose
+# Let the agent sign into Slack using GPT-5.5 with verbose tracing
+peekaboo agent "Check Slack mentions" --model gpt-5.5 --verbose
 
 # Dry-run the same task without executing any tools
 peekaboo agent "Install the nightly build" --dry-run

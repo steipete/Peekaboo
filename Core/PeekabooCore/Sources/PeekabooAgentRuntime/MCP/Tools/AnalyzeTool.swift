@@ -194,7 +194,10 @@ public struct AnalyzeTool: MCPTool {
             }
             return .anthropic(.custom(model))
         case "grok", "xai":
-            guard let model else { return .grok(.grok4) }
+            guard let model else { return .grok(.grok43) }
+            if Self.isUnsupportedLegacyModel(provider: provider, model: model) {
+                throw PeekabooError.invalidInput("Unsupported Grok model: \(model)")
+            }
             if let parsed = LanguageModel.parse(from: model), case .grok = parsed {
                 return parsed
             }
@@ -220,6 +223,15 @@ public struct AnalyzeTool: MCPTool {
         }
 
         if provider == "anthropic", normalized.hasPrefix("claude-3") || compact.hasPrefix("claude3") {
+            return true
+        }
+
+        if provider == "grok" || provider == "xai",
+           normalized.hasPrefix("grok-2") || normalized.hasPrefix("grok-3") ||
+           normalized == "grok-4-0709" || normalized.hasPrefix("grok-4-fast") ||
+           normalized.hasPrefix("grok-code-fast") || normalized.contains("grok-beta") ||
+           normalized.contains("grok-vision-beta")
+        {
             return true
         }
 

@@ -29,19 +29,15 @@ This document outlines the implementation plan for integrating xAI's Grok 4 mode
 - **Note**: xAI does **NOT** use the `/v1/responses` endpoint - it uses standard chat completions
 
 ### Available Models (confirmed working)
-- **grok-4-0709** - Grok 4 model with 256K context (confirmed working)
-- **grok-3** - Grok 3 model with 131K context
-- **grok-3-mini** - Smaller Grok 3 model
-- **grok-3-fast** - Fast variant of Grok 3
-- **grok-3-mini-fast** - Fast variant of Grok 3 mini
-- **grok-2-vision-1212** - Grok 2 with vision capabilities
-- **grok-2-image-1212** - Grok 2 for image generation
+- **grok-4.3** - Current Grok default
+- **grok-4.20-multi-agent-0309** - Multi-agent Grok 4.20 variant
+- **grok-4.20-0309-reasoning** - Reasoning Grok 4.20 variant
+- **grok-4.20-0309-non-reasoning** - Non-reasoning Grok 4.20 variant
 
 Model shortcuts in Peekaboo:
-- `grok` → resolves to `grok-4-0709`
-- `grok-4` → resolves to `grok-4-0709`
-- `grok-3` → uses `grok-3`
-- `grok-2` → resolves to `grok-2-vision-1212`
+- `grok` → resolves to `grok-4.3`
+- `grok-4` → resolves to `grok-4.3`
+- Old `grok-2`, `grok-3`, `grok-4-fast`, and beta IDs are rejected.
 
 ### Key Features
 - Native tool use support (function calling)
@@ -468,16 +464,10 @@ registerGrokModels()
 // Add new method:
 private func registerGrokModels() {
     let models = [
-        // Grok 4 series
-        "grok-4",
-        
-        // Grok 2 series
-        "grok-2-1212",
-        "grok-2-vision-1212",
-        
-        // Beta models
-        "grok-beta",
-        "grok-vision-beta"
+        "grok-4.3",
+        "grok-4.20-multi-agent-0309",
+        "grok-4.20-0309-reasoning",
+        "grok-4.20-0309-non-reasoning"
     ]
     
     for modelName in models {
@@ -499,10 +489,7 @@ private func resolveLenientModelName(_ modelName: String) -> String? {
     
     // Grok model shortcuts
     if lowercased == "grok" || lowercased == "grok4" || lowercased == "grok-4" {
-        return "grok-4"
-    }
-    if lowercased == "grok2" || lowercased == "grok-2" {
-        return "grok-2-1212"
+        return "grok-4.3"
     }
     
     // ... rest of method ...
@@ -563,11 +550,10 @@ extension ModelProvider {
     /// Configure Grok models with specific settings
     public func configureGrok(_ config: ModelProviderConfig.Grok) {
         let models = [
-            "grok-4",
-            "grok-2-1212",
-            "grok-2-vision-1212",
-            "grok-beta",
-            "grok-vision-beta"
+            "grok-4.3",
+            "grok-4.20-multi-agent-0309",
+            "grok-4.20-0309-reasoning",
+            "grok-4.20-0309-non-reasoning"
         ]
         
         for modelName in models {
@@ -636,16 +622,15 @@ Once implemented, Grok can be used like this:
 # Set API key
 ./peekaboo config set-credential X_AI_API_KEY xai-...
 
-# Use Grok 4 (default)
-./peekaboo agent "analyze this code" --model grok-4
+# Use Grok 4.3 (default)
+./peekaboo agent "analyze this code" --model grok-4.3
 ./peekaboo agent "analyze this code" --model grok      # Lenient matching
 
 # Use specific models
-./peekaboo agent "quick task" --model grok-3-mini
-./peekaboo agent "beta features" --model grok-beta
+./peekaboo agent "quick task" --model grok-4.20-0309-reasoning
 
 # Environment variable usage
-PEEKABOO_AI_PROVIDERS="grok/grok-4-0709" ./peekaboo analyze image.png "What is shown?"
+PEEKABOO_AI_PROVIDERS="grok/grok-4.3" ./peekaboo analyze image.png "What is shown?"
 ```
 
 ## Implementation Steps (COMPLETED)

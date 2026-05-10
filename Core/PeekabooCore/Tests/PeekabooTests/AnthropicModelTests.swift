@@ -11,11 +11,11 @@ struct AnthropicModelTests {
     func `Anthropic model selection and properties`() {
         // Test current Anthropic models
         let opus45 = Model.anthropic(.opus45)
-        let sonnet4 = Model.anthropic(.sonnet4)
+        let sonnet46 = Model.anthropic(.sonnet46)
         let haiku45 = Model.anthropic(.haiku45)
 
         #expect(opus45.providerName == "Anthropic")
-        #expect(sonnet4.providerName == "Anthropic")
+        #expect(sonnet46.providerName == "Anthropic")
         #expect(haiku45.providerName == "Anthropic")
 
         // Test model capabilities
@@ -26,7 +26,7 @@ struct AnthropicModelTests {
 
         // Test model IDs
         #expect(opus45.modelId.contains("opus"))
-        #expect(sonnet4.modelId.contains("sonnet"))
+        #expect(sonnet46.modelId.contains("sonnet"))
         #expect(haiku45.modelId.contains("haiku"))
     }
 
@@ -42,7 +42,7 @@ struct AnthropicModelTests {
         // Test model shortcuts
         let anthropicModels = [
             Model.anthropic(.opus45),
-            Model.anthropic(.sonnet4),
+            Model.anthropic(.sonnet46),
             Model.anthropic(.haiku45),
         ]
 
@@ -81,7 +81,7 @@ struct AnthropicModelTests {
     func `Anthropic vision model capabilities`() {
         let visionCapableModels = [
             Model.anthropic(.opus45),
-            Model.anthropic(.sonnet4),
+            Model.anthropic(.sonnet46),
             Model.anthropic(.haiku45),
         ]
 
@@ -93,38 +93,36 @@ struct AnthropicModelTests {
     @Test
     func `Anthropic model comparison`() {
         let opus45 = Model.anthropic(.opus45)
-        let sonnet4 = Model.anthropic(.sonnet4)
+        let sonnet46 = Model.anthropic(.sonnet46)
         let haiku45 = Model.anthropic(.haiku45)
 
         // Test model descriptions
         #expect(opus45.description.contains("Anthropic"))
-        #expect(sonnet4.description.contains("Anthropic"))
+        #expect(sonnet46.description.contains("Anthropic"))
         #expect(haiku45.description.contains("Anthropic"))
 
         // Test that they're different models
-        #expect(opus45.modelId != sonnet4.modelId)
-        #expect(sonnet4.modelId != haiku45.modelId)
+        #expect(opus45.modelId != sonnet46.modelId)
+        #expect(sonnet46.modelId != haiku45.modelId)
         #expect(opus45.modelId != haiku45.modelId)
 
         // Test model hierarchy (Opus > Sonnet > Haiku typically)
-        #expect(opus45.contextLength >= sonnet4.contextLength)
-        #expect(sonnet4.contextLength >= haiku45.contextLength)
+        #expect(opus45.contextLength >= sonnet46.contextLength)
+        #expect(sonnet46.contextLength >= haiku45.contextLength)
     }
 
     @Test
-    func `Anthropic thinking models`() {
-        // Test thinking variants
-        let opus4Thinking = Model.anthropic(.opus4Thinking)
-        let sonnet4Thinking = Model.anthropic(.sonnet4Thinking)
+    func `Anthropic current models support tools`() {
+        let opus47 = Model.anthropic(.opus47)
+        let sonnet46 = Model.anthropic(.sonnet46)
 
-        #expect(opus4Thinking.providerName == "Anthropic")
-        #expect(sonnet4Thinking.providerName == "Anthropic")
+        #expect(opus47.providerName == "Anthropic")
+        #expect(sonnet46.providerName == "Anthropic")
 
-        #expect(opus4Thinking.modelId.contains("thinking"))
-        #expect(sonnet4Thinking.modelId.contains("thinking"))
+        #expect(!opus47.modelId.contains("thinking"))
+        #expect(!sonnet46.modelId.contains("thinking"))
 
-        // Thinking models should have extended reasoning capabilities
-        #expect(opus4Thinking.supportsTools == true)
-        #expect(sonnet4Thinking.supportsTools == true)
+        #expect(opus47.supportsTools == true)
+        #expect(sonnet46.supportsTools == true)
     }
 }

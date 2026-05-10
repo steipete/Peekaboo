@@ -10,13 +10,15 @@ struct AgentCommandTests {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("gpt-5.5") == .openai(.gpt55))
-        #expect(command.parseModelString("gpt-5.1") == .openai(.gpt55))
-        #expect(command.parseModelString("gpt-5.1-mini") == .openai(.gpt55))
-        #expect(command.parseModelString("gpt-5.1-nano") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.4") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.4-mini") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.4-nano") == .openai(.gpt55))
         #expect(command.parseModelString("gpt-5") == .openai(.gpt55))
         #expect(command.parseModelString("gpt-5-mini") == .openai(.gpt55))
         #expect(command.parseModelString("gpt") == .openai(.gpt55))
         #expect(command.parseModelString("gpt-5-nano") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.1") == nil)
+        #expect(command.parseModelString("gpt-5.2") == nil)
         #expect(command.parseModelString("gpt-4o") == nil)
         #expect(command.parseModelString("gpt-4o-mini") == nil)
         #expect(command.parseModelString("definitely-not-a-model") == nil)
@@ -27,6 +29,7 @@ struct AgentCommandTests {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("claude-opus-4.7") == .anthropic(.opus47))
+        #expect(command.parseModelString("claude-sonnet-4.6") == .anthropic(.opus47))
         #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.opus47))
         #expect(command.parseModelString("Claude-Sonnet-4.5") == .anthropic(.opus47))
         #expect(command.parseModelString("claude") == .anthropic(.opus47))
@@ -44,12 +47,14 @@ struct AgentCommandTests {
     }
 
     @Test
-    func `Google Gemini 3 Flash is accepted`() throws {
+    func `Current Gemini models are accepted`() throws {
         let command = try AgentCommand.parse([])
 
-        #expect(command.parseModelString("gemini-3-flash") == .google(.gemini3Flash))
-        #expect(command.parseModelString("gemini") == .google(.gemini3Flash))
-        #expect(command.parseModelString("gemini-2.5-pro") == nil)
+        #expect(command.parseModelString("gemini-3.1-pro-preview") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini-3.1-flash-lite") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini-3-flash") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini-2.5-pro") == .google(.gemini31ProPreview))
     }
 
     @Test
@@ -59,7 +64,7 @@ struct AgentCommandTests {
         #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt55))
         #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt55))
         #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus47))
-        #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini3Flash))
+        #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini31ProPreview))
     }
 }
 
@@ -84,7 +89,7 @@ struct ModelSelectionIntegrationTests {
 
         command.model = "gemini-3-flash"
         let parsedGemini = command.model.flatMap { command.parseModelString($0) }
-        #expect(parsedGemini == .google(.gemini3Flash))
+        #expect(parsedGemini == .google(.gemini31ProPreview))
     }
 
     @Test
@@ -94,7 +99,7 @@ struct ModelSelectionIntegrationTests {
         let testCases: [(String, LanguageModel)] = [
             ("gpt-5.5", .openai(.gpt55)),
             ("claude-opus-4.7", .anthropic(.opus47)),
-            ("gemini-3-flash", .google(.gemini3Flash)),
+            ("gemini-3.1-pro-preview", .google(.gemini31ProPreview)),
         ]
 
         for (input, expected) in testCases {

@@ -9,32 +9,28 @@ import Testing
 struct GrokLanguageModelTests {
     @Test
     func `Grok model selection and properties`() {
-        let grok4 = LanguageModel.grok(.grok4)
-        let grokFast = LanguageModel.grok(.grok4FastReasoning)
-        let grok3 = LanguageModel.grok(.grok3)
-        let grokVision = LanguageModel.grok(.grok2Vision)
-        let grokImage = LanguageModel.grok(.grok2Image)
+        let grok43 = LanguageModel.grok(.grok43)
+        let grokMultiAgent = LanguageModel.grok(.grok420MultiAgent)
+        let grokReasoning = LanguageModel.grok(.grok420Reasoning)
+        let grokNonReasoning = LanguageModel.grok(.grok420NonReasoning)
 
-        for model in [grok4, grokFast, grok3, grokVision, grokImage] {
+        for model in [grok43, grokMultiAgent, grokReasoning, grokNonReasoning] {
             #expect(model.providerName == "Grok")
             #expect(model.modelId.contains("grok"))
             #expect(model.supportsTools == true)
             #expect(model.supportsStreaming == true)
+            #expect(model.supportsVision == false)
         }
-
-        #expect(grokVision.supportsVision == true)
-        #expect(grokImage.supportsVision == true)
-        #expect(grokFast.supportsVision == false)
     }
 
     @Test
     func `Grok default model selection`() {
         let grokShortcut = LanguageModel.grok4
-        let selectorDefault = LanguageModel.grok(.grok4FastReasoning)
+        let selectorDefault = LanguageModel.grok(.grok43)
 
         #expect(grokShortcut.providerName == "Grok")
         #expect(selectorDefault.providerName == "Grok")
-        #expect(selectorDefault.modelId.contains("grok-4-fast"))
+        #expect(selectorDefault.modelId == "grok-4.3")
     }
 
     @Test
@@ -46,13 +42,7 @@ struct GrokLanguageModelTests {
             #expect(!model.modelId.isEmpty)
         }
 
-        let visionModels = catalog.filter(\.supportsVision)
-        let allVisionHaveIdentifier = visionModels.allSatisfy { model in
-            model.modelId.contains("vision") ||
-                model.modelId.contains("image") ||
-                model.modelId.contains("grok-vision")
-        }
-        #expect(allVisionHaveIdentifier)
+        #expect(catalog.allSatisfy { $0.supportsVision == false })
     }
 
     @Test
@@ -68,7 +58,7 @@ struct GrokLanguageModelTests {
         // This test would require real API credentials from xAI
         // Testing the integration without actual API calls
 
-        let model = LanguageModel.grok(.grok4FastReasoning)
+        let model = LanguageModel.grok(.grok43)
         let messages = [
             ModelMessage.user("What is the meaning of life?"),
         ]
@@ -108,7 +98,7 @@ struct GrokLanguageModelTests {
     @Test
     func `Grok parameter filtering`() {
         // Test that Grok 4 models don't support certain OpenAI parameters
-        let grok4 = LanguageModel.grok(.grok4FastReasoning)
+        let grok4 = LanguageModel.grok(.grok43)
 
         // These are implementation details that would be tested in provider code
         // Here we just verify the model exists and has expected properties

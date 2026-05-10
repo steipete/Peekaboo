@@ -463,12 +463,12 @@
   - `.artifacts/playground-tools/20251117-011314-agent-single-click.json`
   - `.artifacts/playground-tools/20251117-012655-agent-hi.json`
 - **Commands**:
-  1. `polter peekaboo -- agent --model gpt-5.1 --list-sessions --json-output`
-  2. `polter peekaboo -- agent "Say hi to the Playground app." --model gpt-5.1 --max-steps 2 --json-output`
-  3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.1 --max-steps 4 --json-output`
+  1. `polter peekaboo -- agent --model gpt-5.5 --list-sessions --json-output`
+  2. `polter peekaboo -- agent "Say hi to the Playground app." --model gpt-5.5 --max-steps 2 --json-output`
+  3. `polter peekaboo -- agent "Switch to Playground and press the Single Click button once." --model gpt-5.5 --max-steps 4 --json-output`
   4. Long run via tmux for full tool coverage:
      ```
-     tmux new-session -- bash -lc 'pnpm run peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.1 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'
+     tmux new-session -- bash -lc 'pnpm run peekaboo -- agent "Click the Single Click button in Playground." --model gpt-5.5 --max-steps 6 --no-cache | tee .artifacts/playground-tools/20251117-011500-agent-single-click.log'
      ```
 - **Findings**:
   - GPT-5.1 works end-to-end; the tmux transcript shows `see`, `app`, and two `click` calls completing with `Task completed ... ⚒ 6 tools`.

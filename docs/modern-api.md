@@ -31,7 +31,7 @@ The heart of the new API is a set of global functions that make AI generation as
 let response = try await generate("What is Swift concurrency?")
 
 // With specific model
-let response = try await generate("Explain async/await", using: .openai(.gpt4o))
+let response = try await generate("Explain async/await", using: .openai(.gpt55))
 
 // Streaming with AsyncSequence
 for try await token in stream("Tell me a story", using: .anthropic(.opus4)) {
@@ -42,7 +42,7 @@ for try await token in stream("Tell me a story", using: .anthropic(.opus4)) {
 let analysis = try await analyze(
     image: UIImage(named: "chart")!,
     prompt: "Describe this chart",
-    using: .openai(.gpt4o)
+    using: .openai(.gpt55)
 )
 ```
 
@@ -52,11 +52,11 @@ Supports both convenience and complete customization:
 
 ```swift
 // Predefined models (type-safe, autocomplete-friendly)
-let response1 = try await generate("Hello", using: .openai(.gpt4o))
+let response1 = try await generate("Hello", using: .openai(.gpt55))
 let response2 = try await generate("Hello", using: .anthropic(.opus4))
 
 // Custom model IDs (fine-tuned, etc.)
-let response3 = try await generate("Hello", using: .openai(.custom("ft:gpt-4o:my-org:abc123")))
+let response3 = try await generate("Hello", using: .openai(.custom("ft:gpt-5.5:my-org:abc123")))
 
 // OpenRouter models
 let response4 = try await generate("Hello", using: .openRouter("anthropic/claude-3.5-sonnet"))
@@ -98,7 +98,7 @@ let response2 = try await conversation.continue(using: .anthropic(.opus4))
 let response = try await Conversation()
     .system("You are helpful")
     .user("Hello!")
-    .continue(using: .openai(.gpt4o))
+    .continue(using: .openai(.gpt55))
 ```
 
 ### 4. Tool System with @ToolKit
@@ -124,7 +124,7 @@ struct MyTools {
 // Usage
 let response = try await generate(
     "What's the weather in Tokyo and what's 15% of 200?",
-    using: .openai(.gpt4o),
+    using: .openai(.gpt55),
     tools: MyTools()
 )
 ```
@@ -228,15 +228,15 @@ public enum Model {
         case gpt5Mini = "gpt-5-mini"
         case gpt5Nano = "gpt-5-nano"
         case o4Mini = "o4-mini"
-        case gpt4o = "gpt-4o"
-        case gpt4oMini = "gpt-4o-mini"
-        case gpt4_1 = "gpt-4.1"
+        case gpt55 = "gpt-5.5"
+        case gpt54 = "gpt-5.4"
+        case gpt5 = "gpt-5"
         case custom(String)
     }
     
     public enum Anthropic: String, CaseIterable {
         case opus4 = "claude-opus-4-1-20250805"
-        case sonnet4 = "claude-sonnet-4-20250514"
+        case sonnet46 = "claude-sonnet-4-6"
         case sonnet45 = "claude-sonnet-4-5-20250929"
         case haiku45 = "claude-haiku-4.5"
         case custom(String)
@@ -512,11 +512,10 @@ extension PeekabooCLI {
             case "claude", "claude-opus", "opus":
                 return .anthropic(.opus4)
             case "claude-sonnet", "sonnet":
-                return .anthropic(.sonnet4)
-            case "gpt-4o", "gpt4o":
-                return .openai(.gpt4o)
-            case "gpt-4.1", "gpt4.1":
-                return .openai(.gpt4_1)
+                return .anthropic(.sonnet46)
+            case "gpt-5.5", "gpt55", "gpt":
+                return .openai(.gpt55)
+            
             case let custom where custom.contains("/"):
                 // OpenRouter format like "anthropic/claude-3.5-sonnet"
                 return .openRouter(modelId: custom)
@@ -679,7 +678,7 @@ struct BasicGenerationExample {
         print("3. With system prompt:")
         let withSystem = try await generate(
             "How do I center a div?",
-            using: .openai(.gpt4o),
+            using: .openai(.gpt55),
             system: "You are a helpful web development expert"
         )
         print(withSystem)
@@ -743,7 +742,7 @@ struct ToolCallingExample {
         // Simple tool usage
         let response1 = try await generate(
             "What time is it right now?",
-            using: .openai(.gpt4o),
+            using: .openai(.gpt55),
             tools: tools
         )
         print("Time query result:")
@@ -763,7 +762,7 @@ struct ToolCallingExample {
         // Multiple tool usage
         let response3 = try await generate(
             "What's the weather in Tokyo and what time is it now?",
-            using: .openai(.gpt4o),
+            using: .openai(.gpt55),
             tools: tools
         )
         print("Multiple tools result:")
@@ -785,7 +784,7 @@ struct ToolCallingExample {
 
 **New Concepts:**
 - Global functions: `generate()`, `stream()`, `analyze()`
-- Model enum: `Model.openai(.gpt4o)`
+- Model enum: `Model.openai(.gpt55)`
 - Property wrappers: `@AI` for state management
 - Result builders: `@ToolKit` for tools
 - Conversation management: `Conversation` class
@@ -1236,7 +1235,7 @@ let response = try await model.getResponse(request: request)
 
 *After (Simple):*
 ```swift
-let response = try await generate("Hello", using: .openai(.gpt4o))
+let response = try await generate("Hello", using: .openai(.gpt55))
 ```
 
 **Technical Validation:**
@@ -1266,7 +1265,7 @@ This modern API design will transform Tachikoma into a Swift-native AI SDK that 
 
 ```swift
 // Simple case (1 line)
-let answer = try await generate("What is 2+2?", using: .openai(.gpt4o))
+let answer = try await generate("What is 2+2?", using: .openai(.gpt55))
 
 // Advanced case (still clean)
 let response = try await generate(
