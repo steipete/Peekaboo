@@ -22,6 +22,17 @@ struct CommanderBinderMCPWindowTests {
 
     @Test
     @MainActor
+    func `MCP serve defaults to local runtime`() throws {
+        let options = try CommanderCLIBinder.makeRuntimeOptions(
+            from: ParsedValues(positional: [], options: [:], flags: []),
+            commandType: MCPCommand.Serve.self
+        )
+
+        #expect(!options.preferRemote)
+    }
+
+    @Test
+    @MainActor
     func `Commander program resolves window close options`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))

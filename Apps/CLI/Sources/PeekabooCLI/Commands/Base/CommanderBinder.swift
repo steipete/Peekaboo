@@ -92,6 +92,7 @@ enum CommanderCLIBinder {
     private static func prefersLocalFastRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
         commandType == ImageCommand.self ||
             commandType == SeeCommand.self ||
+            commandType == MCPCommand.Serve.self ||
             commandType == ToolsCommand.self ||
             commandType == ListCommand.AppsSubcommand.self ||
             commandType == ListCommand.WindowsSubcommand.self ||

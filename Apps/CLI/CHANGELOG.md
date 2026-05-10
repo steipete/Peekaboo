@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `peekaboo agent --model` now understands the GPT-5.1 identifiers and defaults to `gpt-5.1`, matching the latest OpenAI release while keeping backward-compatible aliases for GPT-5 and GPT-4o inputs.
 
 ### Fixed
+- MCP stdio servers now default to the local runtime instead of probing an existing Bridge host, avoiding recursive capture timeouts for `see` and `image` tool calls.
 - MCP `image` now returns an `isError: true` tool result when Screen Recording permission is missing instead of surfacing an internal server error.
 - MCP `analyze` now honors configured AI providers and per-call `provider_config` models instead of hardcoding OpenAI GPT-5.1.
 - Peekaboo.app now signs with the AppleEvents automation entitlement so macOS can prompt for Automation permission.
