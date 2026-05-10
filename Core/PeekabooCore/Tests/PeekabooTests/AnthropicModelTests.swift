@@ -106,8 +106,11 @@ struct AnthropicModelTests {
         #expect(sonnet46.modelId != haiku45.modelId)
         #expect(opus45.modelId != haiku45.modelId)
 
-        // Test model hierarchy (Opus > Sonnet > Haiku typically)
-        #expect(opus45.contextLength >= sonnet46.contextLength)
+        // Current Anthropic context windows are model-specific, not a simple family hierarchy.
+        #expect(Model.anthropic(.opus47).contextLength == 1_000_000)
+        #expect(sonnet46.contextLength == 1_000_000)
+        #expect(opus45.contextLength == 500_000)
+        #expect(haiku45.contextLength == 200_000)
         #expect(sonnet46.contextLength >= haiku45.contextLength)
     }
 

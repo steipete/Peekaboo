@@ -1,5 +1,6 @@
 import Commander
 import Foundation
+import PeekabooAutomation
 import PeekabooCore
 import TachikomaMCP
 
@@ -67,34 +68,10 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
 
         let toolContext = MCPToolContext(services: self.services)
 
-        let nativeTools: [any MCPTool] = [
-            ImageTool(context: toolContext),
-            CaptureTool(context: toolContext),
-            AnalyzeTool(),
-            BrowserTool(),
-            ListTool(context: toolContext),
-            PermissionsTool(context: toolContext),
-            SleepTool(),
-            SeeTool(context: toolContext),
-            ClickTool(context: toolContext),
-            TypeTool(context: toolContext),
-            ScrollTool(context: toolContext),
-            HotkeyTool(context: toolContext),
-            SwipeTool(context: toolContext),
-            DragTool(context: toolContext),
-            MoveTool(context: toolContext),
-            AppTool(context: toolContext),
-            WindowTool(context: toolContext),
-            MenuTool(context: toolContext),
-            MCPAgentTool(context: toolContext),
-            DockTool(context: toolContext),
-            DialogTool(context: toolContext),
-            SpaceTool(context: toolContext),
-        ]
-
         let filters = ToolFiltering.currentFilters()
-        let filteredTools = ToolFiltering.apply(
-            nativeTools,
+        let filteredTools = MCPToolCatalog.tools(
+            context: toolContext,
+            inputPolicy: self.inputPolicy(),
             filters: filters,
             log: { [logger] message in
                 logger.debug(message)
@@ -109,6 +86,12 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
         } else {
             self.outputFormatted(tools: sortedTools, showDescription: self.showDetailedInfo)
         }
+    }
+
+    private func inputPolicy() -> UIInputPolicy {
+        self.services.configuration.getUIInputPolicy(
+            cliStrategy: self.resolvedRuntime.configuration.inputStrategy
+        )
     }
 
     // MARK: - JSON Output

@@ -80,6 +80,7 @@ MCP (stdio)  ───┘                             │
 - `peekaboo list apps`, `peekaboo app list`, `--no-remote`, `PEEKABOO_NO_REMOTE`, explicit input strategy overrides, and explicit capture engine overrides keep commands local.
 - `PEEKABOO_DAEMON_SOCKET` changes only the auto-start daemon socket; `PEEKABOO_BRIDGE_SOCKET` remains an explicit Bridge override and disables auto-start.
 - Bridge protocol 1.5 lets `image`/`see` run desktop observation inside the daemon. The daemon writes screenshot files locally and returns paths, timings, diagnostics, and optional element data without serializing screenshot bytes through Bridge JSON.
+- Runtime routing is split across focused helpers: socket resolution, daemon launch policy, bridge capability policy, input override detection, local service construction, and host resolution. Keep new routing exceptions in those helpers instead of growing `CommandRuntime`.
 
 ## Placement
 - Single entry point: `peekaboo` runs in **daemon mode** when requested.

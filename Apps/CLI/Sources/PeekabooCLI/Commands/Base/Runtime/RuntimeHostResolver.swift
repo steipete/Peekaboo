@@ -1,0 +1,106 @@
+import Darwin
+import Foundation
+import PeekabooAutomation
+import PeekabooBridge
+import PeekabooCore
+
+@MainActor
+enum RuntimeHostResolver {
+    static func resolveServices(options: CommandRuntimeOptions)
+    async -> (services: any PeekabooServiceProviding, hostDescription: String) {
+        let environment = ProcessInfo.processInfo.environment
+        let envNoRemote = environment["PEEKABOO_NO_REMOTE"]
+        guard options.preferRemote,
+              envNoRemote == nil,
+              options.inputStrategy == nil,
+              !RuntimeInputPolicyResolver.hasEnvironmentOverride(environment: environment),
+              !RuntimeInputPolicyResolver.hasConfigOverride(
+                  input: PeekabooAutomation.ConfigurationManager.shared.getConfiguration()?.input
+              )
+        else {
+            return (
+                services: RuntimeServiceFactory.makeLocalServices(options: options),
+                hostDescription: "local (in-process)"
+            )
+        }
+
+        let explicitSocket = BridgeSocketResolver.explicitBridgeSocket(options: options, environment: environment)
+
+        let daemonSocketPath = DaemonLaunchPolicy.daemonSocketPath(environment: environment)
+        let candidates: [String] = if let explicitSocket, !explicitSocket.isEmpty {
+            [explicitSocket]
+        } else {
+            [daemonSocketPath]
+        }
+
+        let identity = PeekabooBridgeClientIdentity(
+            bundleIdentifier: Bundle.main.bundleIdentifier,
+            teamIdentifier: nil,
+            processIdentifier: getpid(),
+            hostname: Host.current().name
+        )
+
+        if let resolved = await self.resolveRemoteServices(
+            candidates: candidates,
+            identity: identity,
+            options: options
+        ) {
+            return resolved
+        }
+
+        if options.autoStartDaemon,
+           DaemonLaunchPolicy.shouldAutoStartDaemon(options: options, environment: environment),
+           await DaemonLaunchPolicy.startOnDemandDaemon(socketPath: daemonSocketPath, environment: environment),
+           let resolved = await self.resolveRemoteServices(
+               candidates: [daemonSocketPath],
+               identity: identity,
+               options: options
+           ) {
+            return resolved
+        }
+
+        return (
+            services: RuntimeServiceFactory.makeLocalServices(options: options),
+            hostDescription: "local (in-process)"
+        )
+    }
+
+    private static func resolveRemoteServices(
+        candidates: [String],
+        identity: PeekabooBridgeClientIdentity,
+        options: CommandRuntimeOptions
+    )
+    async -> (services: any PeekabooServiceProviding, hostDescription: String)? {
+        for socketPath in candidates {
+            let client = PeekabooBridgeClient(socketPath: socketPath)
+            do {
+                let handshake = try await client.handshake(client: identity, requestedHost: nil)
+                guard BridgeCapabilityPolicy.supportsRemoteRequirements(for: handshake, options: options) else {
+                    continue
+                }
+
+                let targetedHotkeyAvailability = BridgeCapabilityPolicy.targetedHotkeyAvailability(for: handshake)
+                let hostDescription = "remote \(handshake.hostKind.rawValue) via \(socketPath)" +
+                    (handshake.build.map { " (build \($0))" } ?? "")
+                return (
+                    services: RemotePeekabooServices(
+                        client: client,
+                        supportsTargetedHotkeys: targetedHotkeyAvailability.isEnabled,
+                        targetedHotkeyUnavailableReason: targetedHotkeyAvailability.unavailableReason,
+                        targetedHotkeyRequiresEventSynthesizingPermission:
+                        targetedHotkeyAvailability.missingPermissions.contains(.postEvent),
+                        supportsPostEventPermissionRequest: BridgeCapabilityPolicy.supportsPostEventPermissionRequest(
+                            for: handshake
+                        ),
+                        supportsElementActions: BridgeCapabilityPolicy.supportsElementActions(for: handshake),
+                        supportsDesktopObservation: BridgeCapabilityPolicy.supportsDesktopObservation(for: handshake)
+                    ),
+                    hostDescription: hostDescription
+                )
+            } catch {
+                continue
+            }
+        }
+        return nil
+    }
+}

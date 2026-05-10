@@ -112,8 +112,16 @@ struct CLIRuntimeSmokeTests {
 
         #expect(json["success"] as? Bool == true)
         let dataPayload = json["data"] as? [String: Any]
-        #expect((dataPayload?["tools"] as? [[String: Any]])?.isEmpty == false)
+        let tools = dataPayload?["tools"] as? [[String: Any]]
+        let names = Set(tools?.compactMap { $0["name"] as? String } ?? [])
+
+        #expect(tools?.isEmpty == false)
         #expect((dataPayload?["count"] as? Int ?? 0) > 0)
+        #expect(names.contains("clipboard"))
+        #expect(names.contains("paste"))
+        #expect(names.contains("set_value"))
+        #expect(names.contains("perform_action"))
+        #expect(!names.contains("capture"))
     }
 
     @Test

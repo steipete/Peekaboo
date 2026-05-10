@@ -1,6 +1,3 @@
-import Foundation
-import Logging
-import MCP
 import Testing
 @testable import PeekabooAgentRuntime
 @testable import PeekabooAutomation
@@ -9,32 +6,24 @@ import Testing
 
 struct PeekabooMCPServerTests {
     @Test
-    func `Server initialization creates server with correct capabilities`() async throws {
-        _ = try await makeServer()
+    func `server initializes with native MCP tool catalog`() async throws {
+        let server = try await makeServer()
+        let names = await server.registeredToolNamesForTesting()
 
-        // Server should be initialized but we can't directly access private properties
-        // We'll test through the tool list functionality
-
-        // This test verifies the server can be created without errors
-        // More detailed testing would require either:
-        // 1. Making some properties internal instead of private
-        // 2. Testing through the public API (serve method)
-    }
-
-    @Test
-    func `Server registers all expected tools`() async throws {
-        _ = try await makeServer()
-
-        // We need to test that all tools are registered
-        // This would require either exposing the toolRegistry or testing through the protocol
-
-        // Without access to internal state, we'd need to test through the MCP protocol
-        // This is a limitation of the current design
+        #expect(names.count == 25)
+        #expect(names == names.sorted())
+        #expect(names.contains("image"))
+        #expect(names.contains("click"))
+        #expect(names.contains("clipboard"))
+        #expect(names.contains("paste"))
+        #expect(names.contains("set_value"))
+        #expect(names.contains("perform_action"))
+        #expect(!names.contains("capture"))
     }
 
     @Test
     @MainActor
-    func `Server filters action-only tools with runtime input policy`() async throws {
+    func `server filters action-only tools with runtime input policy`() async throws {
         let services = PeekabooServices(inputPolicy: UIInputPolicy(
             defaultStrategy: .synthOnly,
             setValue: .synthOnly,
@@ -46,166 +35,6 @@ struct PeekabooMCPServerTests {
 
         #expect(!names.contains("set_value"))
         #expect(!names.contains("perform_action"))
-    }
-
-    @Test
-    func `Server handles ListTools request`() async throws {
-        // This test would require setting up a mock transport
-        // and sending actual MCP protocol messages
-
-        // For now, we can at least verify the server initializes without error
-        _ = try await makeServer()
-
-        // In a real test, we would:
-        // 1. Create a mock transport
-        // 2. Send a ListTools request
-        // 3. Verify the response contains all expected tools
-    }
-
-    @Test
-    func `Server handles CallTool request for valid tool`() async throws {
-        _ = try await makeServer()
-
-        // Test would involve:
-        // 1. Setting up mock transport
-        // 2. Sending CallTool request for "sleep" with duration: 0.1
-        // 3. Verifying successful response
-    }
-
-    @Test
-    func `Server handles CallTool request for invalid tool`() async throws {
-        _ = try await makeServer()
-
-        // Test would involve:
-        // 1. Setting up mock transport
-        // 2. Sending CallTool request for "nonexistent_tool"
-        // 3. Verifying error response with appropriate error code
-    }
-
-    @Test
-    func `Server handles Initialize request`() async throws {
-        _ = try await makeServer()
-
-        // Test would verify:
-        // 1. Server responds with correct protocol version
-        // 2. Server capabilities are properly set
-        // 3. Server info contains correct name and version
-    }
-
-    @Test
-    func `Server gracefully handles transport errors`() async throws {
-        _ = try await makeServer()
-
-        // Test scenarios:
-        // 1. Transport disconnection
-        // 2. Invalid JSON in requests
-        // 3. Malformed protocol messages
-    }
-}
-
-// MARK: - Mock Transport for Testing
-
-actor MockTransport: Transport {
-    var messages: [String] = []
-    var responses: [String] = []
-    var isConnected = false
-    let logger = Logger(label: "test.mock.transport")
-
-    func connect() async throws {
-        self.isConnected = true
-    }
-
-    func disconnect() async {
-        self.isConnected = false
-    }
-
-    func send(_ data: Data) async throws {
-        guard self.isConnected else {
-            throw MockTransportError.disconnected
-        }
-        if let message = String(data: data, encoding: .utf8) {
-            self.messages.append(message)
-        }
-    }
-
-    func receive() -> AsyncThrowingStream<Data, any Error> {
-        AsyncThrowingStream { continuation in
-            Task {
-                guard self.isConnected else {
-                    continuation.finish(throwing: MockTransportError.disconnected)
-                    return
-                }
-
-                // Return pre-configured responses
-                for response in self.responses {
-                    if let data = response.data(using: .utf8) {
-                        continuation.yield(data)
-                    }
-                }
-
-                continuation.finish()
-            }
-        }
-    }
-
-    func close() async throws {
-        await self.disconnect()
-    }
-}
-
-enum MockTransportError: Swift.Error {
-    case disconnected
-}
-
-// MARK: - Integration Test Suite
-
-@Suite(.tags(.integration))
-struct MCPServerIntegrationTests {
-    @Test
-    func `Server starts and stops cleanly on stdio transport`() async throws {
-        _ = try await makeServer()
-
-        // We can't easily test stdio transport in unit tests
-        // This would be better as an integration test with actual process spawning
-    }
-
-    @Test
-    func `Server handles concurrent tool calls`() async throws {
-        _ = try await makeServer()
-
-        // Test would involve:
-        // 1. Setting up multiple concurrent CallTool requests
-        // 2. Verifying all complete successfully
-        // 3. Checking for race conditions or deadlocks
-    }
-
-    @Test
-    func `Server maintains session state correctly`() async throws {
-        _ = try await makeServer()
-
-        // Test scenarios:
-        // 1. Multiple clients connecting
-        // 2. Client disconnection and reconnection
-        // 3. State isolation between clients
-    }
-}
-
-// MARK: - Performance Test Suite
-
-@Suite(.tags(.performance))
-struct MCPServerPerformanceTests {
-    @Test
-    func `Tool listing performance`() async throws {
-        _ = try await makeServer()
-        // Measure time to list tools
-        // Should complete in < 10ms
-    }
-
-    @Test
-    func `Tool execution performance for simple tools`() async throws {
-        _ = try await makeServer()
-        // Test tools like "sleep" that have minimal overhead
-        // Should complete in < 50ms including protocol overhead
     }
 }
 

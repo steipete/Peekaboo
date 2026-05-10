@@ -123,61 +123,20 @@ public actor PeekabooMCPServer {
     }
 
     private func registerAllTools() async {
-        // Register all Peekaboo tools
         let context = self.toolContext
 
         let filters = ToolFiltering.currentFilters()
-
         let logger = self.logger
         let inputPolicy = await self.runtimeInputPolicy()
-        let nativeTools: [any MCPTool] = ToolFiltering.applyInputStrategyAvailability(
-            ToolFiltering.apply(
-                [
-                    // Core tools
-                    ImageTool(context: context),
-                    AnalyzeTool(),
-                    BrowserTool(context: context),
-                    ListTool(context: context),
-                    PermissionsTool(context: context),
-                    SleepTool(),
-
-                    // UI automation tools
-                    SeeTool(context: context),
-                    ClickTool(context: context),
-                    TypeTool(context: context),
-                    SetValueTool(context: context),
-                    PerformActionTool(context: context),
-                    ScrollTool(context: context),
-                    HotkeyTool(context: context),
-                    SwipeTool(context: context),
-                    DragTool(context: context),
-                    MoveTool(context: context),
-
-                    // App management tools
-                    AppTool(context: context),
-                    WindowTool(context: context),
-                    MenuTool(context: context),
-
-                    // System tools
-                    ClipboardTool(context: context),
-                    PasteTool(context: context),
-                    // RunTool(), // Removed: Security risk - allows arbitrary script execution
-                    // CleanTool(), // Removed: Internal maintenance tool, not for external use
-
-                    // Advanced tools
-                    MCPAgentTool(context: context),
-                    DockTool(context: context),
-                    DialogTool(context: context),
-                    SpaceTool(context: context),
-                ],
+        let nativeTools = await MainActor.run {
+            MCPToolCatalog.tools(
+                context: context,
+                inputPolicy: inputPolicy,
                 filters: filters,
                 log: { message in
                     logger.notice("\(message, privacy: .public)")
-                }),
-            policy: inputPolicy,
-            log: { message in
-                logger.notice("\(message, privacy: .public)")
-            })
+                })
+        }
 
         await self.toolRegistry.register(nativeTools)
 

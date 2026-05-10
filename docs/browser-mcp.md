@@ -51,11 +51,12 @@ The tool can expose page content, cookies/session-backed data visible to the pag
 
 ## Persistence
 
-Browser MCP state is owned by `BrowserMCPService`.
+Browser MCP state is owned by `BrowserMCPService` through `BrowserMCPSessionManager`.
 
 - In a local MCP process, the browser tool uses the `BrowserMCPService` from `MCPToolContext`.
 - In daemon-backed mode, `RemotePeekabooServices` forwards browser status/connect/execute calls over the Bridge socket.
 - The daemon owns the `chrome-devtools-mcp` child process, selected page state, and snapshot UID state.
+- Browser page actions auto-connect through the same session manager. If a call names a different Chrome channel than the active session, the manager reconnects to that channel before forwarding the action.
 - This lets separate `peekaboo mcp serve` stdio sessions reuse the same browser connection.
 
 Use `peekaboo daemon status` to see browser connection state, tool count, and detected Chrome channels.

@@ -79,48 +79,30 @@ public protocol BrowserMCPClientProviding: AnyObject, Sendable {
 public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Sendable {
     private static let serverName = "chrome-devtools"
 
-    private var manager: TachikomaMCPClientManager?
+    @MainActor private var sessionManager: BrowserMCPSessionManager?
 
     public init() {
-        self.manager = nil
+        self.sessionManager = nil
     }
 
     @MainActor
     public init(manager: TachikomaMCPClientManager) {
-        self.manager = manager
+        self.sessionManager = BrowserMCPSessionManager(serverName: Self.serverName, manager: manager)
     }
 
     @MainActor
     public func status(channel: BrowserMCPChannel? = nil) async -> BrowserMCPStatus {
-        let browserChannel = channel ?? self.preferredChannel()
-        let manager = self.resolvedManager()
-        let isConnected = await manager.isServerConnected(name: Self.serverName)
-        let tools = await manager.getServerTools(name: Self.serverName)
-        return BrowserMCPStatus(
-            isConnected: isConnected,
-            toolCount: tools.count,
-            detectedBrowsers: Self.detectRunningBrowsers(channel: browserChannel),
-            error: nil)
+        await self.resolvedSessionManager().status(channel: channel)
     }
 
     @MainActor
     public func connect(channel: BrowserMCPChannel? = nil) async throws -> BrowserMCPStatus {
-        let browserChannel = channel ?? self.preferredChannel()
-        let config = Self.chromeDevToolsConfig(channel: browserChannel)
-        let manager = self.resolvedManager()
-        if manager.getServerConfig(name: Self.serverName) == nil {
-            try await manager.addServer(name: Self.serverName, config: config)
-        } else {
-            await manager.removeServer(name: Self.serverName)
-            try await manager.addServer(name: Self.serverName, config: config)
-        }
-        return await self.status(channel: browserChannel)
+        try await self.resolvedSessionManager().connect(channel: channel)
     }
 
     @MainActor
     public func disconnect() async {
-        guard let manager else { return }
-        await manager.disableServer(name: Self.serverName)
+        await self.resolvedSessionManager().disconnect()
     }
 
     @MainActor
@@ -129,14 +111,10 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
         arguments: [String: Any],
         channel: BrowserMCPChannel? = nil) async throws -> ToolResponse
     {
-        let manager = self.resolvedManager()
-        if await !manager.isServerConnected(name: Self.serverName) {
-            _ = try await self.connect(channel: channel)
-        }
-        return try await manager.executeTool(
-            serverName: Self.serverName,
+        try await self.resolvedSessionManager().execute(
             toolName: toolName,
-            arguments: arguments)
+            arguments: arguments,
+            channel: channel)
     }
 
     public static func chromeDevToolsConfig(
@@ -204,8 +182,8 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
         }
     }
 
-    private func preferredChannel() -> BrowserMCPChannel {
-        Self.detectRunningBrowsers().first?.channel ?? .stable
+    static func preferredChannel() -> BrowserMCPChannel {
+        self.detectRunningBrowsers().first?.channel ?? .stable
     }
 
     private static func environmentFlag(_ name: String, environment: [String: String]) -> Bool {
@@ -216,13 +194,13 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
     }
 
     @MainActor
-    private func resolvedManager() -> TachikomaMCPClientManager {
-        if let manager {
-            return manager
+    private func resolvedSessionManager() -> BrowserMCPSessionManager {
+        if let sessionManager {
+            return sessionManager
         }
-        let manager = TachikomaMCPClientManager()
-        self.manager = manager
-        return manager
+        let sessionManager = BrowserMCPSessionManager(serverName: Self.serverName)
+        self.sessionManager = sessionManager
+        return sessionManager
     }
 
     private static func version(for application: NSRunningApplication) -> String? {

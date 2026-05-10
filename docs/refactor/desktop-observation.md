@@ -35,7 +35,7 @@ CLI / MCP / agent request
 
 Command files should parse flags and render typed results. They should not rank windows, infer Retina scale, traverse AX, choose focus fallback behavior, build screenshot companion paths, or decide where snapshots live.
 
-## Status: May 7, 2026
+## Status: May 10, 2026
 
 This plan is active and partially landed.
 
@@ -218,6 +218,8 @@ Landed:
 - Snapshot management now keeps storage paths, latest-snapshot lookup, element conversion, and cleanup helpers in `SnapshotManager+Helpers`.
 - Agent service orchestration now keeps execution loops, stream delta processing, session lifecycle wrappers, toolset assembly, and MCP-to-agent tool adaptation in focused companion files; tool-call argument previews now have tested sensitive-value redaction.
 - Bridge server request handling now keeps operation handlers and handshake/permission advertisement policy in focused companion files.
+- CLI `image` and `see` now share capture-engine preference parsing and output-path resolution through observation command support instead of maintaining command-local variants.
+- Command runtime daemon/remote selection now lives in focused socket, launch, capability, input-policy, service-factory, and host-resolver helpers instead of the primary runtime shell.
 - Bridge server request handling now keeps service-domain handlers in a focused companion file, leaving the primary handler file as routing plus core/capture/automation/window operations.
 - Remote service adapters now live in focused files instead of one aggregate service-provider implementation.
 - `PeekabooServices` now keeps agent refresh/model selection and high-level automation helpers in focused companion files.

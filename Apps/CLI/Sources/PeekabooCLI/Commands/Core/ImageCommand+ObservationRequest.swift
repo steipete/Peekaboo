@@ -64,17 +64,9 @@ extension ImageCommand {
     }
 
     private var observationCaptureEnginePreference: CaptureEnginePreference {
-        let value = (self.captureEngine ?? self.configuredCaptureEnginePreference)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-
-        switch value {
-        case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
-            return .modern
-        case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
-            return .legacy
-        default:
-            return .auto
-        }
+        ObservationCommandSupport.captureEnginePreference(
+            cliValue: self.captureEngine,
+            configuredValue: self.configuredCaptureEnginePreference
+        )
     }
 }

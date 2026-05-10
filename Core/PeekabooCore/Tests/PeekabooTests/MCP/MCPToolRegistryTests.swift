@@ -7,16 +7,11 @@ import Testing
 @testable import PeekabooCore
 @testable import PeekabooVisualizer
 
-@MainActor
-private func makeNativeTool<T>(_ factory: (MCPToolContext) -> T) -> T {
-    let services = PeekabooServices()
-    return factory(MCPToolContext(services: services))
-}
-
-@MainActor
-private func makeNativeTool<T>(_ builder: @escaping () -> T) -> T {
-    builder()
-}
+private let noToolFilters = ToolFilters(
+    allow: [],
+    deny: [],
+    allowSource: .none,
+    denySources: [:])
 
 @MainActor
 struct MCPToolRegistryTests {
@@ -179,46 +174,47 @@ struct MCPToolRegistryTests {
 @MainActor
 struct MCPToolRegistryIntegrationTests {
     @Test
+    func `MCP tool catalog contains authoritative Peekaboo MCP tools`() {
+        let services = PeekabooServices()
+        let context = MCPToolContext(services: services)
+        let tools = MCPToolCatalog.tools(
+            context: context,
+            inputPolicy: services.configuration.getUIInputPolicy(),
+            filters: noToolFilters)
+        let names = Set(tools.map(\.name))
+
+        #expect(tools.count == 25)
+        #expect(names.contains("clipboard"))
+        #expect(names.contains("paste"))
+        #expect(names.contains("set_value"))
+        #expect(names.contains("perform_action"))
+        #expect(!names.contains("capture"))
+    }
+
+    @Test
     func `Register all Peekaboo tools`() {
         let registry = MCPToolRegistry()
+        let services = PeekabooServices()
+        let context = MCPToolContext(services: services)
 
-        // Register the actual Peekaboo tools
-        registry.register([
-            makeNativeTool(ImageTool.init),
-            makeNativeTool(AnalyzeTool.init),
-            makeNativeTool(ListTool.init),
-            makeNativeTool(PermissionsTool.init),
-            makeNativeTool(SleepTool.init),
-            makeNativeTool(SeeTool.init),
-            makeNativeTool(ClickTool.init),
-            makeNativeTool(TypeTool.init),
-            makeNativeTool(SetValueTool.init),
-            makeNativeTool(PerformActionTool.init),
-            makeNativeTool(ScrollTool.init),
-            makeNativeTool(HotkeyTool.init),
-            makeNativeTool(SwipeTool.init),
-            makeNativeTool(DragTool.init),
-            makeNativeTool(MoveTool.init),
-            makeNativeTool(AppTool.init),
-            makeNativeTool(WindowTool.init),
-            makeNativeTool(MenuTool.init),
-            makeNativeTool(MCPAgentTool.init),
-            makeNativeTool(DockTool.init),
-            makeNativeTool(DialogTool.init),
-            makeNativeTool(SpaceTool.init),
-        ])
+        registry.register(MCPToolCatalog.tools(
+            context: context,
+            inputPolicy: services.configuration.getUIInputPolicy(),
+            filters: noToolFilters))
 
         let tools = registry.allTools()
-        #expect(tools.count == 22)
+        #expect(tools.count == 25)
 
         // Verify some key tools are present
         let imageToolExists = registry.tool(named: "image") != nil
         let clickToolExists = registry.tool(named: "click") != nil
         let agentToolExists = registry.tool(named: "agent") != nil
+        let clipboardToolExists = registry.tool(named: "clipboard") != nil
 
         #expect(imageToolExists)
         #expect(clickToolExists)
         #expect(agentToolExists)
+        #expect(clipboardToolExists)
     }
 
     @Test

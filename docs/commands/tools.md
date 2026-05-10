@@ -7,7 +7,7 @@ read_when:
 
 # `peekaboo tools`
 
-`peekaboo tools` prints the authoritative tool catalog that the CLI, Peekaboo.app, and MCP server expose. The command hydrates the native tool set (Image, See, Click, Window, etc.) so you can audit everything an agent will see without attaching a debugger.
+`peekaboo tools` prints the authoritative native MCP tool catalog that `peekaboo mcp` exposes. The command hydrates the same native MCP tool set (Image, See, Click, Window, etc.) so you can audit what MCP clients will see without attaching a debugger.
 
 ## Key options
 | Flag | Description |
@@ -16,8 +16,9 @@ read_when:
 | `--json` | Emit `{tools:[…], count:n}` for machine parsing. |
 
 ## Implementation notes
-- The command instantiates every native `MCPTool` manually (ImageTool, ClickTool, DialogTool, etc.) so you see the same tool set the agent runtime will use.
-- Filtering happens before formatting (`ToolFiltering.apply`), so allow/deny rules match the agent + MCP server behavior.
+- The command and MCP server both use `MCPToolCatalog`, so tool additions only need to be registered once.
+- Filtering happens before formatting (`ToolFiltering.apply`), so allow/deny rules match MCP server behavior.
+- Input-strategy availability filtering also runs before formatting, so action-only tools are hidden when the current policy cannot support them.
 - The command runs locally by default because it only reports the static native catalog; pass `--bridge-socket <path>` only when you need to inspect a specific bridge host.
 - Because the command implements `RuntimeOptionsConfigurable`, it respects global `--json`/`--verbose` flags even when invoked from other commands (e.g., `peekaboo learn` can embed the summaries verbatim).
 

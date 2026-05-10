@@ -8,17 +8,12 @@ extension SeeCommand {
     func screenshotOutputPath() -> String {
         let timestamp = Date().timeIntervalSince1970
         let filename = "peekaboo_see_\(Int(timestamp)).png"
-
-        if let providedPath = path {
-            return ObservationOutputPathResolver.resolve(
-                path: providedPath,
-                format: .png,
-                defaultFileName: filename
-            ).path
-        }
-
-        let defaultPath = ConfigurationManager.shared.getDefaultSavePath(cliValue: nil)
-        return (defaultPath as NSString).appendingPathComponent(filename)
+        return ObservationCommandSupport.outputPath(
+            path: self.path,
+            format: .png,
+            defaultDirectory: ConfigurationManager.shared.getDefaultSavePath(cliValue: nil),
+            defaultFileName: filename
+        )
     }
 
     func saveScreenshot(_ imageData: Data) throws -> String {
