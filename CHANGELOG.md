@@ -7,6 +7,7 @@
 - Added docs-site agent metadata, social preview assets, and security discovery files, with GitHub links moved to the OpenClaw-owned repository. Thanks @williamclay8 for #115.
 - Release automation now builds and uploads the signed, notarized Peekaboo.app zip by default, updates Sparkle appcast metadata, and accepts one-line App Store Connect API keys for notarization.
 - Refined the macOS Settings window, menu bar popover header, and Playground chrome with denser native layout, clearer controls, and less debug noise.
+- Fixed the macOS app's invisible settings helper window and refreshed the app icon artwork so Dock no longer shows a stray blank window or white icon backing.
 
 ## [3.0.0] - 2026-05-09
 

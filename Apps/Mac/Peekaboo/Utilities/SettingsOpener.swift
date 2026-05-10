@@ -112,22 +112,41 @@ struct HiddenWindowView: View {
 
     var body: some View {
         Color.clear
-            .frame(width: 64, height: 64)
+            .frame(width: 1, height: 1)
+            .background(HiddenWindowConfigurator())
             .onReceive(NotificationCenter.default.publisher(for: .openSettingsRequest)) { _ in
                 Task { @MainActor in
                     self.openSettings()
                 }
             }
-            .onAppear {
-                // Hide this window from the dock menu and window lists
-                if let window = NSApp.windows
-                    .first(where: { $0.identifier?.rawValue.contains("HiddenWindow") ?? false })
-                {
-                    window.isExcludedFromWindowsMenu = true
-                    window.title = "" // Remove title to ensure it doesn't show anywhere
-                    window.orderOut(nil)
-                }
-            }
+    }
+}
+
+private struct HiddenWindowConfigurator: NSViewRepresentable {
+    func makeNSView(context _: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            self.configureWindow(for: view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context _: Context) {
+        DispatchQueue.main.async {
+            self.configureWindow(for: nsView)
+        }
+    }
+
+    private func configureWindow(for view: NSView) {
+        guard let window = view.window else { return }
+
+        window.identifier = NSUserInterfaceItemIdentifier("hidden-settings-helper")
+        window.title = ""
+        window.isExcludedFromWindowsMenu = true
+        window.alphaValue = 0
+        window.ignoresMouseEvents = true
+        window.collectionBehavior.insert(.transient)
+        window.orderOut(nil)
     }
 }
 
