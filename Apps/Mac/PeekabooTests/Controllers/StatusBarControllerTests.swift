@@ -5,21 +5,24 @@ import Testing
 @Suite(.tags(.ui, .unit))
 @MainActor
 struct StatusBarControllerTests {
-    @Test
-    func `Controller initializes with status item`() {
+    private func makeController() -> StatusBarController {
         let settings = PeekabooSettings()
         let sessionStore = SessionStore()
         let permissions = Permissions()
         let agent = PeekabooAgent(
             settings: settings,
             sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer(settings: settings)
-        _ = StatusBarController(
+        return StatusBarController(
             agent: agent,
             sessionStore: sessionStore,
             permissions: permissions,
-            speechRecognizer: speechRecognizer,
-            settings: settings)
+            settings: settings,
+            updater: DisabledUpdaterController())
+    }
+
+    @Test
+    func `Controller initializes with status item`() {
+        _ = self.makeController()
 
         // StatusBarController is properly initialized
         // We can't access private statusItem, but we can verify the controller exists
@@ -28,19 +31,7 @@ struct StatusBarControllerTests {
 
     @Test
     func `Menu contains expected items`() {
-        let settings = PeekabooSettings()
-        let sessionStore = SessionStore()
-        let permissions = Permissions()
-        let agent = PeekabooAgent(
-            settings: settings,
-            sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer(settings: settings)
-        _ = StatusBarController(
-            agent: agent,
-            sessionStore: sessionStore,
-            permissions: permissions,
-            speechRecognizer: speechRecognizer,
-            settings: settings)
+        _ = self.makeController()
 
         // We can't directly access the private statusItem property
         // This test would need the StatusBarController to expose a testing API
@@ -51,19 +42,7 @@ struct StatusBarControllerTests {
 
     @Test
     func `Icon animation states`() {
-        let settings = PeekabooSettings()
-        let sessionStore = SessionStore()
-        let permissions = Permissions()
-        let agent = PeekabooAgent(
-            settings: settings,
-            sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer(settings: settings)
-        _ = StatusBarController(
-            agent: agent,
-            sessionStore: sessionStore,
-            permissions: permissions,
-            speechRecognizer: speechRecognizer,
-            settings: settings)
+        _ = self.makeController()
 
         // Test passes - we verified controller initializes without crashing
         // We can't access private statusItem property
@@ -71,19 +50,7 @@ struct StatusBarControllerTests {
 
     @Test
     func `Popover presentation`() {
-        let settings = PeekabooSettings()
-        let sessionStore = SessionStore()
-        let permissions = Permissions()
-        let agent = PeekabooAgent(
-            settings: settings,
-            sessionStore: sessionStore)
-        let speechRecognizer = SpeechRecognizer(settings: settings)
-        _ = StatusBarController(
-            agent: agent,
-            sessionStore: sessionStore,
-            permissions: permissions,
-            speechRecognizer: speechRecognizer,
-            settings: settings)
+        _ = self.makeController()
 
         // We can't access private popover property
         // Test passes - controller initialized without crashing

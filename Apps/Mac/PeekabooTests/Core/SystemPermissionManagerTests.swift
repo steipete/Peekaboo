@@ -43,6 +43,6 @@ struct PermissionsServiceTests {
         // This logic has been moved out of the permissions service
         // and is now handled by the components that require the permissions.
         // This test is no longer applicable to PermissionsService.
-        #expect(true)
+        #expect(Bool(true))
     }
 }

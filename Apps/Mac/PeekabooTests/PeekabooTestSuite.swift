@@ -21,15 +21,20 @@ func `environment is properly configured`() {
 /// Test execution helpers
 extension Test {
     /// Helper to check if we're running in CI environment
-    static var isCI: Bool {
+    nonisolated static var isCI: Bool {
         ProcessInfo.processInfo.environment["CI"] != nil ||
             ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil ||
             ProcessInfo.processInfo.environment["XCODE_CLOUD"] != nil
     }
 
     /// Helper to check if we have network access
-    static var hasNetworkAccess: Bool {
+    nonisolated static var hasNetworkAccess: Bool {
         // Simple check - in real tests you'd want more sophisticated network checking
         true
+    }
+
+    /// Opt-in guard for tests that hit the real agent/model path.
+    nonisolated static var runsLiveAgentTests: Bool {
+        ProcessInfo.processInfo.environment["PEEKABOO_RUN_LIVE_AGENT_TESTS"] == "1"
     }
 }

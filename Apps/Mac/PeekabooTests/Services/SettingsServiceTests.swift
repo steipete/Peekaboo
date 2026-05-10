@@ -4,53 +4,56 @@ import PeekabooCore
 import Testing
 @testable import Peekaboo
 
-@Suite(.tags(.services, .unit))
+@Suite(.tags(.services, .unit), .serialized)
 @MainActor
-final class PeekabooSettingsTests {
-    var settings: PeekabooSettings!
-
-    init() {
-        Task { @MainActor in
-            // Create a fresh instance for each test, not using the shared instance
-            self.settings = PeekabooSettings()
+struct PeekabooSettingsTests {
+    @Test
+    func `Default values are set correctly`() throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let settings = PeekabooSettings()
+            #expect(settings.openAIAPIKey.isEmpty)
+            #expect(settings.selectedProvider == "anthropic")
+            #expect(settings.selectedModel == "claude-sonnet-4-5-20250929")
+            #expect(settings.alwaysOnTop == false)
+            #expect(settings.showInDock == true)
+            #expect(settings.launchAtLogin == false)
+            #expect(settings.voiceActivationEnabled == true)
+            #expect(settings.hapticFeedbackEnabled == true)
+            #expect(settings.soundEffectsEnabled == true)
+            #expect(settings.maxTokens == 16384)
+            #expect(settings.temperature == 0.7)
         }
     }
 
     @Test
-    func `Default values are set correctly`() {
-        #expect(self.settings.openAIAPIKey.isEmpty)
-        #expect(self.settings.selectedModel == "gpt-4o")
-        #expect(self.settings.alwaysOnTop == false)
-        #expect(self.settings.showInDock == false)
-        #expect(self.settings.launchAtLogin == false)
-        #expect(self.settings.voiceActivationEnabled == false)
-        #expect(self.settings.hapticFeedbackEnabled == true)
-        #expect(self.settings.soundEffectsEnabled == true)
-        #expect(self.settings.maxTokens == 16384)
-        #expect(self.settings.temperature == 0.7)
+    func `API key validation`() throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let settings = PeekabooSettings()
+            settings.selectedProvider = "openai"
+
+            // Empty key should be invalid
+            #expect(!settings.hasValidAPIKey)
+
+            // Set a key
+            settings.openAIAPIKey = "sk-test123"
+            #expect(settings.hasValidAPIKey)
+
+            // Clear the key
+            settings.openAIAPIKey = ""
+            #expect(!settings.hasValidAPIKey)
+        }
     }
 
     @Test
-    func `API key validation`() {
-        // Empty key should be invalid
-        #expect(!self.settings.hasValidAPIKey)
+    func `Model selection updates correctly`() throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let settings = PeekabooSettings()
+            let models = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"]
 
-        // Set a key
-        self.settings.openAIAPIKey = "sk-test123"
-        #expect(self.settings.hasValidAPIKey)
-
-        // Clear the key
-        self.settings.openAIAPIKey = ""
-        #expect(!self.settings.hasValidAPIKey)
-    }
-
-    @Test
-    func `Model selection updates correctly`() {
-        let models = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"]
-
-        for model in models {
-            self.settings.selectedModel = model
-            #expect(self.settings.selectedModel == model)
+            for model in models {
+                settings.selectedModel = model
+                #expect(settings.selectedModel == model)
+            }
         }
     }
 
@@ -62,9 +65,12 @@ final class PeekabooSettingsTests {
         (2.0, 1.0), // Above maximum
         (2.5, 1.0) // Way above maximum
     ])
-    func `Temperature bounds are enforced`(input: Double, expected: Double) {
-        self.settings.temperature = input
-        #expect(self.settings.temperature == expected)
+    func `Temperature bounds are enforced`(input: Double, expected: Double) throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let settings = PeekabooSettings()
+            settings.temperature = input
+            #expect(settings.temperature == expected)
+        }
     }
 
     @Test(arguments: [
@@ -74,77 +80,76 @@ final class PeekabooSettingsTests {
         (128_000, 128_000), // Maximum
         (200_000, 128_000) // Above maximum
     ])
-    func `Max tokens bounds are enforced`(input: Int, expected: Int) {
-        self.settings.maxTokens = input
-        #expect(self.settings.maxTokens == expected)
+    func `Max tokens bounds are enforced`(input: Int, expected: Int) throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let settings = PeekabooSettings()
+            settings.maxTokens = input
+            #expect(settings.maxTokens == expected)
+        }
     }
 
     @Test
     func `Toggle settings work correctly`() throws {
-        // Test all boolean settings
-        let toggles: [(WritableKeyPath<PeekabooSettings, Bool>, String)] = [
-            (\.alwaysOnTop, "alwaysOnTop"),
-            (\.showInDock, "showInDock"),
-            (\.launchAtLogin, "launchAtLogin"),
-            (\.voiceActivationEnabled, "voiceActivationEnabled"),
-            (\.hapticFeedbackEnabled, "hapticFeedbackEnabled"),
-            (\.soundEffectsEnabled, "soundEffectsEnabled"),
-        ]
+        try withIsolatedSettingsEnvironment { _ in
+            var settings = PeekabooSettings()
+            // Test all boolean settings
+            let toggles: [(WritableKeyPath<PeekabooSettings, Bool>, String)] = [
+                (\.alwaysOnTop, "alwaysOnTop"),
+                (\.showInDock, "showInDock"),
+                (\.launchAtLogin, "launchAtLogin"),
+                (\.voiceActivationEnabled, "voiceActivationEnabled"),
+                (\.hapticFeedbackEnabled, "hapticFeedbackEnabled"),
+                (\.soundEffectsEnabled, "soundEffectsEnabled"),
+            ]
 
-        for (keyPath, _) in toggles {
-            let originalValue = try #require(self.settings?[keyPath: keyPath])
+            for (keyPath, _) in toggles {
+                let originalValue = settings[keyPath: keyPath]
 
-            // Toggle on
-            self.settings?[keyPath: keyPath] = true
-            #expect(self.settings?[keyPath: keyPath] == true)
+                // Toggle on
+                settings[keyPath: keyPath] = true
+                #expect(settings[keyPath: keyPath] == true)
 
-            // Toggle off
-            self.settings?[keyPath: keyPath] = false
-            #expect(self.settings?[keyPath: keyPath] == false)
+                // Toggle off
+                settings[keyPath: keyPath] = false
+                #expect(settings[keyPath: keyPath] == false)
 
-            // Restore original
-            self.settings?[keyPath: keyPath] = originalValue
+                // Restore original
+                settings[keyPath: keyPath] = originalValue
+            }
         }
     }
 }
 
-@Suite(.tags(.services, .integration))
+@Suite(.tags(.services, .integration), .serialized)
 @MainActor
 struct PeekabooSettingsPersistenceTests {
     @Test
-    func `PeekabooSettings persist across instances`() async {
-        let suiteName = UUID().uuidString
-        let testAPIKey = "sk-test-persistence-key"
-        let testModel = "o1-preview"
-        let testTemperature = 0.9
+    func `PeekabooSettings persist across instances`() throws {
+        try withIsolatedSettingsEnvironment { _ in
+            let testAPIKey = "sk-test-persistence-key"
+            let testModel = "o1-preview"
+            let testTemperature = 0.9
 
-        // Set values in first instance
-        do {
             let settings1 = PeekabooSettings()
-            await MainActor.run {
-                settings1.openAIAPIKey = testAPIKey
-                settings1.selectedModel = testModel
-                settings1.temperature = testTemperature
-                settings1.alwaysOnTop = true
-                settings1.voiceActivationEnabled = true
-            }
+            settings1.openAIAPIKey = testAPIKey
+            settings1.selectedModel = testModel
+            settings1.temperature = testTemperature
+            settings1.alwaysOnTop = true
+            settings1.voiceActivationEnabled = true
+
+            // Create new instance and verify
+            let settings2 = PeekabooSettings()
+
+            #expect(settings2.openAIAPIKey == testAPIKey)
+            #expect(settings2.selectedModel == testModel)
+            #expect(settings2.temperature == testTemperature)
+            #expect(settings2.alwaysOnTop == true)
+            #expect(settings2.voiceActivationEnabled == true)
         }
-
-        // Create new instance and verify
-        let settings2 = PeekabooSettings()
-
-        #expect(settings2.openAIAPIKey == testAPIKey)
-        #expect(settings2.selectedModel == testModel)
-        #expect(settings2.temperature == testTemperature)
-        #expect(settings2.alwaysOnTop == true)
-        #expect(settings2.voiceActivationEnabled == true)
-
-        // Clean up
-        UserDefaults().removePersistentDomain(forName: suiteName)
     }
 }
 
-@Suite(.tags(.services, .integration))
+@Suite(.tags(.services, .integration), .serialized)
 @MainActor
 struct PeekabooSettingsConfigHydrationTests {
     @Test
@@ -227,11 +232,31 @@ private func withIsolatedSettingsEnvironment(_ body: (URL) throws -> Void) throw
     let defaults = UserDefaults.standard
     let previousConfigDir = getenv("PEEKABOO_CONFIG_DIR").map { String(cString: $0) }
     let previousDisableMigration = getenv("PEEKABOO_CONFIG_DISABLE_MIGRATION").map { String(cString: $0) }
+    let credentialEnvironmentKeys = [
+        "OPENAI_API_KEY",
+        "OPENAI_ACCESS_TOKEN",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_ACCESS_TOKEN",
+        "X_AI_API_KEY",
+        "XAI_API_KEY",
+        "GROK_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    ]
+    let previousCredentialEnvironment = credentialEnvironmentKeys.reduce(into: [String: String]()) { values, key in
+        if let value = getenv(key).map({ String(cString: $0) }) {
+            values[key] = value
+        }
+    }
     let previousKeys = defaults.dictionaryRepresentation().filter { $0.key.hasPrefix("peekaboo.") }
 
     clearPeekabooDefaults(defaults)
+    defaults.set(true, forKey: "peekaboo.migratedToConfigJson")
     setenv("PEEKABOO_CONFIG_DIR", configDir.path, 1)
     setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+    for key in credentialEnvironmentKeys {
+        unsetenv(key)
+    }
     ConfigurationManager.shared.resetForTesting()
 
     defer {
@@ -248,6 +273,13 @@ private func withIsolatedSettingsEnvironment(_ body: (URL) throws -> Void) throw
             setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", previousDisableMigration, 1)
         } else {
             unsetenv("PEEKABOO_CONFIG_DISABLE_MIGRATION")
+        }
+        for key in credentialEnvironmentKeys {
+            if let value = previousCredentialEnvironment[key] {
+                setenv(key, value, 1)
+            } else {
+                unsetenv(key)
+            }
         }
         ConfigurationManager.shared.resetForTesting()
         try? fileManager.removeItem(at: configDir)

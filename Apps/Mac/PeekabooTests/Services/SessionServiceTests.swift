@@ -29,7 +29,7 @@ struct SessionStoreTests {
     mutating func `Creating a new session assigns unique ID`() async {
         self.setup()
         defer { tearDown() }
-        let session = await store.createSession(title: "Test Session", modelName: "test-model")
+        let session = store.createSession(title: "Test Session", modelName: "test-model")
 
         #expect(!session.id.isEmpty)
         #expect(session.title == "Test Session")
@@ -42,16 +42,16 @@ struct SessionStoreTests {
     mutating func `Adding messages to session updates the session`() async throws {
         self.setup()
         defer { tearDown() }
-        var session = await store.createSession(title: "Test", modelName: "test-model")
+        var session = store.createSession(title: "Test", modelName: "test-model")
         let message = ConversationMessage(
             role: .user,
             content: "Test message")
 
-        await store.addMessage(message, to: session)
-        session = try await #require(self.store.sessions.first)
+        store.addMessage(message, to: session)
+        session = try #require(self.store.sessions.first)
 
         // Verify the session was updated
-        let sessions = await store.sessions
+        let sessions = store.sessions
         #expect(sessions.count == 1)
 
         if let updatedSession = sessions.first {
@@ -64,20 +64,20 @@ struct SessionStoreTests {
     mutating func `Multiple sessions can be managed independently`() async throws {
         self.setup()
         defer { tearDown() }
-        var session1 = await store.createSession(title: "Session 1", modelName: "test-model")
-        let session2 = await store.createSession(title: "Session 2", modelName: "test-model")
+        var session1 = store.createSession(title: "Session 1", modelName: "test-model")
+        let session2 = store.createSession(title: "Session 2", modelName: "test-model")
 
         #expect(session1.id != session2.id)
-        #expect(await self.store.sessions.count == 2)
+        #expect(self.store.sessions.count == 2)
 
         // Add message to first session
-        await self.store.addMessage(
+        self.store.addMessage(
             ConversationMessage(role: .user, content: "Message 1"),
             to: session1)
-        session1 = try await #require(self.store.sessions.first { $0.id == session1.id })
+        session1 = try #require(self.store.sessions.first { $0.id == session1.id })
 
         // Verify only first session has the message
-        let sessions = await store.sessions
+        let sessions = store.sessions
         let updatedSession1 = sessions.first { $0.id == session1.id }
         let updatedSession2 = sessions.first { $0.id == session2.id }
 
@@ -90,13 +90,13 @@ struct SessionStoreTests {
         self.setup()
         defer { tearDown() }
         // Create sessions with specific times
-        let session1 = await store.createSession(title: "1", modelName: "m")
+        let session1 = store.createSession(title: "1", modelName: "m")
         try? await Task.sleep(for: .milliseconds(10))
-        let session2 = await store.createSession(title: "2", modelName: "m")
+        let session2 = store.createSession(title: "2", modelName: "m")
         try? await Task.sleep(for: .milliseconds(10))
-        let session3 = await store.createSession(title: "3", modelName: "m")
+        let session3 = store.createSession(title: "3", modelName: "m")
 
-        let sessions = await store.sessions
+        let sessions = store.sessions
         #expect(sessions.count == 3)
 
         // Verify order (newest first)
@@ -121,24 +121,24 @@ struct SessionStorePersistenceTests {
         // Create and populate session in first instance
         do {
             let store1 = SessionStore(storageURL: storageURL)
-            let session = await store1.createSession(title: "Persistent Session", modelName: "p-model")
+            let session = store1.createSession(title: "Persistent Session", modelName: "p-model")
             sessionId = session.id
 
-            await store1.addMessage(
+            store1.addMessage(
                 ConversationMessage(role: .user, content: messageContent),
                 to: session)
 
             // Force save
-            await store1.saveSessions()
+            store1.saveSessions()
 
-            let sessions = await store1.sessions
+            let sessions = store1.sessions
             #expect(sessions.count == 1)
         }
 
         // Create new instance with same storage URL and verify data is loaded
         let store2 = SessionStore(storageURL: storageURL)
 
-        let sessions = await store2.sessions
+        let sessions = store2.sessions
         #expect(sessions.count == 1)
 
         if let loadedSession = sessions.first {

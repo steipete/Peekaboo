@@ -124,6 +124,9 @@ final class SessionStore {
 
     func saveSessions() {
         do {
+            try FileManager.default.createDirectory(
+                at: self.storageURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true)
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = .prettyPrinted

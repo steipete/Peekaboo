@@ -18,17 +18,14 @@ struct ToolRegistryTests {
             "see",
             "click",
             "type",
-            "press",
             "scroll",
             "hotkey",
-            "list_apps",
             "launch_app",
-            "menu_click",
-            "list_menus",
-            "dialog_click",
-            "dialog_input",
-            "dock_launch",
-            "list_dock",
+            "app",
+            "list",
+            "menu",
+            "dialog",
+            "dock",
             "shell",
             "done",
             "need_info",
@@ -67,8 +64,8 @@ struct ToolRegistryTests {
         let categorizedTools = ToolRegistry.toolsByCategory()
         #expect(!categorizedTools.isEmpty)
         #expect(categorizedTools[.vision] != nil)
-        #expect(categorizedTools[.ui] != nil)
-        #expect(categorizedTools[.application] != nil)
+        #expect(categorizedTools[.automation] != nil)
+        #expect(categorizedTools[.app] != nil)
     }
 
     @MainActor

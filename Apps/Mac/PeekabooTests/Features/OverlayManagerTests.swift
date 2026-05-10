@@ -13,11 +13,9 @@ final class OverlayManagerTests {
     private var cancellables: Set<AnyCancellable> = []
 
     init() {
-        Task { @MainActor in
-            self.manager = OverlayManager()
-            self.mockDelegate = MockOverlayManagerDelegate()
-            self.manager.delegate = self.mockDelegate
-        }
+        self.manager = OverlayManager(enableMonitoring: false)
+        self.mockDelegate = MockOverlayManagerDelegate()
+        self.manager.delegate = self.mockDelegate
     }
 
     @Test

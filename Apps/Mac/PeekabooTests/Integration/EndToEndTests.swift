@@ -1,26 +1,29 @@
 import Foundation
-import PeekabooCore
 import Testing
 @testable import Peekaboo
+@testable import PeekabooCore
 
 @Suite(.tags(.integration, .slow))
 @MainActor
 struct EndToEndTests {
     var settings: PeekabooSettings!
     var sessionStore: SessionStore!
-    var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
-    mutating func setup() throws {
+    mutating func setup(installAgent: Bool = false) throws {
+        let services = PeekabooServices()
+        if !installAgent {
+            services.agent = nil
+        }
         self.settings = PeekabooSettings()
-        self.sessionStore = SessionStore()
-        self.agentService = try PeekabooAgentService(services: .shared)
-        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
+        self.settings.connectServices(services)
+        self.sessionStore = SessionStore(storageURL: Self.makeTemporarySessionURL())
+        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore, services: services)
     }
 
-    @Test(.enabled(if: !Test.isCI))
+    @Test(.enabled(if: Test.runsLiveAgentTests))
     mutating func `Full agent execution flow`() async throws {
-        try self.setup()
+        try self.setup(installAgent: true)
         // This test requires a valid API key, so skip in CI
         guard !self.settings.openAIAPIKey.isEmpty else {
             Issue.record("No API key configured - skipping test")
@@ -31,13 +34,19 @@ struct EndToEndTests {
         _ = try await self.agent.executeTask("What time is it?")
 
         // Verify session was created
-        let sessions = await sessionStore.sessions
+        let sessions = sessionStore.sessions
         #expect(sessions.count >= 1)
 
         if let session = sessions.first {
             #expect(!session.messages.isEmpty)
             #expect(session.messages.first?.role == .user)
         }
+    }
+
+    private static func makeTemporarySessionURL() -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("sessions.json")
     }
 }
 
@@ -46,20 +55,20 @@ struct EndToEndTests {
 struct ErrorRecoveryTests {
     var settings: PeekabooSettings!
     var sessionStore: SessionStore!
-    var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
     mutating func setup() throws {
+        let services = PeekabooServices()
+        services.agent = nil
         self.settings = PeekabooSettings()
-        self.sessionStore = SessionStore()
-        self.agentService = try PeekabooAgentService(services: .shared)
-        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
+        self.settings.connectServices(services)
+        self.sessionStore = SessionStore(storageURL: Self.makeTemporarySessionURL())
+        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore, services: services)
     }
 
     @Test
     mutating func `Agent handles invalid API key gracefully`() async throws {
         try self.setup()
-        self.settings.openAIAPIKey = "invalid-key"
 
         await #expect(throws: AgentError.serviceUnavailable) {
             try await agent.executeTask("Test task")
@@ -74,14 +83,14 @@ struct ErrorRecoveryTests {
         let path = dir.appendingPathComponent("sessions.json")
 
         // Create a session service and add a session
-        let store1 = SessionStore()
-        let session = await store1.createSession(title: "Test", modelName: "test")
-        await store1.addMessage(
+        let store1 = SessionStore(storageURL: path)
+        let session = store1.createSession(title: "Test", modelName: "test")
+        store1.addMessage(
             ConversationMessage(role: .user, content: "Test"),
             to: session)
 
         // Verify it works normally
-        #expect(await store1.sessions.count == 1)
+        #expect(store1.sessions.count == 1)
 
         // Simulate corrupt data
         try "{ invalid json }".write(to: path, atomically: true, encoding: .utf8)
@@ -90,9 +99,15 @@ struct ErrorRecoveryTests {
         let store2 = SessionStore(storageURL: path)
 
         // Should have no sessions and not crash
-        #expect(await store2.sessions.isEmpty)
+        #expect(store2.sessions.isEmpty)
 
         try? FileManager.default.removeItem(at: dir)
+    }
+
+    private static func makeTemporarySessionURL() -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("sessions.json")
     }
 }
 
@@ -101,31 +116,38 @@ struct ErrorRecoveryTests {
 struct ConcurrencyTests {
     var settings: PeekabooSettings!
     var sessionStore: SessionStore!
-    var agentService: PeekabooAgentService!
     var agent: PeekabooAgent!
 
     mutating func setup() throws {
+        let services = PeekabooServices()
+        services.agent = nil
         self.settings = PeekabooSettings()
-        self.sessionStore = SessionStore()
-        self.agentService = try PeekabooAgentService(services: .shared)
-        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore)
+        self.settings.connectServices(services)
+        self.sessionStore = SessionStore(storageURL: Self.makeTemporarySessionURL())
+        self.agent = PeekabooAgent(settings: self.settings, sessionStore: self.sessionStore, services: services)
     }
 
     @Test
     mutating func `Multiple simultaneous agent executions`() async throws {
         try self.setup()
-        self.settings.openAIAPIKey = "test-key"
 
-        // Start multiple tasks concurrently
-        async let result1: () = try agent.executeTask("Task 1")
-        async let result2: () = try agent.executeTask("Task 2")
-        async let result3: () = try agent.executeTask("Task 3")
+        func failsWithUnavailableService(_ task: String) async -> Bool {
+            do {
+                try await agent.executeTask(task)
+                return false
+            } catch AgentError.serviceUnavailable {
+                return true
+            } catch {
+                return false
+            }
+        }
 
-        // Wait for all to complete
-        _ = try await [result1, result2, result3]
+        async let result1 = failsWithUnavailableService("Task 1")
+        async let result2 = failsWithUnavailableService("Task 2")
+        async let result3 = failsWithUnavailableService("Task 3")
 
-        // All should complete
-        #expect(true)
+        let results = await [result1, result2, result3]
+        #expect(results.allSatisfy { $0 })
     }
 
     @Test
@@ -147,12 +169,18 @@ struct ConcurrencyTests {
         }
 
         // Should have created 10 sessions
-        let sessions = await sessionStore.sessions
+        let sessions = sessionStore.sessions
         #expect(sessions.count == 10)
 
         // Each should have one message
         for session in sessions {
             #expect(session.messages.count == 1)
         }
+    }
+
+    private static func makeTemporarySessionURL() -> URL {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.appendingPathComponent("sessions.json")
     }
 }

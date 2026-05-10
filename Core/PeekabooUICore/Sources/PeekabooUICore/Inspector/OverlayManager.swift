@@ -157,10 +157,13 @@ public final class OverlayManager {
     private var overlayWindows: [String: NSWindow] = [:] // Bundle ID -> Window
     @ObservationIgnored
     private let idGenerator = ElementIDGenerator()
+    @ObservationIgnored
+    private let autoRefreshApplications: Bool
 
     // MARK: - Initialization
 
     public init(enableMonitoring: Bool = true) {
+        self.autoRefreshApplications = enableMonitoring
         if enableMonitoring {
             self.setupEventMonitoring()
         }
@@ -185,12 +188,16 @@ public final class OverlayManager {
     public func setAppSelectionMode(_ mode: AppSelectionMode, bundleID: String? = nil) {
         self.selectedAppMode = mode
         self.selectedAppBundleID = bundleID
-        self.refreshAllApplications()
+        if self.autoRefreshApplications {
+            self.refreshAllApplications()
+        }
     }
 
     public func setDetailLevel(_ level: DetailLevel) {
         self.detailLevel = level
-        self.refreshAllApplications()
+        if self.autoRefreshApplications {
+            self.refreshAllApplications()
+        }
     }
 
     public func refreshAllApplications() {
