@@ -19,8 +19,8 @@ struct StatusBarHeaderView: View {
             Image("MenuIcon")
                 .resizable()
                 .renderingMode(.template)
-                .foregroundStyle(.secondary)
-                .frame(width: 16, height: 16)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 18, height: 18)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("Peekaboo")
@@ -34,6 +34,10 @@ struct StatusBarHeaderView: View {
 
             Spacer(minLength: 0)
 
+            if !self.agent.isProcessing {
+                StatusPill(text: "Ready", systemImage: "checkmark.circle.fill", tint: .green)
+            }
+
             if self.agent.isProcessing {
                 Button(role: .destructive) {
                     self.agent.cancelCurrentTask()
@@ -46,18 +50,30 @@ struct StatusBarHeaderView: View {
             }
 
             Menu {
-                Button("Open Peekaboo") { self.onOpenMainWindow() }
-                Button("New Session") { self.onNewSession() }
+                Button { self.onOpenMainWindow() } label: {
+                    Label("Open Peekaboo", systemImage: "macwindow")
+                }
+                Button { self.onNewSession() } label: {
+                    Label("New Session", systemImage: "plus.bubble")
+                }
 
                 Divider()
 
-                Button("Inspector") { self.onOpenInspector() }
-                Button("Settings…") { self.onOpenSettings() }
+                Button { self.onOpenInspector() } label: {
+                    Label("Inspector", systemImage: "scope")
+                }
+                Button { self.onOpenSettings() } label: {
+                    Label("Settings…", systemImage: "gearshape")
+                }
 
                 Divider()
 
-                Button("About Peekaboo") { NSApp.orderFrontStandardAboutPanel(nil) }
-                Button("Quit Peekaboo") { NSApp.terminate(nil) }
+                Button { NSApp.orderFrontStandardAboutPanel(nil) } label: {
+                    Label("About Peekaboo", systemImage: "info.circle")
+                }
+                Button { NSApp.terminate(nil) } label: {
+                    Label("Quit Peekaboo", systemImage: "power")
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .foregroundStyle(.secondary)
@@ -77,5 +93,19 @@ struct StatusBarHeaderView: View {
         }
 
         return "Ready"
+    }
+}
+
+private struct StatusPill: View {
+    let text: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label(self.text, systemImage: self.systemImage)
+            .font(.caption2.weight(.medium))
+            .labelStyle(.iconOnly)
+            .foregroundStyle(self.tint)
+            .help(self.text)
     }
 }

@@ -18,28 +18,13 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HeaderView()
-                .padding()
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
                 .background(Color(NSColor.controlBackgroundColor))
 
-            #if DEBUG
-            HStack {
-                Text("Debug tab: router=\(self.tabRouter.selectedTab) selection=\(self.selectedTab)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .accessibilityIdentifier("debug-selected-tab")
-                Spacer()
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 6)
-            .background(Color(NSColor.controlBackgroundColor))
-            Divider()
-            #endif
-
             Divider()
 
-            // Main content area with tabs
             TabView(selection: self.$selectedTab) {
                 ClickTestingView()
                     .tabItem { Label("Click Testing", systemImage: "cursorarrow.click") }
@@ -73,7 +58,7 @@ struct ContentView: View {
                     .tabItem { Label("Keyboard", systemImage: "keyboard") }
                     .tag("keyboard")
             }
-            .padding()
+            .padding(18)
             .onAppear {
                 self.selectedTab = self.tabRouter.selectedTab
             }
@@ -90,9 +75,9 @@ struct ContentView: View {
 
             Divider()
 
-            // Status bar
             StatusBarView()
-                .padding()
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
                 .background(Color(NSColor.controlBackgroundColor))
         }
     }
@@ -103,27 +88,23 @@ struct HeaderView: View {
     @EnvironmentObject var tabRouter: PlaygroundTabRouter
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text("Peekaboo Playground")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+                    .font(.title2.weight(.semibold))
 
                 Text("Test all Peekaboo automation features")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             VStack(alignment: .trailing, spacing: 8) {
-                HStack {
-                    Text("Actions:")
-                        .foregroundColor(.secondary)
-                    Text("\(self.actionLogger.actionCount)")
-                        .font(.system(.title2, design: .monospaced))
-                        .fontWeight(.semibold)
-                }
+                MetricPill(
+                    value: "\(self.actionLogger.actionCount)",
+                    label: "actions",
+                    systemImage: "list.bullet.clipboard")
 
                 HStack(spacing: 12) {
                     Button(action: {
@@ -163,6 +144,7 @@ struct HeaderView: View {
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("nav-dialogs-tab")
                 }
+                .controlSize(.small)
             }
         }
     }
@@ -173,22 +155,50 @@ struct StatusBarView: View {
     @EnvironmentObject var tabRouter: PlaygroundTabRouter
 
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             Label("Last Action:", systemImage: "clock.arrow.circlepath")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text(self.actionLogger.lastAction)
-                .font(.system(.body, design: .monospaced))
+                .font(.system(.callout, design: .monospaced))
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text("Tab: \(self.tabRouter.selectedTab)")
-                .font(.system(.caption, design: .monospaced))
-                .foregroundColor(.secondary)
+            Label(self.tabRouter.selectedTab.capitalized, systemImage: "rectangle.split.3x1")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
 
             Text(Date(), style: .time)
                 .font(.system(.caption, design: .monospaced))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct MetricPill: View {
+    let value: String
+    let label: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: self.systemImage)
+                .foregroundStyle(.secondary)
+            Text(self.value)
+                .font(.system(.callout, design: .monospaced).weight(.semibold))
+            Text(self.label)
+                .foregroundStyle(.secondary)
+        }
+        .font(.caption)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5))
     }
 }
 

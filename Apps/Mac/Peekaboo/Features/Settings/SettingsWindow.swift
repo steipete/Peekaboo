@@ -55,7 +55,7 @@ struct SettingsWindow: View {
                 }
                 .tag(PeekabooSettingsTab.about)
         }
-        .frame(width: 550, height: 700)
+        .frame(width: 600, height: 720)
         .onReceive(NotificationCenter.default.publisher(for: .peekabooSelectSettingsTab)) { note in
             if let tab = note.object as? PeekabooSettingsTab {
                 withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
@@ -118,31 +118,109 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Launch at login", isOn: Binding(
-                    get: { self.settings.launchAtLogin },
-                    set: { self.settings.launchAtLogin = $0 }))
-                Toggle("Show in Dock", isOn: Binding(
-                    get: { self.settings.showInDock },
-                    set: { self.settings.showInDock = $0 }))
-                Toggle("Keep window on top", isOn: Binding(
-                    get: { self.settings.alwaysOnTop },
-                    set: { self.settings.alwaysOnTop = $0 }))
+                SettingsIntroRow()
             }
 
-            Section("Features") {
-                Toggle("Enable agent mode", isOn: Binding(
-                    get: { self.settings.agentModeEnabled },
-                    set: { self.settings.agentModeEnabled = $0 }))
-                Toggle("Enable haptic feedback", isOn: Binding(
-                    get: { self.settings.hapticFeedbackEnabled },
-                    set: { self.settings.hapticFeedbackEnabled = $0 }))
-                Toggle("Enable sound effects", isOn: Binding(
-                    get: { self.settings.soundEffectsEnabled },
-                    set: { self.settings.soundEffectsEnabled = $0 }))
+            Section("App") {
+                SettingsToggleRow(
+                    title: "Launch at login",
+                    subtitle: "Start Peekaboo automatically when you sign in.",
+                    systemImage: "power",
+                    isOn: self.binding(\.launchAtLogin))
+                SettingsToggleRow(
+                    title: "Show in Dock",
+                    subtitle: "Keep a Dock icon and normal app switching behavior.",
+                    systemImage: "dock.rectangle",
+                    isOn: self.binding(\.showInDock))
+                SettingsToggleRow(
+                    title: "Keep window on top",
+                    subtitle: "Pin the main session window above other apps.",
+                    systemImage: "macwindow.on.rectangle",
+                    isOn: self.binding(\.alwaysOnTop))
+            }
+
+            Section("Interaction") {
+                SettingsToggleRow(
+                    title: "Agent mode",
+                    subtitle: "Enable chat sessions and automation from the app.",
+                    systemImage: "sparkles",
+                    isOn: self.binding(\.agentModeEnabled))
+                SettingsToggleRow(
+                    title: "Haptic feedback",
+                    subtitle: "Use subtle feedback for supported controls.",
+                    systemImage: "waveform.path",
+                    isOn: self.binding(\.hapticFeedbackEnabled))
+                SettingsToggleRow(
+                    title: "Sound effects",
+                    subtitle: "Play quiet confirmations for app actions.",
+                    systemImage: "speaker.wave.2",
+                    isOn: self.binding(\.soundEffectsEnabled))
             }
         }
         .formStyle(.grouped)
         .padding()
+    }
+
+    private func binding(_ keyPath: ReferenceWritableKeyPath<PeekabooSettings, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { self.settings[keyPath: keyPath] },
+            set: { self.settings[keyPath: keyPath] = $0 })
+    }
+}
+
+private struct SettingsIntroRow: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image("MenuIcon")
+                .resizable()
+                .renderingMode(.template)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 26, height: 26)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12)))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Peekaboo")
+                    .font(.headline)
+                Text("Tune the menu bar app, automation session window, and feedback behavior.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: self.systemImage)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(self.title)
+                Text(self.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            Toggle(self.title, isOn: self.$isOn)
+                .labelsHidden()
+        }
+        .padding(.vertical, 3)
     }
 }
 
