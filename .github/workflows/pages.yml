@@ -35,6 +35,13 @@ jobs:
       - name: Build docs site
         run: node scripts/build-docs-site.mjs
 
+      - name: Validate docs site artifact
+        run: |
+          test -f _site/.nojekyll
+          test -f _site/.well-known/security.txt
+          test -f _site/security.txt
+          test -f _site/llms.txt
+
       - name: Configure Pages
         uses: actions/configure-pages@v6
 
@@ -42,6 +49,7 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          include-hidden-files: true
 
   deploy:
     needs: build
