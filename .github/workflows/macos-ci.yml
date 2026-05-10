@@ -227,6 +227,7 @@ jobs:
         working-directory: Apps/CLI
         run: |
           swift build --configuration debug
+          echo "PEEKABOO_CLI_BINARY=$(swift build --configuration debug --show-bin-path)/peekaboo" >> "$GITHUB_ENV"
 
       - name: Run CLI unit tests (skip automation)
         working-directory: Apps/CLI
