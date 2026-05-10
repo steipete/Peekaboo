@@ -22,6 +22,7 @@ public protocol PeekabooServiceProviding: AnyObject, Sendable {
     var permissions: PermissionsService { get }
     var audioInput: AudioInputService { get }
     var screens: any ScreenServiceProtocol { get }
+    var browser: any BrowserMCPClientProviding { get }
     var agent: (any AgentServiceProtocol)? { get }
 
     func ensureVisualizerConnection()

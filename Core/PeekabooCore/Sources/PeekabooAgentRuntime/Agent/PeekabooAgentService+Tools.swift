@@ -53,6 +53,10 @@ extension PeekabooAgentService {
         self.makeAgentTool(from: CaptureTool(context: self.makeToolContext()))
     }
 
+    public func createBrowserTool() -> AgentTool {
+        self.makeAgentTool(from: BrowserTool(context: self.makeToolContext()))
+    }
+
     // MARK: - UI Automation Tools
 
     public func createClickTool() -> AgentTool {

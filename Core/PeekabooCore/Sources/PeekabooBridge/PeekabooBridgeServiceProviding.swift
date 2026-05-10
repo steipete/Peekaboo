@@ -15,4 +15,38 @@ public protocol PeekabooBridgeServiceProviding: AnyObject, Sendable {
     var dock: any DockServiceProtocol { get }
     var dialogs: any DialogServiceProtocol { get }
     var snapshots: any SnapshotManagerProtocol { get }
+
+    func browserStatus(channel: String?) async throws -> PeekabooBridgeBrowserStatus
+    func browserConnect(channel: String?) async throws -> PeekabooBridgeBrowserStatus
+    func browserDisconnect() async throws
+    func browserExecute(_ request: PeekabooBridgeBrowserExecuteRequest) async throws
+        -> PeekabooBridgeBrowserToolResponse
+}
+
+@MainActor
+extension PeekabooBridgeServiceProviding {
+    public func browserStatus(channel _: String?) async throws -> PeekabooBridgeBrowserStatus {
+        throw PeekabooBridgeErrorEnvelope(
+            code: .operationNotSupported,
+            message: "Browser MCP is not supported by this bridge host")
+    }
+
+    public func browserConnect(channel _: String?) async throws -> PeekabooBridgeBrowserStatus {
+        throw PeekabooBridgeErrorEnvelope(
+            code: .operationNotSupported,
+            message: "Browser MCP is not supported by this bridge host")
+    }
+
+    public func browserDisconnect() async throws {
+        throw PeekabooBridgeErrorEnvelope(
+            code: .operationNotSupported,
+            message: "Browser MCP is not supported by this bridge host")
+    }
+
+    public func browserExecute(_: PeekabooBridgeBrowserExecuteRequest) async throws
+    -> PeekabooBridgeBrowserToolResponse {
+        throw PeekabooBridgeErrorEnvelope(
+            code: .operationNotSupported,
+            message: "Browser MCP is not supported by this bridge host")
+    }
 }

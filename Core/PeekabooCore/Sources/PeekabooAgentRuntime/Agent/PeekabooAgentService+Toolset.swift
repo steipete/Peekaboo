@@ -158,6 +158,7 @@ extension PeekabooAgentService {
         agentTools.append(createImageTool())
         agentTools.append(createCaptureTool())
         agentTools.append(createAnalyzeTool())
+        agentTools.append(createBrowserTool())
 
         // UI automation tools
         agentTools.append(createClickTool())

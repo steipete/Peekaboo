@@ -112,6 +112,9 @@ public final class PeekabooServices {
     /// Audio input service for recording and transcription
     public let audioInput: AudioInputService
 
+    /// Browser MCP client for Chrome DevTools automation
+    public let browser: any BrowserMCPClientProviding
+
     // Model provider is now handled internally by Tachikoma
 
     /// Intelligent automation agent service for natural language task execution
@@ -213,6 +216,9 @@ public final class PeekabooServices {
 
         // Model provider is now handled internally by Tachikoma
 
+        self.browser = BrowserMCPService()
+        self.logger.debug("\(AgentDisplayTokens.Status.success) BrowserMCPService initialized")
+
         // Agent service will be initialized by createShared method
         self.agent = nil
 
@@ -301,6 +307,7 @@ public final class PeekabooServices {
             process: process,
             permissions: permissions,
             audioInput: audioInput,
+            browser: BrowserMCPService(),
             configuration: configuration,
             agent: nil,
             screens: screens)
@@ -326,6 +333,7 @@ public final class PeekabooServices {
         process: any ProcessServiceProtocol,
         permissions: PermissionsService? = nil,
         audioInput: AudioInputService? = nil,
+        browser: (any BrowserMCPClientProviding)? = nil,
         agent: (any AgentServiceProtocol)? = nil,
         configuration: ConfigurationManager? = nil,
         screens: (any ScreenServiceProtocol)? = nil)
@@ -353,6 +361,7 @@ public final class PeekabooServices {
         self.process = process
         self.permissions = permissions ?? PermissionsService()
         self.audioInput = audioInput ?? AudioInputService(aiService: PeekabooAIService())
+        self.browser = browser ?? BrowserMCPService()
         self.agent = agent
         self.configuration = configuration ?? ConfigurationManager.shared
         self.screens = screenSvc
@@ -377,6 +386,7 @@ public final class PeekabooServices {
         process: any ProcessServiceProtocol,
         permissions: PermissionsService,
         audioInput: AudioInputService,
+        browser: any BrowserMCPClientProviding,
         configuration: ConfigurationManager,
         agent: (any AgentServiceProtocol)?,
         screens: any ScreenServiceProtocol)
@@ -402,6 +412,7 @@ public final class PeekabooServices {
         self.process = process
         self.permissions = permissions
         self.audioInput = audioInput
+        self.browser = browser
         self.configuration = configuration
         self.agent = agent
         self.screens = screens

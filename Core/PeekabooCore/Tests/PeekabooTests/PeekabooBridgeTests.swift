@@ -1165,6 +1165,44 @@ extension PeekabooBridgeTests {
 
         #expect(!handshake.supportedOperations.contains(.targetedHotkey))
     }
+
+    @Test
+    @MainActor
+    func `browser bridge operations route through service provider`() async throws {
+        let services = StubServices()
+        let server = PeekabooBridgeServer(
+            services: services,
+            allowlistedTeams: [],
+            allowlistedBundles: [],
+            allowedOperations: [.browserStatus, .browserExecute])
+
+        let statusRequest = PeekabooBridgeRequest.browserStatus(.init(channel: "stable"))
+        let statusData = try JSONEncoder.peekabooBridgeEncoder().encode(statusRequest)
+        let statusResponse = try await self.decode(server.decodeAndHandle(statusData, peer: nil))
+
+        guard case let .browserStatus(status) = statusResponse else {
+            Issue.record("Expected browserStatus response, got \(statusResponse)")
+            return
+        }
+        #expect(status.isConnected)
+        #expect(status.toolCount == 1)
+        #expect(services.lastBrowserStatusChannel == "stable")
+
+        let executeRequest = PeekabooBridgeRequest.browserExecute(.init(
+            toolName: "list_pages",
+            arguments: ["page": .int(1)],
+            channel: "canary"))
+        let executeData = try JSONEncoder.peekabooBridgeEncoder().encode(executeRequest)
+        let executeResponse = try await self.decode(server.decodeAndHandle(executeData, peer: nil))
+
+        guard case let .browserToolResponse(toolResponse) = executeResponse else {
+            Issue.record("Expected browserToolResponse, got \(executeResponse)")
+            return
+        }
+        #expect(toolResponse.isError == false)
+        #expect(services.lastBrowserExecute?.toolName == "list_pages")
+        #expect(services.lastBrowserExecute?.channel == "canary")
+    }
 }
 
 // MARK: - Test stubs
@@ -1182,10 +1220,41 @@ private final class StubServices: PeekabooBridgeServiceProviding {
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
     let snapshots: any SnapshotManagerProtocol = SnapshotManager()
     let permissions: PermissionsService = .init()
+    var lastBrowserStatusChannel: String?
+    var lastBrowserExecute: PeekabooBridgeBrowserExecuteRequest?
 
     init() {
         self.screenCapture = self.screenCaptureStub
         self.automation = self.automationStub
+    }
+
+    func browserStatus(channel: String?) async throws -> PeekabooBridgeBrowserStatus {
+        self.lastBrowserStatusChannel = channel
+        return PeekabooBridgeBrowserStatus(
+            isConnected: true,
+            toolCount: 1,
+            detectedBrowsers: [
+                PeekabooBridgeBrowserInfo(
+                    name: "Google Chrome",
+                    bundleIdentifier: "com.google.Chrome",
+                    processIdentifier: 42,
+                    version: "144.0",
+                    channel: "stable"),
+            ])
+    }
+
+    func browserExecute(_ request: PeekabooBridgeBrowserExecuteRequest) async throws
+    -> PeekabooBridgeBrowserToolResponse {
+        self.lastBrowserExecute = request
+        return PeekabooBridgeBrowserToolResponse(
+            content: [
+                .object([
+                    "type": .string("text"),
+                    "text": .string("ok"),
+                ]),
+            ],
+            isError: false,
+            meta: nil)
     }
 }
 

@@ -30,6 +30,7 @@ Shows:
 - permissions (screen recording / accessibility / automation)
 - snapshot cache summary
 - window tracker stats (tracked windows, last event, polling)
+- browser MCP state (connected, tool count, detected Chrome count)
 
 ### Stop
 ```
@@ -40,6 +41,6 @@ Options:
 - `--wait-seconds <sec>` how long to wait for shutdown (default 3s).
 
 ## Notes
-- `peekaboo mcp` always runs in daemon mode.
+- `peekaboo mcp serve` prefers the daemon when a Bridge socket is available, so stateful browser MCP access can survive MCP stdio reconnects.
 - The daemon uses an in-memory snapshot store for speed.
 - For local development with unsigned binaries, set `PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1`.

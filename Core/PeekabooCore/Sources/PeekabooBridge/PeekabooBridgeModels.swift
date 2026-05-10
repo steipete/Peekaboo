@@ -37,6 +37,11 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     case requestPostEventPermission
     case daemonStatus
     case daemonStop
+    // Browser MCP
+    case browserStatus
+    case browserConnect
+    case browserDisconnect
+    case browserExecute
     // Capture
     case captureScreen
     case captureWindow

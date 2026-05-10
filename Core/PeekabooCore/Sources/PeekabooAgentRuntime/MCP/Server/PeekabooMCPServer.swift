@@ -136,6 +136,7 @@ public actor PeekabooMCPServer {
                     // Core tools
                     ImageTool(context: context),
                     AnalyzeTool(),
+                    BrowserTool(context: context),
                     ListTool(context: context),
                     PermissionsTool(context: context),
                     SleepTool(),

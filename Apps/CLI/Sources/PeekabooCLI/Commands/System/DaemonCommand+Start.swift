@@ -70,9 +70,7 @@ extension DaemonCommand {
             }
             process.arguments = args
 
-            let logURL = DaemonPaths.daemonLogURL()
-            let logHandle = try? FileHandle(forWritingTo: logURL)
-            logHandle?.seekToEndOfFile()
+            let logHandle = DaemonPaths.openDaemonLogForAppend() ?? FileHandle.nullDevice
             process.standardOutput = logHandle
             process.standardError = logHandle
             process.standardInput = FileHandle.nullDevice

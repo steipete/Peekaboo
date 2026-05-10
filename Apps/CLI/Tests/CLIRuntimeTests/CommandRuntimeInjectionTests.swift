@@ -1,3 +1,5 @@
+import Foundation
+import PeekabooAgentRuntime
 import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooCore
@@ -135,6 +137,43 @@ struct CommandRuntimeInjectionTests {
         #expect(!CommandRuntime.supportsPostEventPermissionRequest(for: older))
         #expect(!CommandRuntime.supportsPostEventPermissionRequest(for: hidden))
     }
+
+    @Test
+    func `environment bridge socket disables daemon auto start`() {
+        let options = CommandRuntimeOptions()
+        let environment = ["PEEKABOO_BRIDGE_SOCKET": "/tmp/explicit.sock"]
+
+        #expect(CommandRuntime.explicitBridgeSocket(options: options, environment: environment) == "/tmp/explicit.sock")
+        #expect(!CommandRuntime.shouldAutoStartDaemon(options: options, environment: environment))
+    }
+
+    @Test
+    func `cli bridge socket takes precedence over environment bridge socket`() {
+        var options = CommandRuntimeOptions()
+        options.bridgeSocketPath = "/tmp/cli.sock"
+        let environment = ["PEEKABOO_BRIDGE_SOCKET": "/tmp/env.sock"]
+
+        #expect(CommandRuntime.explicitBridgeSocket(options: options, environment: environment) == "/tmp/cli.sock")
+        #expect(!CommandRuntime.shouldAutoStartDaemon(options: options, environment: environment))
+    }
+
+    @Test
+    func `daemon log helper creates missing file and appends`() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-daemon-log-\(UUID().uuidString)")
+        let logURL = directory.appendingPathComponent("daemon.log")
+
+        let firstHandle = try #require(DaemonPaths.openFileForAppend(at: logURL))
+        try firstHandle.write(contentsOf: Data("first\n".utf8))
+        try firstHandle.close()
+
+        let secondHandle = try #require(DaemonPaths.openFileForAppend(at: logURL))
+        try secondHandle.write(contentsOf: Data("second\n".utf8))
+        try secondHandle.close()
+
+        let contents = try String(contentsOf: logURL, encoding: .utf8)
+        #expect(contents == "first\nsecond\n")
+    }
 }
 
 @MainActor
@@ -208,6 +247,10 @@ final class RecordingPeekabooServices: PeekabooServiceProviding {
 
     var screens: any ScreenServiceProtocol {
         self.base.screens
+    }
+
+    var browser: any BrowserMCPClientProviding {
+        self.base.browser
     }
 
     var agent: (any AgentServiceProtocol)? {

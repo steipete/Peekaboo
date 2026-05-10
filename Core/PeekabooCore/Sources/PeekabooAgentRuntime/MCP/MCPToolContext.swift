@@ -19,6 +19,7 @@ public struct MCPToolContext: @unchecked Sendable {
     public let agent: (any AgentServiceProtocol)?
     public let permissions: PermissionsService
     public let clipboard: any ClipboardServiceProtocol
+    public let browser: any BrowserMCPClientProviding
 
     @TaskLocal
     private static var taskOverride: MCPToolContext?
@@ -76,7 +77,8 @@ public struct MCPToolContext: @unchecked Sendable {
         screens: any ScreenServiceProtocol,
         agent: (any AgentServiceProtocol)?,
         permissions: PermissionsService,
-        clipboard: any ClipboardServiceProtocol)
+        clipboard: any ClipboardServiceProtocol,
+        browser: any BrowserMCPClientProviding)
     {
         self.automation = automation
         self.menu = menu
@@ -91,6 +93,7 @@ public struct MCPToolContext: @unchecked Sendable {
         self.agent = agent
         self.permissions = permissions
         self.clipboard = clipboard
+        self.browser = browser
     }
 
     @MainActor
@@ -108,6 +111,7 @@ public struct MCPToolContext: @unchecked Sendable {
             screens: services.screens,
             agent: services.agent,
             permissions: services.permissions,
-            clipboard: services.clipboard)
+            clipboard: services.clipboard,
+            browser: services.browser)
     }
 }

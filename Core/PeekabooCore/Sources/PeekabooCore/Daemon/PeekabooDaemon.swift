@@ -135,7 +135,7 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
                 cgPollIntervalMs: status.cgPollIntervalMs)
         }
 
-        return PeekabooDaemonStatus(
+        return await PeekabooDaemonStatus(
             running: true,
             pid: getpid(),
             startedAt: self.startTime,
@@ -143,7 +143,8 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             bridge: bridgeStatus,
             permissions: permissions,
             snapshots: snapshots,
-            windowTracker: windowStatus)
+            windowTracker: windowStatus,
+            browser: try? self.services.browserStatus(channel: nil))
     }
 
     public func requestStop() async -> Bool {

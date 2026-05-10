@@ -23,6 +23,7 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
     public let permissions: PermissionsService
     public let audioInput: AudioInputService
     public let screens: any ScreenServiceProtocol
+    public let browser: any BrowserMCPClientProviding
     public let agent: (any AgentServiceProtocol)?
 
     private let client: PeekabooBridgeClient
@@ -77,6 +78,7 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         self.permissions = PermissionsService()
         self.audioInput = AudioInputService(aiService: PeekabooAIService())
         self.screens = ScreenService()
+        self.browser = RemoteBrowserMCPClient(client: client)
         self.agent = nil
     }
 

@@ -8,6 +8,10 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case requestPostEventPermission
     case daemonStatus
     case daemonStop
+    case browserStatus(PeekabooBridgeBrowserChannelRequest)
+    case browserConnect(PeekabooBridgeBrowserChannelRequest)
+    case browserDisconnect
+    case browserExecute(PeekabooBridgeBrowserExecuteRequest)
     case captureScreen(PeekabooBridgeCaptureScreenRequest)
     case captureWindow(PeekabooBridgeCaptureWindowRequest)
     case captureFrontmost(PeekabooBridgeCaptureFrontmostRequest)
@@ -89,6 +93,10 @@ extension PeekabooBridgeRequest {
         case .requestPostEventPermission: .requestPostEventPermission
         case .daemonStatus: .daemonStatus
         case .daemonStop: .daemonStop
+        case .browserStatus: .browserStatus
+        case .browserConnect: .browserConnect
+        case .browserDisconnect: .browserDisconnect
+        case .browserExecute: .browserExecute
         case .captureScreen: .captureScreen
         case .captureWindow: .captureWindow
         case .captureFrontmost: .captureFrontmost
@@ -168,6 +176,8 @@ public enum PeekabooBridgeResponse: Codable, Sendable {
     case handshake(PeekabooBridgeHandshakeResponse)
     case permissionsStatus(PermissionsStatus)
     case daemonStatus(PeekabooDaemonStatus)
+    case browserStatus(PeekabooBridgeBrowserStatus)
+    case browserToolResponse(PeekabooBridgeBrowserToolResponse)
     case capture(CaptureResult)
     case elementDetection(ElementDetectionResult)
     case ok

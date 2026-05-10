@@ -20,6 +20,7 @@ struct CommandRuntimeOptions {
     var captureEnginePreference: String?
     var inputStrategy: UIInputStrategy?
     var preferRemote = true
+    var autoStartDaemon = true
     var bridgeSocketPath: String?
     var requiresElementActions = false
 
@@ -167,8 +168,7 @@ extension CommandRuntime {
             return (services: self.makeLocalServices(options: options), hostDescription: "local (in-process)")
         }
 
-        let explicitSocket = options.bridgeSocketPath
-            ?? ProcessInfo.processInfo.environment["PEEKABOO_BRIDGE_SOCKET"]
+        let explicitSocket = self.explicitBridgeSocket(options: options, environment: environment)
 
         let candidates: [String] = if let explicitSocket, !explicitSocket.isEmpty {
             [explicitSocket]
@@ -187,6 +187,55 @@ extension CommandRuntime {
             hostname: Host.current().name
         )
 
+        if let resolved = await self.resolveRemoteServices(
+            candidates: candidates,
+            identity: identity,
+            options: options
+        ) {
+            return resolved
+        }
+
+        if options.autoStartDaemon,
+           self.shouldAutoStartDaemon(options: options, environment: environment),
+           await self.startOnDemandDaemon(socketPath: PeekabooBridgeConstants.peekabooSocketPath),
+           let resolved = await self.resolveRemoteServices(
+               candidates: [PeekabooBridgeConstants.peekabooSocketPath],
+               identity: identity,
+               options: options
+           ) {
+            return resolved
+        }
+
+        return (services: self.makeLocalServices(options: options), hostDescription: "local (in-process)")
+    }
+
+    static func explicitBridgeSocket(
+        options: CommandRuntimeOptions,
+        environment: [String: String]
+    ) -> String? {
+        if let socket = options.bridgeSocketPath, !socket.isEmpty {
+            return socket
+        }
+        if let socket = environment["PEEKABOO_BRIDGE_SOCKET"], !socket.isEmpty {
+            return socket
+        }
+        return nil
+    }
+
+    static func shouldAutoStartDaemon(
+        options: CommandRuntimeOptions,
+        environment: [String: String]
+    ) -> Bool {
+        options.autoStartDaemon && self.explicitBridgeSocket(options: options, environment: environment) == nil
+    }
+
+    @MainActor
+    private static func resolveRemoteServices(
+        candidates: [String],
+        identity: PeekabooBridgeClientIdentity,
+        options: CommandRuntimeOptions
+    )
+    async -> (services: any PeekabooServiceProviding, hostDescription: String)? {
         for socketPath in candidates {
             let client = PeekabooBridgeClient(socketPath: socketPath)
             do {
@@ -214,8 +263,34 @@ extension CommandRuntime {
                 continue
             }
         }
+        return nil
+    }
 
-        return (services: self.makeLocalServices(options: options), hostDescription: "local (in-process)")
+    private static func startOnDemandDaemon(socketPath: String) async -> Bool {
+        let executable = CommandLine.arguments.first ?? "/usr/local/bin/peekaboo"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = ["daemon", "run", "--mode", "manual", "--bridge-socket", socketPath]
+        let logHandle = DaemonPaths.openDaemonLogForAppend() ?? FileHandle.nullDevice
+        process.standardOutput = logHandle
+        process.standardError = logHandle
+        process.standardInput = FileHandle.nullDevice
+
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+
+        let deadline = Date().addingTimeInterval(3)
+        let client = DaemonControlClient(socketPath: socketPath)
+        while Date() < deadline {
+            if await client.fetchStatus() != nil {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return false
     }
 
     @MainActor

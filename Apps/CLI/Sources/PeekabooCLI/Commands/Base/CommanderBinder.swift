@@ -75,6 +75,10 @@ enum CommanderCLIBinder {
             // Agent execution should stay local by default unless explicitly overridden.
             options.preferRemote = false
         }
+        if Self.isDaemonCommand(commandType) {
+            options.preferRemote = false
+            options.autoStartDaemon = false
+        }
         if Self.prefersLocalFastRuntime(commandType), !values.flag("no-remote"),
            explicitBridgeSocket?.isEmpty ?? true {
             // Fast local commands are usually called in tight loops; avoid bridge probes unless explicitly requested.
@@ -98,6 +102,14 @@ enum CommanderCLIBinder {
             commandType == ListCommand.WindowsSubcommand.self ||
             commandType == ListCommand.MenuBarSubcommand.self ||
             commandType == ListCommand.ScreensSubcommand.self
+    }
+
+    private static func isDaemonCommand(_ commandType: (any ParsableCommand.Type)?) -> Bool {
+        commandType == DaemonCommand.self ||
+            commandType == DaemonCommand.Start.self ||
+            commandType == DaemonCommand.Stop.self ||
+            commandType == DaemonCommand.Status.self ||
+            commandType == DaemonCommand.Run.self
     }
 }
 

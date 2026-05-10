@@ -6,7 +6,7 @@ read_when:
   - 'wiring MCP to run in daemon mode'
 ---
 
-# Peekaboo Daemon Plan
+# Peekaboo Daemon
 
 ## Goals
 - Provide a headless daemon with explicit lifecycle commands:
@@ -18,6 +18,7 @@ read_when:
   - Live window tracking
   - Enhanced observability
 - Improve accuracy and speed via cached state + event-driven updates.
+- Keep stateful MCP-backed services, such as Chrome DevTools MCP, warm across separate `peekaboo` invocations.
 
 ## Non-goals (initially)
 - No GUI or menu bar UI for the daemon.
@@ -57,10 +58,10 @@ MCP (stdio)  ───┘                             │
 ```
 
 ### New components
-- **DaemonHost** (new headless executable)
+- **PeekabooDaemon**
   - Owns a long-lived `PeekabooServices(snapshotManager: InMemorySnapshotManager())`.
   - Starts Bridge host listener and WindowTrackerService.
-  - Exposes a local control channel for stop/status.
+  - Exposes stop/status and browser MCP operations over the local Bridge socket.
 
 - **WindowTrackerService** (new service, likely in `PeekabooAutomationKit`)
   - Uses AX notifications (`AXWindowCreated`, `AXWindowMoved`, `AXWindowResized`, etc.).
@@ -71,12 +72,15 @@ MCP (stdio)  ───┘                             │
   - When a tracked window moves/resizes, mark snapshot stale or update bounds.
   - On interaction, re-verify window position before clicking/typing.
 
-### MCP auto-daemon
-- When `peekaboo mcp` starts, it **always runs in daemon mode**:
-  - InMemorySnapshotManager
-  - WindowTrackerService enabled
-  - Observability enabled
-- No separate background process required; the MCP server process *is* the daemon.
+### MCP daemon routing
+- `peekaboo mcp serve` prefers an existing Peekaboo daemon through the Bridge socket.
+- If no default daemon is reachable, command runtime can start the on-demand daemon and reconnect.
+- The MCP stdio server remains the client-facing protocol endpoint, while stateful services live in the daemon.
+- Browser access is persistent across MCP stdio reconnects:
+  - MCP client -> `peekaboo mcp serve`
+  - `PeekabooMCPServer` -> `RemotePeekabooServices`
+  - Bridge socket -> `PeekabooDaemon`
+  - daemon-owned `BrowserMCPService` -> `chrome-devtools-mcp`
 
 ## Placement
 - Single entry point: `peekaboo` runs in **daemon mode** when requested.
@@ -97,6 +101,9 @@ MCP (stdio)  ───┘                             │
 - `tracker.lastEventAt`
 - `tracker.axObservers`
 - `tracker.cgPollIntervalMs`
+- `browser.connected`
+- `browser.toolCount`
+- `browser.detectedBrowsers`
 
 ## Implementation Phases
 1) **Daemon scaffolding**
@@ -117,7 +124,8 @@ MCP (stdio)  ───┘                             │
    - Prefer re-verify bounds when window moved.
 
 5) **MCP integration**
-   - When `peekaboo mcp` starts, enable daemon mode and tracker.
+   - `peekaboo mcp serve` routes stateful browser calls to the daemon when a Bridge host is available.
+   - The daemon owns Chrome DevTools MCP process lifetime, selected page state, and snapshot UID state.
 
 6) **Telemetry + tests**
    - Unit tests for tracker diffing.

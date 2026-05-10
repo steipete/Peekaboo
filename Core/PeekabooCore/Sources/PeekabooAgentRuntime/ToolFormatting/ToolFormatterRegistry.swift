@@ -112,7 +112,7 @@ public final class ToolFormatterRegistry: @unchecked Sendable {
             ElementToolFormatter(toolType: toolType)
         case .query:
             ElementToolFormatter(toolType: toolType)
-        case .system:
+        case .system, .browser:
             SystemToolFormatter(toolType: toolType)
         case .completion:
             CommunicationToolFormatter(toolType: toolType)

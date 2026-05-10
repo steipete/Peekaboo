@@ -146,6 +146,25 @@ public enum ToolRegistry {
                     "peekaboo clipboard restore --slot original",
             ],
             agentGuidance: "Use save/restore when a workflow might overwrite the user's clipboard."),
+        "browser": ToolOverride(
+            category: .browser,
+            abstract: "Control and inspect Chrome page content through Chrome DevTools MCP.",
+            discussion: """
+            Brokers Chrome DevTools MCP for page-level browser automation: snapshots, clicks, fills,
+            navigation, console, network, screenshots, and performance traces.
+
+            PERMISSIONS
+            - Requires Chrome 144+.
+            - The user must enable remote debugging at chrome://inspect/#remote-debugging.
+            - The user must accept Chrome's remote debugging prompt.
+            - Peekaboo disables Chrome DevTools MCP usage statistics and CrUX lookups.
+            """,
+            examples: [
+                "browser { \"action\": \"status\" }",
+                "browser { \"action\": \"connect\" }",
+                "browser { \"action\": \"snapshot\" }",
+            ],
+            agentGuidance: "Use for Chrome web page content. Use native Peekaboo tools for macOS UI and dialogs."),
     ]
 
     // MARK: - Registry Access
@@ -224,6 +243,8 @@ public enum ToolRegistry {
             .dialog
         case "dock_launch", "list_dock":
             .dock
+        case "browser":
+            .browser
         case "shell", "clipboard", "copy_to_clipboard", "paste_from_clipboard":
             .system
         case "done", "need_info":

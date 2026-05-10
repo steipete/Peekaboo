@@ -1,0 +1,494 @@
+import Foundation
+import MCP
+import TachikomaMCP
+
+public struct BrowserTool: MCPTool {
+    private let client: any BrowserMCPClientProviding
+
+    public let name = "browser"
+    public let description = """
+    Controls and inspects Chrome web pages through Chrome DevTools MCP.
+
+    Use this for browser page content: DOM/accessibility snapshots, web forms, navigation,
+    console messages, network requests, screenshots, and performance traces. Use Peekaboo's
+    native tools for macOS chrome, menus, dialogs, permissions, and non-browser applications.
+
+    Chrome DevTools MCP requires Chrome 144+ with remote debugging enabled at
+    chrome://inspect/#remote-debugging. The user must accept Chrome's remote debugging prompt.
+    Peekaboo starts chrome-devtools-mcp with usage statistics and CrUX lookups disabled.
+    """
+
+    public var inputSchema: Value {
+        SchemaBuilder.object(
+            properties: [
+                "action": SchemaBuilder.string(
+                    description: """
+                    Browser action to perform. Use `status` before connecting. Use `connect` after the user
+                    enables remote debugging and accepts Chrome's prompt.
+                    """,
+                    enum: BrowserAction.allCases.map(\.rawValue)),
+                "channel": SchemaBuilder.string(
+                    description: """
+                    Chrome channel for auto-connect. Defaults to the running Chrome channel, then stable.
+                    """,
+                    enum: BrowserMCPChannel.allCases.map(\.rawValue)),
+                "page_id": SchemaBuilder.number(description: "Chrome DevTools page ID for select_page/close_page."),
+                "url": SchemaBuilder.string(description: "URL for navigate/new_page."),
+                "navigation_type": SchemaBuilder.string(
+                    description: "Navigation type for navigate.",
+                    enum: ["url", "back", "forward", "reload"]),
+                "uid": SchemaBuilder.string(description: "Element uid from the latest browser snapshot."),
+                "to_uid": SchemaBuilder.string(description: "Drop target uid for drag."),
+                "text": SchemaBuilder.string(description: "Text for type or wait_for."),
+                "value": SchemaBuilder.string(description: "Value for fill."),
+                "key": SchemaBuilder.string(description: "Key or key combination for press_key."),
+                "submit_key": SchemaBuilder.string(description: "Optional key pressed after type_text."),
+                "dialog_action": SchemaBuilder.string(
+                    description: "Browser dialog action.",
+                    enum: ["accept", "dismiss"]),
+                "include_snapshot": SchemaBuilder.boolean(
+                    description: "Ask Chrome DevTools MCP to include a fresh snapshot when supported.",
+                    default: false),
+                "double": SchemaBuilder.boolean(description: "Double-click for click.", default: false),
+                "bring_to_front": SchemaBuilder.boolean(description: "Bring selected page to front.", default: true),
+                "background": SchemaBuilder.boolean(description: "Open new page in the background.", default: false),
+                "timeout": SchemaBuilder.number(description: "Timeout in milliseconds for navigation/waits."),
+                "page_size": SchemaBuilder.number(description: "Pagination size for console/network listings."),
+                "page_index": SchemaBuilder.number(description: "Zero-based page index for console/network listings."),
+                "types": SchemaBuilder.array(
+                    items: SchemaBuilder.string(),
+                    description: "Console message types to include."),
+                "resource_types": SchemaBuilder.array(
+                    items: SchemaBuilder.string(),
+                    description: "Network resource types to include."),
+                "include_preserved": SchemaBuilder.boolean(
+                    description: "Include preserved console/network data from recent navigations.",
+                    default: false),
+                "message_id": SchemaBuilder.number(description: "Console message ID for get_console_message."),
+                "request_id": SchemaBuilder.number(description: "Network request ID for get_network_request."),
+                "request_file_path": SchemaBuilder.string(description: "Path for saving a network request body."),
+                "response_file_path": SchemaBuilder.string(description: "Path for saving a network response body."),
+                "path": SchemaBuilder.string(description: "File path for snapshots, screenshots, or trace output."),
+                "format": SchemaBuilder.string(
+                    description: "Screenshot format.",
+                    enum: ["png", "jpeg", "webp"]),
+                "quality": SchemaBuilder.number(description: "Screenshot quality for jpeg/webp."),
+                "full_page": SchemaBuilder.boolean(description: "Capture a full-page screenshot.", default: false),
+                "trace_action": SchemaBuilder.string(
+                    description: "Performance trace operation.",
+                    enum: ["start", "stop", "analyze"]),
+                "reload": SchemaBuilder.boolean(description: "Reload page when starting a trace.", default: true),
+                "auto_stop": SchemaBuilder.boolean(description: "Auto-stop trace after capture.", default: true),
+                "insight_set_id": SchemaBuilder.string(description: "Insight set id from trace summary."),
+                "insight_name": SchemaBuilder.string(description: "Insight name from trace summary."),
+                "mcp_tool": SchemaBuilder.string(description: "Advanced: raw Chrome DevTools MCP tool name for call."),
+                "mcp_args_json": SchemaBuilder.string(description: "Advanced: JSON object args for raw MCP call."),
+            ],
+            required: ["action"])
+    }
+
+    public init(context: MCPToolContext = .shared, client: (any BrowserMCPClientProviding)? = nil) {
+        self.client = client ?? context.browser
+    }
+
+    public init(client: any BrowserMCPClientProviding) {
+        self.client = client
+    }
+
+    @MainActor
+    public func execute(arguments: ToolArguments) async throws -> ToolResponse {
+        guard let actionName = arguments.getString("action"),
+              let action = BrowserAction(rawValue: actionName)
+        else {
+            return ToolResponse.error("Missing or invalid required parameter: action")
+        }
+
+        let channel = arguments.getString("channel").flatMap(BrowserMCPChannel.init(rawValue:))
+
+        do {
+            switch action {
+            case .status:
+                return await self.statusResponse(channel: channel)
+            case .connect:
+                let status = try await self.client.connect(channel: channel)
+                return self.formatStatus(status, headline: "Connected Chrome DevTools MCP")
+            case .disconnect:
+                await self.client.disconnect()
+                return ToolResponse.text("Disconnected Chrome DevTools MCP.")
+            case .call:
+                return try await self.executeRawCall(arguments: arguments, channel: channel)
+            default:
+                let call = try BrowserMCPCallMapper.map(action: action, arguments: arguments)
+                return try await self.client.execute(
+                    toolName: call.toolName,
+                    arguments: call.arguments,
+                    channel: channel)
+            }
+        } catch {
+            return ToolResponse.error(Self.permissionHelp(error: error))
+        }
+    }
+
+    @MainActor
+    private func statusResponse(channel: BrowserMCPChannel?) async -> ToolResponse {
+        let status = await self.client.status(channel: channel)
+        return self.formatStatus(status, headline: "Chrome DevTools MCP Status")
+    }
+
+    private func executeRawCall(arguments: ToolArguments, channel: BrowserMCPChannel?) async throws -> ToolResponse {
+        guard let toolName = arguments.getString("mcp_tool"), !toolName.isEmpty else {
+            return ToolResponse.error("Missing required parameter: mcp_tool")
+        }
+        let rawArgs = try Self.parseJSONObject(arguments.getString("mcp_args_json") ?? "{}")
+        return try await self.client.execute(toolName: toolName, arguments: rawArgs, channel: channel)
+    }
+
+    private func formatStatus(_ status: BrowserMCPStatus, headline: String) -> ToolResponse {
+        var lines = [headline, ""]
+        lines.append("Connected: \(status.isConnected ? "yes" : "no")")
+        lines.append("Tools: \(status.toolCount)")
+
+        if status.detectedBrowsers.isEmpty {
+            lines.append("Detected Chrome: none")
+        } else {
+            lines.append("Detected Chrome:")
+            for browser in status.detectedBrowsers {
+                let version = browser.version.map { " \($0)" } ?? ""
+                lines.append(
+                    "- \(browser.name)\(version) [\(browser.channel.rawValue)] pid=\(browser.processIdentifier)")
+            }
+        }
+
+        if let error = status.error, !error.isEmpty {
+            lines.append("Error: \(error)")
+        }
+
+        if !status.isConnected {
+            lines.append("")
+            lines.append(contentsOf: Self.permissionInstructions())
+        }
+
+        return ToolResponse.text(lines.joined(separator: "\n"), meta: self.statusMeta(status))
+    }
+
+    private func statusMeta(_ status: BrowserMCPStatus) -> Value {
+        .object([
+            "connected": .bool(status.isConnected),
+            "tool_count": .int(status.toolCount),
+            "browser_count": .int(status.detectedBrowsers.count),
+            "channels": .array(status.detectedBrowsers.map { .string($0.channel.rawValue) }),
+        ])
+    }
+
+    private static func permissionHelp(error: any Error) -> String {
+        var lines = ["Chrome DevTools MCP failed: \(error.localizedDescription)", ""]
+        lines.append(contentsOf: self.permissionInstructions())
+        return lines.joined(separator: "\n")
+    }
+
+    private static func permissionInstructions() -> [String] {
+        [
+            "To enable browser control:",
+            "1. Open Chrome 144+.",
+            "2. Visit chrome://inspect/#remote-debugging.",
+            "3. Enable remote debugging for this profile.",
+            "4. Run browser { \"action\": \"connect\" }.",
+            "5. Accept Chrome's remote debugging permission prompt.",
+        ]
+    }
+
+    private static func parseJSONObject(_ json: String) throws -> [String: Any] {
+        guard let data = json.data(using: .utf8) else { return [:] }
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let dictionary = object as? [String: Any] else {
+            throw BrowserToolError.invalidJSONArguments
+        }
+        return dictionary
+    }
+}
+
+private enum BrowserToolError: LocalizedError {
+    case invalidJSONArguments
+    case missingParameter(String)
+    case invalidAction(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidJSONArguments:
+            "mcp_args_json must be a JSON object"
+        case let .missingParameter(name):
+            "Missing required parameter: \(name)"
+        case let .invalidAction(action):
+            "Invalid browser action: \(action)"
+        }
+    }
+}
+
+public enum BrowserAction: String, CaseIterable, Sendable {
+    case status
+    case connect
+    case disconnect
+    case listPages = "list_pages"
+    case selectPage = "select_page"
+    case closePage = "close_page"
+    case newPage = "new_page"
+    case navigate
+    case waitFor = "wait_for"
+    case snapshot
+    case click
+    case fill
+    case fillForm = "fill_form"
+    case drag
+    case hover
+    case type
+    case pressKey = "press_key"
+    case uploadFile = "upload_file"
+    case handleDialog = "handle_dialog"
+    case console
+    case network
+    case screenshot
+    case performanceTrace = "performance_trace"
+    case call
+}
+
+public struct BrowserMCPMappedCall {
+    public let toolName: String
+    public let arguments: [String: Any]
+
+    public init(toolName: String, arguments: [String: Any]) {
+        self.toolName = toolName
+        self.arguments = arguments
+    }
+}
+
+public enum BrowserMCPCallMapper {
+    public static func map(action: BrowserAction, arguments: ToolArguments) throws -> BrowserMCPMappedCall {
+        switch action {
+        case .status, .connect, .disconnect, .call:
+            throw BrowserToolError.invalidAction(action.rawValue)
+        case .listPages, .selectPage, .closePage, .newPage, .navigate, .waitFor:
+            return try self.pageCall(action: action, arguments: arguments)
+        case .snapshot, .click, .fill, .fillForm, .drag, .hover, .type, .pressKey, .uploadFile, .handleDialog,
+             .screenshot:
+            return try self.interactionCall(action: action, arguments: arguments)
+        case .console, .network, .performanceTrace:
+            return try self.diagnosticsCall(action: action, arguments: arguments)
+        }
+    }
+
+    private static func pageCall(action: BrowserAction, arguments: ToolArguments) throws -> BrowserMCPMappedCall {
+        switch action {
+        case .listPages:
+            return BrowserMCPMappedCall(toolName: "list_pages", arguments: [:])
+        case .selectPage:
+            return try BrowserMCPMappedCall(toolName: "select_page", arguments: [
+                "pageId": self.requiredInt("page_id", arguments),
+                "bringToFront": arguments.getBool("bring_to_front") ?? true,
+            ])
+        case .closePage:
+            return try BrowserMCPMappedCall(toolName: "close_page", arguments: [
+                "pageId": self.requiredInt("page_id", arguments),
+            ])
+        case .newPage:
+            return try BrowserMCPMappedCall(toolName: "new_page", arguments: self.compact([
+                "url": self.requiredString("url", arguments),
+                "background": arguments.getBool("background") ?? false,
+                "timeout": arguments.getInt("timeout"),
+            ]))
+        case .navigate:
+            return BrowserMCPMappedCall(toolName: "navigate_page", arguments: self.navigateArguments(arguments))
+        case .waitFor:
+            let text: [String] = if let values = arguments.getStringArray("text") {
+                values
+            } else {
+                try [self.requiredString("text", arguments)]
+            }
+            return BrowserMCPMappedCall(toolName: "wait_for", arguments: self.compact([
+                "text": text,
+                "timeout": arguments.getInt("timeout"),
+            ]))
+        default:
+            throw BrowserToolError.invalidAction(action.rawValue)
+        }
+    }
+
+    private static func interactionCall(
+        action: BrowserAction,
+        arguments: ToolArguments) throws -> BrowserMCPMappedCall
+    {
+        switch action {
+        case .snapshot:
+            return BrowserMCPMappedCall(toolName: "take_snapshot", arguments: self.compact([
+                "filePath": arguments.getString("path"),
+            ]))
+        case .click:
+            return try BrowserMCPMappedCall(toolName: "click", arguments: self.compact([
+                "uid": self.requiredString("uid", arguments),
+                "dblClick": arguments.getBool("double") ?? false,
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .fill:
+            return try BrowserMCPMappedCall(toolName: "fill", arguments: self.compact([
+                "uid": self.requiredString("uid", arguments),
+                "value": self.requiredString("value", arguments),
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .fillForm:
+            return try BrowserMCPMappedCall(toolName: "fill_form", arguments: self.jsonObject(
+                "mcp_args_json",
+                arguments,
+                fallbackError: "fill_form requires mcp_args_json with Chrome DevTools MCP form elements"))
+        case .drag:
+            return try BrowserMCPMappedCall(toolName: "drag", arguments: self.compact([
+                "from_uid": self.requiredString("uid", arguments),
+                "to_uid": self.requiredString("to_uid", arguments),
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .hover:
+            return try BrowserMCPMappedCall(toolName: "hover", arguments: self.compact([
+                "uid": self.requiredString("uid", arguments),
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .type:
+            return try BrowserMCPMappedCall(toolName: "type_text", arguments: self.compact([
+                "text": self.requiredString("text", arguments),
+                "submitKey": arguments.getString("submit_key"),
+            ]))
+        case .pressKey:
+            return try BrowserMCPMappedCall(toolName: "press_key", arguments: self.compact([
+                "key": self.requiredString("key", arguments),
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .uploadFile:
+            return try BrowserMCPMappedCall(toolName: "upload_file", arguments: self.compact([
+                "uid": self.requiredString("uid", arguments),
+                "filePath": self.requiredString("path", arguments),
+                "includeSnapshot": arguments.getBool("include_snapshot") ?? false,
+            ]))
+        case .handleDialog:
+            return BrowserMCPMappedCall(toolName: "handle_dialog", arguments: self.compact([
+                "action": arguments.getString("dialog_action") ?? "accept",
+                "promptText": arguments.getString("text"),
+            ]))
+        case .screenshot:
+            return BrowserMCPMappedCall(toolName: "take_screenshot", arguments: self.compact([
+                "format": arguments.getString("format") ?? "png",
+                "quality": arguments.getInt("quality"),
+                "uid": arguments.getString("uid"),
+                "fullPage": arguments.getBool("full_page"),
+                "filePath": arguments.getString("path"),
+            ]))
+        default:
+            throw BrowserToolError.invalidAction(action.rawValue)
+        }
+    }
+
+    private static func diagnosticsCall(
+        action: BrowserAction,
+        arguments: ToolArguments) throws -> BrowserMCPMappedCall
+    {
+        switch action {
+        case .console:
+            return self.consoleCall(arguments)
+        case .network:
+            return self.networkCall(arguments)
+        case .performanceTrace:
+            return try self.performanceCall(arguments)
+        default:
+            throw BrowserToolError.invalidAction(action.rawValue)
+        }
+    }
+
+    private static func navigateArguments(_ arguments: ToolArguments) -> [String: Any] {
+        let type = arguments.getString("navigation_type") ?? (arguments.getString("url") == nil ? "reload" : "url")
+        return self.compact([
+            "type": type,
+            "url": arguments.getString("url"),
+            "timeout": arguments.getInt("timeout"),
+        ])
+    }
+
+    private static func consoleCall(_ arguments: ToolArguments) -> BrowserMCPMappedCall {
+        if let messageId = arguments.getInt("message_id") {
+            return BrowserMCPMappedCall(toolName: "get_console_message", arguments: ["msgid": messageId])
+        }
+        return BrowserMCPMappedCall(toolName: "list_console_messages", arguments: self.compact([
+            "pageSize": arguments.getInt("page_size"),
+            "pageIdx": arguments.getInt("page_index"),
+            "types": arguments.getStringArray("types"),
+            "includePreservedMessages": arguments.getBool("include_preserved") ?? false,
+        ]))
+    }
+
+    private static func networkCall(_ arguments: ToolArguments) -> BrowserMCPMappedCall {
+        if let requestId = arguments.getInt("request_id") {
+            return BrowserMCPMappedCall(toolName: "get_network_request", arguments: self.compact([
+                "reqid": requestId,
+                "requestFilePath": arguments.getString("request_file_path"),
+                "responseFilePath": arguments.getString("response_file_path"),
+            ]))
+        }
+        return BrowserMCPMappedCall(toolName: "list_network_requests", arguments: self.compact([
+            "pageSize": arguments.getInt("page_size"),
+            "pageIdx": arguments.getInt("page_index"),
+            "resourceTypes": arguments.getStringArray("resource_types"),
+            "includePreservedRequests": arguments.getBool("include_preserved") ?? false,
+        ]))
+    }
+
+    private static func performanceCall(_ arguments: ToolArguments) throws -> BrowserMCPMappedCall {
+        let traceAction = arguments.getString("trace_action") ?? "start"
+        switch traceAction {
+        case "start":
+            return BrowserMCPMappedCall(toolName: "performance_start_trace", arguments: self.compact([
+                "reload": arguments.getBool("reload") ?? true,
+                "autoStop": arguments.getBool("auto_stop") ?? true,
+                "filePath": arguments.getString("path"),
+            ]))
+        case "stop":
+            return BrowserMCPMappedCall(toolName: "performance_stop_trace", arguments: self.compact([
+                "filePath": arguments.getString("path"),
+            ]))
+        case "analyze":
+            return try BrowserMCPMappedCall(toolName: "performance_analyze_insight", arguments: [
+                "insightSetId": self.requiredString("insight_set_id", arguments),
+                "insightName": self.requiredString("insight_name", arguments),
+            ])
+        default:
+            throw BrowserToolError.invalidAction("performance_trace.\(traceAction)")
+        }
+    }
+
+    private static func requiredString(_ key: String, _ arguments: ToolArguments) throws -> String {
+        guard let value = arguments.getString(key), !value.isEmpty else {
+            throw BrowserToolError.missingParameter(key)
+        }
+        return value
+    }
+
+    private static func requiredInt(_ key: String, _ arguments: ToolArguments) throws -> Int {
+        guard let value = arguments.getInt(key) else {
+            throw BrowserToolError.missingParameter(key)
+        }
+        return value
+    }
+
+    private static func jsonObject(
+        _ key: String,
+        _ arguments: ToolArguments,
+        fallbackError: String) throws -> [String: Any]
+    {
+        guard let json = arguments.getString(key), let data = json.data(using: .utf8) else {
+            throw BrowserToolError.missingParameter(fallbackError)
+        }
+        let object = try JSONSerialization.jsonObject(with: data)
+        guard let dictionary = object as? [String: Any] else {
+            throw BrowserToolError.invalidJSONArguments
+        }
+        return dictionary
+    }
+
+    private static func compact(_ dictionary: [String: Any?]) -> [String: Any] {
+        dictionary.compactMapValues { $0 }
+    }
+}

@@ -71,6 +71,7 @@ struct ToolsCommand: OutputFormattable, RuntimeOptionsConfigurable {
             ImageTool(context: toolContext),
             CaptureTool(context: toolContext),
             AnalyzeTool(),
+            BrowserTool(),
             ListTool(context: toolContext),
             PermissionsTool(context: toolContext),
             SleepTool(),

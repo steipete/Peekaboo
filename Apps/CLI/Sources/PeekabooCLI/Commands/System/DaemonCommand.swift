@@ -81,6 +81,21 @@ enum DaemonPaths {
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         return root.appendingPathComponent("daemon.log")
     }
+
+    static func openDaemonLogForAppend() -> FileHandle? {
+        self.openFileForAppend(at: self.daemonLogURL())
+    }
+
+    static func openFileForAppend(at fileURL: URL) -> FileHandle? {
+        let directory = fileURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        if !FileManager.default.fileExists(atPath: fileURL.path) {
+            FileManager.default.createFile(atPath: fileURL.path, contents: nil)
+        }
+        let handle = try? FileHandle(forWritingTo: fileURL)
+        handle?.seekToEndOfFile()
+        return handle
+    }
 }
 
 enum DaemonStatusPrinter {
@@ -148,6 +163,15 @@ enum DaemonStatusPrinter {
             }
             print("AX Observers: \(tracker.axObserverCount)")
             print("Poll Interval: \(tracker.cgPollIntervalMs)ms")
+        }
+
+        if let browser = status.browser {
+            print("")
+            print("Browser MCP")
+            print("-----------")
+            print("Connected: \(browser.isConnected ? "yes" : "no")")
+            print("Tools: \(browser.toolCount)")
+            print("Detected Chrome: \(browser.detectedBrowsers.count)")
         }
     }
 

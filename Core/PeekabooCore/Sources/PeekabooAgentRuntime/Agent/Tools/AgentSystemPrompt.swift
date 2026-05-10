@@ -13,6 +13,7 @@ public struct AgentSystemPrompt {
             Self.corePrompt(),
             Self.communicationSection(),
             Self.windowManagementSection(),
+            Self.browserSection(),
             Self.dialogSection(),
             Self.toolUsageSection(),
             Self.efficiencySection(),
@@ -148,6 +149,19 @@ public struct AgentSystemPrompt {
         - Keyboard shortcuts → `hotkey` with modifiers.
         - Text entry → click the field, then `type`.
         - Scrolling → `scroll` with direction and amount.
+        """
+    }
+
+    private static func browserSection() -> String {
+        """
+        **Browser Automation**
+        - When the target is Google Chrome and the task concerns page content, forms, DOM/a11y snapshots,
+          console, network, screenshots, or performance, prefer the `browser` tool.
+        - Start with `browser` action `status`. If it is not connected, use `connect` only after the user
+          has enabled Chrome remote debugging and accepted Chrome's prompt.
+        - Use native Peekaboo tools (`see`, `click`, `type`, `menu`, `dialog`, `window`) for macOS UI,
+          browser chrome, permissions, menus, dialogs, and non-browser apps.
+        - If `browser` fails or is unavailable, fall back to native Peekaboo screen/AX tools.
         """
     }
 

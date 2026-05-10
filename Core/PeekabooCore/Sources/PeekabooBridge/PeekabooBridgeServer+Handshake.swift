@@ -102,6 +102,12 @@ extension PeekabooBridgeServer {
             compatible.remove(.setValue)
             compatible.remove(.performAction)
         }
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 4) {
+            compatible.remove(.browserStatus)
+            compatible.remove(.browserConnect)
+            compatible.remove(.browserDisconnect)
+            compatible.remove(.browserExecute)
+        }
         return compatible
     }
 

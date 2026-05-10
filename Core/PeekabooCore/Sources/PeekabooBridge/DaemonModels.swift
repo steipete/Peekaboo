@@ -73,6 +73,7 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
     public let permissions: PermissionsStatus?
     public let snapshots: PeekabooDaemonSnapshotStatus?
     public let windowTracker: PeekabooDaemonWindowTrackerStatus?
+    public let browser: PeekabooBridgeBrowserStatus?
 
     public init(
         running: Bool,
@@ -82,7 +83,8 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
         bridge: PeekabooDaemonBridgeStatus? = nil,
         permissions: PermissionsStatus? = nil,
         snapshots: PeekabooDaemonSnapshotStatus? = nil,
-        windowTracker: PeekabooDaemonWindowTrackerStatus? = nil)
+        windowTracker: PeekabooDaemonWindowTrackerStatus? = nil,
+        browser: PeekabooBridgeBrowserStatus? = nil)
     {
         self.running = running
         self.pid = pid
@@ -92,6 +94,7 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
         self.permissions = permissions
         self.snapshots = snapshots
         self.windowTracker = windowTracker
+        self.browser = browser
     }
 }
 

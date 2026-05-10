@@ -918,7 +918,8 @@ private enum MCPToolTestHelpers {
                 screens: resolvedScreens,
                 agent: services.agent,
                 permissions: services.permissions,
-                clipboard: services.clipboard)
+                clipboard: services.clipboard,
+                browser: services.browser)
         }
     }
 

@@ -12,6 +12,8 @@ extension PeekabooBridgeServer {
         switch request.operation {
         case .permissionsStatus, .requestPostEventPermission, .daemonStatus, .daemonStop:
             try await self.handleCoreRequest(request, peer: peer)
+        case .browserStatus, .browserConnect, .browserDisconnect, .browserExecute:
+            try await self.handleBrowserRequest(request)
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea:
             try await self.handleCaptureRequest(request)
         case .detectElements, .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey,
@@ -40,6 +42,22 @@ extension PeekabooBridgeServer {
             try await self.handleSnapshotRequest(request)
         case ._appleScriptProbe:
             try self.handleAppleScriptProbe()
+        }
+    }
+
+    private func handleBrowserRequest(_ request: PeekabooBridgeRequest) async throws -> PeekabooBridgeResponse {
+        switch request {
+        case let .browserStatus(payload):
+            return try await .browserStatus(self.services.browserStatus(channel: payload.channel))
+        case let .browserConnect(payload):
+            return try await .browserStatus(self.services.browserConnect(channel: payload.channel))
+        case .browserDisconnect:
+            try await self.services.browserDisconnect()
+            return .ok
+        case let .browserExecute(payload):
+            return try await .browserToolResponse(self.services.browserExecute(payload))
+        default:
+            throw Self.invalidRequest(for: request)
         }
     }
 

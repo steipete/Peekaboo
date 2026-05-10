@@ -140,6 +140,10 @@ private final class ServicesWithDestinationStubs: PeekabooServiceProviding {
         self.base.screens
     }
 
+    var browser: any BrowserMCPClientProviding {
+        self.base.browser
+    }
+
     var agent: (any AgentServiceProtocol)? {
         self.base.agent
     }
