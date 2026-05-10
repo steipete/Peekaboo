@@ -119,7 +119,8 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
 
     @MainActor
     public func disconnect() async {
-        await self.resolvedManager().disableServer(name: Self.serverName)
+        guard let manager else { return }
+        await manager.disableServer(name: Self.serverName)
     }
 
     @MainActor
@@ -138,16 +139,37 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
             arguments: arguments)
     }
 
-    public static func chromeDevToolsConfig(channel: BrowserMCPChannel?) -> MCPServerConfig {
+    public static func chromeDevToolsConfig(
+        channel: BrowserMCPChannel?,
+        environment: [String: String] = ProcessInfo.processInfo.environment) -> MCPServerConfig
+    {
         let resolvedChannel = channel ?? .stable
-        let args = [
+        var args = [
             "-y",
             "chrome-devtools-mcp@latest",
-            "--auto-connect",
-            "--channel=\(resolvedChannel.rawValue)",
-            "--no-usage-statistics",
-            "--no-performance-crux",
         ]
+        let description: String
+
+        if let browserURL = environment["PEEKABOO_BROWSER_MCP_BROWSER_URL"], !browserURL.isEmpty {
+            args.append("--browserUrl=\(browserURL)")
+            description = "Chrome DevTools automation for \(browserURL)"
+        } else if self.environmentFlag("PEEKABOO_BROWSER_MCP_ISOLATED", environment: environment) {
+            args.append("--isolated")
+            args.append("--channel=\(resolvedChannel.rawValue)")
+            description = "Chrome DevTools automation for an isolated \(resolvedChannel.rawValue) Chrome profile"
+        } else {
+            args.append("--auto-connect")
+            args.append("--channel=\(resolvedChannel.rawValue)")
+            description = "Chrome DevTools automation for the running \(resolvedChannel.rawValue) Chrome profile"
+        }
+
+        if self.environmentFlag("PEEKABOO_BROWSER_MCP_HEADLESS", environment: environment) {
+            args.append("--headless")
+        }
+
+        args.append("--no-usage-statistics")
+        args.append("--no-performance-crux")
+
         return MCPServerConfig(
             transport: "stdio",
             command: "npx",
@@ -155,7 +177,7 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
             enabled: true,
             timeout: 30,
             autoReconnect: true,
-            description: "Chrome DevTools automation for the running \(resolvedChannel.rawValue) Chrome profile")
+            description: description)
     }
 
     public static func detectRunningBrowsers(channel: BrowserMCPChannel? = nil) -> [DetectedBrowser] {
@@ -184,6 +206,13 @@ public final class BrowserMCPService: BrowserMCPClientProviding, @unchecked Send
 
     private func preferredChannel() -> BrowserMCPChannel {
         Self.detectRunningBrowsers().first?.channel ?? .stable
+    }
+
+    private static func environmentFlag(_ name: String, environment: [String: String]) -> Bool {
+        guard let value = environment[name]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
+            return false
+        }
+        return ["1", "true", "yes", "on"].contains(value)
     }
 
     @MainActor

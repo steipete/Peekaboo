@@ -19,6 +19,38 @@ struct BrowserToolTests {
     }
 
     @Test
+    func `Chrome DevTools config can launch isolated headless browser for deterministic tests`() {
+        let config = BrowserMCPService.chromeDevToolsConfig(
+            channel: .stable,
+            environment: [
+                "PEEKABOO_BROWSER_MCP_ISOLATED": "1",
+                "PEEKABOO_BROWSER_MCP_HEADLESS": "true",
+            ])
+
+        #expect(!config.args.contains("--auto-connect"))
+        #expect(config.args.contains("--isolated"))
+        #expect(config.args.contains("--headless"))
+        #expect(config.args.contains("--channel=stable"))
+        #expect(config.args.contains("--no-usage-statistics"))
+        #expect(config.args.contains("--no-performance-crux"))
+    }
+
+    @Test
+    func `Chrome DevTools config can target explicit browser URL`() {
+        let config = BrowserMCPService.chromeDevToolsConfig(
+            channel: .canary,
+            environment: [
+                "PEEKABOO_BROWSER_MCP_BROWSER_URL": "http://127.0.0.1:9222",
+            ])
+
+        #expect(!config.args.contains("--auto-connect"))
+        #expect(!config.args.contains("--channel=canary"))
+        #expect(config.args.contains("--browserUrl=http://127.0.0.1:9222"))
+        #expect(config.args.contains("--no-usage-statistics"))
+        #expect(config.args.contains("--no-performance-crux"))
+    }
+
+    @Test
     func `Browser call mapper maps common actions`() throws {
         let click = try BrowserMCPCallMapper.map(
             action: .click,

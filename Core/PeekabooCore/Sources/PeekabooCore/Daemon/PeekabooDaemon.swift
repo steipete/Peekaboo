@@ -162,6 +162,8 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
     }
 
     private func shutdown() async {
+        await self.services.browser.disconnect()
+
         self.windowTracker?.stop()
         self.windowTracker = nil
         WindowMovementTracking.provider = nil

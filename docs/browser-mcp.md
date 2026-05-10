@@ -41,6 +41,12 @@ npx -y chrome-devtools-mcp@latest \
   --no-performance-crux
 ```
 
+For deterministic local tests or custom Chrome endpoints:
+
+- `PEEKABOO_BROWSER_MCP_ISOLATED=1` lets Chrome DevTools MCP launch a temporary Chrome profile.
+- `PEEKABOO_BROWSER_MCP_HEADLESS=1` makes that launched browser headless.
+- `PEEKABOO_BROWSER_MCP_BROWSER_URL=http://127.0.0.1:9222` connects to an explicit debuggable Chrome endpoint instead of auto-connect.
+
 The tool can expose page content, cookies/session-backed data visible to the page, console messages, network requests, screenshots, and traces to the active agent/MCP client. Do not enable it for browser profiles containing sensitive data unless that exposure is acceptable.
 
 ## Persistence
