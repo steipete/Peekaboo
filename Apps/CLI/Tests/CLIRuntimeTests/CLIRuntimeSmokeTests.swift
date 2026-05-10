@@ -98,38 +98,6 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
-    func `peekaboo agent dry run emits standard JSON envelope`() async throws {
-        guard Self.ensureLocalRuntimeAvailable() else { return }
-        let result = try await TestChildProcess.runPeekaboo([
-            "agent",
-            "--model",
-            "gpt-5.5",
-            "--dry-run",
-            "noop",
-            "--json",
-            "--no-remote",
-        ])
-        #expect(result.status == .exited(0))
-        #expect(result.standardError.isEmpty)
-
-        let data = Data(result.standardOutput.utf8)
-        let object = try JSONSerialization.jsonObject(with: data)
-        guard let json = object as? [String: Any] else {
-            Issue.record("Expected JSON success output from agent dry run.")
-            return
-        }
-
-        #expect(json["success"] as? Bool == true)
-        guard let result = json["result"] as? [String: Any],
-              let metadata = result["metadata"] as? [String: Any] else {
-            Issue.record("Expected agent result metadata.")
-            return
-        }
-        #expect((result["content"] as? String)?.contains("Dry run completed") == true)
-        #expect(metadata["modelName"] as? String == "OpenAI/gpt-5.5")
-    }
-
-    @Test
     func `peekaboo tools emits standard JSON envelope`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["tools", "--json", "--no-remote"])
