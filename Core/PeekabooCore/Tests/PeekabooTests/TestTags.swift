@@ -21,8 +21,7 @@ enum EnvironmentFlags {
 
     @preconcurrency nonisolated static var inputAutomationRequested: Bool {
         self.isEnabled("PEEKABOO_RUN_INPUT_AUTOMATION_TESTS") ||
-            isEnabled("RUN_INPUT_AUTOMATION_TESTS") ||
-            isEnabled("RUN_LOCAL_TESTS")
+            isEnabled("RUN_INPUT_AUTOMATION_TESTS")
     }
 
     @preconcurrency nonisolated static var runScreenCaptureScenarios: Bool {

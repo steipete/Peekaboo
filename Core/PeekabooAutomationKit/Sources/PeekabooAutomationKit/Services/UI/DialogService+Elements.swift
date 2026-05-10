@@ -208,9 +208,24 @@ extension DialogService {
 
 #if DEBUG
 extension DialogService {
-    /// Test hook to override character typing without sending real events.
-    static var typeCharacterHandler: (String) throws -> Void = { text in
+    private static var isRunningUnderTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            ProcessInfo.processInfo.arguments.contains("--test-mode") ||
+            NSClassFromString("XCTest") != nil
+    }
+
+    private static let defaultTypeCharacterHandler: (String) throws -> Void = { text in
+        guard !DialogService.isRunningUnderTests else {
+            throw DialogError.inputSuppressedUnderTests
+        }
         try InputDriver.type(text, delayPerCharacter: 0)
+    }
+
+    /// Test hook to override character typing without sending real events.
+    static var typeCharacterHandler: (String) throws -> Void = DialogService.defaultTypeCharacterHandler
+
+    static func resetTypeCharacterHandlerForTesting() {
+        self.typeCharacterHandler = self.defaultTypeCharacterHandler
     }
 }
 #else

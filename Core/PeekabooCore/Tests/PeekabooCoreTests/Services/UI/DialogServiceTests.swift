@@ -3,7 +3,6 @@
 //  PeekabooCore
 //
 
-import AXorcist
 import Foundation
 import Testing
 @testable import PeekabooAgentRuntime
@@ -186,7 +185,7 @@ struct DialogServiceTests {
         let service = DialogService()
         var captured: String?
         DialogService.typeCharacterHandler = { captured = $0 }
-        defer { DialogService.typeCharacterHandler = { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+        defer { DialogService.resetTypeCharacterHandlerForTesting() }
 
         try service.typeCharacter("Z")
         #expect(captured == "Z")
@@ -198,7 +197,7 @@ struct DialogServiceTests {
         let service = DialogService()
         var calls: [String] = []
         DialogService.typeCharacterHandler = { calls.append($0) }
-        defer { DialogService.typeCharacterHandler = { text in try InputDriver.type(text, delayPerCharacter: 0) } }
+        defer { DialogService.resetTypeCharacterHandlerForTesting() }
 
         try service.typeCharacter("A")
         try service.typeCharacter("b")
