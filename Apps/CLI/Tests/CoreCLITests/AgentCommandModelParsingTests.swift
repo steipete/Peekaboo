@@ -19,6 +19,7 @@ struct AgentCommandTests {
         #expect(command.parseModelString("gpt-5-nano") == .openai(.gpt55))
         #expect(command.parseModelString("gpt-4o") == nil)
         #expect(command.parseModelString("gpt-4o-mini") == nil)
+        #expect(command.parseModelString("definitely-not-a-model") == nil)
     }
 
     @Test
