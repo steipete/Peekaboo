@@ -100,10 +100,11 @@ struct CLIRuntimeSmokeTests {
     @Test
     func `peekaboo agent rejects unsupported model with nonzero exit`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
+        let unsupportedModel = "definitely-not-a-model"
         let result = try await TestChildProcess.runPeekaboo([
             "agent",
             "--model",
-            "gpt-4o",
+            unsupportedModel,
             "--dry-run",
             "noop",
             "--json",
@@ -120,7 +121,7 @@ struct CLIRuntimeSmokeTests {
         }
 
         #expect(json["success"] as? Bool == false)
-        #expect((json["error"] as? String)?.contains("Unsupported model 'gpt-4o'") == true)
+        #expect((json["error"] as? String)?.contains("Unsupported model '\(unsupportedModel)'") == true)
     }
 
     @Test
