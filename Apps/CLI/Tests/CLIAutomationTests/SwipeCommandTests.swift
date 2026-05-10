@@ -65,20 +65,21 @@ struct SwipeCommandTests {
 
     @Test
     func `Element based swipe resolves using waitForElement`() async throws {
+        let snapshotId = "snapshot-1"
+        let element = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "Submit",
+            bounds: CGRect(x: 10, y: 20, width: 120, height: 40)
+        )
+        let targetElement = DetectedElement(
+            id: "B5",
+            type: .button,
+            label: "Finish",
+            bounds: CGRect(x: 300, y: 400, width: 80, height: 30)
+        )
         let context = await self.makeContext { automation, snapshots in
-            snapshots.mostRecentSnapshotId = "snapshot-1"
-            let element = DetectedElement(
-                id: "B1",
-                type: .button,
-                label: "Submit",
-                bounds: CGRect(x: 10, y: 20, width: 120, height: 40)
-            )
-            let targetElement = DetectedElement(
-                id: "B5",
-                type: .button,
-                label: "Finish",
-                bounds: CGRect(x: 300, y: 400, width: 80, height: 30)
-            )
+            snapshots.mostRecentSnapshotId = snapshotId
             automation.setWaitForElementResult(
                 WaitForElementResult(found: true, element: element, waitTime: 0.1),
                 for: .elementId("B1")
@@ -88,6 +89,13 @@ struct SwipeCommandTests {
                 for: .elementId("B5")
             )
         }
+        let detection = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(buttons: [element, targetElement]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 2, method: "stub")
+        )
+        try await context.snapshots.storeDetectionResult(snapshotId: snapshotId, result: detection)
 
         let result = try await self.runSwipe(
             arguments: [

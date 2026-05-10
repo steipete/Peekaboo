@@ -165,7 +165,9 @@ struct SeeCommandRuntimeTests {
 
             let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
                 automation: automation,
-                screenCapture: fixture.screenCapture
+                screenCapture: fixture.screenCapture,
+                applicationInfo: fixture.applicationInfo,
+                windowInfo: fixture.windowInfo
             )
             defer { try? FileManager.default.removeItem(at: outputURL) }
 
@@ -220,7 +222,9 @@ struct SeeCommandRuntimeTests {
         try await self.withTempConfigEnv { _ in
             let (context, outputURL) = Self.makeSeeCommandRuntimeContext(
                 automation: automation,
-                screenCapture: fixture.screenCapture
+                screenCapture: fixture.screenCapture,
+                applicationInfo: fixture.applicationInfo,
+                windowInfo: fixture.windowInfo
             )
             defer { try? FileManager.default.removeItem(at: outputURL) }
 
@@ -381,10 +385,22 @@ extension SeeCommandRuntimeTests {
 
     fileprivate static func makeSeeCommandRuntimeContext(
         automation: StubAutomationService,
-        screenCapture: StubScreenCaptureService
+        screenCapture: StubScreenCaptureService,
+        applicationInfo: ServiceApplicationInfo? = nil,
+        windowInfo: ServiceWindowInfo? = nil
     ) -> (context: TestServicesFactory.AutomationTestContext, outputURL: URL) {
+        var windowsByApp: [String: [ServiceWindowInfo]] = [:]
+        if let applicationInfo, let windowInfo {
+            windowsByApp[applicationInfo.name] = [windowInfo]
+            if let bundleIdentifier = applicationInfo.bundleIdentifier {
+                windowsByApp[bundleIdentifier] = [windowInfo]
+            }
+        }
+        let applications = applicationInfo.map { [$0] } ?? []
         let context = TestServicesFactory.makeAutomationTestContext(
             automation: automation,
+            applications: StubApplicationService(applications: applications, windowsByApp: windowsByApp),
+            windows: StubWindowService(windowsByApp: windowsByApp),
             screenCapture: screenCapture
         )
         let outputURL = FileManager.default

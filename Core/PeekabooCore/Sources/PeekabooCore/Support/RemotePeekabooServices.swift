@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooFoundation
 
@@ -37,14 +38,17 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
         supportsPostEventPermissionRequest: Bool = false,
         supportsElementActions: Bool = false,
-        supportsDesktopObservation: Bool = false)
+        supportsDesktopObservation: Bool = false,
+        allowLocalApplicationFallback: Bool = false)
     {
         self.client = client
         self.supportsPostEventPermissionRequest = supportsPostEventPermissionRequest
 
         self.logging = LoggingService()
         self.screenCapture = RemoteScreenCaptureService(client: client)
-        self.applications = RemoteApplicationService(client: client)
+        self.applications = RemoteApplicationService(
+            client: client,
+            localFallback: allowLocalApplicationFallback ? ApplicationService() : nil)
         self.automation = if supportsElementActions {
             RemoteElementActionUIAutomationService(
                 client: client,

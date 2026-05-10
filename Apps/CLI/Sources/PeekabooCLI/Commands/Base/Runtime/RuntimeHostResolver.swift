@@ -93,7 +93,8 @@ enum RuntimeHostResolver {
                             for: handshake
                         ),
                         supportsElementActions: BridgeCapabilityPolicy.supportsElementActions(for: handshake),
-                        supportsDesktopObservation: BridgeCapabilityPolicy.supportsDesktopObservation(for: handshake)
+                        supportsDesktopObservation: BridgeCapabilityPolicy.supportsDesktopObservation(for: handshake),
+                        allowLocalApplicationFallback: handshake.hostKind == .onDemand
                     ),
                     hostDescription: hostDescription
                 )

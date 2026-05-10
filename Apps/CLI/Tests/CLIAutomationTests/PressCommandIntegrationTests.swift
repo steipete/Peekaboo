@@ -186,8 +186,8 @@ struct PressCommandIntegrationTests {
             ["tab", "--delay", "-1"],
             ["tab", "--hold", "-1"],
         ] {
-            var command = try PressCommand.parse(arguments)
             #expect(throws: (any Error).self) {
+                var command = try PressCommand.parse(arguments)
                 try command.validate()
             }
         }

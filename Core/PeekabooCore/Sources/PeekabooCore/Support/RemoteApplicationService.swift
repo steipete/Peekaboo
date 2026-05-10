@@ -2,15 +2,18 @@ import CoreGraphics
 import Foundation
 import PeekabooAgentRuntime
 import PeekabooAutomation
+import PeekabooAutomationKit
 import PeekabooBridge
 import PeekabooFoundation
 
 @MainActor
 public final class RemoteApplicationService: ApplicationServiceProtocol {
     private let client: PeekabooBridgeClient
+    private let localFallback: (any ApplicationServiceProtocol)?
 
-    public init(client: PeekabooBridgeClient) {
+    public init(client: PeekabooBridgeClient, localFallback: (any ApplicationServiceProtocol)? = nil) {
         self.client = client
+        self.localFallback = localFallback
     }
 
     public func listApplications() async throws -> UnifiedToolOutput<ServiceApplicationListData> {
@@ -53,7 +56,11 @@ public final class RemoteApplicationService: ApplicationServiceProtocol {
     }
 
     public func activateApplication(identifier: String) async throws {
-        try await self.client.activateApplication(identifier: identifier)
+        try await self.runWithLifecycleFallback {
+            try await self.client.activateApplication(identifier: identifier)
+        } fallback: { fallback in
+            try await fallback.activateApplication(identifier: identifier)
+        }
     }
 
     public func quitApplication(identifier: String, force: Bool) async throws -> Bool {
@@ -61,18 +68,62 @@ public final class RemoteApplicationService: ApplicationServiceProtocol {
     }
 
     public func hideApplication(identifier: String) async throws {
-        try await self.client.hideApplication(identifier: identifier)
+        try await self.runWithLifecycleFallback {
+            try await self.client.hideApplication(identifier: identifier)
+        } fallback: { fallback in
+            try await fallback.hideApplication(identifier: identifier)
+        }
     }
 
     public func unhideApplication(identifier: String) async throws {
-        try await self.client.unhideApplication(identifier: identifier)
+        try await self.runWithLifecycleFallback {
+            try await self.client.unhideApplication(identifier: identifier)
+        } fallback: { fallback in
+            try await fallback.unhideApplication(identifier: identifier)
+        }
     }
 
     public func hideOtherApplications(identifier: String) async throws {
-        try await self.client.hideOtherApplications(identifier: identifier)
+        try await self.runWithLifecycleFallback {
+            try await self.client.hideOtherApplications(identifier: identifier)
+        } fallback: { fallback in
+            try await fallback.hideOtherApplications(identifier: identifier)
+        }
     }
 
     public func showAllApplications() async throws {
-        try await self.client.showAllApplications()
+        try await self.runWithLifecycleFallback {
+            try await self.client.showAllApplications()
+        } fallback: { fallback in
+            try await fallback.showAllApplications()
+        }
+    }
+
+    private func runWithLifecycleFallback(
+        operation: () async throws -> Void,
+        fallback: (any ApplicationServiceProtocol) async throws -> Void) async throws
+    {
+        do {
+            try await operation()
+        } catch {
+            guard let localFallback, Self.shouldUseLocalFallback(for: error) else {
+                throw error
+            }
+            try await fallback(localFallback)
+        }
+    }
+
+    private static func shouldUseLocalFallback(for error: any Error) -> Bool {
+        guard let envelope = error as? PeekabooBridgeErrorEnvelope else {
+            return false
+        }
+        switch envelope.code {
+        case .internalError:
+            return true
+        case .permissionDenied:
+            return envelope.permission == .appleScript
+        default:
+            return false
+        }
     }
 }

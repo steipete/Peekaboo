@@ -109,19 +109,27 @@ struct MoveCommandTests {
 
     @Test
     func `Move by query waits for element using automation service`() async throws {
+        let snapshotId = "snapshot-query"
+        let element = DetectedElement(
+            id: "B2",
+            type: .button,
+            label: "Continue",
+            bounds: CGRect(x: 200, y: 300, width: 80, height: 24)
+        )
         let context = await self.makeContext { automation, snapshots in
-            snapshots.mostRecentSnapshotId = "snapshot-query"
-            let element = DetectedElement(
-                id: "B2",
-                type: .button,
-                label: "Continue",
-                bounds: CGRect(x: 200, y: 300, width: 80, height: 24)
-            )
+            snapshots.mostRecentSnapshotId = snapshotId
             automation.setWaitForElementResult(
                 WaitForElementResult(found: true, element: element, waitTime: 0.05),
                 for: .query("Continue")
             )
         }
+        let detection = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
+        )
+        try await context.snapshots.storeDetectionResult(snapshotId: snapshotId, result: detection)
 
         let result = try await self.runMove(arguments: ["--to", "Continue"], context: context)
 

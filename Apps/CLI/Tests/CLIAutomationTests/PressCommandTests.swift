@@ -73,8 +73,17 @@ struct PressCommandTests {
 
     @Test
     func `Snapshot argument is forwarded`() async throws {
+        let snapshotId = "snapshot-42"
         let context = await self.makeContext()
-        let result = try await self.runPress(arguments: ["escape", "--snapshot", "snapshot-42"], context: context)
+        let detection = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 0, method: "stub")
+        )
+        try await context.snapshots.storeDetectionResult(snapshotId: snapshotId, result: detection)
+
+        let result = try await self.runPress(arguments: ["escape", "--snapshot", snapshotId], context: context)
 
         #expect(result.exitStatus == 0)
         let calls = await self.automationState(context) { $0.hotkeyCalls }

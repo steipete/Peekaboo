@@ -151,6 +151,7 @@ struct DragCommandTests {
 
     @Test
     func `Drag from element to coordinates scenario`() async throws {
+        let snapshotId = "test-snapshot"
         let element = DetectedElement(
             id: "B1",
             type: .button,
@@ -161,16 +162,27 @@ struct DragCommandTests {
             "drag",
             "--from", "B1",
             "--to-coords", "500,500",
-            "--snapshot", "test-snapshot",
+            "--snapshot", snapshotId,
             "--json",
             "--no-auto-focus",
         ]
-        let (result, context) = try await self.runDragCommandWithContext(arguments) { automation, _ in
-            automation.setWaitForElementResult(
+
+        let context = await self.makeAutomationContext()
+        let detection = ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: "/tmp/screenshot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0, elementCount: 1, method: "stub")
+        )
+        try await context.snapshots.storeDetectionResult(snapshotId: snapshotId, result: detection)
+        await MainActor.run {
+            context.automation.setWaitForElementResult(
                 WaitForElementResult(found: true, element: element, waitTime: 0.05),
                 for: .elementId("B1")
             )
         }
+        let result = try await InProcessCommandRunner.run(arguments, services: context.services)
+
         #expect(result.exitStatus == 0)
         let dragCalls = await self.automationState(context) { $0.dragCalls }
         let call = try #require(dragCalls.first)

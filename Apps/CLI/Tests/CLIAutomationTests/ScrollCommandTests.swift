@@ -36,14 +36,20 @@ struct ScrollCommandTests {
 
     @Test
     func `Scroll forwards parameters to automation service`() async throws {
+        let snapshotId = "snapshot-42"
         let context = await self.makeContext()
+        try await context.snapshots.storeDetectionResult(
+            snapshotId: snapshotId,
+            result: Self.detectionResult(snapshotId: snapshotId, element: Self.buttonElement(id: "B1"))
+        )
+
         let result = try await self.runScroll(
             arguments: [
                 "--direction", "down",
                 "--amount", "5",
                 "--delay", "10",
                 "--smooth",
-                "--snapshot", "snapshot-42",
+                "--snapshot", snapshotId,
                 "--on", "B1",
                 "--json",
             ],
