@@ -5,15 +5,17 @@ All notable changes to Peekaboo CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.1.0] - Unreleased
 
 ### Added
-- `peekaboo agent --model` now understands the GPT-5.1 identifiers and defaults to `gpt-5.1`, matching the latest OpenAI release while keeping backward-compatible aliases for GPT-5 and GPT-4o inputs.
+- `peekaboo agent --model` now understands GPT-5.5 and Claude Opus 4.7 identifiers, defaults to `gpt-5.5`, and rejects old GPT/Claude model families.
+- Automation-oriented CLI commands now auto-start a warm Peekaboo daemon, reuse it across bursty invocations, and let it exit after an idle timeout.
+- Bridge protocol 1.5 adds a daemon-side desktop observation operation so screenshot and `see` flows can execute fully in the warm daemon while returning compact metadata.
 
 ### Fixed
 - MCP stdio servers now default to the local runtime instead of probing an existing Bridge host, avoiding recursive capture timeouts for `see` and `image` tool calls.
 - MCP `image` now returns an `isError: true` tool result when Screen Recording permission is missing instead of surfacing an internal server error.
-- MCP `analyze` now honors configured AI providers and per-call `provider_config` models instead of hardcoding OpenAI GPT-5.1.
+- MCP `analyze` now honors configured AI providers and per-call `provider_config` models instead of hardcoding an OpenAI model.
 - Peekaboo.app now signs with the AppleEvents automation entitlement so macOS can prompt for Automation permission.
 - The CLI bundle metadata and bundled Homebrew formula now advertise the macOS 15 minimum that the SwiftPM package already requires.
 - `peekaboo see --annotate` now aligns labels using captured window bounds instead of guessing from the first detected element.
@@ -26,11 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Natural-language automation examples now use `peekaboo agent "..."`.
 
 ### Performance
-- `peekaboo tools` and read-only `peekaboo list` inventory commands now default to local execution instead of probing bridge sockets first, shaving roughly 30-35ms from warm catalog/window-list calls when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.
+- `peekaboo see`, `image`, UI interaction, window, menu, dock, dialog, and app commands now prefer the warm on-demand daemon by default, avoiding repeated service startup cost across command bursts.
+- `peekaboo tools`, `peekaboo list apps`, `peekaboo app list`, and purely local metadata commands still avoid daemon startup. Pass `--bridge-socket` to target a Bridge host explicitly where supported.
+- Daemon-backed screenshot and `see` calls now write screenshot artifacts in the daemon and avoid sending image bytes through Bridge JSON, preventing large-payload timeouts and making warm calls substantially faster.
+- Capture engine `auto` now tries the CoreGraphics path before ScreenCaptureKit, which makes repeated screenshot calls faster locally and avoids observed ScreenCaptureKit continuation hangs; explicit `--capture-engine modern` still forces ScreenCaptureKit.
 - `peekaboo image --app` avoids redundant application/window-count lookups during screenshot setup and skips auto-focus work when the target app is already frontmost.
 - `peekaboo image --app` now uses a CoreGraphics-only window selection fast path before falling back to full AX-enriched window enumeration, reducing warm Playground screenshot capture from about 350ms to 290ms.
-- `peekaboo image` now defaults to local capture instead of probing bridge sockets first, reducing default warm app screenshot calls from about 330ms to 290ms when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.
-- `peekaboo see` now defaults to local execution instead of probing bridge sockets first, cutting warm Playground screenshot-plus-AX calls from about 844ms to 759ms when no bridge is in use. Pass `--bridge-socket` to target a bridge explicitly.
 - `peekaboo image` skips a redundant CLI-side screen-recording preflight and relies on the capture service's permission check, shaving about 8ms from warm one-shot app screenshots.
 - `peekaboo see --app` avoids re-focusing the target window when Accessibility already reports the captured window as focused.
 - `peekaboo see` avoids recursive AX child-text lookups for elements whose labels cannot use them, reducing Playground element detection from about 201ms to 134ms in local testing.

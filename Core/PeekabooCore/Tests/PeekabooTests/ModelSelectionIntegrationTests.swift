@@ -11,8 +11,8 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func `Agent service model parameter handling`() async throws {
         let testCases: [LanguageModel] = [
-            .openai(.gpt51),
-            .anthropic(.sonnet45),
+            .openai(.gpt55),
+            .anthropic(.opus47),
         ]
 
         for expectedModel in testCases {
@@ -42,7 +42,7 @@ struct ModelSelectionIntegrationTests {
     func `Nil model handling in full pipeline`() async throws {
         // When nil is passed to agent service, it should use default
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.anthropic(.sonnet45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -67,8 +67,8 @@ struct ModelSelectionIntegrationTests {
     @MainActor
     func `Model descriptions are consistent`() async throws {
         let testModels: [LanguageModel] = [
-            .openai(.gpt51),
-            .anthropic(.sonnet45),
+            .openai(.gpt55),
+            .anthropic(.opus47),
         ]
 
         let mockServices = PeekabooServices()
@@ -101,13 +101,13 @@ struct ModelSelectionIntegrationTests {
     func `Model parameter precedence over default`() async throws {
         // Set up agent service with a specific default
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.anthropic(.sonnet45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
         // Use a different model than the default
-        let overrideModel = LanguageModel.openai(.gpt51)
+        let overrideModel = LanguageModel.openai(.gpt55)
         #expect(overrideModel.description != defaultModel.description)
 
         do {
@@ -134,7 +134,7 @@ struct ModelSelectionIntegrationTests {
         let mockServices = PeekabooServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let testModel = LanguageModel.anthropic(.sonnet45)
+        let testModel = LanguageModel.anthropic(.opus47)
 
         // Test both streaming and non-streaming paths use the same model
         let eventDelegate = MockEventDelegate()
@@ -186,12 +186,12 @@ struct ModelSelectionRegressionTests {
         // with sessionId and model parameters was ignoring the model parameter
 
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.anthropic(.sonnet45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
         #expect(customModel.description != defaultModel.description)
 
         do {
@@ -219,12 +219,12 @@ struct ModelSelectionRegressionTests {
         // was using self.defaultLanguageModel instead of the passed model parameter
 
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.anthropic(.sonnet45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
 
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
         let eventDelegate = MockEventDelegate()
 
         do {
@@ -251,7 +251,7 @@ struct ModelSelectionRegressionTests {
         // Test that both streaming and non-streaming paths handle nil models correctly
 
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.anthropic(.sonnet45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)

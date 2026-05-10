@@ -32,7 +32,7 @@ public struct AnalyzeTool: MCPTool {
         { "image_path": "/tmp/chart.png", "question": "Which category has the highest value in this bar chart?" }
         The AI will analyze the image and attempt to answer your question based on its visual content.
 
-        \(PeekabooMCPVersion.banner) using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        \(PeekabooMCPVersion.banner) using openai/gpt-5.5, anthropic/claude-opus-4-7
         """
     }
 
@@ -176,13 +176,19 @@ public struct AnalyzeTool: MCPTool {
 
         switch provider {
         case "openai":
-            guard let model else { return .openai(.gpt51) }
+            guard let model else { return .openai(.gpt55) }
+            if Self.isUnsupportedLegacyModel(provider: provider, model: model) {
+                throw PeekabooError.invalidInput("Unsupported OpenAI model: \(model)")
+            }
             if let parsed = LanguageModel.parse(from: model), case .openai = parsed {
                 return parsed
             }
             return .openai(.custom(model))
         case "anthropic":
-            guard let model else { return .anthropic(.opus45) }
+            guard let model else { return .anthropic(.opus47) }
+            if Self.isUnsupportedLegacyModel(provider: provider, model: model) {
+                throw PeekabooError.invalidInput("Unsupported Anthropic model: \(model)")
+            }
             if let parsed = LanguageModel.parse(from: model), case .anthropic = parsed {
                 return parsed
             }
@@ -199,6 +205,25 @@ public struct AnalyzeTool: MCPTool {
         default:
             throw PeekabooError.invalidInput("Unknown provider type: \(provider)")
         }
+    }
+
+    private static func isUnsupportedLegacyModel(provider: String, model: String) -> Bool {
+        let normalized = model.lowercased()
+        let compact = normalized.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: ".", with: "")
+
+        if provider == "openai",
+           normalized.hasPrefix("gpt-4") || compact.hasPrefix("gpt4") ||
+           normalized.hasPrefix("gpt-3") || compact.hasPrefix("gpt3") ||
+           normalized.hasPrefix("o3") || normalized.hasPrefix("o4")
+        {
+            return true
+        }
+
+        if provider == "anthropic", normalized.hasPrefix("claude-3") || compact.hasPrefix("claude3") {
+            return true
+        }
+
+        return false
     }
 }
 

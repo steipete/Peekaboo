@@ -3,6 +3,7 @@
 //  PeekabooCLI
 //
 
+import Darwin
 import Foundation
 import PeekabooAutomation
 import PeekabooAutomationKit
@@ -33,10 +34,31 @@ struct CommandRuntimeOptions {
             inputStrategy: self.inputStrategy
         )
     }
+
+    func applyingEnvironmentOverrides(environment: [String: String]) -> CommandRuntimeOptions {
+        var options = self
+        if options.captureEnginePreference == nil,
+           let captureEngine = Self.captureEnginePreference(environment: environment) {
+            options.captureEnginePreference = captureEngine
+            options.preferRemote = false
+        }
+        return options
+    }
+
+    static func captureEnginePreference(environment: [String: String]) -> String? {
+        guard let value = environment["PEEKABOO_CAPTURE_ENGINE"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !value.isEmpty else {
+            return nil
+        }
+        return value
+    }
 }
 
 /// Runtime context passed to runtime-aware commands.
 struct CommandRuntime {
+    static let defaultDaemonIdleTimeoutSeconds: TimeInterval = 300
+
     @TaskLocal
     private static var serviceOverride: PeekabooServices?
 
@@ -114,8 +136,9 @@ struct CommandRuntime {
 extension CommandRuntime {
     @MainActor
     static func makeDefault(options: CommandRuntimeOptions) -> CommandRuntime {
-        let services = self.serviceOverride ?? self.makeLocalServices(options: options)
-        return CommandRuntime(configuration: options.makeConfiguration(), services: services)
+        let effectiveOptions = options.applyingEnvironmentOverrides(environment: ProcessInfo.processInfo.environment)
+        let services = self.serviceOverride ?? self.makeLocalServices(options: effectiveOptions)
+        return CommandRuntime(configuration: effectiveOptions.makeConfiguration(), services: services)
     }
 
     @MainActor
@@ -125,13 +148,14 @@ extension CommandRuntime {
 
     @MainActor
     static func makeDefaultAsync(options: CommandRuntimeOptions) async -> CommandRuntime {
+        let effectiveOptions = options.applyingEnvironmentOverrides(environment: ProcessInfo.processInfo.environment)
         if let override = self.serviceOverride {
-            return CommandRuntime(options: options, services: override)
+            return CommandRuntime(options: effectiveOptions, services: override)
         }
 
-        let resolution = await self.resolveServices(options: options)
+        let resolution = await self.resolveServices(options: effectiveOptions)
         return CommandRuntime(
-            configuration: options.makeConfiguration(),
+            configuration: effectiveOptions.makeConfiguration(),
             services: resolution.services,
             hostDescription: resolution.hostDescription
         )
@@ -170,14 +194,11 @@ extension CommandRuntime {
 
         let explicitSocket = self.explicitBridgeSocket(options: options, environment: environment)
 
+        let daemonSocketPath = self.daemonSocketPath(environment: environment)
         let candidates: [String] = if let explicitSocket, !explicitSocket.isEmpty {
             [explicitSocket]
         } else {
-            [
-                PeekabooBridgeConstants.peekabooSocketPath,
-                PeekabooBridgeConstants.claudeSocketPath,
-                PeekabooBridgeConstants.clawdbotSocketPath,
-            ]
+            [daemonSocketPath]
         }
 
         let identity = PeekabooBridgeClientIdentity(
@@ -197,9 +218,9 @@ extension CommandRuntime {
 
         if options.autoStartDaemon,
            self.shouldAutoStartDaemon(options: options, environment: environment),
-           await self.startOnDemandDaemon(socketPath: PeekabooBridgeConstants.peekabooSocketPath),
+           await self.startOnDemandDaemon(socketPath: daemonSocketPath, environment: environment),
            let resolved = await self.resolveRemoteServices(
-               candidates: [PeekabooBridgeConstants.peekabooSocketPath],
+               candidates: [daemonSocketPath],
                identity: identity,
                options: options
            ) {
@@ -254,7 +275,8 @@ extension CommandRuntime {
                             supportsPostEventPermissionRequest: self.supportsPostEventPermissionRequest(
                                 for: handshake
                             ),
-                            supportsElementActions: self.supportsElementActions(for: handshake)
+                            supportsElementActions: self.supportsElementActions(for: handshake),
+                            supportsDesktopObservation: self.supportsDesktopObservation(for: handshake)
                         ),
                         hostDescription: hostDescription
                     )
@@ -266,11 +288,61 @@ extension CommandRuntime {
         return nil
     }
 
-    private static func startOnDemandDaemon(socketPath: String) async -> Bool {
+    static func daemonSocketPath(environment: [String: String]) -> String {
+        if let socket = environment["PEEKABOO_DAEMON_SOCKET"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !socket.isEmpty {
+            return socket
+        }
+        return PeekabooBridgeConstants.peekabooSocketPath
+    }
+
+    static func daemonIdleTimeoutSeconds(environment: [String: String]) -> TimeInterval {
+        guard let raw = environment["PEEKABOO_DAEMON_IDLE_TIMEOUT_SECONDS"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            let value = TimeInterval(raw),
+            value > 0 else {
+            return self.defaultDaemonIdleTimeoutSeconds
+        }
+        return value
+    }
+
+    static func onDemandDaemonArguments(socketPath: String, idleTimeoutSeconds: TimeInterval) -> [String] {
+        [
+            "daemon",
+            "run",
+            "--mode",
+            "auto",
+            "--bridge-socket",
+            socketPath,
+            "--idle-timeout-seconds",
+            String(format: "%.3f", idleTimeoutSeconds),
+        ]
+    }
+
+    private static func startOnDemandDaemon(socketPath: String, environment: [String: String]) async -> Bool {
+        let client = DaemonControlClient(socketPath: socketPath)
+        let lockHandle = DaemonPaths.openDaemonStartupLock()
+        if let fileDescriptor = lockHandle?.fileDescriptor {
+            flock(fileDescriptor, LOCK_EX)
+        }
+        defer {
+            if let fileDescriptor = lockHandle?.fileDescriptor {
+                flock(fileDescriptor, LOCK_UN)
+            }
+            try? lockHandle?.close()
+        }
+
+        if await client.fetchStatus() != nil {
+            return true
+        }
+
         let executable = CommandLine.arguments.first ?? "/usr/local/bin/peekaboo"
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = ["daemon", "run", "--mode", "manual", "--bridge-socket", socketPath]
+        process.arguments = self.onDemandDaemonArguments(
+            socketPath: socketPath,
+            idleTimeoutSeconds: self.daemonIdleTimeoutSeconds(environment: environment)
+        )
         let logHandle = DaemonPaths.openDaemonLogForAppend() ?? FileHandle.nullDevice
         process.standardOutput = logHandle
         process.standardError = logHandle
@@ -283,7 +355,6 @@ extension CommandRuntime {
         }
 
         let deadline = Date().addingTimeInterval(3)
-        let client = DaemonControlClient(socketPath: socketPath)
         while Date() < deadline {
             if await client.fetchStatus() != nil {
                 return true
@@ -368,6 +439,11 @@ extension CommandRuntime {
         handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 3) &&
             handshake.supportedOperations.contains(.setValue) &&
             handshake.supportedOperations.contains(.performAction)
+    }
+
+    static func supportsDesktopObservation(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 5) &&
+            handshake.supportedOperations.contains(.desktopObservation)
     }
 
     static func supportsPostEventPermissionRequest(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {

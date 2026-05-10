@@ -37,6 +37,48 @@ struct CommanderBinderTests {
     }
 
     @Test
+    func `Runtime options map capture engine option and force local mode`() throws {
+        let parsed = ParsedValues(positional: [], options: ["captureEngine": ["cg"]], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ImageCommand.self)
+        #expect(options.captureEnginePreference == "cg")
+        #expect(options.preferRemote == false)
+    }
+
+    @Test
+    func `Capture engine environment override forces local mode`() {
+        let options = CommandRuntimeOptions().applyingEnvironmentOverrides(environment: [
+            "PEEKABOO_CAPTURE_ENGINE": " modern ",
+        ])
+
+        #expect(options.captureEnginePreference == "modern")
+        #expect(options.preferRemote == false)
+    }
+
+    @Test
+    func `Blank capture engine environment override is ignored`() {
+        let options = CommandRuntimeOptions().applyingEnvironmentOverrides(environment: [
+            "PEEKABOO_CAPTURE_ENGINE": " ",
+        ])
+
+        #expect(options.captureEnginePreference == nil)
+        #expect(options.preferRemote == true)
+    }
+
+    @Test
+    func `CLI capture engine preference takes precedence over environment`() {
+        var base = CommandRuntimeOptions()
+        base.captureEnginePreference = "cg"
+        base.preferRemote = false
+
+        let options = base.applyingEnvironmentOverrides(environment: [
+            "PEEKABOO_CAPTURE_ENGINE": "modern",
+        ])
+
+        #expect(options.captureEnginePreference == "cg")
+        #expect(options.preferRemote == false)
+    }
+
+    @Test
     func `Input strategy environment overrides force local runtime`() {
         #expect(CommandRuntime.hasInputStrategyEnvironmentOverride(environment: [
             "PEEKABOO_INPUT_STRATEGY": "synthOnly",
@@ -174,24 +216,34 @@ struct CommanderBinderTests {
     }
 
     @Test
-    func `Non-agent runtime keeps remote host mode by default`() throws {
+    func `Automation runtime keeps remote daemon mode by default`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
-        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SleepCommand.self)
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SeeCommand.self)
         #expect(options.preferRemote == true)
     }
 
     @Test
-    func `Image runtime defaults to local host mode`() throws {
+    func `Pure local runtime commands do not auto start daemon`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
-        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ImageCommand.self)
-        #expect(options.preferRemote == false)
+        let sleepOptions = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SleepCommand.self)
+        let toolsOptions = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ToolsCommand.self)
+
+        #expect(sleepOptions.preferRemote == false)
+        #expect(toolsOptions.preferRemote == false)
     }
 
     @Test
-    func `See runtime defaults to local host mode`() throws {
+    func `Image runtime defaults to daemon host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: ImageCommand.self)
+        #expect(options.preferRemote == true)
+    }
+
+    @Test
+    func `See runtime defaults to daemon host mode`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: SeeCommand.self)
-        #expect(options.preferRemote == false)
+        #expect(options.preferRemote == true)
     }
 
     @Test
@@ -208,19 +260,41 @@ struct CommanderBinderTests {
     }
 
     @Test
-    func `List inventory runtimes default to local host mode`() throws {
+    func `Cheap list inventory runtimes default to local host mode`() throws {
         let parsed = ParsedValues(positional: [], options: [:], flags: [])
         let commandTypes: [any ParsableCommand.Type] = [
             ListCommand.AppsSubcommand.self,
-            ListCommand.WindowsSubcommand.self,
-            ListCommand.MenuBarSubcommand.self,
-            ListCommand.ScreensSubcommand.self,
+            AppCommand.ListSubcommand.self,
         ]
 
         for commandType in commandTypes {
             let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: commandType)
             #expect(options.preferRemote == false)
         }
+    }
+
+    @Test
+    func `Stateful list inventory runtimes default to daemon host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let commandTypes: [any ParsableCommand.Type] = [
+            ListCommand.WindowsSubcommand.self,
+            ListCommand.MenuBarSubcommand.self,
+        ]
+
+        for commandType in commandTypes {
+            let options = try CommanderCLIBinder.makeRuntimeOptions(from: parsed, commandType: commandType)
+            #expect(options.preferRemote == true)
+        }
+    }
+
+    @Test
+    func `List screens runtime defaults to local host mode`() throws {
+        let parsed = ParsedValues(positional: [], options: [:], flags: [])
+        let options = try CommanderCLIBinder.makeRuntimeOptions(
+            from: parsed,
+            commandType: ListCommand.ScreensSubcommand.self
+        )
+        #expect(options.preferRemote == false)
     }
 
     @Test

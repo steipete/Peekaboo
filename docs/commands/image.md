@@ -32,6 +32,8 @@ If you need a longer-running, change-aware capture (idle/active FPS, contact she
 ## Implementation notes
 - Special `--app menubar` captures just the status-bar strip, while `--app frontmost` triggers a targeted foreground grab without needing bundle info.
 - Window, screen, menu bar, and area captures build desktop observation requests so target resolution, scale metadata, diagnostics, and file output follow the shared pipeline.
+- When the on-demand daemon supports Bridge protocol 1.5, the desktop observation request runs inside the warm daemon and the CLI receives file paths plus metadata instead of large screenshot bytes.
+- In `auto` engine mode, screenshots try the CoreGraphics path first for lower one-shot latency and fall back to ScreenCaptureKit when needed. Use `--capture-engine modern` for explicit ScreenCaptureKit checks.
 - Multi-screen runs enumerate `services.screens.listScreens()` and save each display sequentially; filenames include the display index (`screen0`, `screen1`, …) so automated diffing scripts can glob reliably.
 - Saved metadata (label, bundle, window index) is embedded in the `SavedFile` records that print to stdout/JSON, which means follow-up tooling can decide which attachment represents which surface without parsing filenames.
 - Area captures use `--region x,y,width,height` and are clamped/validated by the shared capture service against the containing display.

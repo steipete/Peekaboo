@@ -95,14 +95,14 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         }
 
         return Self.postProcess(
-            apis: [.modern, .legacy],
+            apis: [.legacy, .modern],
             environment: environment)
     }
 
     private static func resolveValue(_ value: String) -> [ScreenCaptureAPI] {
         switch value {
         case "auto":
-            [.modern, .legacy]
+            [.legacy, .modern]
         case "modern", "modern-only", "sckit", "sc", "screen-capture-kit", "sck":
             [.modern]
         case "classic", "cg", "legacy", "legacy-only", "false", "0", "no":
@@ -110,7 +110,7 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
         case "true", "1", "yes":
             [.modern, .legacy]
         default:
-            [.modern, .legacy]
+            [.legacy, .modern]
         }
     }
 
@@ -303,8 +303,7 @@ struct NullScreenCaptureMetricsObserver: ScreenCaptureMetricsObserving {
     }
 
     private func shouldFallback(after _: any Error, api: ScreenCaptureAPI, hasFallback: Bool) -> Bool {
-        guard hasFallback, api == .modern else { return false }
-        return true
+        hasFallback
     }
 }
 

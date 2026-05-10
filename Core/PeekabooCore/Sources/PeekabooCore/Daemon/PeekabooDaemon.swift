@@ -16,6 +16,7 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
         public let windowPollInterval: TimeInterval
         public let hostKind: PeekabooBridgeHostKind
         public let exitOnStop: Bool
+        public let idleTimeout: TimeInterval?
 
         public init(
             mode: PeekabooDaemonMode,
@@ -26,7 +27,8 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             windowTrackingEnabled: Bool = true,
             windowPollInterval: TimeInterval = 1.0,
             hostKind: PeekabooBridgeHostKind,
-            exitOnStop: Bool = false)
+            exitOnStop: Bool = false,
+            idleTimeout: TimeInterval? = nil)
         {
             self.mode = mode
             self.bridgeSocketPath = bridgeSocketPath
@@ -37,6 +39,22 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             self.windowPollInterval = windowPollInterval
             self.hostKind = hostKind
             self.exitOnStop = exitOnStop
+            self.idleTimeout = idleTimeout
+        }
+
+        public static func auto(
+            bridgeSocketPath: String = PeekabooBridgeConstants.peekabooSocketPath,
+            windowPollInterval: TimeInterval = 1.0,
+            idleTimeout: TimeInterval = 300) -> Configuration
+        {
+            Configuration(
+                mode: .auto,
+                bridgeSocketPath: bridgeSocketPath,
+                allowlistedTeams: [],
+                windowTrackingEnabled: true,
+                windowPollInterval: windowPollInterval,
+                hostKind: .onDemand,
+                idleTimeout: idleTimeout)
         }
 
         public static func manual(
@@ -75,6 +93,9 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
     private var windowTracker: WindowTrackerService?
     private var stopContinuation: CheckedContinuation<Void, Never>?
     private var isStopping = false
+    private var activeRequestCount = 0
+    private var lastActivityAt: Date?
+    private var idleShutdownTask: Task<Void, Never>?
 
     public init(configuration: Configuration) {
         self.configuration = configuration
@@ -106,6 +127,8 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
         }
 
         self.logger.info("Peekaboo daemon started mode=\(self.configuration.mode.rawValue)")
+        self.lastActivityAt = Date()
+        self.scheduleIdleShutdownIfNeeded()
     }
 
     public func runUntilStop() async {
@@ -144,7 +167,8 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             permissions: permissions,
             snapshots: snapshots,
             windowTracker: windowStatus,
-            browser: try? self.services.browserStatus(channel: nil))
+            browser: try? self.services.browserStatus(channel: nil),
+            activity: self.activityStatus(now: Date()))
     }
 
     public func requestStop() async -> Bool {
@@ -161,7 +185,26 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
         return true
     }
 
+    public func recordActivityStart(operation: PeekabooBridgeOperation) async {
+        guard !self.isStopping else { return }
+        self.activeRequestCount += 1
+        self.lastActivityAt = Date()
+        self.idleShutdownTask?.cancel()
+        self.idleShutdownTask = nil
+        self.logger.debug("daemon activity started op=\(operation.rawValue)")
+    }
+
+    public func recordActivityEnd(operation: PeekabooBridgeOperation) async {
+        guard !self.isStopping else { return }
+        self.activeRequestCount = max(0, self.activeRequestCount - 1)
+        self.lastActivityAt = Date()
+        self.logger.debug("daemon activity ended op=\(operation.rawValue)")
+        self.scheduleIdleShutdownIfNeeded()
+    }
+
     private func shutdown() async {
+        self.idleShutdownTask?.cancel()
+        self.idleShutdownTask = nil
         await self.services.browser.disconnect()
 
         self.windowTracker?.stop()
@@ -183,5 +226,60 @@ public final class PeekabooDaemon: PeekabooDaemonControlProviding {
             snapshotCount: list.count,
             lastAccessedAt: lastAccessed,
             storagePath: self.services.snapshots.getSnapshotStoragePath())
+    }
+
+    private func activityStatus(now: Date) -> PeekabooDaemonActivityStatus {
+        let idleExitAt = self.idleExitDate(now: now)
+        return PeekabooDaemonActivityStatus(
+            activeRequests: self.activeRequestCount,
+            lastActivityAt: self.lastActivityAt,
+            idleTimeoutSeconds: self.configuration.idleTimeout,
+            idleExitAt: idleExitAt)
+    }
+
+    private func idleExitDate(now: Date) -> Date? {
+        guard let idleTimeout = self.configuration.idleTimeout,
+              self.activeRequestCount == 0,
+              let lastActivityAt = self.lastActivityAt
+        else {
+            return nil
+        }
+
+        let deadline = lastActivityAt.addingTimeInterval(idleTimeout)
+        return deadline > now ? deadline : now
+    }
+
+    private func scheduleIdleShutdownIfNeeded() {
+        guard !self.isStopping,
+              self.activeRequestCount == 0,
+              let idleTimeout = self.configuration.idleTimeout,
+              idleTimeout > 0
+        else {
+            return
+        }
+
+        self.idleShutdownTask?.cancel()
+        let lastActivityAt = self.lastActivityAt ?? Date()
+        let remaining = max(0.05, lastActivityAt.addingTimeInterval(idleTimeout).timeIntervalSinceNow)
+        self.idleShutdownTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            await self?.stopIfIdleTimedOut()
+        }
+    }
+
+    private func stopIfIdleTimedOut() async {
+        guard !self.isStopping,
+              self.activeRequestCount == 0,
+              let idleTimeout = self.configuration.idleTimeout,
+              let lastActivityAt = self.lastActivityAt,
+              Date().timeIntervalSince(lastActivityAt) >= idleTimeout
+        else {
+            self.scheduleIdleShutdownIfNeeded()
+            return
+        }
+
+        self.idleShutdownTask = nil
+        self.logger.info("Peekaboo daemon idle timeout reached; stopping")
+        _ = await self.requestStop()
     }
 }

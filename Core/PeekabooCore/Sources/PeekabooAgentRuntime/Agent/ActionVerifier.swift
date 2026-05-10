@@ -27,7 +27,7 @@ public final class ActionVerifier {
 
     public init(
         smartCapture: SmartCaptureService,
-        verificationModel: LanguageModel = .openai(.gpt4oMini))
+        verificationModel: LanguageModel = .openai(.gpt55))
     {
         self.smartCapture = smartCapture
         self.verificationModel = verificationModel

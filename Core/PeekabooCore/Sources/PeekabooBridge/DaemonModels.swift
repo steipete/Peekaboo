@@ -3,8 +3,28 @@ import PeekabooAutomationKit
 import PeekabooFoundation
 
 public enum PeekabooDaemonMode: String, Codable, Sendable {
+    case auto
     case manual
     case mcp
+}
+
+public struct PeekabooDaemonActivityStatus: Codable, Sendable {
+    public let activeRequests: Int
+    public let lastActivityAt: Date?
+    public let idleTimeoutSeconds: Double?
+    public let idleExitAt: Date?
+
+    public init(
+        activeRequests: Int,
+        lastActivityAt: Date?,
+        idleTimeoutSeconds: Double?,
+        idleExitAt: Date?)
+    {
+        self.activeRequests = activeRequests
+        self.lastActivityAt = lastActivityAt
+        self.idleTimeoutSeconds = idleTimeoutSeconds
+        self.idleExitAt = idleExitAt
+    }
 }
 
 public struct PeekabooDaemonBridgeStatus: Codable, Sendable {
@@ -74,6 +94,7 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
     public let snapshots: PeekabooDaemonSnapshotStatus?
     public let windowTracker: PeekabooDaemonWindowTrackerStatus?
     public let browser: PeekabooBridgeBrowserStatus?
+    public let activity: PeekabooDaemonActivityStatus?
 
     public init(
         running: Bool,
@@ -84,7 +105,8 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
         permissions: PermissionsStatus? = nil,
         snapshots: PeekabooDaemonSnapshotStatus? = nil,
         windowTracker: PeekabooDaemonWindowTrackerStatus? = nil,
-        browser: PeekabooBridgeBrowserStatus? = nil)
+        browser: PeekabooBridgeBrowserStatus? = nil,
+        activity: PeekabooDaemonActivityStatus? = nil)
     {
         self.running = running
         self.pid = pid
@@ -95,6 +117,7 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
         self.snapshots = snapshots
         self.windowTracker = windowTracker
         self.browser = browser
+        self.activity = activity
     }
 }
 
@@ -102,4 +125,12 @@ public struct PeekabooDaemonStatus: Codable, Sendable {
 public protocol PeekabooDaemonControlProviding: AnyObject, Sendable {
     func daemonStatus() async -> PeekabooDaemonStatus
     func requestStop() async -> Bool
+    func recordActivityStart(operation: PeekabooBridgeOperation) async
+    func recordActivityEnd(operation: PeekabooBridgeOperation) async
+}
+
+@MainActor
+extension PeekabooDaemonControlProviding {
+    public func recordActivityStart(operation _: PeekabooBridgeOperation) async {}
+    public func recordActivityEnd(operation _: PeekabooBridgeOperation) async {}
 }

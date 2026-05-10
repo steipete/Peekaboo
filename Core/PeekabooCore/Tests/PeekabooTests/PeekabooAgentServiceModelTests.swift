@@ -18,8 +18,8 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        // Should default to Claude Opus 4.5
-        #expect(agentService.defaultModel == LanguageModel.anthropic(.opus45).description)
+        // Should default to Claude Opus 4.7
+        #expect(agentService.defaultModel == LanguageModel.anthropic(.opus47).description)
     }
 
     @Test
@@ -28,7 +28,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let settings = agentService.generationSettings(for: .anthropic(.opus45))
+        let settings = agentService.generationSettings(for: .anthropic(.opus47))
         let thinking = settings.providerOptions.anthropic?.thinking
 
         switch thinking {
@@ -43,7 +43,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func `Custom default model initialization`() throws {
         let mockServices = self.makeServices()
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: customModel)
@@ -55,7 +55,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func `Model parameter precedence in executeTask`() async throws {
         let mockServices = self.makeServices()
-        let defaultModel = LanguageModel.anthropic(.opus45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -64,7 +64,7 @@ struct PeekabooAgentServiceTests {
         let eventDelegate = MockEventDelegate()
 
         // Test with custom model parameter
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
 
         // This would normally make an API call, but we're testing the model selection logic
         // In a real test, we'd mock the network layer
@@ -89,7 +89,7 @@ struct PeekabooAgentServiceTests {
     @MainActor
     func `Model parameter falls back to default when nil`() async throws {
         let mockServices = self.makeServices()
-        let defaultModel = LanguageModel.anthropic(.opus45)
+        let defaultModel = LanguageModel.anthropic(.opus47)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -120,7 +120,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
         _ = MockEventDelegate()
 
         // Test streaming execution with custom model
@@ -146,7 +146,7 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.opus45)
+        let customModel = LanguageModel.anthropic(.opus47)
 
         // Test resume session with custom model
         do {
@@ -168,17 +168,17 @@ struct PeekabooAgentServiceTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(
             services: mockServices,
-            defaultModel: .anthropic(.opus45))
+            defaultModel: .anthropic(.opus47))
 
         let result = try await agentService.executeTask(
             "describe state",
             maxSteps: 1,
             sessionId: nil,
-            model: .openai(.gpt51),
+            model: .openai(.gpt55),
             dryRun: true,
             eventDelegate: nil)
 
-        #expect(result.metadata.modelName == LanguageModel.openai(.gpt51).description)
+        #expect(result.metadata.modelName == LanguageModel.openai(.gpt55).description)
         #expect(result.content.contains("Dry run"))
     }
 }
@@ -209,7 +209,7 @@ struct ModelSelectionExecutionPathTests {
         // Test that the internal executeWithStreaming method would use the provided model
         // This is tested indirectly through the public API since executeWithStreaming is private
 
-        let customModel = LanguageModel.openai(.gpt51)
+        let customModel = LanguageModel.openai(.gpt55)
         let eventDelegate = MockEventDelegate()
 
         do {
@@ -234,7 +234,7 @@ struct ModelSelectionExecutionPathTests {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
-        let customModel = LanguageModel.anthropic(.opus45)
+        let customModel = LanguageModel.anthropic(.opus47)
 
         do {
             // No event delegate means non-streaming path
@@ -259,8 +259,8 @@ struct ModelSelectionExecutionPathTests {
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let models: [LanguageModel] = [
-            .openai(.gpt51),
-            .anthropic(.opus45),
+            .openai(.gpt55),
+            .anthropic(.opus47),
         ]
 
         for model in models {
@@ -287,7 +287,7 @@ struct ModelSelectionEdgeCasesTests {
     @MainActor
     func `Dry run execution respects model parameter`() async throws {
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.openai(.gpt51)
+        let defaultModel = LanguageModel.openai(.gpt55)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)
@@ -308,7 +308,7 @@ struct ModelSelectionEdgeCasesTests {
     @MainActor
     func `Audio task execution model handling`() async throws {
         let mockServices = PeekabooServices()
-        let defaultModel = LanguageModel.openai(.gpt51)
+        let defaultModel = LanguageModel.openai(.gpt55)
         let agentService = try PeekabooAgentService(
             services: mockServices,
             defaultModel: defaultModel)

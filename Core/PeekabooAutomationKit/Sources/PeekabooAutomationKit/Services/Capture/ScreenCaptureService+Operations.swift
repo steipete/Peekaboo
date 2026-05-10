@@ -68,8 +68,8 @@ extension ScreenCaptureService {
             // Permission probing may call ScreenCaptureKit on CLI builds where
             // CGPreflightScreenCaptureAccess is unreliable; keep that probe in
             // the same cross-process transaction as the capture itself.
-            let shouldProbePermission = requiresPermission &&
-                !(operation == .area && Self.captureEnginePreference == .legacy)
+            let captureAPIs = self.fallbackRunner.apis(for: Self.captureEnginePreference)
+            let shouldProbePermission = requiresPermission && captureAPIs.first != .legacy
             if shouldProbePermission {
                 try await self.permissionGate.requirePermission(logger: self.logger, correlationId: correlationId)
             }

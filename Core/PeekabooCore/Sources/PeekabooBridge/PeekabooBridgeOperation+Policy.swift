@@ -4,7 +4,8 @@ extension PeekabooBridgeOperation {
     /// TCC permissions an operation relies on. Used to gate advertisement/handling.
     public var requiredPermissions: Set<PeekabooBridgePermissionKind> {
         switch self {
-        case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements:
+        case .captureScreen, .captureWindow, .captureFrontmost, .captureArea, .detectElements,
+             .desktopObservation:
             [.screenRecording]
         case .targetedHotkey:
             [.postEvent]
@@ -61,6 +62,7 @@ extension PeekabooBridgeOperation {
         .captureFrontmost,
         .captureArea,
         .detectElements,
+        .desktopObservation,
         .click,
         .type,
         .typeActions,

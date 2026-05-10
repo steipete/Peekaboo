@@ -7,12 +7,12 @@ import Testing
 struct AIProviderParserTests {
     @Test
     func `Parse single provider`() {
-        #expect(AIProviderParser.parse("openai/gpt-4") == AIProviderParser.ProviderConfig(
+        #expect(AIProviderParser.parse("openai/gpt-5.5") == AIProviderParser.ProviderConfig(
             provider: "openai",
-            model: "gpt-4"))
-        #expect(AIProviderParser.parse("anthropic/claude-3") == AIProviderParser.ProviderConfig(
+            model: "gpt-5.5"))
+        #expect(AIProviderParser.parse("anthropic/claude-opus-4-7") == AIProviderParser.ProviderConfig(
             provider: "anthropic",
-            model: "claude-3"))
+            model: "claude-opus-4-7"))
         #expect(AIProviderParser.parse("ollama/llava:latest") == AIProviderParser.ProviderConfig(
             provider: "ollama",
             model: "llava:latest"))
@@ -20,12 +20,12 @@ struct AIProviderParserTests {
 
     @Test
     func `Parse with whitespace`() {
-        #expect(AIProviderParser.parse("  openai/gpt-4  ") == AIProviderParser.ProviderConfig(
+        #expect(AIProviderParser.parse("  openai/gpt-5.5  ") == AIProviderParser.ProviderConfig(
             provider: "openai",
-            model: "gpt-4"))
-        #expect(AIProviderParser.parse("\tanthropic/claude-3\n") == AIProviderParser.ProviderConfig(
+            model: "gpt-5.5"))
+        #expect(AIProviderParser.parse("\tanthropic/claude-opus-4-7\n") == AIProviderParser.ProviderConfig(
             provider: "anthropic",
-            model: "claude-3"))
+            model: "claude-opus-4-7"))
     }
 
     @Test
@@ -35,29 +35,31 @@ struct AIProviderParserTests {
         #expect(AIProviderParser.parse("openai/") == nil)
         #expect(AIProviderParser.parse("") == nil)
         #expect(AIProviderParser.parse("no-slash-here") == nil)
+        #expect(AIProviderParser.parse("openai/gpt-4") == nil)
+        #expect(AIProviderParser.parse("anthropic/claude-3") == nil)
     }
 
     @Test
     func `Parse provider list`() {
-        let providers = AIProviderParser.parseList("openai/gpt-4,anthropic/claude-3,ollama/llava:latest")
+        let providers = AIProviderParser.parseList("openai/gpt-5.5,anthropic/claude-opus-4-7,ollama/llava:latest")
         #expect(providers.count == 3)
-        #expect(providers[0] == AIProviderParser.ProviderConfig(provider: "openai", model: "gpt-4"))
-        #expect(providers[1] == AIProviderParser.ProviderConfig(provider: "anthropic", model: "claude-3"))
+        #expect(providers[0] == AIProviderParser.ProviderConfig(provider: "openai", model: "gpt-5.5"))
+        #expect(providers[1] == AIProviderParser.ProviderConfig(provider: "anthropic", model: "claude-opus-4-7"))
         #expect(providers[2] == AIProviderParser.ProviderConfig(provider: "ollama", model: "llava:latest"))
     }
 
     @Test
     func `Parse list with invalid entries`() {
-        let providers = AIProviderParser.parseList("openai/gpt-4,invalid,anthropic/claude-3,/bad,ollama/")
-        #expect(providers.count == 2)
-        #expect(providers[0] == AIProviderParser.ProviderConfig(provider: "openai", model: "gpt-4"))
-        #expect(providers[1] == AIProviderParser.ProviderConfig(provider: "anthropic", model: "claude-3"))
+        let providers = AIProviderParser.parseList(
+            "openai/gpt-4,invalid,anthropic/claude-3,/bad,ollama/,openai/gpt-5.5")
+        #expect(providers.count == 1)
+        #expect(providers[0] == AIProviderParser.ProviderConfig(provider: "openai", model: "gpt-5.5"))
     }
 
     @Test
     func `Parse first provider`() {
-        #expect(AIProviderParser.parseFirst("openai/gpt-4,anthropic/claude-3")?.provider == "openai")
-        #expect(AIProviderParser.parseFirst("invalid,anthropic/claude-3")?.provider == "anthropic")
+        #expect(AIProviderParser.parseFirst("openai/gpt-5.5,anthropic/claude-opus-4-7")?.provider == "openai")
+        #expect(AIProviderParser.parseFirst("invalid,anthropic/claude-opus-4-7")?.provider == "anthropic")
         #expect(AIProviderParser.parseFirst("invalid,bad,") == nil)
     }
 
@@ -65,35 +67,35 @@ struct AIProviderParserTests {
     func `Determine default model with all providers`() {
         // When all providers are available, should use first one
         let model = AIProviderParser.determineDefaultModel(
-            from: "ollama/llava:latest,openai/gpt-4,anthropic/claude-3",
+            from: "ollama/llava:latest,openai/gpt-5.5,anthropic/claude-opus-4-7",
             hasOpenAI: true,
             hasAnthropic: true,
             hasOllama: false)
-        #expect(model == "gpt-5.1")
+        #expect(model == "gpt-5.5")
     }
 
     @Test
     func `Determine default model with limited providers`() {
         // When only some providers are available
         let model1 = AIProviderParser.determineDefaultModel(
-            from: "openai/gpt-4,ollama/llava:latest,anthropic/claude-3",
+            from: "openai/gpt-5.5,ollama/llava:latest,anthropic/claude-opus-4-7",
             hasOpenAI: false,
             hasAnthropic: true,
             hasOllama: false)
-        #expect(model1 == "claude-sonnet-4.5")
+        #expect(model1 == "claude-opus-4-7")
 
         let model2 = AIProviderParser.determineDefaultModel(
-            from: "openai/gpt-4,anthropic/claude-sonnet-4.5,ollama/llava:latest",
+            from: "openai/gpt-5.5,anthropic/claude-sonnet-4.5,ollama/llava:latest",
             hasOpenAI: false,
             hasAnthropic: true,
             hasOllama: false)
-        #expect(model2 == "claude-sonnet-4.5")
+        #expect(model2 == "claude-opus-4-7")
     }
 
     @Test
     func `Determine default model with configured default`() {
         let model = AIProviderParser.determineDefaultModel(
-            from: "openai/gpt-4,anthropic/claude-3",
+            from: "openai/gpt-5.5,anthropic/claude-opus-4-7",
             hasOpenAI: true,
             hasAnthropic: true,
             configuredDefault: "my-custom-model")
@@ -107,25 +109,25 @@ struct AIProviderParserTests {
             from: "invalid/model",
             hasOpenAI: false,
             hasAnthropic: true)
-        #expect(model1 == "claude-sonnet-4.5")
+        #expect(model1 == "claude-opus-4-7")
 
         let model2 = AIProviderParser.determineDefaultModel(
             from: "",
             hasOpenAI: true,
             hasAnthropic: false)
-        #expect(model2 == "gpt-5.1")
+        #expect(model2 == "gpt-5.5")
 
         let model3 = AIProviderParser.determineDefaultModel(
             from: "",
             hasOpenAI: false,
             hasAnthropic: false)
-        #expect(model3 == "gpt-5.1")
+        #expect(model3 == "gpt-5.5")
     }
 
     @Test
     func `Extract provider and model`() {
-        #expect(AIProviderParser.extractProvider(from: "openai/gpt-4") == "openai")
-        #expect(AIProviderParser.extractModel(from: "openai/gpt-4") == "gpt-4")
+        #expect(AIProviderParser.extractProvider(from: "openai/gpt-5.5") == "openai")
+        #expect(AIProviderParser.extractModel(from: "openai/gpt-5.5") == "gpt-5.5")
         #expect(AIProviderParser.extractProvider(from: "invalid") == nil)
         #expect(AIProviderParser.extractModel(from: "invalid") == nil)
     }

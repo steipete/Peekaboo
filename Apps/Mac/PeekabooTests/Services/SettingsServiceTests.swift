@@ -13,7 +13,7 @@ struct PeekabooSettingsTests {
             let settings = PeekabooSettings()
             #expect(settings.openAIAPIKey.isEmpty)
             #expect(settings.selectedProvider == "anthropic")
-            #expect(settings.selectedModel == "claude-sonnet-4-5-20250929")
+            #expect(settings.selectedModel == "claude-opus-4-7")
             #expect(settings.alwaysOnTop == false)
             #expect(settings.showInDock == true)
             #expect(settings.launchAtLogin == false)
@@ -48,7 +48,7 @@ struct PeekabooSettingsTests {
     func `Model selection updates correctly`() throws {
         try withIsolatedSettingsEnvironment { _ in
             let settings = PeekabooSettings()
-            let models = ["gpt-4o", "gpt-4o-mini", "o1-preview", "o1-mini"]
+            let models = ["gpt-5.5", "gpt-5-mini", "gpt-5-nano"]
 
             for model in models {
                 settings.selectedModel = model
@@ -63,7 +63,7 @@ struct PeekabooSettingsTests {
         (0.5, 0.5), // Valid middle
         (1.0, 1.0), // Maximum
         (2.0, 1.0), // Above maximum
-        (2.5, 1.0) // Way above maximum
+        (2.5, 1.0), // Way above maximum
     ])
     func `Temperature bounds are enforced`(input: Double, expected: Double) throws {
         try withIsolatedSettingsEnvironment { _ in
@@ -78,7 +78,7 @@ struct PeekabooSettingsTests {
         (1, 1), // Minimum
         (8192, 8192), // Valid middle
         (128_000, 128_000), // Maximum
-        (200_000, 128_000) // Above maximum
+        (200_000, 128_000), // Above maximum
     ])
     func `Max tokens bounds are enforced`(input: Int, expected: Int) throws {
         try withIsolatedSettingsEnvironment { _ in
@@ -159,10 +159,10 @@ struct PeekabooSettingsConfigHydrationTests {
             let configJSON = """
             {
               "aiProviders": {
-                "providers": "anthropic/claude-sonnet-4-5-20250929,ollama/llava:latest"
+                "providers": "anthropic/claude-opus-4-7,ollama/llava:latest"
               },
               "agent": {
-                "defaultModel": "claude-sonnet-4-5-20250929",
+                "defaultModel": "claude-opus-4-7",
                 "temperature": 0.3,
                 "maxTokens": 4096
               }
@@ -180,7 +180,7 @@ struct PeekabooSettingsConfigHydrationTests {
             let settings = PeekabooSettings()
 
             #expect(settings.selectedProvider == "anthropic")
-            #expect(settings.selectedModel == "claude-sonnet-4-5-20250929")
+            #expect(settings.selectedModel == "claude-opus-4-7")
             #expect(settings.temperature == 0.3)
             #expect(settings.maxTokens == 4096)
             #expect(settings.agentModeEnabled == true)

@@ -17,9 +17,9 @@ private enum CaptureTestError: Error {
 @MainActor
 struct ScreenCaptureServicePlanTests {
     @Test
-    func `Resolver defaults to modern first when flag is unset`() {
+    func `Resolver defaults to legacy first when flag is unset`() {
         let order = ScreenCaptureAPIResolver.resolve(environment: [:])
-        #expect(order == [.modern, .legacy])
+        #expect(order == [.legacy, .modern])
     }
 
     @Test

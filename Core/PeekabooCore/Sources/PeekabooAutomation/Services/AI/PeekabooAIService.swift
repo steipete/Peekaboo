@@ -105,7 +105,7 @@ public final class PeekabooAIService {
         TachikomaConfiguration.profileDirectoryName = ".peekaboo"
         _ = configuration.loadConfiguration()
         self.resolvedModels = Self.resolveAvailableModels(configuration: configuration)
-        self.defaultModel = self.resolvedModels.first ?? .openai(.gpt51)
+        self.defaultModel = self.resolvedModels.first ?? .openai(.gpt55)
         // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)
     }
 
@@ -260,9 +260,9 @@ public final class PeekabooAIService {
 
         // Fallback: prefer Anthropic if a key is present, else OpenAI
         if let key = configuration.getAnthropicAPIKey(), !key.isEmpty {
-            return [.anthropic(.opus45)]
+            return [.anthropic(.opus47)]
         }
-        return [.openai(.gpt51), .anthropic(.opus45)]
+        return [.openai(.gpt55), .anthropic(.opus47)]
     }
 
     private static func providerAndModelName(for model: LanguageModel) -> (provider: String, model: String) {

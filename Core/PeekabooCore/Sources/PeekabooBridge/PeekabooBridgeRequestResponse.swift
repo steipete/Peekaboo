@@ -17,6 +17,7 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case captureFrontmost(PeekabooBridgeCaptureFrontmostRequest)
     case captureArea(PeekabooBridgeCaptureAreaRequest)
     case detectElements(PeekabooBridgeDetectElementsRequest)
+    case desktopObservation(DesktopObservationRequest)
     case click(PeekabooBridgeClickRequest)
     case type(PeekabooBridgeTypeRequest)
     case typeActions(PeekabooBridgeTypeActionsRequest)
@@ -102,6 +103,7 @@ extension PeekabooBridgeRequest {
         case .captureFrontmost: .captureFrontmost
         case .captureArea: .captureArea
         case .detectElements: .detectElements
+        case .desktopObservation: .desktopObservation
         case .click: .click
         case .type: .type
         case .typeActions: .typeActions
@@ -180,6 +182,7 @@ public enum PeekabooBridgeResponse: Codable, Sendable {
     case browserToolResponse(PeekabooBridgeBrowserToolResponse)
     case capture(CaptureResult)
     case elementDetection(ElementDetectionResult)
+    case desktopObservation(DesktopObservationResult)
     case ok
     case waitResult(WaitForElementResult)
     case windows([ServiceWindowInfo])

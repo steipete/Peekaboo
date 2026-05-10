@@ -28,8 +28,29 @@ public enum AIProviderParser {
         let model = String(components[1]).trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !provider.isEmpty, !model.isEmpty else { return nil }
+        guard !self.isUnsupportedLegacyModel(provider: provider, model: model) else { return nil }
 
         return ProviderConfig(provider: provider, model: model)
+    }
+
+    private static func isUnsupportedLegacyModel(provider: String, model: String) -> Bool {
+        let provider = provider.lowercased()
+        let normalized = model.lowercased()
+        let compact = normalized.replacingOccurrences(of: "-", with: "").replacingOccurrences(of: ".", with: "")
+
+        if provider == "openai",
+           normalized.hasPrefix("gpt-4") || compact.hasPrefix("gpt4") ||
+           normalized.hasPrefix("gpt-3") || compact.hasPrefix("gpt3") ||
+           normalized.hasPrefix("o3") || normalized.hasPrefix("o4")
+        {
+            return true
+        }
+
+        if provider == "anthropic", normalized.hasPrefix("claude-3") || compact.hasPrefix("claude3") {
+            return true
+        }
+
+        return false
     }
 
     /// Parse a comma-separated list of provider strings
@@ -76,9 +97,9 @@ public enum AIProviderParser {
         for config in configs {
             switch config.provider.lowercased() {
             case "openai":
-                if hasOpenAI { return "gpt-5.1" }
+                if hasOpenAI { return "gpt-5.5" }
             case "anthropic":
-                if hasAnthropic { return "claude-sonnet-4.5" }
+                if hasAnthropic { return "claude-opus-4-7" }
             case "ollama":
                 if hasOllama { return config.model }
             default:
@@ -88,11 +109,11 @@ public enum AIProviderParser {
 
         // Fall back to hardcoded defaults based on what's available
         if hasAnthropic {
-            return "claude-sonnet-4.5"
+            return "claude-opus-4-7"
         } else if hasOpenAI {
-            return "gpt-5.1"
+            return "gpt-5.5"
         } else {
-            return "gpt-5.1"
+            return "gpt-5.5"
         }
     }
 }

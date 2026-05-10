@@ -48,6 +48,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     case captureFrontmost
     case captureArea
     case detectElements
+    case desktopObservation
     // Input & automation
     case click
     case type

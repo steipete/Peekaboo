@@ -108,6 +108,9 @@ extension PeekabooBridgeServer {
             compatible.remove(.browserDisconnect)
             compatible.remove(.browserExecute)
         }
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 5) {
+            compatible.remove(.desktopObservation)
+        }
         return compatible
     }
 

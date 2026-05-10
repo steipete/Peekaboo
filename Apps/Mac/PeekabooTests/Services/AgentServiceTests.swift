@@ -72,7 +72,7 @@ private func makeUnavailableAgent() -> (PeekabooAgent, PeekabooSettings, Session
         sessionStore: sessionStore,
         services: services)
     return (agent, settings, sessionStore)
-    }
+}
 
 @Suite(.tags(.services, .unit, .fast))
 @MainActor

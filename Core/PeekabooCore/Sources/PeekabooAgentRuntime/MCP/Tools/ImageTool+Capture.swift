@@ -28,6 +28,7 @@ extension ImageTool {
             try await Task.sleep(nanoseconds: 50_000_000)
         }
 
+        let outputPath = request.outputPath ?? self.temporaryOutputPathIfNeeded(for: request)
         return try await self.context.desktopObservation.observe(DesktopObservationRequest(
             target: request.target.observationTarget,
             capture: DesktopCaptureOptions(
@@ -36,16 +37,18 @@ extension ImageTool {
                 visualizerMode: .screenshotFlash),
             detection: DesktopDetectionOptions(mode: .none),
             output: DesktopObservationOutputOptions(
-                path: request.outputPath,
+                path: outputPath,
                 format: request.format.imageFormat,
-                saveRawScreenshot: request.outputPath != nil)))
+                saveRawScreenshot: outputPath != nil)))
     }
 
     func savedFiles(for captureSet: ImageCaptureSet, request: ImageRequest) throws -> [MCPSavedFile] {
-        guard request.outputPath != nil else { return [] }
         guard let result = captureSet.captures.first else { return [] }
         guard let path = captureSet.observation?.files.rawScreenshotPath else {
-            throw OperationError.captureFailed(reason: "Observation completed without a saved screenshot path")
+            if request.outputPath != nil || request.question != nil || request.format == .data {
+                throw OperationError.captureFailed(reason: "Observation completed without a saved screenshot path")
+            }
+            return []
         }
 
         return [
@@ -57,6 +60,16 @@ extension ImageTool {
                 window_index: result.metadata.windowInfo?.index,
                 mime_type: request.format.mimeType),
         ]
+    }
+
+    func temporaryOutputPathIfNeeded(for request: ImageRequest) -> String? {
+        guard request.question != nil || request.format == .data else {
+            return nil
+        }
+
+        return FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-\(UUID().uuidString).\(request.format.fileExtension)")
+            .path
     }
 
     func performAnalysis(
@@ -107,7 +120,12 @@ extension ImageTool {
         let meta = ToolEventSummary.merge(summary: summary, into: baseMeta)
 
         if format == .data, let capture = captureResults.first, captureResults.count == 1 {
-            return ToolResponse.image(data: capture.imageData, mimeType: "image/png", meta: meta)
+            let data = if capture.imageData.isEmpty, let path = savedFiles.first?.path {
+                (try? Data(contentsOf: URL(fileURLWithPath: path))) ?? capture.imageData
+            } else {
+                capture.imageData
+            }
+            return ToolResponse.image(data: data, mimeType: "image/png", meta: meta)
         }
 
         return ToolResponse.text(

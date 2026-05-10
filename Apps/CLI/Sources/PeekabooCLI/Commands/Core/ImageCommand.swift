@@ -47,7 +47,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         help: """
         Capture engine: auto|modern|sckit|classic|cg (default: auto).
         modern/sckit force ScreenCaptureKit; classic/cg force CGWindowList;
-        auto tries SC then falls back when allowed.
+        auto tries CGWindowList then falls back when allowed.
         """
     )
     var captureEngine: String?

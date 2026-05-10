@@ -16,6 +16,8 @@ extension PeekabooBridgeServer {
             try await self.handleBrowserRequest(request)
         case .captureScreen, .captureWindow, .captureFrontmost, .captureArea:
             try await self.handleCaptureRequest(request)
+        case .desktopObservation:
+            try await self.handleDesktopObservationRequest(request)
         case .detectElements, .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey,
              .targetedHotkey, .swipe, .drag, .moveMouse, .waitForElement:
             try await self.handleAutomationRequest(request)
@@ -142,6 +144,17 @@ extension PeekabooBridgeServer {
             visualizerMode: payload.visualizerMode,
             scale: payload.scale)
         return .capture(capture)
+    }
+
+    private func handleDesktopObservationRequest(_ request: PeekabooBridgeRequest) async throws
+    -> PeekabooBridgeResponse {
+        switch request {
+        case let .desktopObservation(payload):
+            let observation = try await self.services.desktopObservation.observe(payload)
+            return .desktopObservation(observation.withoutImageData())
+        default:
+            throw Self.invalidRequest(for: request)
+        }
     }
 
     private func handleAutomationRequest(_ request: PeekabooBridgeRequest) async throws -> PeekabooBridgeResponse {

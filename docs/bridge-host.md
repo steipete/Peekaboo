@@ -12,9 +12,12 @@ Peekaboo Bridge is a **socket-based** broker for permission-bound operations (Sc
 
 This replaces the previous XPC-based helper approach.
 
-## Hosts and discovery (client preference order)
+## Hosts and discovery
 
-Clients try hosts in this order:
+Normal CLI automation commands prefer the on-demand Peekaboo daemon socket and will auto-start that daemon when it
+is missing. This keeps bursty command sequences warm without probing unrelated host apps.
+
+Explicit bridge diagnostics can still inspect host sockets in this order:
 
 1. **Peekaboo.app** (primary host)
    - Socket: `~/Library/Application Support/Peekaboo/bridge.sock`
@@ -40,6 +43,10 @@ Protocol `1.3` adds element action operations:
 - `setValue` for direct accessibility value mutation.
 - `performAction` for named accessibility action invocation.
 
+Protocol `1.4` adds browser MCP operations for persistent Chrome DevTools MCP sessions.
+
+Protocol `1.5` adds `desktopObservation`, used by daemon-backed `image` and `see` paths. The host performs target resolution, capture, optional detection, and file writes, then returns lightweight metadata instead of embedding screenshot bytes in the Bridge response.
+
 ## Security
 
 Peekaboo BridgeHost validates callers before processing any request:
@@ -57,13 +64,14 @@ Debug-only escape hatch:
 Bridge hosts are intended to be long-lived and keep automation state **in memory**:
 
 - Hosts typically use `InMemorySnapshotManager` so follow-up actions can reuse the “most recent snapshot” per app/bundle without passing IDs around.
-- Screenshot artifacts are still referenced by **file path** (e.g. in `/tmp`), and are not streamed incrementally.
+- Screenshot artifacts are referenced by **file path** (e.g. in `/tmp`). Protocol 1.5 desktop observation avoids returning raw image bytes for daemon-backed screenshot calls.
 
 ## CLI behavior
 
-- By default, the CLI attempts to use a remote host when available.
+- By default, automation-oriented CLI commands use the on-demand Peekaboo daemon and fall back to local execution if it cannot start.
 - Use `--no-remote` to force local execution.
 - Use `--bridge-socket <path>` or `PEEKABOO_BRIDGE_SOCKET` to override host discovery.
+- Use `PEEKABOO_DAEMON_SOCKET` only to change the auto-start daemon socket without treating it as an explicit Bridge override.
 - Use `peekaboo bridge status` to verify which host would be selected and why (probe results, handshake errors, etc.).
 
 ## Screen Recording troubleshooting

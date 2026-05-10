@@ -139,6 +139,32 @@ struct CommandRuntimeInjectionTests {
     }
 
     @Test
+    func `desktop observation support requires advertised protocol operation`() {
+        let supported = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 5),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .desktopObservation]
+        )
+        let older = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 4),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .desktopObservation]
+        )
+        let hidden = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 5),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen]
+        )
+
+        #expect(CommandRuntime.supportsDesktopObservation(for: supported))
+        #expect(!CommandRuntime.supportsDesktopObservation(for: older))
+        #expect(!CommandRuntime.supportsDesktopObservation(for: hidden))
+    }
+
+    @Test
     func `environment bridge socket disables daemon auto start`() {
         let options = CommandRuntimeOptions()
         let environment = ["PEEKABOO_BRIDGE_SOCKET": "/tmp/explicit.sock"]
@@ -155,6 +181,38 @@ struct CommandRuntimeInjectionTests {
 
         #expect(CommandRuntime.explicitBridgeSocket(options: options, environment: environment) == "/tmp/cli.sock")
         #expect(!CommandRuntime.shouldAutoStartDaemon(options: options, environment: environment))
+    }
+
+    @Test
+    func `daemon socket environment configures auto start target without becoming explicit bridge socket`() {
+        let options = CommandRuntimeOptions()
+        let environment = ["PEEKABOO_DAEMON_SOCKET": "/tmp/daemon.sock"]
+
+        #expect(CommandRuntime.explicitBridgeSocket(options: options, environment: environment) == nil)
+        #expect(CommandRuntime.daemonSocketPath(environment: environment) == "/tmp/daemon.sock")
+        #expect(CommandRuntime.shouldAutoStartDaemon(options: options, environment: environment))
+    }
+
+    @Test
+    func `on demand daemon arguments use auto mode and idle timeout`() {
+        let args = CommandRuntime.onDemandDaemonArguments(socketPath: "/tmp/daemon.sock", idleTimeoutSeconds: 12.5)
+
+        #expect(args.contains("auto"))
+        #expect(args.contains("/tmp/daemon.sock"))
+        #expect(args.contains("--idle-timeout-seconds"))
+        #expect(args.contains("12.500"))
+    }
+
+    @Test
+    func `daemon idle timeout environment falls back to default for invalid values`() {
+        #expect(CommandRuntime.daemonIdleTimeoutSeconds(environment: [:]) ==
+            CommandRuntime.defaultDaemonIdleTimeoutSeconds)
+        #expect(CommandRuntime.daemonIdleTimeoutSeconds(environment: [
+            "PEEKABOO_DAEMON_IDLE_TIMEOUT_SECONDS": "0",
+        ]) == CommandRuntime.defaultDaemonIdleTimeoutSeconds)
+        #expect(CommandRuntime.daemonIdleTimeoutSeconds(environment: [
+            "PEEKABOO_DAEMON_IDLE_TIMEOUT_SECONDS": "42.5",
+        ]) == 42.5)
     }
 
     @Test

@@ -120,6 +120,18 @@ public final class PeekabooBridgeServer {
 
         do {
             try self.validateOperationAccess(for: request, permissions: permissions, effectiveOps: effectiveOps)
+            if let daemonControl = self.daemonControl, op != .daemonStatus {
+                await daemonControl.recordActivityStart(operation: op)
+                do {
+                    let response = try await self.handleAuthorized(request, peer: peer)
+                    await daemonControl.recordActivityEnd(operation: op)
+                    return response
+                } catch {
+                    await daemonControl.recordActivityEnd(operation: op)
+                    throw error
+                }
+            }
+
             return try await self.handleAuthorized(request, peer: peer)
         } catch let envelope as PeekabooBridgeErrorEnvelope {
             failed = true

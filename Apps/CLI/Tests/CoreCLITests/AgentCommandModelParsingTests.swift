@@ -6,28 +6,30 @@ import Testing
 @Suite(.tags(.safe))
 struct AgentCommandTests {
     @Test
-    func `Supported OpenAI aliases map to GPT-5.1`() throws {
+    func `Supported OpenAI aliases map to GPT-5.5`() throws {
         let command = try AgentCommand.parse([])
 
-        #expect(command.parseModelString("gpt-5.1") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-5.1-mini") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-5.1-nano") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-5") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-5-mini") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-5-nano") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-4o") == .openai(.gpt51))
-        #expect(command.parseModelString("gpt-4o-mini") == .openai(.gpt51))
+        #expect(command.parseModelString("gpt-5.5") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.1") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.1-mini") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5.1-nano") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5-mini") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-5-nano") == .openai(.gpt55))
+        #expect(command.parseModelString("gpt-4o") == nil)
+        #expect(command.parseModelString("gpt-4o-mini") == nil)
     }
 
     @Test
-    func `Supported Anthropic aliases map to Claude Opus 4.5`() throws {
+    func `Supported Anthropic aliases map to Claude Opus 4.7`() throws {
         let command = try AgentCommand.parse([])
 
-        #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.opus45))
-        #expect(command.parseModelString("Claude-Sonnet-4.5") == .anthropic(.opus45))
-        #expect(command.parseModelString("claude") == .anthropic(.opus45))
-        #expect(command.parseModelString("claude-opus-4") == .anthropic(.opus45))
+        #expect(command.parseModelString("claude-opus-4.7") == .anthropic(.opus47))
+        #expect(command.parseModelString("claude-sonnet-4.5") == .anthropic(.opus47))
+        #expect(command.parseModelString("Claude-Sonnet-4.5") == .anthropic(.opus47))
+        #expect(command.parseModelString("claude") == .anthropic(.opus47))
+        #expect(command.parseModelString("claude-opus-4") == .anthropic(.opus47))
         #expect(command.parseModelString("claude-3-sonnet") == nil)
     }
 
@@ -53,9 +55,9 @@ struct AgentCommandTests {
     func `Model string normalization trims whitespace`() throws {
         let command = try AgentCommand.parse([])
 
-        #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt51))
-        #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt51))
-        #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus45))
+        #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt55))
+        #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt55))
+        #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus47))
         #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini3Flash))
     }
 }
@@ -69,15 +71,15 @@ struct ModelSelectionIntegrationTests {
         command.model = "gpt-5"
 
         let parsedModel = command.model.flatMap { command.parseModelString($0) }
-        #expect(parsedModel == .openai(.gpt51))
+        #expect(parsedModel == .openai(.gpt55))
 
-        command.model = "claude-sonnet-4.5"
+        command.model = "claude-opus-4.7"
         let parsedClaude = command.model.flatMap { command.parseModelString($0) }
-        #expect(parsedClaude == .anthropic(.opus45))
+        #expect(parsedClaude == .anthropic(.opus47))
 
         command.model = "gpt-4o"
         let remapped = command.model.flatMap { command.parseModelString($0) }
-        #expect(remapped == .openai(.gpt51))
+        #expect(remapped == nil)
 
         command.model = "gemini-3-flash"
         let parsedGemini = command.model.flatMap { command.parseModelString($0) }
@@ -89,8 +91,8 @@ struct ModelSelectionIntegrationTests {
         let command = try AgentCommand.parse([])
 
         let testCases: [(String, LanguageModel)] = [
-            ("gpt-5.1", .openai(.gpt51)),
-            ("claude-sonnet-4.5", .anthropic(.opus45)),
+            ("gpt-5.5", .openai(.gpt55)),
+            ("claude-opus-4.7", .anthropic(.opus47)),
             ("gemini-3-flash", .google(.gemini3Flash)),
         ]
 
@@ -106,9 +108,9 @@ struct ModelSelectionIntegrationTests {
         var command = try AgentCommand.parse([])
         #expect(try command.validatedModelSelection() == nil)
 
-        command.model = "gpt-5.1"
+        command.model = "gpt-5.5"
         let parsed = try command.validatedModelSelection()
-        #expect(parsed == .openai(.gpt51))
+        #expect(parsed == .openai(.gpt55))
     }
 
     @Test

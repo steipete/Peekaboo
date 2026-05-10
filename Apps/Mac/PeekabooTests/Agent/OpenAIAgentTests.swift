@@ -64,7 +64,7 @@ struct PeekabooAgentServiceTests {
         _ = try await self.agent.executeTask("Test task")
 
         // Dry run should create a session and a user message, but not execute
-        let sessions = sessionStore.sessions
+        let sessions = self.sessionStore.sessions
         #expect(sessions.count == 1)
         #expect(sessions.first?.messages.count == 1)
         #expect(sessions.first?.messages.first?.role == .user)

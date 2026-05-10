@@ -78,7 +78,7 @@ extension PeekabooAgentService {
         // Execute the tool
         let executionContext = ToolExecutionContext(
             messages: [],
-            model: currentModel ?? .openai(.gpt51),
+            model: currentModel ?? .openai(.gpt55),
             settings: GenerationSettings(maxTokens: 4096),
             sessionId: UUID().uuidString,
             stepIndex: 0)

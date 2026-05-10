@@ -15,6 +15,7 @@ public protocol PeekabooBridgeServiceProviding: AnyObject, Sendable {
     var dock: any DockServiceProtocol { get }
     var dialogs: any DialogServiceProtocol { get }
     var snapshots: any SnapshotManagerProtocol { get }
+    var desktopObservation: any DesktopObservationServiceProtocol { get }
 
     func browserStatus(channel: String?) async throws -> PeekabooBridgeBrowserStatus
     func browserConnect(channel: String?) async throws -> PeekabooBridgeBrowserStatus

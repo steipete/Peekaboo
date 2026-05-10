@@ -24,6 +24,9 @@ extension DaemonCommand {
         @Option(name: .long, help: "Window tracker poll interval in milliseconds (default 1000)")
         var pollIntervalMs: Int?
 
+        @Option(name: .long, help: "Idle seconds before auto daemon shutdown")
+        var idleTimeoutSeconds: Double?
+
         @RuntimeStorage private var runtime: CommandRuntime?
         var runtimeOptions = CommandRuntimeOptions()
 
@@ -32,7 +35,14 @@ extension DaemonCommand {
             let pollInterval = TimeInterval(Double(self.pollIntervalMs ?? 1000) / 1000.0)
             let socketPath = self.bridgeSocket ?? PeekabooBridgeConstants.peekabooSocketPath
 
-            let config: PeekabooDaemon.Configuration = if self.mode.lowercased() == "mcp" {
+            let normalizedMode = self.mode.lowercased()
+            let config: PeekabooDaemon.Configuration = if normalizedMode == "auto" {
+                .auto(
+                    bridgeSocketPath: socketPath,
+                    windowPollInterval: pollInterval,
+                    idleTimeout: self.idleTimeoutSeconds ?? CommandRuntime.defaultDaemonIdleTimeoutSeconds
+                )
+            } else if normalizedMode == "mcp" {
                 .mcp(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
             } else {
                 .manual(bridgeSocketPath: socketPath, windowPollInterval: pollInterval)
@@ -51,6 +61,9 @@ extension DaemonCommand {
             }
             if let pollMs = try values.decodeOption("pollIntervalMs", as: Int.self) {
                 self.pollIntervalMs = pollMs
+            }
+            if let idleSeconds = try values.decodeOption("idleTimeoutSeconds", as: Double.self) {
+                self.idleTimeoutSeconds = idleSeconds
             }
         }
     }

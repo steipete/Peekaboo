@@ -31,7 +31,7 @@ public struct DesktopObservationFiles: Sendable, Codable, Equatable {
     }
 }
 
-public struct DesktopObservationOutputWriteResult: Sendable, Equatable {
+public struct DesktopObservationOutputWriteResult: Sendable, Codable, Equatable {
     public let files: DesktopObservationFiles
     public let spans: [ObservationSpan]
 
@@ -91,7 +91,7 @@ public struct DesktopObservationDiagnostics: Sendable, Codable, Equatable {
     }
 }
 
-public struct DesktopObservationResult: Sendable {
+public struct DesktopObservationResult: Sendable, Codable {
     public let target: ResolvedObservationTarget
     public let capture: CaptureResult
     public let elements: ElementDetectionResult?
@@ -116,5 +116,22 @@ public struct DesktopObservationResult: Sendable {
         self.files = files
         self.timings = timings
         self.diagnostics = diagnostics
+    }
+}
+
+extension DesktopObservationResult {
+    public func withoutImageData() -> DesktopObservationResult {
+        DesktopObservationResult(
+            target: self.target,
+            capture: CaptureResult(
+                imageData: Data(),
+                savedPath: self.capture.savedPath,
+                metadata: self.capture.metadata,
+                warning: self.capture.warning),
+            elements: self.elements,
+            ocr: self.ocr,
+            files: self.files,
+            timings: self.timings,
+            diagnostics: self.diagnostics)
     }
 }

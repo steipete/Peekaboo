@@ -26,7 +26,7 @@ struct PeekabooAIServiceTests {
         let models = service.availableModels()
 
         #expect(!models.isEmpty)
-        #expect(models == [.openai(.gpt51), .anthropic(.opus45)])
+        #expect(models == [.openai(.gpt55), .anthropic(.opus47)])
     }
 
     @Test
@@ -38,7 +38,7 @@ struct PeekabooAIServiceTests {
         let configPath = tempDir.appendingPathComponent("config.json")
         try """
         {
-          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+          "aiProviders": { "providers": "anthropic/claude-opus-4-7" }
         }
         """.write(to: configPath, atomically: true, encoding: .utf8)
 
@@ -54,8 +54,8 @@ struct PeekabooAIServiceTests {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         let service = PeekabooAIService()
-        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
-        #expect(service.availableModels() == [.anthropic(.sonnet45)])
+        #expect(service.resolvedDefaultModel == .anthropic(.opus47))
+        #expect(service.availableModels() == [.anthropic(.opus47)])
     }
 
     @Test
@@ -67,7 +67,7 @@ struct PeekabooAIServiceTests {
         let configPath = tempDir.appendingPathComponent("config.json")
         try """
         {
-          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5,openai/gpt-5.1" }
+          "aiProviders": { "providers": "anthropic/claude-opus-4-7,openai/gpt-5.5" }
         }
         """.write(to: configPath, atomically: true, encoding: .utf8)
 
@@ -82,8 +82,8 @@ struct PeekabooAIServiceTests {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         let service = PeekabooAIService()
-        #expect(service.availableModels() == [.anthropic(.sonnet45), .openai(.gpt51)])
-        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
+        #expect(service.availableModels() == [.anthropic(.opus47), .openai(.gpt55)])
+        #expect(service.resolvedDefaultModel == .anthropic(.opus47))
     }
 
     @Test
@@ -123,7 +123,7 @@ struct PeekabooAIServiceTests {
         let configPath = tempDir.appendingPathComponent("config.json")
         try """
         {
-          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+          "aiProviders": { "providers": "anthropic/claude-opus-4-7" }
         }
         """.write(to: configPath, atomically: true, encoding: .utf8)
 
@@ -153,7 +153,7 @@ struct PeekabooAIServiceTests {
         let configPath = tempDir.appendingPathComponent("config.json")
         try """
         {
-          "aiProviders": { "providers": "anthropic/claude-sonnet-4.5" }
+          "aiProviders": { "providers": "anthropic/claude-opus-4-7" }
         }
         """.write(to: configPath, atomically: true, encoding: .utf8)
 
@@ -168,8 +168,8 @@ struct PeekabooAIServiceTests {
         ConfigurationManager.shared.resetForTesting()
 
         let service = PeekabooAIService()
-        #expect(service.availableModels() == [.anthropic(.sonnet45)])
-        #expect(service.resolvedDefaultModel == .anthropic(.sonnet45))
+        #expect(service.availableModels() == [.anthropic(.opus47)])
+        #expect(service.resolvedDefaultModel == .anthropic(.opus47))
     }
 
     @Test
@@ -187,8 +187,8 @@ struct PeekabooAIServiceTests {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         let service = PeekabooAIService()
-        #expect(service.resolvedDefaultModel == .anthropic(.opus45))
-        #expect(service.availableModels() == [.anthropic(.opus45)])
+        #expect(service.resolvedDefaultModel == .anthropic(.opus47))
+        #expect(service.availableModels() == [.anthropic(.opus47)])
     }
 
     @Test
@@ -201,8 +201,8 @@ struct PeekabooAIServiceTests {
         _ = ConfigurationManager.shared.loadConfiguration()
 
         let service = PeekabooAIService()
-        #expect(service.resolvedDefaultModel == .openai(.gpt51))
-        #expect(service.availableModels().first == .openai(.gpt51))
+        #expect(service.resolvedDefaultModel == .openai(.gpt55))
+        #expect(service.availableModels().first == .openai(.gpt55))
     }
 
     @Test
@@ -293,7 +293,7 @@ struct PeekabooAIServiceTests {
 
         let result = try await service.generateText(
             prompt: "Say 'Model test' and nothing else",
-            model: .openai(.gpt51))
+            model: .openai(.gpt55))
 
         #expect(result.lowercased().contains("model"))
         #expect(result.lowercased().contains("test"))

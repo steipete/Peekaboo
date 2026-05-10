@@ -63,7 +63,7 @@ extension PeekabooServices {
 
     /// Parse model string to LanguageModel enum.
     private static func parseModelStringForAgent(_ modelString: String) -> LanguageModel {
-        LanguageModel.parse(from: modelString) ?? .openai(.gpt51)
+        LanguageModel.parse(from: modelString) ?? .openai(.gpt55)
     }
 
     private static func logModelConflict(_ determination: ModelDetermination, logger: SystemLogger) {
@@ -92,17 +92,17 @@ extension PeekabooServices {
             && sources.configuredDefault != environmentModel
 
         let model: String = if !sources.providers.isEmpty {
-            environmentModel ?? "gpt-5.1"
+            environmentModel ?? "gpt-5.5"
         } else if let configuredDefault = sources.configuredDefault {
             configuredDefault
         } else if sources.hasAnthropic {
-            "claude-sonnet-4.5"
+            "claude-opus-4-7"
         } else if sources.hasOpenAI {
-            "gpt-5.1"
+            "gpt-5.5"
         } else if sources.hasOllama {
-            "gpt-5.1"
+            "gpt-5.5"
         } else {
-            "gpt-5.1"
+            "gpt-5.5"
         }
 
         return ModelDetermination(

@@ -37,6 +37,7 @@ read_when:
   - Reports:
     - Running state + PID
     - Bridge socket path + handshake
+    - Activity state + idle timeout/deadline for auto-started daemons
     - Permissions (Screen Recording, Accessibility)
     - Snapshot cache stats (count, last access)
     - Window tracker stats (tracked windows, last event timestamp)
@@ -72,15 +73,13 @@ MCP (stdio)  ───┘                             │
   - When a tracked window moves/resizes, mark snapshot stale or update bounds.
   - On interaction, re-verify window position before clicking/typing.
 
-### MCP daemon routing
-- `peekaboo mcp serve` prefers an existing Peekaboo daemon through the Bridge socket.
-- If no default daemon is reachable, command runtime can start the on-demand daemon and reconnect.
-- The MCP stdio server remains the client-facing protocol endpoint, while stateful services live in the daemon.
-- Browser access is persistent across MCP stdio reconnects:
-  - MCP client -> `peekaboo mcp serve`
-  - `PeekabooMCPServer` -> `RemotePeekabooServices`
-  - Bridge socket -> `PeekabooDaemon`
-  - daemon-owned `BrowserMCPService` -> `chrome-devtools-mcp`
+### Auto daemon routing
+- Automation-oriented CLI commands prefer the default Peekaboo daemon socket.
+- If no default daemon is reachable, command runtime starts `peekaboo daemon run --mode auto` and reconnects.
+- Auto daemons track Bridge request activity and shut down after an idle timeout (default 300 seconds).
+- `peekaboo list apps`, `peekaboo app list`, `--no-remote`, `PEEKABOO_NO_REMOTE`, explicit input strategy overrides, and explicit capture engine overrides keep commands local.
+- `PEEKABOO_DAEMON_SOCKET` changes only the auto-start daemon socket; `PEEKABOO_BRIDGE_SOCKET` remains an explicit Bridge override and disables auto-start.
+- Bridge protocol 1.5 lets `image`/`see` run desktop observation inside the daemon. The daemon writes screenshot files locally and returns paths, timings, diagnostics, and optional element data without serializing screenshot bytes through Bridge JSON.
 
 ## Placement
 - Single entry point: `peekaboo` runs in **daemon mode** when requested.
@@ -90,7 +89,7 @@ MCP (stdio)  ───┘                             │
 - `daemon.running` (bool)
 - `daemon.pid`
 - `daemon.startedAt`
-- `daemon.mode` (manual|mcp)
+- `daemon.mode` (auto|manual|mcp)
 - `bridge.socketPath`
 - `bridge.handshake` (hostKind, ops, version)
 - `permissions.screenRecording`
@@ -104,6 +103,10 @@ MCP (stdio)  ───┘                             │
 - `browser.connected`
 - `browser.toolCount`
 - `browser.detectedBrowsers`
+- `activity.activeRequests`
+- `activity.lastActivityAt`
+- `activity.idleTimeoutSeconds`
+- `activity.idleExitAt`
 
 ## Implementation Phases
 1) **Daemon scaffolding**

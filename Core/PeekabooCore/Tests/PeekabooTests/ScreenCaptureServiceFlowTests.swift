@@ -261,6 +261,28 @@ struct ScreenCaptureServiceFlowTests {
     }
 
     @Test
+    func `captureScreen skips ScreenCaptureKit permission probe when legacy is first`() async throws {
+        let fixtures = self.makeFixtures()
+        let permission = CountingPermissionEvaluator()
+
+        let dependencies = ScreenCaptureService.Dependencies(
+            feedbackClient: StubAutomationFeedbackClient(),
+            permissionEvaluator: permission,
+            fallbackRunner: ScreenCaptureFallbackRunner(apis: [.legacy, .modern]),
+            applicationResolver: FixtureResolver(fixtures: fixtures),
+            makeFrameSource: { _ in NoOpCaptureFrameSource() },
+            makeModernOperator: { _, _ in FixtureCaptureOperator(fixtures: fixtures) },
+            makeLegacyOperator: { _ in FixtureCaptureOperator(fixtures: fixtures) })
+
+        let service = ScreenCaptureService(loggingService: MockLoggingService(), dependencies: dependencies)
+
+        _ = try await service.captureScreen(displayIndex: nil)
+
+        let recordedCalls = await permission.callCount
+        #expect(recordedCalls == 0)
+    }
+
+    @Test
     func `displayLocalSourceRect converts global to display-local`() {
         // ScreenCaptureKit expects `sourceRect` in display-local coordinates (origin at (0,0) for that display),
         // but `SCDisplay.frame` / `SCWindow.frame` are global desktop coordinates (matching `NSScreen.frame`).

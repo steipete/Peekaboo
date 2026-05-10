@@ -68,7 +68,7 @@ final class PeekabooSettings {
         didSet { self.save() }
     }
 
-    var selectedModel: String = "claude-sonnet-4-5-20250929" {
+    var selectedModel: String = "claude-opus-4-7" {
         didSet {
             self.save()
             self.updateConfigFile()
@@ -83,7 +83,7 @@ final class PeekabooSettings {
         }
     }
 
-    var customVisionModel: String = "gpt-5.1" {
+    var customVisionModel: String = "gpt-5.5" {
         didSet {
             self.save()
             self.updateConfigFile()
@@ -443,7 +443,7 @@ extension PeekabooSettings {
         let defaultModel = self.defaultModel(for: self.selectedProvider)
         self.selectedModel = self.userDefaults.string(forKey: self.namespaced("selectedModel")) ?? defaultModel
         self.useCustomVisionModel = self.userDefaults.bool(forKey: self.namespaced("useCustomVisionModel"))
-        self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5.1"
+        self.customVisionModel = self.userDefaults.string(forKey: self.namespaced("customVisionModel")) ?? "gpt-5.5"
 
         self.temperature = self.nonZeroDouble(forKey: "temperature", fallback: 0.7)
         self.maxTokens = self.nonZeroInt(forKey: "maxTokens", fallback: 16384)
@@ -659,7 +659,7 @@ extension PeekabooSettings {
                 case "ollama":
                     "ollama/\(self.selectedModel)"
                 default:
-                    "anthropic/claude-sonnet-4-5-20250929"
+                    "anthropic/claude-opus-4-7"
                 }
 
                 // Set providers string with fallbacks
@@ -717,7 +717,7 @@ extension PeekabooSettings {
                     if self.customProviders[self.selectedProvider] != nil {
                         "\(self.selectedProvider)/\(self.selectedModel)"
                     } else {
-                        "anthropic/claude-sonnet-4-5-20250929"
+                        "anthropic/claude-opus-4-7"
                     }
                 }
 
@@ -874,9 +874,9 @@ extension PeekabooSettings {
     private func defaultModel(for provider: String) -> String {
         switch provider {
         case "openai":
-            "gpt-5.1"
+            "gpt-5.5"
         case "anthropic":
-            "claude-sonnet-4-5-20250929"
+            "claude-opus-4-7"
         case "grok":
             "grok-4"
         case "google":

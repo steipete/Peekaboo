@@ -26,8 +26,8 @@ public struct MenuTool: MCPTool {
         - List Chrome menus: { "action": "list", "app": "Google Chrome" }
         - Save document: { "action": "click", "app": "TextEdit", "path": "File > Save" }
         - Copy selection: { "action": "click", "app": "Safari", "path": "Edit > Copy" }
-        \(PeekabooMCPVersion.banner) using openai/gpt-5.1
-        and anthropic/claude-sonnet-4.5
+        \(PeekabooMCPVersion.banner) using openai/gpt-5.5
+        and anthropic/claude-opus-4-7
         """
     }
 

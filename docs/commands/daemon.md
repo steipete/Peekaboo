@@ -27,6 +27,7 @@ peekaboo daemon status
 Shows:
 - running state + PID
 - bridge socket + host kind
+- activity state (active requests, last activity, idle timeout/deadline)
 - permissions (screen recording / accessibility / automation)
 - snapshot cache summary
 - window tracker stats (tracked windows, last event, polling)
@@ -41,6 +42,9 @@ Options:
 - `--wait-seconds <sec>` how long to wait for shutdown (default 3s).
 
 ## Notes
-- `peekaboo mcp serve` prefers the daemon when a Bridge socket is available, so stateful browser MCP access can survive MCP stdio reconnects.
+- Normal automation commands auto-start the daemon in `auto` mode when the default daemon socket is unavailable.
+- Auto-started daemons exit after an idle timeout (default 300 seconds), while explicit `peekaboo daemon start` remains manual and stays up until stopped.
 - The daemon uses an in-memory snapshot store for speed.
+- Set `PEEKABOO_DAEMON_IDLE_TIMEOUT_SECONDS` to tune the auto-start idle timeout.
+- Set `PEEKABOO_DAEMON_SOCKET` to override the auto-start daemon socket for testing.
 - For local development with unsigned binaries, set `PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1`.

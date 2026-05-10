@@ -31,8 +31,8 @@ AI integration layer with support for multiple providers.
   - `ModelProvider.swift` - Provider enumeration and factory
   
 - **Providers/** - AI provider implementations
-  - **OpenAI/** - GPT-4, o3, o4 models
-  - **Anthropic/** - Claude 3, 3.5, 4 models
+  - **OpenAI/** - GPT-5 models
+  - **Anthropic/** - Claude 4 models
   - **Grok/** - xAI Grok models
   - **Ollama** - Local model support
   

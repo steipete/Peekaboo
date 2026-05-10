@@ -7,14 +7,14 @@ public enum CaptureEnginePreference: String, Codable, Sendable, Equatable {
     case legacy
 }
 
-public enum WindowSelection: Sendable, Equatable {
+public enum WindowSelection: Sendable, Codable, Equatable {
     case automatic
     case index(Int)
     case title(String)
     case id(CGWindowID)
 }
 
-public enum DesktopObservationTargetRequest: Sendable, Equatable {
+public enum DesktopObservationTargetRequest: Sendable, Codable, Equatable {
     case screen(index: Int?)
     case allScreens
     case frontmost
@@ -26,7 +26,7 @@ public enum DesktopObservationTargetRequest: Sendable, Equatable {
     case menubarPopover(hints: [String], openIfNeeded: MenuBarPopoverOpenOptions? = nil)
 }
 
-public struct MenuBarPopoverOpenOptions: Sendable, Equatable {
+public struct MenuBarPopoverOpenOptions: Sendable, Codable, Equatable {
     public var clickHint: String?
     public var settleDelayNanoseconds: UInt64
     public var useClickLocationAreaFallback: Bool
@@ -42,7 +42,7 @@ public struct MenuBarPopoverOpenOptions: Sendable, Equatable {
     }
 }
 
-public enum ResolvedObservationKind: Sendable, Equatable {
+public enum ResolvedObservationKind: Sendable, Codable, Equatable {
     case screen(index: Int?)
     case frontmost
     case appWindow
@@ -150,7 +150,7 @@ public struct DesktopStateSnapshotSummary: Sendable, Codable, Equatable {
     }
 }
 
-public struct ResolvedObservationTarget: Sendable, Equatable {
+public struct ResolvedObservationTarget: Sendable, Codable, Equatable {
     public let kind: ResolvedObservationKind
     public let app: ApplicationIdentity?
     public let window: WindowIdentity?

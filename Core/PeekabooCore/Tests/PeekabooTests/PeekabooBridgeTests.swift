@@ -87,6 +87,7 @@ struct PeekabooBridgeTests {
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.requestPostEventPermission))
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.setValue))
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.performAction))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.desktopObservation))
     }
 
     @Test
@@ -155,6 +156,7 @@ struct PeekabooBridgeTests {
         #expect(handshake.negotiatedVersion == previousVersion)
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.setValue))
         #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.performAction))
+        #expect(!handshake.supportedOperations.contains(PeekabooBridgeOperation.desktopObservation))
     }
 
     @Test
@@ -513,19 +515,17 @@ struct PeekabooBridgeTests {
     }
 
     @Test
+    @MainActor
     func `daemon status round trips`() async throws {
         let daemon = StubDaemonControl()
-        let server = await MainActor.run {
-            PeekabooBridgeServer(
-                services: StubServices(),
-                hostKind: .onDemand,
-                allowlistedTeams: [],
-                allowlistedBundles: [],
-                daemonControl: daemon)
-        }
+        let server = PeekabooBridgeServer(
+            services: StubServices(),
+            hostKind: .onDemand,
+            allowlistedTeams: [],
+            allowlistedBundles: [],
+            daemonControl: daemon)
 
-        let request = PeekabooBridgeRequest.daemonStatus
-        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(request)
+        let requestData = try JSONEncoder.peekabooBridgeEncoder().encode(PeekabooBridgeRequest.daemonStatus)
         let responseData = await server.decodeAndHandle(requestData, peer: nil)
         let response = try self.decode(responseData)
 
@@ -536,7 +536,8 @@ struct PeekabooBridgeTests {
 
         #expect(status.running == true)
         #expect(status.mode == .manual)
-        #expect(status.bridge?.hostKind == .onDemand)
+        #expect(status.activity?.activeRequests == 0)
+        #expect(status.activity?.idleExitAt != nil)
     }
 
     @Test
@@ -1054,6 +1055,11 @@ extension PeekabooBridgeTests {
     }
 
     @Test
+    func `desktop observation operation requires screen recording permission`() {
+        #expect(PeekabooBridgeOperation.desktopObservation.requiredPermissions == [.screenRecording])
+    }
+
+    @Test
     @MainActor
     func `remote services expose element actions only when handshake supports them`() {
         let client = PeekabooBridgeClient(
@@ -1168,6 +1174,37 @@ extension PeekabooBridgeTests {
 
     @Test
     @MainActor
+    func `desktop observation bridge operation forwards request without returning image bytes`() async throws {
+        let services = StubServices()
+        let server = PeekabooBridgeServer(
+            services: services,
+            allowlistedTeams: [],
+            allowlistedBundles: [],
+            allowedOperations: [.desktopObservation],
+            permissionStatusEvaluator: { _ in
+                PermissionsStatus(screenRecording: true, accessibility: true, appleScript: true, postEvent: true)
+            })
+        let request = DesktopObservationRequest(
+            target: .screen(index: 0),
+            detection: DesktopDetectionOptions(mode: .none),
+            output: DesktopObservationOutputOptions(path: "/tmp/stub.png", saveRawScreenshot: true))
+        let requestData = try JSONEncoder.peekabooBridgeEncoder()
+            .encode(PeekabooBridgeRequest.desktopObservation(request))
+        let response = try await self.decode(server.decodeAndHandle(requestData, peer: nil))
+
+        guard case let .desktopObservation(result) = response else {
+            Issue.record("Expected desktopObservation response, got \(response)")
+            return
+        }
+
+        #expect(services.desktopObservationStub.lastRequest == request)
+        #expect(result.capture.savedPath == "/tmp/stub.png")
+        #expect(result.files.rawScreenshotPath == "/tmp/stub.png")
+        #expect(result.capture.imageData.isEmpty)
+    }
+
+    @Test
+    @MainActor
     func `browser bridge operations route through service provider`() async throws {
         let services = StubServices()
         let server = PeekabooBridgeServer(
@@ -1219,6 +1256,8 @@ private final class StubServices: PeekabooBridgeServiceProviding {
     let dock: any DockServiceProtocol = UnimplementedDockService()
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
     let snapshots: any SnapshotManagerProtocol = SnapshotManager()
+    let desktopObservationStub = StubDesktopObservationService()
+    let desktopObservation: any DesktopObservationServiceProtocol
     let permissions: PermissionsService = .init()
     var lastBrowserStatusChannel: String?
     var lastBrowserExecute: PeekabooBridgeBrowserExecuteRequest?
@@ -1226,6 +1265,7 @@ private final class StubServices: PeekabooBridgeServiceProviding {
     init() {
         self.screenCapture = self.screenCaptureStub
         self.automation = self.automationStub
+        self.desktopObservation = self.desktopObservationStub
     }
 
     func browserStatus(channel: String?) async throws -> PeekabooBridgeBrowserStatus {
@@ -1268,6 +1308,7 @@ private final class StubNonTargetedServices: PeekabooBridgeServiceProviding {
     let dock: any DockServiceProtocol = UnimplementedDockService()
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
     let snapshots: any SnapshotManagerProtocol = SnapshotManager()
+    let desktopObservation: any DesktopObservationServiceProtocol = StubDesktopObservationService()
     let permissions: PermissionsService = .init()
 }
 
@@ -1281,12 +1322,33 @@ private final class StubRemoteAutomationServices: PeekabooBridgeServiceProviding
     let dock: any DockServiceProtocol = UnimplementedDockService()
     let dialogs: any DialogServiceProtocol = UnimplementedDialogService()
     let snapshots: any SnapshotManagerProtocol = SnapshotManager()
+    let desktopObservation: any DesktopObservationServiceProtocol = StubDesktopObservationService()
     let permissions: PermissionsService = .init()
 
     init(supportsTargetedHotkeys: Bool) {
         self.automation = RemoteUIAutomationService(
             client: PeekabooBridgeClient(socketPath: "/tmp/peekaboo-unused.sock"),
             supportsTargetedHotkeys: supportsTargetedHotkeys)
+    }
+}
+
+@MainActor
+private final class StubDesktopObservationService: DesktopObservationServiceProtocol {
+    private(set) var lastRequest: DesktopObservationRequest?
+
+    func observe(_ request: DesktopObservationRequest) async throws -> DesktopObservationResult {
+        self.lastRequest = request
+        return DesktopObservationResult(
+            target: ResolvedObservationTarget(kind: .screen(index: 0)),
+            capture: CaptureResult(
+                imageData: StubScreenCaptureService.sampleData,
+                savedPath: "/tmp/stub.png",
+                metadata: CaptureMetadata(
+                    size: .init(width: 1, height: 1),
+                    mode: .screen,
+                    timestamp: Date())),
+            elements: nil,
+            files: DesktopObservationFiles(rawScreenshotPath: "/tmp/stub.png"))
     }
 }
 
@@ -1716,6 +1778,8 @@ private final class UnimplementedDialogService: DialogServiceProtocol {
 
 @MainActor
 private final class StubDaemonControl: PeekabooDaemonControlProviding {
+    private var activeRequests = 0
+
     func daemonStatus() async -> PeekabooDaemonStatus {
         PeekabooDaemonStatus(
             running: true,
@@ -1725,11 +1789,20 @@ private final class StubDaemonControl: PeekabooDaemonControlProviding {
             bridge: PeekabooDaemonBridgeStatus(
                 socketPath: "/tmp/peekaboo.sock",
                 hostKind: .onDemand,
-                allowedOperations: [.daemonStatus]))
+                allowedOperations: [.daemonStatus]),
+            activity: PeekabooDaemonActivityStatus(
+                activeRequests: self.activeRequests,
+                lastActivityAt: Date(),
+                idleTimeoutSeconds: 10,
+                idleExitAt: self.activeRequests == 0 ? Date().addingTimeInterval(10) : nil))
     }
 
     func requestStop() async -> Bool {
         true
+    }
+
+    func recordActivityStart(operation: PeekabooBridgeOperation) async {
+        self.activeRequests += 1
     }
 }
 

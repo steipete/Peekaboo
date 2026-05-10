@@ -234,6 +234,7 @@ struct AISettingsView: View {
     private var allModels: [(provider: String, models: [(id: String, name: String)])] {
         var models: [(provider: String, models: [(id: String, name: String)])] = [
             ("openai", [
+                ("gpt-5.5", "GPT-5.5"),
                 ("gpt-5.1", "GPT-5.1"),
                 ("gpt-5.1-mini", "GPT-5.1 mini"),
                 ("gpt-5.1-nano", "GPT-5.1 nano"),
@@ -241,6 +242,7 @@ struct AISettingsView: View {
                 ("gpt-5-mini", "GPT-5 mini"),
             ]),
             ("anthropic", [
+                ("claude-opus-4-7", "Claude Opus 4.7"),
                 ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
                 ("claude-haiku-4.5", "Claude Haiku 4.5"),
             ]),
@@ -267,6 +269,8 @@ struct AISettingsView: View {
     private var modelDescriptions: [String: String] {
         [
             // OpenAI models
+            "gpt-5.5": "Flagship GPT-5.5 model with 400K context and upgraded tool " +
+                "usage + reasoning.",
             "gpt-5.1": "Flagship GPT-5.1 model with 400K context and upgraded tool " +
                 "usage + reasoning.",
             "gpt-5.1-mini": "Cost-optimized GPT-5.1 Mini with identical tools + 400K context " +
@@ -278,6 +282,8 @@ struct AISettingsView: View {
             "gpt-5-mini": "Cost-optimized GPT-5 Mini with the same tools + 400K context " +
                 "at a friendlier price.",
             // Anthropic models
+            "claude-opus-4-7": "Claude Opus 4.7 with 1M context for long-running " +
+                "automation and computer-use tasks.",
             "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 with new tools + computer use, " +
                 "tuned for long-running automation tasks.",
             "claude-haiku-4.5": "Claude Haiku 4.5 for ultra-low latency assistant tasks with " +

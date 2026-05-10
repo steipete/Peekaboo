@@ -48,7 +48,7 @@ private enum ConfigurationDefaults {
     static let configurationTemplate = """
     {
       "aiProviders": {
-        "providers": "openai/gpt-5.1,anthropic/claude-sonnet-4.5"
+        "providers": "openai/gpt-5.5,anthropic/claude-opus-4-7"
       },
       "defaults": {
         "savePath": "~/Desktop/Screenshots",

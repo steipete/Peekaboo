@@ -8,6 +8,7 @@ import PeekabooFoundation
 @MainActor
 public final class RemotePeekabooServices: PeekabooServiceProviding {
     public let logging: any LoggingServiceProtocol
+    public let desktopObservation: any DesktopObservationServiceProtocol
     public let screenCapture: any ScreenCaptureServiceProtocol
     public let applications: any ApplicationServiceProtocol
     public let automation: any UIAutomationServiceProtocol
@@ -35,7 +36,8 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         targetedHotkeyUnavailableReason: String? = nil,
         targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
         supportsPostEventPermissionRequest: Bool = false,
-        supportsElementActions: Bool = false)
+        supportsElementActions: Bool = false,
+        supportsDesktopObservation: Bool = false)
     {
         self.client = client
         self.supportsPostEventPermissionRequest = supportsPostEventPermissionRequest
@@ -58,8 +60,21 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         }
         self.windows = RemoteWindowManagementService(client: client)
         let snapshotManager = RemoteSnapshotManager(client: client)
+        let menuService = RemoteMenuService(client: client)
+        let screenService = ScreenService()
 
-        self.menu = RemoteMenuService(client: client)
+        self.desktopObservation = if supportsDesktopObservation {
+            RemoteDesktopObservationService(client: client)
+        } else {
+            DesktopObservationService(
+                screenCapture: self.screenCapture,
+                automation: self.automation,
+                applications: self.applications,
+                menu: menuService,
+                screens: screenService,
+                snapshotManager: snapshotManager)
+        }
+        self.menu = menuService
         self.dock = RemoteDockService(client: client)
         self.dialogs = RemoteDialogService(client: client)
         self.snapshots = snapshotManager
@@ -77,7 +92,7 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
             clipboardService: self.clipboard)
         self.permissions = PermissionsService()
         self.audioInput = AudioInputService(aiService: PeekabooAIService())
-        self.screens = ScreenService()
+        self.screens = screenService
         self.browser = RemoteBrowserMCPClient(client: client)
         self.agent = nil
     }

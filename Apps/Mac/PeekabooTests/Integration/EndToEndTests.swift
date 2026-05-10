@@ -34,7 +34,7 @@ struct EndToEndTests {
         _ = try await self.agent.executeTask("What time is it?")
 
         // Verify session was created
-        let sessions = sessionStore.sessions
+        let sessions = self.sessionStore.sessions
         #expect(sessions.count >= 1)
 
         if let session = sessions.first {
@@ -76,7 +76,7 @@ struct ErrorRecoveryTests {
     }
 
     @Test
-    mutating func `Session service handles corrupt data`() async throws {
+    mutating func `Session service handles corrupt data`() throws {
         try self.setup()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -133,7 +133,7 @@ struct ConcurrencyTests {
 
         func failsWithUnavailableService(_ task: String) async -> Bool {
             do {
-                try await agent.executeTask(task)
+                try await self.agent.executeTask(task)
                 return false
             } catch AgentError.serviceUnavailable {
                 return true
@@ -147,7 +147,7 @@ struct ConcurrencyTests {
         async let result3 = failsWithUnavailableService("Task 3")
 
         let results = await [result1, result2, result3]
-        #expect(results.allSatisfy { $0 })
+        #expect(results.allSatisfy(\.self))
     }
 
     @Test
@@ -169,7 +169,7 @@ struct ConcurrencyTests {
         }
 
         // Should have created 10 sessions
-        let sessions = sessionStore.sessions
+        let sessions = self.sessionStore.sessions
         #expect(sessions.count == 10)
 
         // Each should have one message

@@ -5,7 +5,7 @@ struct CaptureEngineResolverTests {
     @Test
     func `auto defaults to legacy+modern`() {
         let apis = ScreenCaptureAPIResolver.resolve(environment: [:])
-        #expect(apis == [.modern, .legacy])
+        #expect(apis == [.legacy, .modern])
     }
 
     @Test

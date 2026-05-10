@@ -170,7 +170,7 @@ extension ConfigurationManager {
         }
 
         let testPayload: [String: Any] = [
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-opus-4-7",
             "max_tokens": 10,
             "messages": [["role": "user", "content": "Hi"]],
         ]

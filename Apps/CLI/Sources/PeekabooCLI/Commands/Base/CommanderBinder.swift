@@ -53,6 +53,7 @@ enum CommanderCLIBinder {
             .trimmingCharacters(in: .whitespacesAndNewlines),
             !captureEngine.isEmpty {
             options.captureEnginePreference = captureEngine
+            options.preferRemote = false
         }
         if let rawInputStrategy = values.singleOption("inputStrategy")?
             .trimmingCharacters(in: .whitespacesAndNewlines),
@@ -79,9 +80,8 @@ enum CommanderCLIBinder {
             options.preferRemote = false
             options.autoStartDaemon = false
         }
-        if Self.prefersLocalFastRuntime(commandType), !values.flag("no-remote"),
+        if Self.prefersLocalRuntime(commandType), !values.flag("no-remote"),
            explicitBridgeSocket?.isEmpty ?? true {
-            // Fast local commands are usually called in tight loops; avoid bridge probes unless explicitly requested.
             options.preferRemote = false
         }
         if let socketPath = explicitBridgeSocket, !socketPath.isEmpty {
@@ -93,14 +93,26 @@ enum CommanderCLIBinder {
         return options
     }
 
-    private static func prefersLocalFastRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
-        commandType == ImageCommand.self ||
-            commandType == SeeCommand.self ||
-            commandType == MCPCommand.Serve.self ||
+    private static func prefersLocalRuntime(_ commandType: (any ParsableCommand.Type)?) -> Bool {
+        commandType == MCPCommand.Serve.self ||
             commandType == ToolsCommand.self ||
+            commandType == SleepCommand.self ||
+            commandType == LearnCommand.self ||
+            commandType == CleanCommand.self ||
+            commandType == ConfigCommand.InitCommand.self ||
+            commandType == ConfigCommand.ShowCommand.self ||
+            commandType == ConfigCommand.EditCommand.self ||
+            commandType == ConfigCommand.ValidateCommand.self ||
+            commandType == ConfigCommand.AddCommand.self ||
+            commandType == ConfigCommand.LoginCommand.self ||
+            commandType == ConfigCommand.SetCredentialCommand.self ||
+            commandType == ConfigCommand.AddProviderCommand.self ||
+            commandType == ConfigCommand.ListProvidersCommand.self ||
+            commandType == ConfigCommand.TestProviderCommand.self ||
+            commandType == ConfigCommand.RemoveProviderCommand.self ||
+            commandType == ConfigCommand.ModelsProviderCommand.self ||
+            commandType == AppCommand.ListSubcommand.self ||
             commandType == ListCommand.AppsSubcommand.self ||
-            commandType == ListCommand.WindowsSubcommand.self ||
-            commandType == ListCommand.MenuBarSubcommand.self ||
             commandType == ListCommand.ScreensSubcommand.self
     }
 

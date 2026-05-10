@@ -17,8 +17,8 @@ public struct TypeTool: MCPTool {
         Types text into UI elements or at current focus.
         Supports special keys ({return}, {tab}, etc.) plus human typing (--wpm) or fixed-delay (--delay) pacing.
         Can target specific elements or type at current keyboard focus.
-        \(PeekabooMCPVersion.banner) using openai/gpt-5.1
-        and anthropic/claude-sonnet-4.5
+        \(PeekabooMCPVersion.banner) using openai/gpt-5.5
+        and anthropic/claude-opus-4-7
         """
     }
 

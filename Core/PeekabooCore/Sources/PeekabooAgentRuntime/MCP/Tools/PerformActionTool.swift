@@ -15,7 +15,7 @@ public struct PerformActionTool: MCPTool {
         """
         Invokes a named accessibility action on an element, such as AXPress or AXShowMenu.
         Use with element IDs from see when a semantic action is available.
-        \(PeekabooMCPVersion.banner) using openai/gpt-5.1, anthropic/claude-sonnet-4.5
+        \(PeekabooMCPVersion.banner) using openai/gpt-5.5, anthropic/claude-opus-4-7
         """
     }
 

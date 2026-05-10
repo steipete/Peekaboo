@@ -34,7 +34,7 @@ extension ConfigurationManager {
             cliValue: cliValue,
             envVar: "PEEKABOO_AI_PROVIDERS",
             configValue: self.configuration?.aiProviders?.providers,
-            defaultValue: "openai/gpt-5.1,anthropic/claude-sonnet-4.5")
+            defaultValue: "openai/gpt-5.5,anthropic/claude-opus-4-7")
     }
 
     /// Get OpenAI API key with proper precedence

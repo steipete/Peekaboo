@@ -340,7 +340,7 @@ struct MCPSpecificToolTests {
 
     @Test
     func `Analyze provider config parses provider models without hardcoded defaults`() throws {
-        #expect(try AnalyzeTool.languageModel(providerType: "openai", modelName: "gpt-4o") == .openai(.gpt4o))
+        #expect(try AnalyzeTool.languageModel(providerType: "openai", modelName: "gpt-5.5") == .openai(.gpt55))
         #expect(try AnalyzeTool
             .languageModel(providerType: "anthropic", modelName: "claude-sonnet-4.5") == .anthropic(.sonnet45))
         #expect(try AnalyzeTool

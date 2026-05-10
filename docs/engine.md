@@ -12,7 +12,7 @@ Peekaboo supports two capture backends:
 - **classic**: CGWindowListCreateImage (legacy)
 
 ## How selection works
-- Default: **auto** (modern first, then classic if allowed).
+- Default: **auto** (classic/CoreGraphics first, then modern ScreenCaptureKit if allowed).
 - Environment:
   - `PEEKABOO_CAPTURE_ENGINE=auto|modern|sckit|classic|cg` (preferred)
   - Back-compat: `PEEKABOO_USE_MODERN_CAPTURE=true|false|modern-only|legacy`
@@ -26,8 +26,8 @@ Aliases:
 - classic: `classic`, `cg`, `legacy`
 - auto: `auto`
 
-## Current policy (Nov 2025)
-- Default: `auto` = try ScreenCaptureKit first, fallback to CG if SC fails.
+## Current policy (May 2026)
+- Default: `auto` = try CGWindowList/CoreGraphics first, fallback to ScreenCaptureKit if CG fails.
 - You can force SC-only via env `PEEKABOO_DISABLE_CGWINDOWLIST=1`.
 - You can force classic/CG via `--capture-engine classic|cg` or `PEEKABOO_CAPTURE_ENGINE=classic`.
 
@@ -36,5 +36,5 @@ Aliases:
 - Consider adding env `PEEKABOO_DISABLE_CGWINDOWLIST` if you want to dogfood pure SC.
 
 ## When to use which
-- Prefer **modern**. Use **classic** only when you hit SC gaps (e.g., certain menu-bar popovers) and are on ≤14, or for explicit regression checks.
-- For reproducible SC failures, log them and aim to remove the classic dependency rather than relying on it long-term.
+- Prefer **auto** for regular commands. Use **modern** for explicit ScreenCaptureKit regression checks.
+- For reproducible capture failures, log the selected engine and fallback path before forcing an engine globally.

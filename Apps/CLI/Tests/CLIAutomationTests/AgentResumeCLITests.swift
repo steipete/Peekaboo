@@ -233,21 +233,21 @@ struct AgentResumeCLITests {
     @Test
     func `Resume respects configuration settings`() {
         // Test that resume functionality respects the same configuration as regular commands
-        let defaultModel = "gpt-5.1"
+        let defaultModel = "gpt-5.5"
         let defaultMaxSteps = 20
 
         // These would be the defaults used in resume
-        #expect(defaultModel == "gpt-5.1")
+        #expect(defaultModel == "gpt-5.5")
         #expect(defaultMaxSteps == 20)
 
         // Test that configuration override logic works
-        let configModel = "claude-sonnet-4.5"
+        let configModel = "claude-opus-4-7"
         let configMaxSteps = 30
 
         let effectiveModel = configModel // Would be from config if available
         let effectiveMaxSteps = configMaxSteps // Would be from config if available
 
-        #expect(effectiveModel == "claude-sonnet-4.5")
+        #expect(effectiveModel == "claude-opus-4-7")
         #expect(effectiveMaxSteps == 30)
     }
 

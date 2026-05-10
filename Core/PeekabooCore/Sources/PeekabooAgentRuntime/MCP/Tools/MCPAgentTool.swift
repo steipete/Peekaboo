@@ -38,7 +38,7 @@ public struct MCPAgentTool: MCPTool {
         - "Open TextEdit, write 'Hello World', and save the document"
 
         Requires OPENAI_API_KEY environment variable to be set.
-        \(PeekabooMCPVersion.banner) using openai/gpt-5.1 and anthropic/claude-sonnet-4.5
+        \(PeekabooMCPVersion.banner) using openai/gpt-5.5 and anthropic/claude-opus-4-7
         """
     }
 
@@ -49,7 +49,7 @@ public struct MCPAgentTool: MCPTool {
                     description: "Task to perform in natural language (omit when only listing sessions)"),
                 "model": SchemaBuilder.string(
                     description: """
-                    OpenAI model to use (e.g., gpt-4-turbo, gpt-4o).
+                    OpenAI model to use (e.g., gpt-5.5, gpt-5-mini).
                     Call `list_models` first to see available presets and descriptions.
                     Choose 'FastChat' for quick responses, 'DeepAnalysis' for complex reasoning, etc.
                     If omitted, the tool auto-selects the first mode-compatible preset.
@@ -164,7 +164,7 @@ public struct MCPAgentTool: MCPTool {
         if let sessionId = input.resumeSession {
             return try await agent.resumeSession(
                 sessionId: sessionId,
-                model: parseModelString(input.model ?? "gpt-5.1"))
+                model: parseModelString(input.model ?? "gpt-5.5"))
         }
 
         if input.resume {
@@ -174,7 +174,7 @@ public struct MCPAgentTool: MCPTool {
             }
             return try await agent.resumeSession(
                 sessionId: latest.id,
-                model: parseModelString(input.model ?? "gpt-5.1"))
+                model: parseModelString(input.model ?? "gpt-5.5"))
         }
 
         if input.dryRun {
@@ -185,7 +185,7 @@ public struct MCPAgentTool: MCPTool {
         return try await agent.executeTask(
             task,
             sessionId: sessionId,
-            model: parseModelString(input.model ?? "gpt-5.1"),
+            model: parseModelString(input.model ?? "gpt-5.5"),
             eventDelegate: nil)
     }
 
@@ -305,7 +305,7 @@ struct AgentInput: Codable {
 /// Parse a model string into a LanguageModel enum
 private func parseModelString(_ modelString: String) -> LanguageModel {
     // Parse a model string into a LanguageModel enum
-    LanguageModel.parse(from: modelString) ?? .anthropic(.opus45)
+    LanguageModel.parse(from: modelString) ?? .anthropic(.opus47)
 }
 
 private struct AgentToolError: Error {

@@ -112,7 +112,7 @@ final class RealtimeVoiceService {
         do {
             // Start realtime conversation using Tachikoma
             self.conversation = try await startRealtimeConversation(
-                model: .gpt4oRealtime,
+                model: .custom("gpt-realtime"),
                 voice: self.selectedVoice,
                 instructions: instructions,
                 tools: tools,

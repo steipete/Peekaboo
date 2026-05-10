@@ -86,6 +86,13 @@ enum DaemonPaths {
         self.openFileForAppend(at: self.daemonLogURL())
     }
 
+    static func openDaemonStartupLock() -> FileHandle? {
+        let root = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".peekaboo")
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        return self.openFileForAppend(at: root.appendingPathComponent("daemon-start.lock"))
+    }
+
     static func openFileForAppend(at fileURL: URL) -> FileHandle? {
         let directory = fileURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -172,6 +179,22 @@ enum DaemonStatusPrinter {
             print("Connected: \(browser.isConnected ? "yes" : "no")")
             print("Tools: \(browser.toolCount)")
             print("Detected Chrome: \(browser.detectedBrowsers.count)")
+        }
+
+        if let activity = status.activity {
+            print("")
+            print("Activity")
+            print("--------")
+            print("Active Requests: \(activity.activeRequests)")
+            if let lastActivityAt = activity.lastActivityAt {
+                print("Last Activity: \(Self.formatDate(lastActivityAt))")
+            }
+            if let idleTimeoutSeconds = activity.idleTimeoutSeconds {
+                print("Idle Timeout: \(String(format: "%.0f", idleTimeoutSeconds))s")
+            }
+            if let idleExitAt = activity.idleExitAt {
+                print("Idle Exit: \(Self.formatDate(idleExitAt))")
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [3.1.0] - Unreleased
 
 ### Changed
 - Consolidated MCP installation docs into the main MCP page and removed stale standalone Claude Desktop and MCP best-practices pages from the docs site.
@@ -8,6 +8,11 @@
 - Release automation now builds and uploads the signed, notarized Peekaboo.app zip by default, updates Sparkle appcast metadata, and accepts one-line App Store Connect API keys for notarization.
 - Refined the macOS Settings window, menu bar popover header, and Playground chrome with denser native layout, clearer controls, and less debug noise.
 - Fixed the macOS app's invisible settings helper window and refreshed the app icon artwork so Dock no longer shows a stray blank window or white icon backing.
+- CLI automation commands now prefer a warm on-demand daemon for bursty use and route desktop observation through the daemon when supported, avoiding repeated process/service startup and large screenshot payloads over the Bridge socket.
+
+### Performance
+- Daemon-backed `peekaboo image`/MCP image calls now write screenshots inside the daemon and return lightweight metadata, making warm screenshot calls substantially faster and preventing large-image Bridge timeouts.
+- Capture engine `auto` now tries CoreGraphics before ScreenCaptureKit for faster repeated screenshot calls while preserving explicit ScreenCaptureKit selection through `--capture-engine modern`.
 
 ## [3.0.0] - 2026-05-09
 

@@ -118,7 +118,7 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
     public init(
         services: any PeekabooServiceProviding,
-        defaultModel: LanguageModel = .anthropic(.opus45))
+        defaultModel: LanguageModel = .anthropic(.opus47))
         throws
     {
         self.services = services

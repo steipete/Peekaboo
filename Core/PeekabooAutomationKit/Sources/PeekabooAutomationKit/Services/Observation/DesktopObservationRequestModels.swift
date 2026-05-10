@@ -1,6 +1,6 @@
 import Foundation
 
-public struct DesktopCaptureOptions: Sendable, Equatable {
+public struct DesktopCaptureOptions: Sendable, Codable, Equatable {
     public var engine: CaptureEnginePreference
     public var scale: CaptureScalePreference
     public var focus: CaptureFocus
@@ -22,13 +22,13 @@ public struct DesktopCaptureOptions: Sendable, Equatable {
     }
 }
 
-public enum DetectionMode: Sendable, Equatable {
+public enum DetectionMode: Sendable, Codable, Equatable {
     case none
     case accessibility
     case accessibilityAndOCR
 }
 
-public struct AXTraversalBudget: Sendable, Equatable {
+public struct AXTraversalBudget: Sendable, Codable, Equatable {
     public var maxDepth: Int
     public var maxElementCount: Int
     public var maxChildrenPerNode: Int
@@ -40,7 +40,7 @@ public struct AXTraversalBudget: Sendable, Equatable {
     }
 }
 
-public struct DesktopDetectionOptions: Sendable, Equatable {
+public struct DesktopDetectionOptions: Sendable, Codable, Equatable {
     public var mode: DetectionMode
     public var allowWebFocusFallback: Bool
     public var includeMenuBarElements: Bool
@@ -62,7 +62,7 @@ public struct DesktopDetectionOptions: Sendable, Equatable {
     }
 }
 
-public struct DesktopObservationOutputOptions: Sendable, Equatable {
+public struct DesktopObservationOutputOptions: Sendable, Codable, Equatable {
     public var path: String?
     public var format: ImageFormat
     public var saveRawScreenshot: Bool
@@ -87,7 +87,7 @@ public struct DesktopObservationOutputOptions: Sendable, Equatable {
     }
 }
 
-public struct DesktopObservationTimeouts: Sendable, Equatable {
+public struct DesktopObservationTimeouts: Sendable, Codable, Equatable {
     public var overall: TimeInterval?
     public var detection: TimeInterval?
 
@@ -97,7 +97,7 @@ public struct DesktopObservationTimeouts: Sendable, Equatable {
     }
 }
 
-public struct DesktopObservationRequest: Sendable, Equatable {
+public struct DesktopObservationRequest: Sendable, Codable, Equatable {
     public var target: DesktopObservationTargetRequest
     public var capture: DesktopCaptureOptions
     public var detection: DesktopDetectionOptions

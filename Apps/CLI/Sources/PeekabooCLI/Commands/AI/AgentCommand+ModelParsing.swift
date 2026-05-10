@@ -16,11 +16,11 @@ extension AgentCommand {
         switch parsed {
         case let .openai(model):
             if Self.supportedOpenAIInputs.contains(model) {
-                return .openai(.gpt51)
+                return .openai(.gpt55)
             }
         case let .anthropic(model):
             if Self.supportedAnthropicInputs.contains(model) {
-                return .anthropic(.opus45)
+                return .anthropic(.opus47)
             }
         case let .google(model):
             if Self.supportedGoogleInputs.contains(model) {
@@ -44,7 +44,9 @@ extension AgentCommand {
     }
 
     private static let supportedOpenAIInputs: Set<LanguageModel.OpenAI> = [
+        .gpt55,
         .gpt51,
+        .gpt52,
         .gpt5,
         .gpt5Pro,
         .gpt5Mini,
@@ -53,13 +55,10 @@ extension AgentCommand {
         .gpt5ThinkingMini,
         .gpt5ThinkingNano,
         .gpt5ChatLatest,
-        .gpt4o,
-        .gpt4oMini,
-        .gpt4oRealtime,
-        .o4Mini,
     ]
 
     private static let supportedAnthropicInputs: Set<LanguageModel.Anthropic> = [
+        .opus47,
         .sonnet45,
         .sonnet4,
         .sonnet4Thinking,

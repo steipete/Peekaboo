@@ -32,6 +32,8 @@ Peekaboo resolves settings in this order (highest → lowest):
 | Log Level | `logging.level` | `PEEKABOO_LOG_LEVEL` | `trace`, `debug`, `info`, `warn`, `error`, `fatal` (default `info`). |
 | Log Path | `logging.path` | `PEEKABOO_LOG_FILE` | Custom log destination (default `/tmp/peekaboo-mcp.log` for MCP; CLI uses stderr). |
 | CLI Binary Path | - | `PEEKABOO_CLI_PATH` | Override bundled CLI when testing custom builds. |
+| Auto daemon socket | - | `PEEKABOO_DAEMON_SOCKET` | Override the socket used for auto-started daemons (mainly tests/dev). |
+| Auto daemon idle timeout | - | `PEEKABOO_DAEMON_IDLE_TIMEOUT_SECONDS` | Seconds before an auto-started daemon exits while idle (default 300). |
 | Tool allow-list | `tools.allow` | `PEEKABOO_ALLOW_TOOLS` | CSV or space list. If set, only these tools are exposed (env replaces config). |
 | Tool deny-list | `tools.deny` | `PEEKABOO_DISABLE_TOOLS` | CSV or space list. Always removed; env list is additive with config. |
 | UI input strategy | `input.*` | `PEEKABOO_INPUT_STRATEGY` and per-verb variants | Choose action invocation versus synthetic input. Built-in policy uses `actionFirst` for click/scroll and `synthFirst` for type/hotkey. |

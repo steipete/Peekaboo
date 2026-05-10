@@ -34,10 +34,20 @@ struct DaemonCommandTests {
 
     @Test
     func `Daemon run parsing`() throws {
-        let args = ["--mode", "manual", "--bridge-socket", "/tmp/peekaboo.sock", "--poll-interval-ms", "500"]
+        let args = [
+            "--mode",
+            "auto",
+            "--bridge-socket",
+            "/tmp/peekaboo.sock",
+            "--poll-interval-ms",
+            "500",
+            "--idle-timeout-seconds",
+            "2.5",
+        ]
         let command = try DaemonCommand.Run.parse(args)
-        #expect(command.mode == "manual")
+        #expect(command.mode == "auto")
         #expect(command.bridgeSocket == "/tmp/peekaboo.sock")
         #expect(command.pollIntervalMs == 500)
+        #expect(command.idleTimeoutSeconds == 2.5)
     }
 }

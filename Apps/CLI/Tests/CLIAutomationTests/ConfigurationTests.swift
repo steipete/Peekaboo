@@ -153,7 +153,7 @@ struct ConfigurationTests {
         let json = """
         {
             "aiProviders": {
-                "providers": "openai/gpt-5.1,anthropic/claude-sonnet-4.5",
+                "providers": "openai/gpt-5.5,anthropic/claude-opus-4-7",
                 "openaiApiKey": "test_key",
                 "anthropicApiKey": "test_claude_key"
             },
@@ -173,7 +173,7 @@ struct ConfigurationTests {
         let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
-        #expect(config.aiProviders?.providers == "openai/gpt-5.1,anthropic/claude-sonnet-4.5")
+        #expect(config.aiProviders?.providers == "openai/gpt-5.5,anthropic/claude-opus-4-7")
         #expect(config.aiProviders?.openaiApiKey == "test_key")
         #expect(config.aiProviders?.anthropicApiKey == "test_claude_key")
 
@@ -191,7 +191,7 @@ struct ConfigurationTests {
         let json = """
         {
             "aiProviders": {
-                "providers": "anthropic/claude-sonnet-4.5"
+                "providers": "anthropic/claude-opus-4-7"
             }
         }
         """
@@ -199,7 +199,7 @@ struct ConfigurationTests {
         let data = Data(json.utf8)
         let config = try JSONDecoder().decode(Configuration.self, from: data)
 
-        #expect(config.aiProviders?.providers == "anthropic/claude-sonnet-4.5")
+        #expect(config.aiProviders?.providers == "anthropic/claude-opus-4-7")
         #expect(config.aiProviders?.openaiApiKey == nil)
         #expect(config.defaults == nil)
         #expect(config.logging == nil)
@@ -228,8 +228,8 @@ struct ConfigurationTests {
         #expect(!baselineProviders.isEmpty)
 
         // Test with CLI value
-        let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-5.1")
-        #expect(cliProviders == "openai/gpt-5.1")
+        let cliProviders = manager.getAIProviders(cliValue: "openai/gpt-5.5")
+        #expect(cliProviders == "openai/gpt-5.5")
 
         // Test with environment variable
         setenv("PEEKABOO_AI_PROVIDERS", "env_provider", 1)

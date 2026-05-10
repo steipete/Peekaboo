@@ -26,10 +26,10 @@ struct SessionStoreTests {
     }
 
     @Test
-    mutating func `Creating a new session assigns unique ID`() async {
+    mutating func `Creating a new session assigns unique ID`() {
         self.setup()
         defer { tearDown() }
-        let session = store.createSession(title: "Test Session", modelName: "test-model")
+        let session = self.store.createSession(title: "Test Session", modelName: "test-model")
 
         #expect(!session.id.isEmpty)
         #expect(session.title == "Test Session")
@@ -39,19 +39,19 @@ struct SessionStoreTests {
     }
 
     @Test
-    mutating func `Adding messages to session updates the session`() async throws {
+    mutating func `Adding messages to session updates the session`() throws {
         self.setup()
         defer { tearDown() }
-        var session = store.createSession(title: "Test", modelName: "test-model")
+        var session = self.store.createSession(title: "Test", modelName: "test-model")
         let message = ConversationMessage(
             role: .user,
             content: "Test message")
 
-        store.addMessage(message, to: session)
+        self.store.addMessage(message, to: session)
         session = try #require(self.store.sessions.first)
 
         // Verify the session was updated
-        let sessions = store.sessions
+        let sessions = self.store.sessions
         #expect(sessions.count == 1)
 
         if let updatedSession = sessions.first {
@@ -61,11 +61,11 @@ struct SessionStoreTests {
     }
 
     @Test
-    mutating func `Multiple sessions can be managed independently`() async throws {
+    mutating func `Multiple sessions can be managed independently`() throws {
         self.setup()
         defer { tearDown() }
-        var session1 = store.createSession(title: "Session 1", modelName: "test-model")
-        let session2 = store.createSession(title: "Session 2", modelName: "test-model")
+        var session1 = self.store.createSession(title: "Session 1", modelName: "test-model")
+        let session2 = self.store.createSession(title: "Session 2", modelName: "test-model")
 
         #expect(session1.id != session2.id)
         #expect(self.store.sessions.count == 2)
@@ -77,7 +77,7 @@ struct SessionStoreTests {
         session1 = try #require(self.store.sessions.first { $0.id == session1.id })
 
         // Verify only first session has the message
-        let sessions = store.sessions
+        let sessions = self.store.sessions
         let updatedSession1 = sessions.first { $0.id == session1.id }
         let updatedSession2 = sessions.first { $0.id == session2.id }
 
@@ -90,13 +90,13 @@ struct SessionStoreTests {
         self.setup()
         defer { tearDown() }
         // Create sessions with specific times
-        let session1 = store.createSession(title: "1", modelName: "m")
+        let session1 = self.store.createSession(title: "1", modelName: "m")
         try? await Task.sleep(for: .milliseconds(10))
-        let session2 = store.createSession(title: "2", modelName: "m")
+        let session2 = self.store.createSession(title: "2", modelName: "m")
         try? await Task.sleep(for: .milliseconds(10))
-        let session3 = store.createSession(title: "3", modelName: "m")
+        let session3 = self.store.createSession(title: "3", modelName: "m")
 
-        let sessions = store.sessions
+        let sessions = self.store.sessions
         #expect(sessions.count == 3)
 
         // Verify order (newest first)
@@ -110,7 +110,7 @@ struct SessionStoreTests {
 @MainActor
 struct SessionStorePersistenceTests {
     @Test
-    func `Sessions persist across store instances`() async throws {
+    func `Sessions persist across store instances`() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let storageURL = directory.appendingPathComponent("test_sessions.json")
