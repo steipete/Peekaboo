@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$PROJECT_ROOT/build"
-RELEASE_DIR="$PROJECT_ROOT/release"
+RELEASE_DIR="${RELEASE_DIR:-$BUILD_DIR/release}"
 
 echo -e "${BLUE}🚀 Peekaboo Release Build Script${NC}"
 
@@ -222,7 +222,7 @@ if [ "$INCLUDE_MAC_APP" = true ]; then
     if [ "$MAC_APP_APPCAST" = false ]; then
         MAC_APP_ARGS+=(--no-appcast)
     fi
-    if ! "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_APP_ARGS[@]}"; then
+    if ! RELEASE_DIR="$RELEASE_DIR" "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_APP_ARGS[@]}"; then
         echo -e "${RED}❌ macOS app release failed!${NC}"
         exit 1
     fi

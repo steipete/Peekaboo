@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.1.2] - 2026-05-11
+
+### Fixed
+- Release automation now writes artifacts under `build/release` so clean release builds no longer embed `-dirty` in CLI version metadata.
+
 ## [3.1.1] - 2026-05-11
 
 ### Added
