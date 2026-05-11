@@ -16,7 +16,7 @@ extension ImageCommand: CommanderSignatureProviding {
                 ),
                 .commandOption(
                     "path",
-                    help: "Output path for saved image",
+                    help: "Output path for saved image, or '-' to write one image to stdout",
                     long: "path"
                 ),
                 .commandOption(

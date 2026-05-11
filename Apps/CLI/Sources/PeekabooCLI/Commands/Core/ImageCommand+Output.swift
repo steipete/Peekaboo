@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 import PeekabooCore
 import PeekabooFoundation
@@ -40,6 +41,39 @@ struct ImageAnalyzeResult: Codable {
 
 @MainActor
 extension ImageCommand {
+    var streamsImageToStdout: Bool {
+        self.path?.trimmingCharacters(in: .whitespacesAndNewlines) == "-"
+    }
+
+    func validateStdoutStreamingOptions() throws {
+        guard self.streamsImageToStdout else { return }
+
+        if self.jsonOutput {
+            throw ValidationError("Cannot combine --json with --path - because stdout is reserved for image bytes")
+        }
+
+        if self.analyze != nil {
+            throw ValidationError("Cannot combine --analyze with --path - because stdout is reserved for image bytes")
+        }
+    }
+
+    func outputImageToStdout(_ captures: [ImageCapturedFile]) throws {
+        defer {
+            for capture in captures {
+                try? FileManager.default.removeItem(atPath: capture.file.path)
+            }
+        }
+
+        guard captures.count == 1, let capture = captures.first else {
+            throw ValidationError(
+                "--path - supports exactly one captured image; add --screen-index or capture a single target"
+            )
+        }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: capture.file.path))
+        FileHandle.standardOutput.write(data)
+    }
+
     func outputResults(_ captures: [ImageCapturedFile]) {
         let output = ImageCaptureResult(
             files: captures.map(\.file),

@@ -23,6 +23,13 @@ extension ImageCommand {
     }
 
     func makeOutputURL(preferredName: String?, index: Int?) -> URL {
+        if self.streamsImageToStdout {
+            let suffix = index.map { "-\($0)" } ?? ""
+            return FileManager.default.temporaryDirectory
+                .appendingPathComponent("peekaboo-stdout-\(UUID().uuidString)\(suffix)")
+                .appendingPathExtension(self.format.fileExtension)
+        }
+
         if let explicit = self.path {
             let expanded = (explicit as NSString).expandingTildeInPath
             if ObservationOutputPathResolver.isDirectoryLike(expanded) {

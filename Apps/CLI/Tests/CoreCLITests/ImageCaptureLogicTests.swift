@@ -53,6 +53,30 @@ struct ImageCaptureLogicTests {
         #expect(fileCommand.path == "/tmp/test.png")
     }
 
+    @Test(.tags(.fast))
+    @MainActor
+    func `Stdout output path uses temporary capture file`() throws {
+        let command = try ImageCommand.parse(["--path", "-"])
+
+        #expect(command.streamsImageToStdout)
+        #expect(command.makeOutputURL(preferredName: "frontmost", index: nil).path.hasPrefix(NSTemporaryDirectory()))
+        #expect(command.makeOutputURL(preferredName: "frontmost", index: nil).path.hasSuffix(".png"))
+    }
+
+    @Test(.tags(.fast))
+    @MainActor
+    func `Stdout image streaming rejects structured or text output`() throws {
+        let jsonCommand = try ImageCommand.parse(["--path", "-", "--json"])
+        #expect(throws: ValidationError.self) {
+            try jsonCommand.validateStdoutStreamingOptions()
+        }
+
+        let analyzeCommand = try ImageCommand.parse(["--path", "-", "--analyze", "describe"])
+        #expect(throws: ValidationError.self) {
+            try analyzeCommand.validateStdoutStreamingOptions()
+        }
+    }
+
     // MARK: - Mode Determination Tests
 
     @Test(.tags(.fast))

@@ -15,7 +15,7 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
     @Option(name: .long, help: "Target application by process ID")
     var pid: Int32?
 
-    @Option(name: .long, help: "Output path for saved image")
+    @Option(name: .long, help: "Output path for saved image, or '-' to write one image to stdout")
     var path: String?
 
     @Option(name: .long, help: "Capture mode (screen, window, frontmost, multi, area)")
@@ -103,6 +103,8 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
         self.logger.operationStart("image_command", metadata: startMetadata)
 
         do {
+            try self.validateStdoutStreamingOptions()
+
             // ScreenCaptureService performs the authoritative permission check inside each capture path.
             // Avoid preflighting here too; it adds fixed latency to every one-shot screenshot.
             let captures = try await CrossProcessOperationGate.withExclusiveOperation(
@@ -111,7 +113,9 @@ struct ImageCommand: ApplicationResolvable, ErrorHandlingCommand, OutputFormatta
                 try await self.performCapture()
             }
 
-            if let prompt = self.analyze, let firstFile = captures.first?.file {
+            if self.streamsImageToStdout {
+                try self.outputImageToStdout(captures)
+            } else if let prompt = self.analyze, let firstFile = captures.first?.file {
                 let analysis = try await self.analyzeImage(at: firstFile.path, with: prompt)
                 self.outputResultsWithAnalysis(captures, analysis: analysis)
             } else {
