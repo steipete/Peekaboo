@@ -179,6 +179,12 @@ if [[ "$NOTARIZE" == true ]]; then
   require_command spctl
 fi
 
+assess_app_bundle() {
+  local app_path="$1"
+
+  spctl --assess --type open --context context:primary-signature --verbose=4 "$app_path"
+}
+
 if [[ -z "$VERIFY_ONLY_ZIP" ]]; then
   [[ -d "$WORKSPACE" ]] || fail "Workspace not found: $WORKSPACE"
   [[ -f "$SPARKLE_PRIVATE_KEY_FILE" ]] || fail "Sparkle private key not found: $SPARKLE_PRIVATE_KEY_FILE"
@@ -198,7 +204,7 @@ verify_zip() {
   codesign --verify --deep --strict --verbose=2 "$extracted_app"
   if [[ "$NOTARIZE" == true ]]; then
     xcrun stapler validate "$extracted_app"
-    spctl --assess --type execute --verbose=4 "$extracted_app"
+    assess_app_bundle "$extracted_app"
   fi
 }
 
@@ -267,7 +273,7 @@ EOF
   log "Stapling notarization ticket"
   xcrun stapler staple "$APP_BUNDLE"
   xcrun stapler validate "$APP_BUNDLE"
-  spctl --assess --type execute --verbose=4 "$APP_BUNDLE"
+  assess_app_bundle "$APP_BUNDLE"
 fi
 
 log "Creating Sparkle zip"
