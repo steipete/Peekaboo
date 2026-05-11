@@ -26,7 +26,7 @@ Reference tips
 - Each command page lists flags, examples, and troubleshooting. For common pitfalls (permissions, focus, window targeting), see the “Common troubleshooting” section below.
 
 ## Common troubleshooting
-- **Focus/foreground issues** — ensure the target app/window is focused (`peekaboo app focus ...`) and Screen Recording + Accessibility are granted (`peekaboo permissions status`).
-- **Element not found** — run `peekaboo see --annotate` to verify AX labels/roles; fall back to coordinates with `--region` when needed.
+- **Focus/foreground issues** — ensure the target app/window is focused (`peekaboo window focus --app ...`) and Screen Recording + Accessibility are granted (`peekaboo permissions status`).
+- **Element not found** — run `peekaboo see --annotate` to verify AX labels/roles; fall back to coordinates with `--coords` when needed.
 - **Permission errors** — re-run `peekaboo permissions grant` and restart affected apps if dialogs persist.
-- **Slow or flaky automation** — add `--quiet-ms`/`--heartbeat-sec` for capture/live commands; for input commands insert `--delay-ms` where available or precede with `sleep`.
+- **Slow or flaky automation** — add `--quiet-ms`/`--heartbeat-sec` for capture/live commands; for input commands use `--delay` where available or precede with `sleep`.

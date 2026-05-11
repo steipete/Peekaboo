@@ -8,6 +8,17 @@ import path from 'path';
 
 const docsRoot = path.resolve('docs');
 const failures = [];
+const extraMarkdownFiles = [path.resolve('README.md')];
+const staleCliPatterns = [
+  [/peekaboo capture --output\b/, 'use `peekaboo image --path` or `peekaboo capture live --path`'],
+  [/peekaboo capture --window-focused\b/, 'use `peekaboo image --mode frontmost`'],
+  [/--press-return\b/, 'use `--return`'],
+  [/--delay-ms\b/, 'use `--delay`'],
+  [/--repeat\b/, 'use `--count`'],
+  [/--label\b/, 'use positional query text or `--on`'],
+  [/--at\b/, 'use `--coords`'],
+  [/--ticks\b/, 'use `--amount`'],
+];
 
 async function walk(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -24,35 +35,59 @@ async function walk(dir) {
 async function checkFile(file) {
   const text = await fs.readFile(file, 'utf8');
   const trimmed = text.trimStart();
+  const requiresFrontMatter = path.relative(process.cwd(), file) !== 'README.md';
   if (!trimmed.startsWith('---')) {
-    failures.push(`${file}: missing front matter start`);
-    return;
+    if (requiresFrontMatter) {
+      failures.push(`${file}: missing front matter start`);
+      return;
+    }
+  } else if (requiresFrontMatter) {
+    const end = trimmed.indexOf('\n---', 3);
+    if (end === -1) {
+      failures.push(`${file}: missing front matter end delimiter`);
+      return;
+    }
+    const header = trimmed.slice(3, end).split('\n').map(l => l.trim());
+    const hasSummary = header.some(l => l.startsWith('summary:') && l.replace('summary:', '').trim().length > 0);
+    const readWhenStart = header.findIndex(l => l.startsWith('read_when:'));
+    let hasReadWhen = false;
+    if (readWhenStart !== -1) {
+      for (let i = readWhenStart + 1; i < header.length; i++) {
+        const line = header[i];
+        if (!line.startsWith('-') && !line.startsWith('#') && !line.startsWith('summary:') && !line.startsWith('read_when:') && line.length) break;
+        if (line.startsWith('-')) {
+          hasReadWhen = true;
+          break;
+        }
+      }
+    }
+    if (!hasSummary) failures.push(`${file}: summary missing or empty`);
+    if (readWhenStart === -1) failures.push(`${file}: read_when missing`);
+    else if (!hasReadWhen) failures.push(`${file}: read_when has no entries`);
   }
-  const end = trimmed.indexOf('\n---', 3);
-  if (end === -1) {
-    failures.push(`${file}: missing front matter end delimiter`);
-    return;
-  }
-  const header = trimmed.slice(3, end).split('\n').map(l => l.trim());
-  const hasSummary = header.some(l => l.startsWith('summary:') && l.replace('summary:', '').trim().length > 0);
-  const readWhenStart = header.findIndex(l => l.startsWith('read_when:'));
-  let hasReadWhen = false;
-  if (readWhenStart !== -1) {
-    for (let i = readWhenStart + 1; i < header.length; i++) {
-      const line = header[i];
-      if (!line.startsWith('-') && !line.startsWith('#') && !line.startsWith('summary:') && !line.startsWith('read_when:') && line.length) break;
-      if (line.startsWith('-')) {
-        hasReadWhen = true;
-        break;
+
+  if (shouldCheckCurrentCliExamples(file)) {
+    for (const [pattern, replacement] of staleCliPatterns) {
+      if (pattern.test(text)) {
+        failures.push(`${file}: stale CLI example ${pattern}; ${replacement}`);
       }
     }
   }
-  if (!hasSummary) failures.push(`${file}: summary missing or empty`);
-  if (readWhenStart === -1) failures.push(`${file}: read_when missing`);
-  else if (!hasReadWhen) failures.push(`${file}: read_when has no entries`);
+}
+
+function shouldCheckCurrentCliExamples(file) {
+  const relative = path.relative(process.cwd(), file);
+  if (relative === 'README.md') return true;
+  if (relative === 'docs/quickstart.md' || relative === 'docs/automation.md') return true;
+  if (relative === 'docs/commands/README.md') return true;
+  if (relative.startsWith('docs/commands/') && relative.endsWith('.md')) return true;
+  return false;
 }
 
 await walk(docsRoot);
+for (const file of extraMarkdownFiles) {
+  await checkFile(file);
+}
 
 if (failures.length) {
   console.error('Docs lint failures:');

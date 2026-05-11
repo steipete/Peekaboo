@@ -16,8 +16,8 @@ Peekaboo's automation surface is small but covers the whole macOS UI graph. Each
 Every input command accepts one of three target shapes:
 
 - **Element ID** — `--id E12` (from `peekaboo see`); the most reliable.
-- **Label / role / app** — `--label "Send" --app Mail`; resolved via the AX tree.
-- **Coordinates** — `--at 480,120`; the fallback when the AX tree lies.
+- **Label / role / app** — positional query text such as `peekaboo click "Send" --app Mail`; resolved via the AX tree.
+- **Coordinates** — `--coords 480,120`; the fallback when the AX tree lies.
 
 Prefer IDs when you can capture them, labels when you can't, and coordinates only as a last resort. The agent and MCP tooling default to the first two.
 
@@ -58,16 +58,16 @@ For UX parity with humans (jitter, easing, dwell), see [human-typing.md](human-t
 
 ```bash
 # 1. Inspect first to find a stable label.
-peekaboo see --app Safari --annotate --output safari.png
+peekaboo see --app Safari --annotate --path safari.png
 
 # 2. Click it.
-peekaboo click --label "Reload" --app Safari
+peekaboo click "Reload" --app Safari
 ```
 
 ## Recipe: a small flow
 
 ```bash
-peekaboo app focus --name "Notes"
+peekaboo window focus --app "Notes"
 peekaboo hotkey cmd+n
 peekaboo type "Standup notes\n\n- Shipped Peekaboo docs\n- Reviewed PR #42\n"
 peekaboo hotkey cmd+s

@@ -23,17 +23,17 @@ peekaboo permissions grant
 ## 2. Take a screenshot
 
 ```bash
-# whole screen → ./screen.png
-peekaboo capture --output screen.png
+# whole screen -> ./screen.png
+peekaboo image --mode screen --path screen.png
 
 # only the focused window
-peekaboo capture --window-focused --output focused.png
+peekaboo image --mode frontmost --path focused.png
 
 # a specific app's frontmost window
-peekaboo capture --app Safari --output safari.png
+peekaboo image --app Safari --path safari.png
 ```
 
-The output is a regular PNG. Add `--format jpeg --quality 85` for smaller files. See [commands/capture.md](commands/capture.md) for every flag.
+The output is a regular PNG. Add `--format jpeg --quality 85` for smaller files. See [commands/image.md](commands/image.md) for every flag.
 
 ## 3. Inspect the UI
 
@@ -46,7 +46,7 @@ peekaboo see --app Safari --json | jq '.elements[0:3]'
 Add `--annotate` to write a labelled PNG you can eyeball:
 
 ```bash
-peekaboo see --app Safari --annotate --output safari.png
+peekaboo see --app Safari --annotate --path safari.png
 ```
 
 Each element has `id`, `role`, `label`, `frame`, and `actions`. Pass an `id` to other commands to act on it.
@@ -54,11 +54,11 @@ Each element has `id`, `role`, `label`, `frame`, and `actions`. Pass an `id` to 
 ## 4. Click and type
 
 ```bash
-peekaboo click --label "Address and search bar" --app Safari
-peekaboo type "github.com/openclaw/Peekaboo" --press-return
+peekaboo click "Address and search bar" --app Safari
+peekaboo type "github.com/openclaw/Peekaboo" --return
 ```
 
-Coordinates also work: `peekaboo click --at 480,120`. See [automation.md](automation.md) for the full input vocabulary.
+Coordinates also work: `peekaboo click --coords 480,120`. See [automation.md](automation.md) for the full input vocabulary.
 
 ## 5. Run an agent
 

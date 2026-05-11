@@ -34,6 +34,7 @@ read_when:
 4. **Check Permissions**
    ```bash
    peekaboo permissions status    # Check current permission status
+   peekaboo permissions status --all-sources
    peekaboo permissions grant     # Show grant instructions
    ```
 
@@ -49,6 +50,8 @@ peekaboo see --mode screen --screen-index 0 --no-remote --capture-engine cg --js
 
 This is useful for OpenClaw or other Node/subprocess runners where the parent process has TCC grants but the
 Bridge host does not.
+
+Use `peekaboo permissions status --all-sources` to compare the selected Bridge host and local CLI process side by side.
 
 ## Performance Tips
 

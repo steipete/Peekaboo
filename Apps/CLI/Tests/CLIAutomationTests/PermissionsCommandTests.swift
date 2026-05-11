@@ -2,25 +2,57 @@ import Foundation
 import Testing
 @testable import PeekabooCLI
 
-// TODO: PermissionsCommand tests commented out - command no longer exists
-/*
- @Suite(.tags(.safe))
- struct PermissionsCommandTests {
-     @Test("PermissionsCommand configuration matches original")
-     func commandConfiguration() {
-         // Verify the command has the same configuration as the original
-         #expect(PermissionsCommand.commandDescription.commandName == "permissions")
-         #expect(PermissionsCommand.commandDescription.abstract == "Check system permissions required for Peekaboo")
-         #expect(!PermissionsCommand.commandDescription.discussion.isEmpty)
-     }
+@Suite(.tags(.safe))
+struct PermissionsCommandTests {
+    @Test
+    func `permissions command metadata describes current command`() {
+        #expect(PermissionsCommand.commandDescription.commandName == "permissions")
+        #expect(PermissionsCommand.commandDescription.abstract == "Check Peekaboo permissions")
+        #expect(PermissionsCommand.commandDescription.subcommands.count == 3)
+    }
 
-     @Test("PermissionsCommand has JSON output flag")
-     func jSONOutputFlag() throws {
-         // Create command instance
-         let command = PermissionsCommand()
+    @Test
+    func `permissions status parses all sources flag`() throws {
+        let command = try PermissionsCommand.StatusSubcommand.parse(["--all-sources", "--no-remote"])
 
-         // Verify the default value
-         #expect(command.jsonOutput == false)
-     }
- }
- */
+        #expect(command.allSources == true)
+        #expect(command.noRemote == true)
+    }
+
+    @Test
+    func `permissions status all sources emits JSON with local source`() async throws {
+        let automation = StubAutomationService()
+        automation.accessibilityPermissionGranted = false
+        let screenCapture = StubScreenCaptureService(permissionGranted: false)
+
+        let services = await MainActor.run {
+            TestServicesFactory.makePeekabooServices(
+                automation: automation,
+                screenCapture: screenCapture
+            )
+        }
+
+        let result = try await InProcessCommandRunner.run([
+            "permissions",
+            "status",
+            "--all-sources",
+            "--no-remote",
+            "--json",
+        ], services: services)
+
+        #expect(result.exitStatus == 0)
+        let payload = try ExternalCommandRunner.decodeJSONResponse(
+            from: result,
+            as: CodableJSONResponse<PermissionHelpers.PermissionSourcesResponse>.self
+        )
+        #expect(payload.success)
+        #expect(payload.data.selectedSource == "local")
+        #expect(payload.data.sources.count == 1)
+
+        let local = try #require(payload.data.sources.first)
+        #expect(local.source == "local")
+        #expect(local.isSelected == true)
+        #expect(local.permissions.contains { $0.name == "Screen Recording" && !$0.isGranted })
+        #expect(local.permissions.contains { $0.name == "Accessibility" && !$0.isGranted })
+    }
+}

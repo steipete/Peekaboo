@@ -36,6 +36,9 @@ extension PermissionsCommand {
         )
         var bridgeSocket: String?
 
+        @Flag(name: .customLong("all-sources"), help: "Show bridge and local permission status side by side")
+        var allSources = false
+
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {
                 preconditionFailure("CommandRuntime must be configured before accessing runtime resources")
@@ -54,6 +57,26 @@ extension PermissionsCommand {
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
+
+            if self.allSources {
+                let response = await PermissionHelpers.getAllPermissionSources(
+                    services: runtime.services,
+                    allowRemote: !self.noRemote,
+                    socketPath: self.bridgeSocket
+                )
+
+                if self.jsonOutput {
+                    outputSuccessCodable(data: response, logger: self.outputLogger)
+                } else {
+                    for source in response.sources {
+                        let marker = source.isSelected ? " (selected)" : ""
+                        print("Source: \(source.displayName)\(marker)")
+                        source.permissions.forEach { print(PermissionHelpers.formatPermissionStatus($0)) }
+                        print("")
+                    }
+                }
+                return
+            }
 
             let response = await PermissionHelpers.getCurrentPermissionsWithSource(
                 services: runtime.services,
@@ -185,6 +208,7 @@ extension PermissionsCommand.StatusSubcommand: CommanderBindableCommand {
     mutating func applyCommanderValues(_ values: CommanderBindableValues) throws {
         self.noRemote = values.flag("no-remote")
         self.bridgeSocket = values.singleOption("bridge-socket")
+        self.allSources = values.flag("all-sources")
     }
 }
 

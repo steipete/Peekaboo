@@ -17,6 +17,18 @@ enum PermissionHelpers {
         let permissions: [PermissionInfo]
     }
 
+    struct PermissionSourceStatus: Codable {
+        let source: String
+        let displayName: String
+        let isSelected: Bool
+        let permissions: [PermissionInfo]
+    }
+
+    struct PermissionSourcesResponse: Codable {
+        let selectedSource: String
+        let sources: [PermissionSourceStatus]
+    }
+
     struct EventSynthesizingPermissionRequestResult: Codable {
         let action: String
         let source: String
@@ -91,22 +103,64 @@ enum PermissionHelpers {
             ? await self.remotePermissionsStatus(socketPath: socketPath)
             : nil
 
-        let status: PermissionsStatus = if let remoteStatus {
-            remoteStatus
+        let status: PermissionsStatus
+        let source: String
+        if let remoteStatus {
+            status = remoteStatus
+            source = "bridge"
         } else {
-            await Task { @MainActor in
-                let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
-                let accessibility = await services.automation.hasAccessibilityPermission()
-                let postEvent = services.permissions.checkPostEventPermission()
-                return PermissionsStatus(
-                    screenRecording: screenRecording,
-                    accessibility: accessibility,
-                    postEvent: postEvent
-                )
-            }.value
+            status = await self.localPermissionsStatus(services: services)
+            source = "local"
+        }
+        return PermissionStatusResponse(source: source, permissions: self.permissionList(from: status))
+    }
+
+    static func getAllPermissionSources(
+        services: any PeekabooServiceProviding,
+        allowRemote: Bool = true,
+        socketPath: String? = nil
+    ) async -> PermissionSourcesResponse {
+        let remoteStatus = allowRemote
+            ? await self.remotePermissionsStatus(socketPath: socketPath)
+            : nil
+        let localStatus = await self.localPermissionsStatus(services: services)
+        let selectedSource = remoteStatus != nil ? "bridge" : "local"
+        var sources: [PermissionSourceStatus] = []
+
+        if let remoteStatus {
+            sources.append(PermissionSourceStatus(
+                source: "bridge",
+                displayName: "Peekaboo Bridge",
+                isSelected: selectedSource == "bridge",
+                permissions: self.permissionList(from: remoteStatus)
+            ))
         }
 
-        let permissionList = [
+        sources.append(PermissionSourceStatus(
+            source: "local",
+            displayName: "local runtime",
+            isSelected: selectedSource == "local",
+            permissions: self.permissionList(from: localStatus)
+        ))
+
+        return PermissionSourcesResponse(selectedSource: selectedSource, sources: sources)
+    }
+
+    private static func localPermissionsStatus(services: any PeekabooServiceProviding) async -> PermissionsStatus {
+        await Task { @MainActor in
+            let screenRecording = await services.screenCapture.hasScreenRecordingPermission()
+            let accessibility = await services.automation.hasAccessibilityPermission()
+            let postEvent = services.permissions.checkPostEventPermission()
+            return PermissionsStatus(
+                screenRecording: screenRecording,
+                accessibility: accessibility,
+                postEvent: postEvent
+            )
+        }.value
+    }
+
+    private static func permissionList(from status: PermissionsStatus) -> [PermissionInfo] {
+        [
             PermissionInfo(
                 name: "Screen Recording",
                 isRequired: true,
@@ -126,9 +180,6 @@ enum PermissionHelpers {
                 grantInstructions: "System Settings > Privacy & Security > Accessibility"
             )
         ]
-
-        let source = remoteStatus != nil ? "bridge" : "local"
-        return PermissionStatusResponse(source: source, permissions: permissionList)
     }
 
     @MainActor

@@ -138,6 +138,25 @@ struct TypeCommandTests {
     }
 
     @Test
+    func `Type JSON output separates requested text from executed actions`() async throws {
+        let context = await self.makeContext()
+        let result = try await self.runType(arguments: ["Line 1\\nLine 2", "--json"], context: context)
+
+        #expect(result.exitStatus == 0)
+        let payload = try ExternalCommandRunner.decodeJSONResponse(
+            from: result,
+            as: CodableJSONResponse<TypeCommandResult>.self
+        )
+
+        #expect(payload.data.requestedText == "Line 1\\nLine 2")
+        #expect(payload.data.typedText == "Line 1\\nLine 2")
+        #expect(payload.data.literalCharactersTyped == 12)
+        #expect(payload.data.specialKeyPresses == 1)
+        #expect(payload.data.actions.map(\.kind) == ["text", "key", "text"])
+        #expect(payload.data.actions[1].value == "return")
+    }
+
+    @Test
     func `Type execution does not reuse latest snapshot with explicit app target`() async throws {
         let context = await self.makeContext()
         _ = try await context.snapshots.createSnapshot()

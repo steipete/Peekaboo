@@ -90,13 +90,13 @@ For persistent setup and troubleshooting, see
 | Command | Key flags / subcommands | What it does |
 | --- | --- | --- |
 | [see](docs/commands/see.md) | `--app`, `--mode screen/window`, `--retina`, `--json` | Capture and annotate UI, return snapshot + element IDs |
-| [click](docs/commands/click.md) | `--on <id/query>`, `--snapshot`, `--wait`, coords | Click by element ID, label, or coordinates |
-| [type](docs/commands/type.md) | `--text`, `--clear`, `--delay-ms` | Enter text with pacing options |
+| [click](docs/commands/click.md) | `--on <id/query>`, `--snapshot`, `--wait-for`, `--coords` | Click by element ID, label, or coordinates |
+| [type](docs/commands/type.md) | `--text`, `--clear`, `--profile`, `--delay` | Enter text with pacing options |
 | [set-value](docs/commands/set-value.md) | `--on <id/query>`, `--value`, `--snapshot` | Directly set a settable accessibility value |
 | [perform-action](docs/commands/perform-action.md) | `--on <id/query>`, `--action`, `--snapshot` | Invoke a named accessibility action |
-| [press](docs/commands/press.md) | key names, `--repeat` | Special keys and sequences |
+| [press](docs/commands/press.md) | key names, `--count`, `--delay`, `--hold` | Special keys and sequences |
 | [hotkey](docs/commands/hotkey.md) | combos like `cmd,shift,t` | Modifier combos (cmd/ctrl/alt/shift) |
-| [scroll](docs/commands/scroll.md) | `--on <id>`, `--direction up/down`, `--ticks` | Scroll views or elements |
+| [scroll](docs/commands/scroll.md) | `--on <id>`, `--direction up/down`, `--amount` | Scroll views or elements |
 | [swipe](docs/commands/swipe.md) | `--from/--to`, `--duration`, `--steps` | Smooth gesture-style drags |
 | [drag](docs/commands/drag.md) | `--from/--to`, modifiers, Dock/Trash targets | Drag-and-drop between elements/coords |
 | [move](docs/commands/move.md) | `--to <id/coords>`, `--screen-index` | Position the cursor without clicking |

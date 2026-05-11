@@ -117,7 +117,7 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
                 logger: self.logger,
                 reason: "type"
             )
-            self.renderResult(typeResult, startTime: startTime)
+            self.renderResult(typeResult, actions: actions, startTime: startTime)
         } catch {
             self.handleError(error)
             throw ExitCode.failure
@@ -214,12 +214,17 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
         return try await AutomationServiceBridge.typeActions(automation: self.services.automation, request: request)
     }
 
-    private func renderResult(_ typeResult: TypeResult, startTime: Date) {
+    private func renderResult(_ typeResult: TypeResult, actions: [TypeAction], startTime: Date) {
+        let specialKeys = max(typeResult.keyPresses - typeResult.totalCharacters, 0)
         let result = TypeCommandResult(
             success: true,
+            requestedText: self.resolvedText,
             typedText: self.resolvedText,
             keyPresses: typeResult.keyPresses,
             totalCharacters: typeResult.totalCharacters,
+            literalCharactersTyped: typeResult.totalCharacters,
+            specialKeyPresses: specialKeys,
+            actions: actions.map(Self.actionSummary),
             executionTime: Date().timeIntervalSince(startTime),
             wordsPerMinute: self.resolvedProfile == .human ? self.resolvedWordsPerMinute : nil,
             profile: self.resolvedProfile.rawValue
@@ -230,7 +235,6 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
             if let typed = self.resolvedText {
                 print("⌨️  Typed: \"\(typed)\"")
             }
-            let specialKeys = max(typeResult.keyPresses - typeResult.totalCharacters, 0)
             if specialKeys > 0 {
                 print("🔑 Special keys: \(specialKeys)")
             }
@@ -242,6 +246,17 @@ struct TypeCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConfi
                 print("⚙️  Fixed delay: \(self.delay)ms between keys")
             }
             print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
+        }
+    }
+
+    private static func actionSummary(_ action: TypeAction) -> TypeCommandActionSummary {
+        switch action {
+        case let .text(text):
+            TypeCommandActionSummary(kind: "text", value: text)
+        case let .key(key):
+            TypeCommandActionSummary(kind: "key", value: key.rawValue)
+        case .clear:
+            TypeCommandActionSummary(kind: "clear", value: nil)
         }
     }
 }
@@ -290,7 +305,7 @@ extension TypeCommand: ParsableCommand {
                     It can type regular text or send special key combinations.
 
                     EXAMPLES:
-                      peekaboo type "Hello World"           # Type text (default: 5ms delay)
+                      peekaboo type "Hello World"           # Type text with human cadence (default: 140 WPM)
                       peekaboo type "user@example.com"      # Type email
                       peekaboo type "text" --delay 0        # Type at maximum speed
                       peekaboo type "text" --delay 50       # Type slower (50ms between keys)
@@ -320,8 +335,8 @@ extension TypeCommand: ParsableCommand {
                       \\\\  - Literal backslash
 
                     FOCUS MANAGEMENT:
-                      The command assumes an element is already focused.
-                      Use 'click' to focus an input field first.
+                      Provide --app/--pid/window targeting or a snapshot for focus guarantees.
+                      Without a target, keys are injected into the current focused element.
 
                     HUMAN TYPING:
                     Use --profile human (default) for realistic cadence; override speed with --wpm (80-220).

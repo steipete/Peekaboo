@@ -12,7 +12,7 @@ read_when:
 ## Subcommands
 | Name | Purpose |
 | --- | --- |
-| `status` (default) | Fetches the current permission set via `PermissionHelpers.getCurrentPermissions` and prints each entry (`granted`, `denied`, etc.). Honors `--json` so agents can block proactively. |
+| `status` (default) | Fetches the current permission set and prints each entry (`granted`, `denied`, etc.). Honors `--json` so agents can block proactively. Add `--all-sources` to compare Bridge and local CLI permissions side by side. |
 | `grant` | Reuses the same snapshot but focuses on remediation: when in text mode it prints the exact System Settings pane/location for each missing entitlement. |
 | `request-event-synthesizing` | Triggers the macOS Event Synthesizing prompt needed by `hotkey --focus-background`. With the default remote runtime it requests the permission for the selected bridge host; use `--no-remote` to request it for the local CLI process. |
 
@@ -20,6 +20,7 @@ read_when:
 - All subcommands conform to `RuntimeOptionsConfigurable`, so they inherit global `--json`/`--verbose` flags even when invoked from compound commands like `peekaboo learn`.
 - The command executes entirely on the main actor, avoiding extra prompts or sandbox warnings—the same code path runs at CLI startup to warn if entitlements are missing.
 - JSON mode uses `outputSuccessCodable`, which means status results include a `permissions` array with `{name, isRequired, isGranted, grantInstructions}` entries that can be diffed over time.
+- `--all-sources --json` returns `{selectedSource, sources}` so callers can distinguish Bridge TCC grants from local CLI grants.
 
 ## Examples
 ```bash
@@ -28,6 +29,9 @@ peekaboo permissions
 
 # Feed the status into an agent to ensure entitlements are set
 peekaboo permissions --json | jq '.data.permissions[] | select(.isGranted == false)'
+
+# Compare Bridge and local CLI TCC state
+peekaboo permissions status --all-sources
 
 # Hand someone clear remediation steps
 peekaboo permissions grant

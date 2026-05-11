@@ -5,6 +5,9 @@
 ### Fixed
 - Ollama vision model IDs such as `qwen2.5vl:3b` now stay intact through Tachikoma model parsing instead of falling back to `llama3.3` (#16).
 - Release automation now verifies CLI, npm, macOS app, checksum, appcast, and uploaded GitHub assets before publish.
+- `peekaboo type --json` now separates requested text from executed key actions, making escaped special keys such as `\n` visible to agents without losing backwards-compatible `typedText`.
+- `peekaboo permissions status --all-sources` now compares Bridge and local TCC permission state side by side, so daemon grants are no longer confused with CLI grants.
+- Refreshed CLI docs and quickstart examples to use current flags such as `image --path`, `click --coords`, `type --return`, `press --count`, and `scroll --amount`.
 
 ## [3.1.2] - 2026-05-11
 
