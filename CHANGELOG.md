@@ -7,7 +7,14 @@
 - Release automation now verifies CLI, npm, macOS app, checksum, appcast, and uploaded GitHub assets before publish.
 - `peekaboo type --json` now separates requested text from executed key actions, making escaped special keys such as `\n` visible to agents without losing backwards-compatible `typedText`.
 - `peekaboo permissions status --all-sources` now compares Bridge and local TCC permission state side by side, so daemon grants are no longer confused with CLI grants.
+- `peekaboo mcp serve --transport ...` now rejects invalid transport names instead of silently starting stdio mode.
+- `peekaboo paste --app ...` now fails before mutating the clipboard when the requested app cannot be found.
+- `peekaboo agent` no longer sends stale Anthropic extended-thinking options to Claude Opus 4.7 and now exits with failure when agent execution fails.
+- Command timeout JSON now reports the intended timeout error instead of occasionally surfacing cancellation as an unknown error.
 - Refreshed CLI docs and quickstart examples to use current flags such as `image --path`, `click --coords`, `type --return`, `press --count`, and `scroll --amount`.
+
+### Performance
+- Debug CLI startup no longer spawns `git config` on every launch when build-staleness checking is disabled, cutting startup-heavy command latency by more than 30% in local testing.
 
 ## [3.1.2] - 2026-05-11
 
