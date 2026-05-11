@@ -99,10 +99,11 @@ if [ "$SKIP_CHECKS" = false ]; then
     echo -e "${GREEN}✅ All checks passed${NC}"
 fi
 
-# Step 2: Clean previous builds
+# Step 2: Clean previous build outputs. Do not clear release/ until after
+# version metadata is embedded, because release/ contains tracked files.
 echo -e "\n${BLUE}Cleaning previous builds...${NC}"
-rm -rf "$BUILD_DIR" "$RELEASE_DIR"
-mkdir -p "$BUILD_DIR" "$RELEASE_DIR"
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
 
 # Step 3: Read version from package.json
 VERSION=$(node -p "require('$PROJECT_ROOT/package.json').version")
@@ -128,6 +129,8 @@ fi
 
 # Step 5: Create release artifacts
 echo -e "\n${BLUE}Creating release artifacts...${NC}"
+rm -rf "$RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
 
 # Create CLI release directory
 CLI_RELEASE_DIR="$BUILD_DIR/$CLI_ARTIFACT_DIR"

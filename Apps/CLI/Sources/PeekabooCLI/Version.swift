@@ -24,11 +24,11 @@ private enum VersionMetadata {
     }
 
     static func resolve() -> Values {
-        if let workingCopy = valuesFromWorkingCopy() {
-            return workingCopy
-        }
         if let info = valuesFromInfoDictionary() {
             return info
+        }
+        if let workingCopy = valuesFromWorkingCopy() {
+            return workingCopy
         }
 
         return Values(
@@ -48,7 +48,12 @@ private enum VersionMetadata {
         }
 
         let display = info["PeekabooVersionDisplayString"] as? String ?? "Peekaboo \(shortVersion)"
-        let commit = info["PeekabooGitCommit"] as? String ?? "unknown"
+        guard let commit = info["PeekabooGitCommit"] as? String,
+              !commit.isEmpty,
+              commit != "unknown"
+        else {
+            return nil
+        }
         let commitDate = info["PeekabooGitCommitDate"] as? String ?? "unknown"
         let branch = info["PeekabooGitBranch"] as? String ?? "unknown"
         let buildDate = info["PeekabooBuildDate"] as? String ?? self.iso8601Now()
