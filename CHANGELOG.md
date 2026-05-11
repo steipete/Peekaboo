@@ -2,6 +2,9 @@
 
 ## [3.1.3] - Unreleased
 
+### Fixed
+- Release automation now verifies CLI, npm, macOS app, checksum, appcast, and uploaded GitHub assets before publish.
+
 ## [3.1.2] - 2026-05-11
 
 ### Fixed

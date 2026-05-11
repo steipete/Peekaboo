@@ -94,7 +94,6 @@ while [[ $# -gt 0 ]]; do
     --verify-only)
       VERIFY_ONLY_ZIP="$2"
       SKIP_BUILD=true
-      NOTARIZE=false
       UPDATE_APPCAST=false
       UPLOAD=false
       shift 2
@@ -157,7 +156,7 @@ cleanup() {
   if [[ "$DRY_RUN" == true ]]; then
     rm -rf "$RELEASE_DIR"
   fi
-  if [[ "$KEEP_DERIVED_DATA" != true ]]; then
+  if [[ -z "$VERIFY_ONLY_ZIP" && "$KEEP_DERIVED_DATA" != true ]]; then
     rm -rf "$DERIVED_DATA_PATH"
   fi
 }

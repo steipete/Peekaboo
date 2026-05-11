@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Release script for Peekaboo binaries
 # Default: universal (arm64+x86_64). Use --arm64-only to skip Intel.
@@ -18,6 +18,205 @@ BUILD_DIR="$PROJECT_ROOT/build"
 RELEASE_DIR="${RELEASE_DIR:-$BUILD_DIR/release}"
 
 echo -e "${BLUE}🚀 Peekaboo Release Build Script${NC}"
+
+fail() {
+    echo -e "${RED}❌ $*${NC}" >&2
+    exit 1
+}
+
+require_command() {
+    command -v "$1" >/dev/null 2>&1 || fail "$1 not found"
+}
+
+verify_binary_artifact() {
+    local binary_path="$1"
+    local label="$2"
+    local version_output
+    local binary_size
+    local lipo_output
+
+    [ -x "$binary_path" ] || fail "$label binary missing or not executable: $binary_path"
+    binary_size=$(stat -f%z "$binary_path")
+    (( binary_size > 1000000 )) || fail "$label binary is unexpectedly small: $binary_size bytes"
+    file "$binary_path" | grep -q 'Mach-O' || fail "$label binary is not Mach-O: $binary_path"
+
+    if command -v lipo >/dev/null 2>&1; then
+        lipo_output=$(lipo -info "$binary_path")
+        if [ "$UNIVERSAL" = true ]; then
+            printf '%s\n' "$lipo_output" | grep -q 'x86_64' || fail "$label binary is missing x86_64 slice"
+            printf '%s\n' "$lipo_output" | grep -q 'arm64' || fail "$label binary is missing arm64 slice"
+        else
+            printf '%s\n' "$lipo_output" | grep -q 'arm64' || fail "$label binary is missing arm64 slice"
+        fi
+    fi
+
+    version_output=$("$binary_path" --version)
+    printf '%s\n' "$version_output" | grep -Fq "Peekaboo $VERSION" ||
+        fail "$label version output does not contain Peekaboo $VERSION: $version_output"
+    if printf '%s\n' "$version_output" | grep -Fq -- '-dirty'; then
+        fail "$label was built from a dirty tree: $version_output"
+    fi
+}
+
+verify_cli_tarball() {
+    local tarball_path="$1"
+    local verify_dir
+    verify_dir=$(mktemp -d /tmp/peekaboo-cli-verify.XXXXXX)
+
+    [ -f "$tarball_path" ] || fail "CLI tarball missing: $tarball_path"
+    tar -tzf "$tarball_path" | grep -Fxq "$CLI_ARTIFACT_DIR/peekaboo" ||
+        fail "CLI tarball does not contain $CLI_ARTIFACT_DIR/peekaboo"
+    tar -xzf "$tarball_path" -C "$verify_dir"
+    verify_binary_artifact "$verify_dir/$CLI_ARTIFACT_DIR/peekaboo" "CLI tarball"
+    rm -rf "$verify_dir"
+}
+
+verify_npm_tarball() {
+    local npm_path="$1"
+    local verify_dir
+    verify_dir=$(mktemp -d /tmp/peekaboo-npm-verify.XXXXXX)
+
+    [ -f "$npm_path" ] || fail "npm package missing: $npm_path"
+    tar -tzf "$npm_path" | grep -Eq '^(package/)?peekaboo$|^package/peekaboo$' ||
+        fail "npm package does not contain peekaboo binary"
+    tar -xzf "$npm_path" -C "$verify_dir"
+    if [ -x "$verify_dir/package/peekaboo" ]; then
+        verify_binary_artifact "$verify_dir/package/peekaboo" "npm package"
+    elif [ -x "$verify_dir/peekaboo" ]; then
+        verify_binary_artifact "$verify_dir/peekaboo" "npm package"
+    else
+        fail "npm package peekaboo binary missing after extraction"
+    fi
+    rm -rf "$verify_dir"
+}
+
+verify_appcast_entry() {
+    [ "$INCLUDE_MAC_APP" = true ] || return 0
+    [ "$MAC_APP_APPCAST" = true ] || return 0
+
+    local app_zip_name
+    local app_zip_length
+    app_zip_name=$(basename "$MAC_APP_ZIP_PATH")
+    app_zip_length=$(stat -f%z "$MAC_APP_ZIP_PATH")
+
+    VERSION="$VERSION" \
+    APPCAST_PATH="$PROJECT_ROOT/appcast.xml" \
+    APP_ZIP_NAME="$app_zip_name" \
+    APP_ZIP_LENGTH="$app_zip_length" \
+    node <<'EOF'
+const fs = require("node:fs");
+
+const xml = fs.readFileSync(process.env.APPCAST_PATH, "utf8");
+const version = process.env.VERSION;
+const items = xml.match(/    <item>[\s\S]*?    <\/item>/g) ?? [];
+const matches = items.filter((item) => item.includes(`sparkle:shortVersionString="${version}"`));
+
+if (matches.length !== 1) {
+  throw new Error(`Expected exactly one appcast item for ${version}, found ${matches.length}`);
+}
+
+const item = matches[0];
+const expectedUrl = `https://github.com/openclaw/Peekaboo/releases/download/v${version}/${process.env.APP_ZIP_NAME}`;
+const required = [
+  [`url="${expectedUrl}"`, "asset URL"],
+  [`length="${process.env.APP_ZIP_LENGTH}"`, "asset length"],
+  [`sparkle:shortVersionString="${version}"`, "short version"],
+  ["sparkle:edSignature=", "Sparkle EdDSA signature"],
+];
+
+for (const [needle, label] of required) {
+  if (!item.includes(needle)) {
+    throw new Error(`Appcast ${version} item missing ${label}: ${needle}`);
+  }
+}
+EOF
+
+    if command -v xmllint >/dev/null 2>&1; then
+        xmllint --noout "$PROJECT_ROOT/appcast.xml"
+    fi
+}
+
+verify_checksums_file() {
+    local checksum_path="$RELEASE_DIR/checksums.txt"
+    [ -f "$checksum_path" ] || fail "checksums.txt missing"
+    (cd "$RELEASE_DIR" && shasum -a 256 -c checksums.txt >/dev/null) ||
+        fail "checksums.txt verification failed"
+    grep -Fq "  $CLI_TARBALL_NAME" "$checksum_path" ||
+        fail "checksums.txt missing $CLI_TARBALL_NAME"
+    grep -Fq "  $(basename "$NPM_PACKAGE_PATH")" "$checksum_path" ||
+        fail "checksums.txt missing $(basename "$NPM_PACKAGE_PATH")"
+    if [ "$INCLUDE_MAC_APP" = true ]; then
+        grep -Fq "  $(basename "$MAC_APP_ZIP_PATH")" "$checksum_path" ||
+            fail "checksums.txt missing $(basename "$MAC_APP_ZIP_PATH")"
+    fi
+}
+
+verify_release_artifacts() {
+    echo -e "\n${BLUE}Verifying release artifacts...${NC}"
+    require_command tar
+    require_command shasum
+    require_command file
+
+    verify_cli_tarball "$RELEASE_DIR/$CLI_TARBALL_NAME"
+    verify_npm_tarball "$NPM_PACKAGE_PATH"
+    verify_checksums_file
+
+    if [ "$INCLUDE_MAC_APP" = true ]; then
+        MAC_VERIFY_ARGS=(--version "$VERSION" --verify-only "$MAC_APP_ZIP_PATH")
+        if [ "$MAC_APP_NOTARIZE" = false ]; then
+            MAC_VERIFY_ARGS+=(--no-notarize)
+        fi
+        "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_VERIFY_ARGS[@]}"
+        verify_appcast_entry
+    fi
+
+    echo -e "${GREEN}✅ Release artifact verification passed${NC}"
+}
+
+verify_github_release_assets() {
+    local expected_assets_json
+    local release_json
+    local expected_assets
+
+    echo -e "\n${BLUE}Verifying GitHub release assets...${NC}"
+    expected_assets=(
+        "$CLI_TARBALL_NAME=$(stat -f%z "$RELEASE_DIR/$CLI_TARBALL_NAME")"
+        "$(basename "$NPM_PACKAGE_PATH")=$(stat -f%z "$NPM_PACKAGE_PATH")"
+        "checksums.txt=$(stat -f%z "$RELEASE_DIR/checksums.txt")"
+    )
+    if [ -n "$MAC_APP_ZIP_PATH" ]; then
+        expected_assets+=("$(basename "$MAC_APP_ZIP_PATH")=$(stat -f%z "$MAC_APP_ZIP_PATH")")
+    fi
+    expected_assets_json=$(node -e '
+const assets = Object.fromEntries(process.argv.slice(1).map((entry) => {
+  const index = entry.lastIndexOf("=");
+  return [entry.slice(0, index), Number(entry.slice(index + 1))];
+}));
+console.log(JSON.stringify(assets));
+' "${expected_assets[@]}")
+
+    release_json=$(gh release view "v${VERSION}" --json isDraft,tagName,assets)
+    VERSION="$VERSION" EXPECTED_ASSETS_JSON="$expected_assets_json" RELEASE_JSON="$release_json" node <<'EOF'
+const expected = JSON.parse(process.env.EXPECTED_ASSETS_JSON);
+const release = JSON.parse(process.env.RELEASE_JSON);
+
+if (release.tagName !== `v${process.env.VERSION}`) {
+  throw new Error(`Unexpected release tag: ${release.tagName}`);
+}
+
+const assets = release.assets ?? [];
+for (const [name, size] of Object.entries(expected)) {
+  const asset = assets.find((entry) => entry.name === name);
+  if (!asset) {
+    throw new Error(`GitHub release asset missing: ${name}`);
+  }
+  if (asset.size !== size) {
+    throw new Error(`GitHub release asset size mismatch for ${name}: expected ${size}, got ${asset.size}`);
+  }
+}
+EOF
+    echo -e "${GREEN}✅ GitHub release assets verified${NC}"
+}
 
 # Parse command line arguments
 SKIP_CHECKS=false
@@ -259,13 +458,16 @@ if ! awk -v version="$VERSION" '
 fi
 perl -0pi -e 's/\n+\z/\n/' "$RELEASE_DIR/release-notes.md"
 
-# Step 9: Display results
+# Step 9: Verify release artifacts before any publish/upload step
+verify_release_artifacts
+
+# Step 10: Display results
 echo -e "\n${GREEN}✅ Release artifacts created successfully!${NC}"
 echo -e "${BLUE}Release directory: ${RELEASE_DIR}${NC}"
 echo -e "${BLUE}Artifacts:${NC}"
 ls -la "$RELEASE_DIR"
 
-# Step 10: Create GitHub release (if requested)
+# Step 11: Create GitHub release (if requested)
 if [ "$CREATE_GITHUB_RELEASE" = true ]; then
     echo -e "\n${BLUE}Creating GitHub release draft...${NC}"
     
@@ -289,12 +491,14 @@ if [ "$CREATE_GITHUB_RELEASE" = true ]; then
         --title "v${VERSION}" \
         --notes-file "$RELEASE_DIR/release-notes.md" \
         "${RELEASE_ASSETS[@]}"
+
+    verify_github_release_assets
     
     echo -e "${GREEN}✅ GitHub release draft created!${NC}"
     echo -e "${BLUE}Edit the release at: https://github.com/openclaw/Peekaboo/releases${NC}"
 fi
 
-# Step 11: Publish to npm (if requested)
+# Step 12: Publish to npm (if requested)
 if [ "$PUBLISH_NPM" = true ]; then
     echo -e "\n${BLUE}Publishing to npm...${NC}"
     NPM_TAG=""
