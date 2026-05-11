@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.1] - Unreleased
+## [3.1.1] - 2026-05-11
 
 ### Added
 - `peekaboo image --path -` now writes a single captured image to stdout for shell pipelines.
