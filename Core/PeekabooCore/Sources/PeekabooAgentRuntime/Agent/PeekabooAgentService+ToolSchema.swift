@@ -33,14 +33,25 @@ extension PeekabooAgentService {
     }
 
     private func makeAgentToolProperty(name: String, value: Value) -> AgentToolParameterProperty? {
-        guard case let .object(propDict) = value,
-              let typeValue = propDict["type"],
-              case let .string(typeStr) = typeValue
-        else {
+        guard case let .object(propDict) = value else {
             return nil
         }
 
-        let paramType = AgentToolParameterProperty.ParameterType(rawValue: typeStr) ?? .string
+        // Some properties use anyOf/oneOf union schemas (e.g. `set_value`'s `value` field accepts
+        // string|boolean|integer|number). Those carry no top-level `type`. Earlier this branch
+        // returned nil, silently dropping the property while leaving its name in `required`, which
+        // then made the whole tool schema invalid for strict validators (Google's Gemini API
+        // rejects the request, OpenAI/Anthropic accept it). Fall back to `.string` so the property
+        // stays discoverable; richer union support can land later.
+        let paramType: AgentToolParameterProperty.ParameterType
+        if case let .string(typeStr) = propDict["type"],
+           let resolved = AgentToolParameterProperty.ParameterType(rawValue: typeStr)
+        {
+            paramType = resolved
+        } else {
+            paramType = .string
+        }
+
         let description = self.descriptionValue(from: propDict["description"])
         let enumValues = self.enumValues(from: propDict["enum"])
         let items = self.itemsDefinition(for: paramType, itemsValue: propDict["items"])
