@@ -152,6 +152,19 @@ struct AgentToolDescriptionTests {
 
     @Test
     @MainActor
+    func `MCP union parameters remain visible to agent providers`() throws {
+        let service = try PeekabooAgentService(services: PeekabooServices())
+        let tool = service.createSetValueTool()
+        let properties = tool.parameters.properties
+
+        #expect(properties["value"] != nil)
+        #expect(properties["value"]?.type == .string)
+        #expect(tool.parameters.required.contains("value"))
+        #expect(tool.parameters.required.allSatisfy { properties[$0] != nil })
+    }
+
+    @Test
+    @MainActor
     func `Optional parameters have default values documented`() {
         let allTools = makeAgentTools()
 

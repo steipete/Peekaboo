@@ -22,25 +22,36 @@ extension PeekabooAgentService {
 
         return AgentToolParameters(
             properties: agentProperties,
-            required: self.requiredFields(from: schemaDict))
+            required: self.requiredFields(from: schemaDict, properties: agentProperties))
     }
 
-    private func requiredFields(from schemaDict: [String: Value]) -> [String] {
+    private func requiredFields(
+        from schemaDict: [String: Value],
+        properties: [String: AgentToolParameterProperty]) -> [String]
+    {
         guard case let .array(requiredValues) = schemaDict["required"] else { return [] }
-        return requiredValues.compactMap { value in
+        let declaredRequired = requiredValues.compactMap { value in
             if case let .string(str) = value { str } else { nil }
         }
+        return declaredRequired.filter { properties[$0] != nil }
     }
 
     private func makeAgentToolProperty(name: String, value: Value) -> AgentToolParameterProperty? {
-        guard case let .object(propDict) = value,
-              let typeValue = propDict["type"],
-              case let .string(typeStr) = typeValue
-        else {
+        guard case let .object(propDict) = value else {
             return nil
         }
 
-        let paramType = AgentToolParameterProperty.ParameterType(rawValue: typeStr) ?? .string
+        // MCP schemas can express unions with anyOf/oneOf and no top-level type.
+        // Keep those properties visible so strict providers do not see orphan required entries.
+        let paramType: AgentToolParameterProperty.ParameterType = if case let .string(typeStr) = propDict["type"],
+                                                                     let resolved = AgentToolParameterProperty
+                                                                         .ParameterType(rawValue: typeStr)
+        {
+            resolved
+        } else {
+            .string
+        }
+
         let description = self.descriptionValue(from: propDict["description"])
         let enumValues = self.enumValues(from: propDict["enum"])
         let items = self.itemsDefinition(for: paramType, itemsValue: propDict["items"])

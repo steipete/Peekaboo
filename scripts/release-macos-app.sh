@@ -16,6 +16,7 @@ SPARKLE_PRIVATE_KEY_FILE="${SPARKLE_PRIVATE_KEY_FILE:-$HOME/Library/CloudStorage
 APPCAST_PATH="${APPCAST_PATH:-$ROOT_DIR/appcast.xml}"
 MINIMUM_SYSTEM_VERSION="${MINIMUM_SYSTEM_VERSION:-15.0}"
 REPOSITORY_SLUG="${REPOSITORY_SLUG:-openclaw/Peekaboo}"
+ENTITLEMENTS_PATH="${ENTITLEMENTS_PATH:-$ROOT_DIR/Apps/Mac/Peekaboo/Peekaboo.entitlements}"
 
 VERSION="$(node -p "require('$ROOT_DIR/package.json').version")"
 TAG="v${VERSION}"
@@ -168,6 +169,8 @@ require_command() { command -v "$1" >/dev/null 2>&1 || fail "$1 not found"; }
 
 require_command codesign
 require_command ditto
+require_command file
+require_command realpath
 if [[ -z "$VERIFY_ONLY_ZIP" ]]; then
   require_command node
   require_command xcodebuild
@@ -183,6 +186,50 @@ assess_app_bundle() {
   local app_path="$1"
 
   spctl --assess --type open --context context:primary-signature --verbose=4 "$app_path"
+}
+
+bundle_executable_name() {
+  local app_path="$1"
+
+  /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Contents/Info.plist" 2>/dev/null ||
+    fail "Could not read CFBundleExecutable from $app_path"
+}
+
+verify_app_payload() {
+  local app_path="$1"
+  local executable_name
+  executable_name="$(bundle_executable_name "$app_path")"
+  local executable_path="$app_path/Contents/MacOS/$executable_name"
+
+  [[ -x "$executable_path" ]] || fail "Main executable missing or not executable: $executable_path"
+
+  local executable_size
+  executable_size="$(stat -f%z "$executable_path")"
+  (( executable_size > 1000000 )) || fail "Main executable is unexpectedly small: $executable_size bytes"
+
+  file "$executable_path" | grep -q 'Mach-O' ||
+    fail "Main executable is not a Mach-O binary: $executable_path"
+
+  local sparkle_binary="$app_path/Contents/Frameworks/Sparkle.framework/Sparkle"
+  if [[ -e "$sparkle_binary" ]]; then
+    [[ -x "$sparkle_binary" ]] || fail "Sparkle framework binary is not executable: $sparkle_binary"
+    local sparkle_payload="$sparkle_binary"
+    if [[ -L "$sparkle_binary" ]]; then
+      sparkle_payload="$(realpath "$sparkle_binary")"
+    fi
+    local sparkle_size
+    sparkle_size="$(stat -f%z "$sparkle_payload")"
+    (( sparkle_size > 100000 )) || fail "Sparkle framework binary is unexpectedly small: $sparkle_size bytes"
+  fi
+}
+
+verify_app_entitlements() {
+  local app_path="$1"
+  local entitlements
+
+  entitlements="$(codesign -d --entitlements :- "$app_path" 2>/dev/null || true)"
+  printf '%s\n' "$entitlements" | grep -q 'com.apple.security.automation.apple-events' ||
+    fail "Signed app is missing AppleEvents entitlement: $app_path"
 }
 
 if [[ -z "$VERIFY_ONLY_ZIP" ]]; then
@@ -201,7 +248,9 @@ verify_zip() {
   ditto -x -k "$zip_path" "$verify_dir"
   local extracted_app="$verify_dir/$APP_NAME.app"
   [[ -d "$extracted_app" ]] || fail "Extracted app not found: $extracted_app"
+  verify_app_payload "$extracted_app"
   codesign --verify --deep --strict --verbose=2 "$extracted_app"
+  verify_app_entitlements "$extracted_app"
   if [[ "$NOTARIZE" == true ]]; then
     xcrun stapler validate "$extracted_app"
     assess_app_bundle "$extracted_app"
@@ -230,10 +279,14 @@ else
 fi
 
 [[ -d "$APP_BUNDLE" ]] || fail "App bundle not found: $APP_BUNDLE"
+[[ -f "$ENTITLEMENTS_PATH" ]] || fail "Entitlements file not found: $ENTITLEMENTS_PATH"
+verify_app_payload "$APP_BUNDLE"
 
 log "Developer ID signing"
 codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS_PATH" --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+verify_app_entitlements "$APP_BUNDLE"
 
 if [[ "$NOTARIZE" == true ]]; then
   log "Submitting to Apple notarization"
