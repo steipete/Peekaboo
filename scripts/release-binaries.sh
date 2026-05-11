@@ -257,6 +257,7 @@ if ! awk -v version="$VERSION" '
     echo -e "${RED}❌ Could not extract v${VERSION} notes from CHANGELOG.md${NC}"
     exit 1
 fi
+perl -0pi -e 's/\n+\z/\n/' "$RELEASE_DIR/release-notes.md"
 
 # Step 9: Display results
 echo -e "\n${GREEN}✅ Release artifacts created successfully!${NC}"
