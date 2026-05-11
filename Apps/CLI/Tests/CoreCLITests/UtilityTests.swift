@@ -140,4 +140,79 @@ struct UtilityTests {
             #expect(url.isFileURL == true)
         }
     }
+
+    @Suite(.tags(.safe))
+    struct BuildStalenessCheckerTests {
+        @Test
+        func `Parses disabled build staleness setting`() {
+            let config = """
+            [peekaboo]
+                check-build-staleness = false
+            """
+
+            #expect(parseBuildStalenessSetting(from: config) == false)
+        }
+
+        @Test
+        func `Parses enabled build staleness setting`() {
+            let config = """
+            [core]
+                repositoryformatversion = 0
+            [peekaboo]
+                check-build-staleness = true
+            """
+
+            #expect(parseBuildStalenessSetting(from: config) == true)
+        }
+
+        @Test
+        func `Environment override avoids git config lookup`() {
+            let enabled = isBuildStalenessCheckEnabled(
+                environment: ["PEEKABOO_CHECK_BUILD_STALENESS": "true"],
+                currentDirectory: "/tmp/does-not-exist",
+                gitConfigPaths: []
+            )
+            let disabled = isBuildStalenessCheckEnabled(
+                environment: ["PEEKABOO_CHECK_BUILD_STALENESS": "0"],
+                currentDirectory: "/tmp/does-not-exist",
+                gitConfigPaths: []
+            )
+
+            #expect(enabled)
+            #expect(!disabled)
+        }
+
+        @Test
+        func `Later git config paths override earlier paths`() throws {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+
+            let globalConfig = directory.appendingPathComponent("global")
+            let localConfig = directory.appendingPathComponent("local")
+            try """
+            [peekaboo]
+                check-build-staleness = true
+            """.write(to: globalConfig, atomically: true, encoding: .utf8)
+            try """
+            [peekaboo]
+                check-build-staleness = false
+            """.write(to: localConfig, atomically: true, encoding: .utf8)
+
+            let enabled = isBuildStalenessCheckEnabled(
+                environment: [:],
+                currentDirectory: directory.path,
+                gitConfigPaths: [globalConfig.path]
+            )
+            let disabledByLocal = isBuildStalenessCheckEnabled(
+                environment: [:],
+                currentDirectory: directory.path,
+                gitConfigPaths: [globalConfig.path, localConfig.path]
+            )
+
+            #expect(enabled)
+            #expect(!disabledByLocal)
+        }
+    }
 }

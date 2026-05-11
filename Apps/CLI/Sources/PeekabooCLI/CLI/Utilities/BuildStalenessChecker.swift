@@ -3,36 +3,115 @@ import Foundation
 /// Check if the CLI binary is stale compared to the current git state.
 /// Only runs in debug builds when git config 'peekaboo.check-build-staleness' is true.
 func checkBuildStaleness() {
-    // Check if staleness checking is enabled via git config
-    let configCheck = Process()
-    configCheck.executableURL = URL(fileURLWithPath: "/usr/bin/git")
-    configCheck.arguments = ["config", "peekaboo.check-build-staleness"]
-
-    let configPipe = Pipe()
-    configCheck.standardOutput = configPipe
-    configCheck.standardError = Pipe() // Silence stderr
-
-    do {
-        try configCheck.run()
-        configCheck.waitUntilExit()
-
-        // Only proceed if the config value is "true"
-        let configData = configPipe.fileHandleForReading.readDataToEndOfFile()
-        let configValue = String(data: configData, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard configValue == "true" else {
-            return // Staleness checking is disabled
-        }
-    } catch {
-        return // Git config command failed, skip check
-    }
+    guard isBuildStalenessCheckEnabled() else { return }
 
     // Check 1: Git commit comparison
     checkGitCommitStaleness()
 
     // Check 2: File modification time comparison
     checkFileModificationStaleness()
+}
+
+/// Return true when `peekaboo.check-build-staleness` is enabled.
+///
+/// This runs on every debug CLI start, so avoid spawning `git config` for the common
+/// disabled path. Environment override keeps a cheap opt-in for CI and local debugging.
+func isBuildStalenessCheckEnabled(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    currentDirectory: String = FileManager.default.currentDirectoryPath,
+    gitConfigPaths: [String]? = nil
+) -> Bool {
+    if let override = environment["PEEKABOO_CHECK_BUILD_STALENESS"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased(),
+        !override.isEmpty {
+        return override == "1" || override == "true" || override == "yes"
+    }
+
+    var setting: Bool?
+    for path in gitConfigPaths ?? defaultGitConfigPaths(environment: environment, currentDirectory: currentDirectory) {
+        guard let contents = try? String(contentsOfFile: path, encoding: .utf8),
+              let parsedSetting = parseBuildStalenessSetting(from: contents)
+        else {
+            continue
+        }
+        setting = parsedSetting
+    }
+
+    return setting == true
+}
+
+func parseBuildStalenessSetting(from gitConfig: String) -> Bool? {
+    var inPeekabooSection = false
+
+    for rawLine in gitConfig.components(separatedBy: .newlines) {
+        let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !line.isEmpty, !line.hasPrefix("#"), !line.hasPrefix(";") else { continue }
+
+        if line.hasPrefix("[") && line.hasSuffix("]") {
+            let section = line.dropFirst().dropLast().trimmingCharacters(in: .whitespacesAndNewlines)
+            inPeekabooSection = section == "peekaboo"
+            continue
+        }
+
+        guard inPeekabooSection else { continue }
+        let parts = line.split(separator: "=", maxSplits: 1).map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        guard parts.count == 2, parts[0] == "check-build-staleness" else { continue }
+        return parts[1] == "true" || parts[1] == "1" || parts[1] == "yes"
+    }
+
+    return nil
+}
+
+private func defaultGitConfigPaths(environment: [String: String], currentDirectory: String) -> [String] {
+    var paths = ["/etc/gitconfig"]
+
+    if let xdgConfigHome = environment["XDG_CONFIG_HOME"], !xdgConfigHome.isEmpty {
+        paths.append(URL(fileURLWithPath: xdgConfigHome).appendingPathComponent("git/config").path)
+    } else if let home = environment["HOME"], !home.isEmpty {
+        paths.append(URL(fileURLWithPath: home).appendingPathComponent(".config/git/config").path)
+    }
+
+    if let home = environment["HOME"], !home.isEmpty {
+        paths.append(URL(fileURLWithPath: home).appendingPathComponent(".gitconfig").path)
+    }
+
+    if let localConfigPath = findGitConfigPath(startingAt: currentDirectory) {
+        paths.append(localConfigPath)
+    }
+
+    return paths
+}
+
+private func findGitConfigPath(startingAt path: String) -> String? {
+    let fileManager = FileManager.default
+    var directory = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+
+    while true {
+        let dotGit = directory.appendingPathComponent(".git").path
+        var isDirectory: ObjCBool = false
+        if fileManager.fileExists(atPath: dotGit, isDirectory: &isDirectory) {
+            if isDirectory.boolValue {
+                return URL(fileURLWithPath: dotGit).appendingPathComponent("config").path
+            }
+
+            if let contents = try? String(contentsOfFile: dotGit, encoding: .utf8),
+               let gitDirLine = contents.components(separatedBy: .newlines).first(where: {
+                   $0.trimmingCharacters(in: .whitespaces).hasPrefix("gitdir:")
+               }) {
+                let rawGitDir = gitDirLine
+                    .replacingOccurrences(of: "gitdir:", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                let gitDirURL = URL(fileURLWithPath: rawGitDir, relativeTo: directory).standardizedFileURL
+                return gitDirURL.appendingPathComponent("config").path
+            }
+        }
+
+        let parent = directory.deletingLastPathComponent()
+        if parent.path == directory.path { return nil }
+        directory = parent
+    }
 }
 
 /// Check if the embedded git commit differs from the current git commit

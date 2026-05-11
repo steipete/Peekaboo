@@ -54,6 +54,11 @@ final class ConfigurationManager: @unchecked Sendable {
         self.coreManager.loadConfiguration()
     }
 
+    /// Get cached configuration, loading only if needed.
+    func getConfiguration() -> Configuration? {
+        self.coreManager.getConfiguration()
+    }
+
     /// Strip comments from JSONC content
     func stripJSONComments(from json: String) -> String {
         // Strip comments from JSONC content
