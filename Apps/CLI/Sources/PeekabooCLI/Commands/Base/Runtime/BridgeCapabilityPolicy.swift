@@ -23,6 +23,10 @@ enum BridgeCapabilityPolicy {
         self.targetedHotkeyAvailability(for: handshake).isEnabled
     }
 
+    static func supportsTargetedClicks(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        self.targetedClickAvailability(for: handshake).isEnabled
+    }
+
     static func supportsElementActions(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
         handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 3) &&
             handshake.supportedOperations.contains(.setValue) &&
@@ -65,6 +69,37 @@ enum BridgeCapabilityPolicy {
         return (
             false,
             "Remote bridge host supports background hotkeys, but current permissions are missing: " +
+                self.missingPermissionNames(missingPermissions).joined(separator: ", "),
+            missingPermissions
+        )
+    }
+
+    static func targetedClickAvailability(for handshake: PeekabooBridgeHandshakeResponse)
+    -> (isEnabled: Bool, unavailableReason: String?, missingPermissions: Set<PeekabooBridgePermissionKind>) {
+        guard
+            handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 6),
+            handshake.supportedOperations.contains(.targetedClick)
+        else {
+            return (false, nil, [])
+        }
+
+        let enabledOperations = handshake.enabledOperations ?? handshake.supportedOperations
+        if enabledOperations.contains(.targetedClick) {
+            return (true, nil, [])
+        }
+
+        let missingPermissions = self.missingPermissions(for: .targetedClick, handshake: handshake)
+        guard !missingPermissions.isEmpty else {
+            return (
+                false,
+                "Remote bridge host supports background clicks, but they are disabled by current permissions",
+                []
+            )
+        }
+
+        return (
+            false,
+            "Remote bridge host supports background clicks, but current permissions are missing: " +
                 self.missingPermissionNames(missingPermissions).joined(separator: ", "),
             missingPermissions
         )

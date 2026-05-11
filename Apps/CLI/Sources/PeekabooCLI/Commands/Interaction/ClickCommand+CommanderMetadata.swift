@@ -30,7 +30,7 @@ extension ClickCommand: CommanderBindableCommand {
         }
         self.double = values.flag("double")
         self.right = values.flag("right")
-        self.focusOptions = try values.makeFocusOptions()
+        self.focusOptions = try values.makeFocusOptions(includeBackgroundDelivery: true)
     }
 }
 
@@ -85,7 +85,7 @@ extension ClickCommand: CommanderSignatureProviding {
             ],
             optionGroups: [
                 InteractionTargetOptions.commanderSignature(),
-                FocusCommandOptions.commanderSignature(),
+                FocusCommandOptions.commanderSignature(includeBackgroundDelivery: true),
             ]
         )
     }

@@ -11,6 +11,7 @@ actor UISnapshot {
     private(set) var lastAccessedAt: Date
     private(set) nonisolated(unsafe) var cachedApplicationName: String?
     private(set) nonisolated(unsafe) var cachedWindowTitle: String?
+    private(set) nonisolated(unsafe) var cachedApplicationProcessId: Int32?
 
     init() {
         self.id = UUID().uuidString
@@ -23,6 +24,7 @@ actor UISnapshot {
         self.screenshotMetadata = metadata
         self.cachedApplicationName = metadata.applicationInfo?.name
         self.cachedWindowTitle = metadata.windowInfo?.title
+        self.cachedApplicationProcessId = metadata.applicationInfo.map { Int32($0.processIdentifier) }
         self.lastAccessedAt = Date()
     }
 
@@ -41,6 +43,10 @@ actor UISnapshot {
 
     nonisolated var windowTitle: String? {
         self.cachedWindowTitle
+    }
+
+    nonisolated var applicationProcessId: Int32? {
+        self.cachedApplicationProcessId
     }
 }
 

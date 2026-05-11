@@ -231,7 +231,7 @@ extension PermissionCommand {
             MainActorCommandDescription.describe {
                 CommandDescription(
                     commandName: "request-event-synthesizing",
-                    abstract: "Request event-synthesizing permission for background hotkeys"
+                    abstract: "Request event-synthesizing permission for background input"
                 )
             }
         }

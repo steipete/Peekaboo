@@ -56,6 +56,64 @@ struct ClickServiceTargetResolutionTests {
 
     @Test
     @MainActor
+    func `background click delivers synthetic click to target process`() async throws {
+        let synthetic = ClickRecordingSyntheticInputDriver()
+        let service = ClickService(
+            snapshotManager: InMemorySnapshotManager(),
+            inputPolicy: UIInputPolicy(defaultStrategy: .actionFirst),
+            syntheticInputDriver: synthetic)
+
+        let result = try await service.click(
+            target: .coordinates(CGPoint(x: 10, y: 20)),
+            clickType: .double,
+            snapshotId: nil,
+            targetProcessIdentifier: 12345)
+
+        #expect(result.path == .synth)
+        #expect(result.strategy == .synthOnly)
+        #expect(synthetic.events == [
+            .targetedClick(point: CGPoint(x: 10, y: 20), button: .left, count: 2, targetProcessIdentifier: 12345),
+        ])
+    }
+
+    @Test
+    @MainActor
+    func `background element click forces synthetic path despite action first policy`() async throws {
+        let element = DetectedElement(
+            id: "B1",
+            type: .button,
+            label: "Background Button",
+            value: nil,
+            bounds: .init(x: 20, y: 30, width: 100, height: 40),
+            isEnabled: true,
+            isSelected: nil,
+            attributes: ["identifier": "background-button", "role": "AXButton"])
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot",
+            screenshotPath: "/tmp/shot.png",
+            elements: DetectedElements(buttons: [element]),
+            metadata: DetectionMetadata(detectionTime: 0.01, elementCount: 1, method: "test"))
+        let synthetic = ClickRecordingSyntheticInputDriver()
+        let service = ClickService(
+            snapshotManager: InMemorySnapshotManager(detectionResult: detectionResult),
+            inputPolicy: UIInputPolicy(defaultStrategy: .actionFirst),
+            syntheticInputDriver: synthetic)
+
+        let result = try await service.click(
+            target: .elementId("B1"),
+            clickType: .single,
+            snapshotId: "snapshot",
+            targetProcessIdentifier: 12345)
+
+        #expect(result.path == .synth)
+        #expect(result.strategy == .synthOnly)
+        #expect(synthetic.events == [
+            .targetedClick(point: CGPoint(x: 70, y: 50), button: .left, count: 1, targetProcessIdentifier: 12345),
+        ])
+    }
+
+    @Test
+    @MainActor
     func `resolveTargetElement matches identifier and exact label`() {
         let focusButton = DetectedElement(
             id: "B1",
@@ -122,6 +180,7 @@ struct ClickServiceTargetResolutionTests {
 private final class ClickRecordingSyntheticInputDriver: SyntheticInputDriving {
     enum Event: Equatable {
         case click(point: CGPoint, button: MouseButton, count: Int)
+        case targetedClick(point: CGPoint, button: MouseButton, count: Int, targetProcessIdentifier: pid_t)
         case move(CGPoint)
         case currentLocation
         case scroll(deltaX: Double, deltaY: Double, at: CGPoint?)
@@ -131,6 +190,14 @@ private final class ClickRecordingSyntheticInputDriver: SyntheticInputDriving {
 
     func click(at point: CGPoint, button: MouseButton, count: Int) throws {
         self.events.append(.click(point: point, button: button, count: count))
+    }
+
+    func click(at point: CGPoint, button: MouseButton, count: Int, targetProcessIdentifier: pid_t) throws {
+        self.events.append(.targetedClick(
+            point: point,
+            button: button,
+            count: count,
+            targetProcessIdentifier: targetProcessIdentifier))
     }
 
     func move(to point: CGPoint) throws {

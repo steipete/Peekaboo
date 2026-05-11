@@ -97,7 +97,7 @@ extension PermissionCommand {
             }
 
             if !status.event_synthesizing {
-                print("\nOptional for background hotkeys:")
+                print("\nOptional for background input:")
                 print("- Run: peekaboo agent permission request-event-synthesizing")
             }
         }

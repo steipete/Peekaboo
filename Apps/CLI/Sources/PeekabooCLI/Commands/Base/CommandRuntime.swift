@@ -232,6 +232,10 @@ extension CommandRuntime {
         BridgeCapabilityPolicy.supportsTargetedHotkeys(for: handshake)
     }
 
+    static func supportsTargetedClicks(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        BridgeCapabilityPolicy.supportsTargetedClicks(for: handshake)
+    }
+
     static func supportsElementActions(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
         BridgeCapabilityPolicy.supportsElementActions(for: handshake)
     }
@@ -247,6 +251,11 @@ extension CommandRuntime {
     static func targetedHotkeyAvailability(for handshake: PeekabooBridgeHandshakeResponse)
     -> (isEnabled: Bool, unavailableReason: String?, missingPermissions: Set<PeekabooBridgePermissionKind>) {
         BridgeCapabilityPolicy.targetedHotkeyAvailability(for: handshake)
+    }
+
+    static func targetedClickAvailability(for handshake: PeekabooBridgeHandshakeResponse)
+    -> (isEnabled: Bool, unavailableReason: String?, missingPermissions: Set<PeekabooBridgePermissionKind>) {
+        BridgeCapabilityPolicy.targetedClickAvailability(for: handshake)
     }
 }
 

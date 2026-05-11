@@ -113,6 +113,40 @@ struct CommandRuntimeInjectionTests {
     }
 
     @Test
+    func `targeted click support requires enabled bridge operation`() {
+        let supported = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 6),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .targetedClick],
+            permissions: PermissionsStatus(
+                screenRecording: true,
+                accessibility: true,
+                postEvent: false
+            ),
+            enabledOperations: [.captureScreen],
+            permissionTags: [
+                PeekabooBridgeOperation.targetedClick.rawValue: [.postEvent],
+            ]
+        )
+
+        let enabled = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 6),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .targetedClick],
+            enabledOperations: [.captureScreen, .targetedClick]
+        )
+
+        #expect(!CommandRuntime.supportsTargetedClicks(for: supported))
+        #expect(CommandRuntime.supportsTargetedClicks(for: enabled))
+
+        let availability = CommandRuntime.targetedClickAvailability(for: supported)
+        #expect(availability.unavailableReason?.contains("Event Synthesizing") == true)
+        #expect(availability.missingPermissions == [.postEvent])
+    }
+
+    @Test
     func `post event permission request support requires advertised protocol operation`() {
         let supported = PeekabooBridgeHandshakeResponse(
             negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 2),

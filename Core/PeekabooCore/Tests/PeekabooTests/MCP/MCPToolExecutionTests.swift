@@ -573,6 +573,53 @@ struct MCPToolExecutionTests {
     }
 
     @Test
+    func `Click tool reports explicit background pid for element target`() async throws {
+        let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setScreenshot(
+            path: "/tmp/screenshot.png",
+            metadata: CaptureMetadata(
+                size: CGSize(width: 200, height: 100),
+                mode: .window,
+                applicationInfo: ServiceApplicationInfo(
+                    processIdentifier: 111,
+                    bundleIdentifier: "com.example.snapshot",
+                    name: "SnapshotApp")))
+        await snapshot.setUIElements([
+            UIElement(
+                id: "B1",
+                elementId: "B1",
+                role: "button",
+                title: "OK",
+                label: "OK",
+                value: nil,
+                description: nil,
+                help: nil,
+                roleDescription: "button",
+                identifier: nil,
+                frame: CGRect(x: 10, y: 20, width: 80, height: 30),
+                isActionable: true),
+        ])
+
+        let tool = ClickTool(context: context)
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "B1",
+            "snapshot": snapshotId,
+            "background": true,
+            "pid": 222,
+        ]))
+
+        #expect(response.isError == false)
+        let calls = await MainActor.run { automation.targetedClickCalls }
+        let call = try #require(calls.first)
+        #expect(call.snapshotId == snapshotId)
+        #expect(call.targetProcessIdentifier == 222)
+        #expect(Self.targetPID(from: response) == 222)
+    }
+
+    @Test
     func `Click tool invalidates latest snapshot after coordinate click`() async throws {
         await UISnapshotManager.shared.removeAllSnapshots()
         let automation = await MainActor.run { MockAutomationService(accessibilityGranted: true) }
@@ -887,6 +934,15 @@ struct MCPToolExecutionTests {
             return name
         }
     }
+
+    private static func targetPID(from response: ToolResponse) -> Int32? {
+        guard case let .object(meta) = response.meta,
+              case let .double(pid)? = meta["target_pid"]
+        else {
+            return nil
+        }
+        return Int32(pid)
+    }
 }
 
 // MARK: - Test Helpers
@@ -942,17 +998,25 @@ private enum MCPToolTestHelpers {
 // MARK: - Mock Services
 
 @MainActor
-private class MockAutomationService: UIAutomationServiceProtocol {
+private class MockAutomationService: TargetedClickServiceProtocol {
     struct ClickCall {
         let target: ClickTarget
         let clickType: ClickType
         let snapshotId: String?
     }
 
+    struct TargetedClickCall {
+        let target: ClickTarget
+        let clickType: ClickType
+        let snapshotId: String?
+        let targetProcessIdentifier: pid_t
+    }
+
     private let accessibilityGranted: Bool
     private let detectionResult: ElementDetectionResult?
     private let mockCurrentMouseLocation: CGPoint?
     private(set) var clickCalls: [ClickCall] = []
+    private(set) var targetedClickCalls: [TargetedClickCall] = []
     private(set) var scrollRequests: [ScrollRequest] = []
     private(set) var lastTypeActions: [TypeAction]?
     private(set) var lastTypeSnapshotId: String?
@@ -985,6 +1049,19 @@ private class MockAutomationService: UIAutomationServiceProtocol {
 
     func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         self.clickCalls.append(ClickCall(target: target, clickType: clickType, snapshotId: snapshotId))
+    }
+
+    func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t) async throws
+    {
+        self.targetedClickCalls.append(TargetedClickCall(
+            target: target,
+            clickType: clickType,
+            snapshotId: snapshotId,
+            targetProcessIdentifier: targetProcessIdentifier))
     }
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async

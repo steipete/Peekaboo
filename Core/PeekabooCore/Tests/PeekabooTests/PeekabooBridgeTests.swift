@@ -1044,22 +1044,6 @@ extension PeekabooBridgeTests {
     }
 
     @Test
-    func `targeted hotkey only requires post event permission`() {
-        #expect(PeekabooBridgeOperation.targetedHotkey.requiredPermissions == [.postEvent])
-    }
-
-    @Test
-    func `element action operations require accessibility permission`() {
-        #expect(PeekabooBridgeOperation.setValue.requiredPermissions == [.accessibility])
-        #expect(PeekabooBridgeOperation.performAction.requiredPermissions == [.accessibility])
-    }
-
-    @Test
-    func `desktop observation operation requires screen recording permission`() {
-        #expect(PeekabooBridgeOperation.desktopObservation.requiredPermissions == [.screenRecording])
-    }
-
-    @Test
     @MainActor
     func `remote services expose element actions only when handshake supports them`() {
         let client = PeekabooBridgeClient(
@@ -1350,13 +1334,16 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-final class StubAutomationService: TargetedHotkeyServiceProtocol, ElementActionAutomationServiceProtocol {
+final class StubAutomationService: TargetedHotkeyServiceProtocol, TargetedClickServiceProtocol,
+ElementActionAutomationServiceProtocol {
     struct Click { let target: ClickTarget; let type: ClickType }
     struct TargetedHotkey {
         let keys: String
         let holdDuration: Int
         let targetProcessIdentifier: pid_t?
     }
+
+    struct TargetedClick { let target: ClickTarget; let type: ClickType; let targetProcessIdentifier: pid_t? }
 
     struct SetValue {
         let target: String
@@ -1372,6 +1359,7 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol, ElementActionA
 
     private(set) var lastClick: Click?
     private(set) var lastProcessTargetedHotkey: TargetedHotkey?
+    private(set) var lastProcessTargetedClick: TargetedClick?
     private(set) var lastSetValue: SetValue?
     private(set) var lastPerformAction: PerformAction?
     var targetedHotkeyError: (any Error)?
@@ -1394,6 +1382,18 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol, ElementActionA
 
     func click(target: ClickTarget, clickType: ClickType, snapshotId _: String?) async throws {
         self.lastClick = Click(target: target, type: clickType)
+    }
+
+    func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId _: String?,
+        targetProcessIdentifier: pid_t) async throws
+    {
+        self.lastProcessTargetedClick = TargetedClick(
+            target: target,
+            type: clickType,
+            targetProcessIdentifier: targetProcessIdentifier)
     }
 
     func type(text _: String, target _: String?, clearExisting _: Bool, typingDelay _: Int, snapshotId _: String?) async

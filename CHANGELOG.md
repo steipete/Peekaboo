@@ -2,6 +2,9 @@
 
 ## [3.1.3] - Unreleased
 
+### Added
+- `peekaboo click --focus-background` and the MCP `click` tool now support process-targeted background mouse delivery for apps identified by `--app`, `--pid`, or snapshot metadata.
+
 ### Fixed
 - Ollama vision model IDs such as `qwen2.5vl:3b` now stay intact through Tachikoma model parsing instead of falling back to `llama3.3` (#16).
 - Release automation now verifies CLI, npm, macOS app, checksum, appcast, and uploaded GitHub assets before publish.

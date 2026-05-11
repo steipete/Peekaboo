@@ -163,6 +163,34 @@ extension TargetedHotkeyServiceProtocol {
     }
 }
 
+/// Optional capability for automation services that can send mouse clicks to a process without focusing it.
+@MainActor
+public protocol TargetedClickServiceProtocol: UIAutomationServiceProtocol {
+    var supportsTargetedClicks: Bool { get }
+    var targetedClickUnavailableReason: String? { get }
+    var targetedClickRequiresEventSynthesizingPermission: Bool { get }
+
+    func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t) async throws
+}
+
+extension TargetedClickServiceProtocol {
+    public var supportsTargetedClicks: Bool {
+        true
+    }
+
+    public var targetedClickUnavailableReason: String? {
+        nil
+    }
+
+    public var targetedClickRequiresEventSynthesizingPermission: Bool {
+        true
+    }
+}
+
 /// Optional capability for automation services that can invoke accessibility actions directly.
 @MainActor
 public protocol ElementActionAutomationServiceProtocol: UIAutomationServiceProtocol {

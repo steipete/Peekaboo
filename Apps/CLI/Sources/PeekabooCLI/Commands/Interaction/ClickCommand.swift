@@ -92,7 +92,9 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 // InputDriver.click() sends a CGEvent at screen-absolute coordinates,
                 // so if the target window is not frontmost, the click will land on
                 // whatever window is at that position (see #90).
-                try await self.verifyFocusForCoordinateClick()
+                if !self.focusOptions.focusBackground {
+                    try await self.verifyFocusForCoordinateClick()
+                }
 
             } else {
                 // `click` keeps using the latest observation for element lookup even when
@@ -110,49 +112,64 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 let elementId = self.on ?? self.id
 
                 if let elementId {
-                    observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
-                        observation,
-                        elementIds: [elementId],
-                        target: self.target,
-                        services: self.services,
-                        logger: self.logger
-                    )
+                    if !self.focusOptions.focusBackground {
+                        observation = try await InteractionObservationRefresher.refreshForMissingElementsIfNeeded(
+                            observation,
+                            elementIds: [elementId],
+                            target: self.target,
+                            services: self.services,
+                            logger: self.logger
+                        )
+                    }
                     observationForInvalidation = observation
                     activeSnapshotId = observation.snapshotId ?? ""
 
-                    // Click by element ID with auto-wait
                     clickTarget = .elementId(elementId)
-                    waitResult = try await AutomationServiceBridge.waitForElement(
-                        automation: self.services.automation,
-                        target: clickTarget,
-                        timeout: TimeInterval(self.waitFor) / 1000.0,
-                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
-                    )
+                    if self.focusOptions.focusBackground {
+                        let element = try await self.cachedElementById(elementId, observation: observation)
+                        waitResult = WaitForElementResult(found: true, element: element, waitTime: 0)
+                    } else {
+                        // Click by element ID with auto-wait
+                        waitResult = try await AutomationServiceBridge.waitForElement(
+                            automation: self.services.automation,
+                            target: clickTarget,
+                            timeout: TimeInterval(self.waitFor) / 1000.0,
+                            snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
+                        )
 
-                    if !waitResult.found {
-                        throw PeekabooError.elementNotFound(Self.elementNotFoundMessage(elementId))
+                        if !waitResult.found {
+                            throw PeekabooError.elementNotFound(Self.elementNotFoundMessage(elementId))
+                        }
                     }
 
                 } else if let searchQuery = query {
-                    observation = try await self.refreshObservationIfQueryMissing(observation, query: searchQuery)
+                    if !self.focusOptions.focusBackground {
+                        observation = try await self.refreshObservationIfQueryMissing(observation, query: searchQuery)
+                    }
                     observationForInvalidation = observation
                     activeSnapshotId = observation.snapshotId ?? ""
 
-                    // Find element by query with auto-wait
-                    clickTarget = .query(searchQuery)
-                    waitResult = try await AutomationServiceBridge.waitForElement(
-                        automation: self.services.automation,
-                        target: clickTarget,
-                        timeout: TimeInterval(self.waitFor) / 1000.0,
-                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
-                    )
-
-                    if !waitResult.found {
-                        let message = Self.queryNotFoundMessage(
-                            searchQuery,
-                            waitFor: self.waitFor
+                    if self.focusOptions.focusBackground {
+                        let element = try await self.cachedElementMatching(searchQuery, observation: observation)
+                        clickTarget = .elementId(element.id)
+                        waitResult = WaitForElementResult(found: true, element: element, waitTime: 0)
+                    } else {
+                        // Find element by query with auto-wait
+                        clickTarget = .query(searchQuery)
+                        waitResult = try await AutomationServiceBridge.waitForElement(
+                            automation: self.services.automation,
+                            target: clickTarget,
+                            timeout: TimeInterval(self.waitFor) / 1000.0,
+                            snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId
                         )
-                        throw PeekabooError.elementNotFound(message)
+
+                        if !waitResult.found {
+                            let message = Self.queryNotFoundMessage(
+                                searchQuery,
+                                waitFor: self.waitFor
+                            )
+                            throw PeekabooError.elementNotFound(message)
+                        }
                     }
 
                 } else {
@@ -168,8 +185,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             // Brief delay to ensure click is processed
             try await Task.sleep(nanoseconds: 20_000_000) // 0.02 seconds
 
-            // Report the frontmost app after the click through the application service boundary.
-            let appName = await self.frontmostApplicationName()
+            let appName = await self.resultApplicationName(snapshotId: activeSnapshotId)
 
             // Prepare result
             let clickLocation: CGPoint
@@ -240,18 +256,7 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
                 )
             }
 
-            output(result) {
-                print("✅ Click successful")
-                print("🎯 App: \(appName)")
-                if let info = clickedElement {
-                    print("📱 Clicked: \(info)")
-                }
-                print("📍 Location: (\(Int(clickLocation.x)), \(Int(clickLocation.y)))")
-                if waitResult.waitTime > 0 {
-                    print("⏳ Waited: \(String(format: "%.1f", waitResult.waitTime))s")
-                }
-                print("⏱️  Completed in \(String(format: "%.2f", Date().timeIntervalSince(startTime)))s")
-            }
+            self.outputSuccess(result)
 
         } catch {
             self.handleError(error)
@@ -261,6 +266,65 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
     private func frontmostApplicationName() async -> String {
         await (try? self.services.applications.getFrontmostApplication().name) ?? "Unknown"
+    }
+
+    private func resultApplicationName(snapshotId: String) async -> String {
+        guard self.focusOptions.focusBackground else {
+            return await self.frontmostApplicationName()
+        }
+
+        if let pid = self.target.pid {
+            return await self.applicationName(processIdentifier: pid) ?? "PID \(pid)"
+        }
+
+        if let appIdentifier = self.target.app?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !appIdentifier.isEmpty {
+            return await (try? self.services.applications.findApplication(identifier: appIdentifier).name) ??
+                appIdentifier
+        }
+
+        guard !snapshotId.isEmpty,
+              let snapshot = try? await self.services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId)
+        else {
+            return await self.frontmostApplicationName()
+        }
+
+        if let applicationName = snapshot.applicationName {
+            return applicationName
+        }
+
+        if let processId = snapshot.applicationProcessId {
+            return await self.applicationName(processIdentifier: processId) ?? "PID \(processId)"
+        }
+
+        return await self.frontmostApplicationName()
+    }
+
+    private func applicationName(processIdentifier: Int32) async -> String? {
+        guard let output = try? await self.services.applications.listApplications() else {
+            return nil
+        }
+        return output.data.applications.first { $0.processIdentifier == processIdentifier }?.name
+    }
+
+    private func outputSuccess(_ result: ClickResult) {
+        output(result) {
+            print("✅ Click successful")
+            print("🎯 App: \(result.targetApp)")
+            if self.focusOptions.focusBackground {
+                print("🎯 Mode: background")
+            }
+            if let info = result.clickedElement {
+                print("📱 Clicked: \(info)")
+            }
+            let x = result.clickLocation["x"] ?? 0
+            let y = result.clickLocation["y"] ?? 0
+            print("📍 Location: (\(Int(x)), \(Int(y)))")
+            if result.waitTime > 0 {
+                print("⏳ Waited: \(String(format: "%.1f", result.waitTime))s")
+            }
+            print("⏱️  Completed in \(String(format: "%.2f", result.executionTime))s")
+        }
     }
 
     private func refreshObservationIfQueryMissing(
@@ -276,6 +340,69 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         )
     }
 
+    private func cachedElementById(
+        _ elementId: String,
+        observation: InteractionObservationContext
+    ) async throws -> DetectedElement {
+        let detectionResult = try await observation.requireDetectionResult(using: self.services.snapshots)
+        guard let element = detectionResult.elements.findById(elementId) else {
+            throw PeekabooError.elementNotFound(Self.elementNotFoundMessage(elementId))
+        }
+        return element
+    }
+
+    private func cachedElementMatching(
+        _ query: String,
+        observation: InteractionObservationContext
+    ) async throws -> DetectedElement {
+        let detectionResult = try await observation.requireDetectionResult(using: self.services.snapshots)
+        let queryLower = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !queryLower.isEmpty else {
+            throw PeekabooError.elementNotFound(Self.queryNotFoundMessage(query, waitFor: self.waitFor))
+        }
+
+        let matches = detectionResult.elements.all.filter { element in
+            guard element.isEnabled else { return false }
+            let candidates = [
+                element.id,
+                element.label,
+                element.value,
+                element.attributes["identifier"],
+                element.attributes["title"],
+                element.attributes["description"],
+                element.attributes["role"],
+                element.type.rawValue,
+            ].compactMap { $0?.lowercased() }
+            return candidates.contains { $0.contains(queryLower) }
+        }
+
+        guard let best = matches.max(by: { lhs, rhs in
+            Self.cachedQueryScore(lhs, queryLower: queryLower) < Self.cachedQueryScore(rhs, queryLower: queryLower)
+        }) else {
+            throw PeekabooError.elementNotFound(Self.queryNotFoundMessage(query, waitFor: self.waitFor))
+        }
+
+        return best
+    }
+
+    private static func cachedQueryScore(_ element: DetectedElement, queryLower: String) -> Int {
+        let label = element.label?.lowercased()
+        let value = element.value?.lowercased()
+        let identifier = element.attributes["identifier"]?.lowercased()
+        let title = element.attributes["title"]?.lowercased()
+        var score = 0
+        if identifier == queryLower { score += 400 }
+        if label == queryLower { score += 350 }
+        if title == queryLower { score += 300 }
+        if value == queryLower { score += 200 }
+        if identifier?.contains(queryLower) == true { score += 200 }
+        if label?.contains(queryLower) == true { score += 160 }
+        if title?.contains(queryLower) == true { score += 120 }
+        if value?.contains(queryLower) == true { score += 80 }
+        if element.type == .button { score += 20 }
+        return score
+    }
+
     private func performClick(_ target: ClickTarget, clickType: ClickType, snapshotId: String) async throws {
         let effectiveSnapshotId: String? = if case .coordinates = target {
             nil
@@ -283,15 +410,31 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
             snapshotId.isEmpty ? nil : snapshotId
         }
 
-        try await AutomationServiceBridge.click(
-            automation: self.services.automation,
-            target: target,
-            clickType: clickType,
-            snapshotId: effectiveSnapshotId
-        )
+        if self.focusOptions.focusBackground {
+            let pid = try await self.resolveBackgroundClickProcessIdentifier(snapshotId: effectiveSnapshotId)
+            try await AutomationServiceBridge.click(
+                automation: self.services.automation,
+                target: target,
+                clickType: clickType,
+                snapshotId: effectiveSnapshotId,
+                targetProcessIdentifier: pid
+            )
+        } else {
+            try await AutomationServiceBridge.click(
+                automation: self.services.automation,
+                target: target,
+                clickType: clickType,
+                snapshotId: effectiveSnapshotId
+            )
+        }
     }
 
     private func focusApplicationIfNeeded(snapshotId: String?) async throws {
+        if self.focusOptions.focusBackground {
+            try self.validateBackgroundClickOptions()
+            return
+        }
+
         guard self.focusOptions.autoFocus else {
             return
         }
@@ -309,6 +452,42 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
         // Brief delay to ensure focus is complete before interacting
         try await Task.sleep(nanoseconds: 100_000_000)
+    }
+
+    private func validateBackgroundClickOptions() throws {
+        if self.focusOptions.focusTimeoutSeconds != nil ||
+            self.focusOptions.focusRetryCount != nil ||
+            self.focusOptions.spaceSwitch ||
+            self.focusOptions.bringToCurrentSpace {
+            throw ValidationError("--focus-background cannot be combined with focus options")
+        }
+    }
+
+    private func resolveBackgroundClickProcessIdentifier(snapshotId: String?) async throws -> pid_t {
+        if self.target.pid != nil, self.target.app != nil {
+            throw ValidationError("--focus-background accepts one process target: use --app or --pid")
+        }
+
+        if let pid = self.target.pid {
+            guard pid > 0 else {
+                throw ValidationError("--pid must be greater than 0")
+            }
+            return pid_t(pid)
+        }
+
+        if let appIdentifier = self.target.app?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !appIdentifier.isEmpty {
+            let app = try await self.services.applications.findApplication(identifier: appIdentifier)
+            return pid_t(app.processIdentifier)
+        }
+
+        if let snapshotId,
+           let snapshot = try? await self.services.snapshots.getUIAutomationSnapshot(snapshotId: snapshotId),
+           let processId = snapshot.applicationProcessId {
+            return pid_t(processId)
+        }
+
+        throw ValidationError("--focus-background requires --app, --pid, or a snapshot with process metadata")
     }
 
     // Error handling is provided by ErrorHandlingCommand protocol

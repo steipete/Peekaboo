@@ -80,19 +80,44 @@ public final class ClickService {
     public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws
         -> UIInputExecutionResult
     {
+        try await self.click(
+            target: target,
+            clickType: clickType,
+            snapshotId: snapshotId,
+            targetProcessIdentifier: nil)
+    }
+
+    /// Perform a click, optionally delivering synthetic fallback events directly to a target process.
+    @discardableResult
+    @MainActor
+    public func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t?) async throws -> UIInputExecutionResult
+    {
         self.logger.debug("Click requested - target: \(String(describing: target)), type: \(clickType)")
         let bundleIdentifier = await self.bundleIdentifier(snapshotId: snapshotId)
+        let strategy: UIInputStrategy = if targetProcessIdentifier == nil {
+            self.inputPolicy.strategy(for: .click, bundleIdentifier: bundleIdentifier)
+        } else {
+            .synthOnly
+        }
 
         do {
             let result = try await UIInputDispatcher.run(
                 verb: .click,
-                strategy: self.inputPolicy.strategy(for: .click, bundleIdentifier: bundleIdentifier),
+                strategy: strategy,
                 bundleIdentifier: bundleIdentifier,
                 action: {
                     try await self.performActionClick(target: target, clickType: clickType, snapshotId: snapshotId)
                 },
                 synth: {
-                    try await self.performSyntheticClick(target: target, clickType: clickType, snapshotId: snapshotId)
+                    try await self.performSyntheticClick(
+                        target: target,
+                        clickType: clickType,
+                        snapshotId: snapshotId,
+                        targetProcessIdentifier: targetProcessIdentifier)
                 })
             self.logger.debug("Click completed via \(result.path.rawValue, privacy: .public)")
             return result
@@ -123,16 +148,32 @@ public final class ClickService {
         }
     }
 
-    private func performSyntheticClick(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
+    private func performSyntheticClick(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t?) async throws
+    {
         switch target {
         case let .elementId(id):
-            try await self.clickElementById(id: id, clickType: clickType, snapshotId: snapshotId)
+            try await self.clickElementById(
+                id: id,
+                clickType: clickType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: targetProcessIdentifier)
 
         case let .coordinates(point):
-            try await self.performClick(at: point, clickType: clickType)
+            try await self.performClick(
+                at: point,
+                clickType: clickType,
+                targetProcessIdentifier: targetProcessIdentifier)
 
         case let .query(query):
-            try await self.clickElementByQuery(query: query, clickType: clickType, snapshotId: snapshotId)
+            try await self.clickElementByQuery(
+                query: query,
+                clickType: clickType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: targetProcessIdentifier)
         }
     }
 
@@ -192,7 +233,12 @@ public final class ClickService {
         return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
     }
 
-    private func clickElementById(id: String, clickType: ClickType, snapshotId: String?) async throws {
+    private func clickElementById(
+        id: String,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t?) async throws
+    {
         // Get element from snapshot
         if let snapshotId,
            let detectionResult = try? await snapshotManager.getDetectionResult(snapshotId: snapshotId),
@@ -201,11 +247,15 @@ public final class ClickService {
             // Click at element center
             let center = CGPoint(x: element.bounds.midX, y: element.bounds.midY)
             let adjusted = try await self.resolveAdjustedPoint(center, snapshotId: snapshotId)
-            try await self.performClick(at: adjusted, clickType: clickType)
+            try await self.performClick(
+                at: adjusted,
+                clickType: clickType,
+                targetProcessIdentifier: targetProcessIdentifier)
             try await self.nudgeTextInputFocusIfNeeded(
                 afterClickAt: adjusted,
                 clickType: clickType,
-                expectedIdentifier: element.attributes["identifier"])
+                expectedIdentifier: element.attributes["identifier"],
+                targetProcessIdentifier: targetProcessIdentifier)
             self.logger.debug("Clicked element \(id) at (\(adjusted.x), \(adjusted.y))")
         } else {
             throw NotFoundError.element(id)
@@ -213,7 +263,12 @@ public final class ClickService {
     }
 
     @MainActor
-    private func clickElementByQuery(query: String, clickType: ClickType, snapshotId: String?) async throws {
+    private func clickElementByQuery(
+        query: String,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t?) async throws
+    {
         // First try to find in snapshot data if available (much faster)
         var found = false
         var clickFrame: CGRect?
@@ -246,11 +301,15 @@ public final class ClickService {
             let adjusted = try await self.resolveAdjustedPoint(
                 center,
                 snapshotId: resolvedElement != nil ? snapshotId : nil)
-            try await self.performClick(at: adjusted, clickType: clickType)
+            try await self.performClick(
+                at: adjusted,
+                clickType: clickType,
+                targetProcessIdentifier: targetProcessIdentifier)
             try await self.nudgeTextInputFocusIfNeeded(
                 afterClickAt: adjusted,
                 clickType: clickType,
-                expectedIdentifier: resolvedElement?.attributes["identifier"])
+                expectedIdentifier: resolvedElement?.attributes["identifier"],
+                targetProcessIdentifier: targetProcessIdentifier)
             self.logger.debug("Clicked element matching '\(query)' at (\(adjusted.x), \(adjusted.y))")
         } else {
             throw NotFoundError.element(query)
@@ -267,9 +326,11 @@ public final class ClickService {
     private func nudgeTextInputFocusIfNeeded(
         afterClickAt point: CGPoint,
         clickType: ClickType,
-        expectedIdentifier: String?) async throws
+        expectedIdentifier: String?,
+        targetProcessIdentifier: pid_t?) async throws
     {
         guard clickType == .single else { return }
+        guard targetProcessIdentifier == nil else { return }
 
         let normalizedExpectedIdentifier = expectedIdentifier?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -286,7 +347,7 @@ public final class ClickService {
 
         for dy in nudges {
             let candidate = CGPoint(x: point.x, y: point.y + dy)
-            try await self.performClick(at: candidate, clickType: .single)
+            try await self.performClick(at: candidate, clickType: .single, targetProcessIdentifier: nil)
             try await Task.sleep(nanoseconds: 60_000_000) // 60ms
 
             if self.isFocusedTextInput(expectedIdentifier: normalizedExpectedIdentifier) {
@@ -402,16 +463,45 @@ public final class ClickService {
     }
 
     /// Perform actual click at coordinates using AXorcist InputDriver.
-    private func performClick(at point: CGPoint, clickType: ClickType) async throws {
+    private func performClick(at point: CGPoint, clickType: ClickType, targetProcessIdentifier: pid_t?) async throws {
         self.logger.debug("Performing \(clickType) click at (\(point.x), \(point.y))")
 
         switch clickType {
         case .single:
-            try self.syntheticInputDriver.click(at: point, button: .left, count: 1)
+            try self.performSyntheticClick(
+                at: point,
+                button: .left,
+                count: 1,
+                targetProcessIdentifier: targetProcessIdentifier)
         case .right:
-            try self.syntheticInputDriver.click(at: point, button: .right, count: 1)
+            try self.performSyntheticClick(
+                at: point,
+                button: .right,
+                count: 1,
+                targetProcessIdentifier: targetProcessIdentifier)
         case .double:
-            try self.syntheticInputDriver.click(at: point, button: .left, count: 2)
+            try self.performSyntheticClick(
+                at: point,
+                button: .left,
+                count: 2,
+                targetProcessIdentifier: targetProcessIdentifier)
+        }
+    }
+
+    private func performSyntheticClick(
+        at point: CGPoint,
+        button: MouseButton,
+        count: Int,
+        targetProcessIdentifier: pid_t?) throws
+    {
+        if let targetProcessIdentifier {
+            try self.syntheticInputDriver.click(
+                at: point,
+                button: button,
+                count: count,
+                targetProcessIdentifier: targetProcessIdentifier)
+        } else {
+            try self.syntheticInputDriver.click(at: point, button: button, count: count)
         }
     }
 

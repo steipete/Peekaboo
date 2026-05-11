@@ -80,6 +80,43 @@ struct ServiceBridgeTests {
         }
     }
 
+    @Test func `automation targeted click forwards calls`() async throws {
+        let automation = MockTargetedAutomationService()
+
+        try await AutomationServiceBridge.click(
+            automation: automation,
+            target: .coordinates(CGPoint(x: 10, y: 20)),
+            clickType: .single,
+            snapshotId: "snapshot-123",
+            targetProcessIdentifier: 12345
+        )
+
+        #expect(automation.targetedClickCalls.count == 1)
+        #expect(automation.targetedClickCalls.first?.snapshotId == "snapshot-123")
+        #expect(automation.targetedClickCalls.first?.targetProcessIdentifier == 12345)
+    }
+
+    @Test func `automation targeted click maps missing event synthesizing permission`() async throws {
+        let automation = MockTargetedAutomationService()
+        automation.supportsTargetedClicks = false
+        automation.targetedClickRequiresEventSynthesizingPermission = true
+        automation.targetedClickUnavailableReason =
+            "Remote bridge host supports background clicks, but current permissions are missing: Event Synthesizing"
+
+        do {
+            try await AutomationServiceBridge.click(
+                automation: automation,
+                target: .coordinates(CGPoint(x: 10, y: 20)),
+                clickType: .single,
+                snapshotId: nil,
+                targetProcessIdentifier: 12345
+            )
+            Issue.record("Expected Event Synthesizing permission error")
+        } catch PeekabooError.permissionDeniedEventSynthesizing {
+            #expect(automation.targetedClickCalls.isEmpty)
+        }
+    }
+
     @Test func `window bridge returns stubbed windows`() async throws {
         let window = ServiceWindowInfo(
             windowID: 101,
@@ -208,22 +245,48 @@ class MockAutomationService: UIAutomationServiceProtocol {
 }
 
 @MainActor
-final class MockTargetedAutomationService: MockAutomationService, TargetedHotkeyServiceProtocol {
+final class MockTargetedAutomationService: MockAutomationService, TargetedHotkeyServiceProtocol,
+TargetedClickServiceProtocol {
     struct TargetedHotkeyCall {
         let keys: String
         let holdDuration: Int
         let targetProcessIdentifier: pid_t
     }
 
+    struct TargetedClickCall {
+        let target: ClickTarget
+        let clickType: ClickType
+        let snapshotId: String?
+        let targetProcessIdentifier: pid_t
+    }
+
     var targetedHotkeyCalls: [TargetedHotkeyCall] = []
+    var targetedClickCalls: [TargetedClickCall] = []
     var supportsTargetedHotkeys = true
     var targetedHotkeyUnavailableReason: String?
     var targetedHotkeyRequiresEventSynthesizingPermission = false
+    var supportsTargetedClicks = true
+    var targetedClickUnavailableReason: String?
+    var targetedClickRequiresEventSynthesizingPermission = false
 
     func hotkey(keys: String, holdDuration: Int, targetProcessIdentifier: pid_t) async throws {
         self.targetedHotkeyCalls.append(.init(
             keys: keys,
             holdDuration: holdDuration,
+            targetProcessIdentifier: targetProcessIdentifier
+        ))
+    }
+
+    func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t
+    ) async throws {
+        self.targetedClickCalls.append(.init(
+            target: target,
+            clickType: clickType,
+            snapshotId: snapshotId,
             targetProcessIdentifier: targetProcessIdentifier
         ))
     }

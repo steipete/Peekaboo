@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 protocol SyntheticInputDriving: Sendable {
     func click(at point: CGPoint, button: MouseButton, count: Int) throws
+    func click(at point: CGPoint, button: MouseButton, count: Int, targetProcessIdentifier: pid_t) throws
     func move(to point: CGPoint) throws
     func currentLocation() -> CGPoint?
     func pressHold(at point: CGPoint, button: MouseButton, duration: TimeInterval) throws
@@ -19,6 +20,14 @@ protocol SyntheticInputDriving: Sendable {
 struct SyntheticInputDriver: SyntheticInputDriving {
     func click(at point: CGPoint, button: MouseButton = .left, count: Int = 1) throws {
         try InputDriver.click(at: point, button: button, count: count)
+    }
+
+    func click(at point: CGPoint, button: MouseButton = .left, count: Int = 1, targetProcessIdentifier: pid_t) throws {
+        try BackgroundInputDriver.click(
+            at: point,
+            button: button,
+            count: count,
+            targetProcessIdentifier: targetProcessIdentifier)
     }
 
     func move(to point: CGPoint) throws {

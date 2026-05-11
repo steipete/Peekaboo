@@ -18,7 +18,7 @@ struct PermissionCommand: ParsableCommand {
           # Request accessibility permission
           peekaboo agent permission request-accessibility
 
-          # Request event-synthesizing permission for background hotkeys
+          # Request event-synthesizing permission for background input
           peekaboo agent permission request-event-synthesizing
         """,
         subcommands: [

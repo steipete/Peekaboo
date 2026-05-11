@@ -26,6 +26,7 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case scroll(PeekabooBridgeScrollRequest)
     case hotkey(PeekabooBridgeHotkeyRequest)
     case targetedHotkey(PeekabooBridgeTargetedHotkeyRequest)
+    case targetedClick(PeekabooBridgeTargetedClickRequest)
     case swipe(PeekabooBridgeSwipeRequest)
     case drag(PeekabooBridgeDragRequest)
     case moveMouse(PeekabooBridgeMoveMouseRequest)
@@ -112,6 +113,7 @@ extension PeekabooBridgeRequest {
         case .scroll: .scroll
         case .hotkey: .hotkey
         case .targetedHotkey: .targetedHotkey
+        case .targetedClick: .targetedClick
         case .swipe: .swipe
         case .drag: .drag
         case .moveMouse: .moveMouse

@@ -104,7 +104,7 @@ final class StubScreenCaptureService: ScreenCaptureServiceProtocol {
 }
 
 @MainActor
-final class StubAutomationService: TargetedHotkeyServiceProtocol {
+final class StubAutomationService: TargetedHotkeyServiceProtocol, TargetedClickServiceProtocol {
     struct ClickCall {
         let target: ClickTarget
         let clickType: ClickType
@@ -164,6 +164,13 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol {
         let targetProcessIdentifier: pid_t
     }
 
+    struct TargetedClickCall {
+        let target: ClickTarget
+        let clickType: ClickType
+        let snapshotId: String?
+        let targetProcessIdentifier: pid_t
+    }
+
     struct WaitForElementCall {
         let target: ClickTarget
         let timeout: TimeInterval
@@ -185,11 +192,15 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol {
     var moveMouseCalls: [MoveMouseCall] = []
     var hotkeyCalls: [HotkeyCall] = []
     var targetedHotkeyCalls: [TargetedHotkeyCall] = []
+    var targetedClickCalls: [TargetedClickCall] = []
     var waitForElementCalls: [WaitForElementCall] = []
     var detectElementsCalls: [(imageData: Data, snapshotId: String?, windowContext: WindowContext?)] = []
     var supportsTargetedHotkeys = true
     var targetedHotkeyUnavailableReason: String?
     var targetedHotkeyRequiresEventSynthesizingPermission = false
+    var supportsTargetedClicks = true
+    var targetedClickUnavailableReason: String?
+    var targetedClickRequiresEventSynthesizingPermission = false
 
     var nextTypeActionsResult: TypeResult?
     var typeActionsResultProvider: (([TypeAction], TypingCadence, String?) -> TypeResult)?
@@ -223,6 +234,20 @@ final class StubAutomationService: TargetedHotkeyServiceProtocol {
 
     func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         self.clickCalls.append(ClickCall(target: target, clickType: clickType, snapshotId: snapshotId))
+    }
+
+    func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t
+    ) async throws {
+        self.targetedClickCalls.append(TargetedClickCall(
+            target: target,
+            clickType: clickType,
+            snapshotId: snapshotId,
+            targetProcessIdentifier: targetProcessIdentifier
+        ))
     }
 
     func type(

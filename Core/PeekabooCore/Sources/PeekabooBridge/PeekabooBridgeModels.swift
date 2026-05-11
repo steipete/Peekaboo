@@ -58,6 +58,7 @@ public enum PeekabooBridgeOperation: String, Codable, Sendable, CaseIterable, Ha
     case scroll
     case hotkey
     case targetedHotkey
+    case targetedClick
     case swipe
     case drag
     case moveMouse

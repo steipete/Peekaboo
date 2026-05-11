@@ -155,6 +155,25 @@ extension UIAutomationService {
         }
     }
 
+    public func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t) async throws
+    {
+        self.logger.debug("Delegating background click to ClickService")
+        let result = try await self.clickService.click(
+            target: target,
+            clickType: clickType,
+            snapshotId: snapshotId,
+            targetProcessIdentifier: targetProcessIdentifier)
+
+        let fallbackPoint = try await self.getClickPoint(for: target, snapshotId: snapshotId)
+        if let clickPoint = Self.visualFeedbackPoint(actionAnchor: result.anchorPoint, fallbackPoint: fallbackPoint) {
+            _ = await self.feedbackClient.showClickFeedback(at: clickPoint, type: clickType)
+        }
+    }
+
     private func getClickPoint(for target: ClickTarget, snapshotId: String?) async throws -> CGPoint? {
         switch target {
         case let .coordinates(point):

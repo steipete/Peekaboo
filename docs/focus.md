@@ -102,15 +102,17 @@ Uses command-supported background delivery instead of activating the target app.
 
 ```bash
 peekaboo hotkey "cmd,l" --app Safari --focus-background
+peekaboo click --coords 420,180 --app Safari --focus-background
 ```
 
 Use cases:
 - Sending app shortcuts without stealing focus
+- Clicking app-local coordinates without activating the target app
 - Keeping a long-running foreground workflow uninterrupted
 
-Currently, only `hotkey` exposes this mode, and it requires exactly one process target: `--app` or `--pid`. Other interaction commands keep the standard focus flags because their mouse and typing events still need an actionable foreground target.
+Currently, `hotkey` and `click` expose this mode. `hotkey` requires exactly one process target: `--app` or `--pid`. `click` requires `--app`, `--pid`, or snapshot process metadata.
 
-`--focus-background` is a delivery mode, not a focus mode, so it cannot be combined with `--snapshot`, `--no-auto-focus`, `--focus-timeout-seconds`, retry, or Space-switching flags. It requires Event Synthesizing access for the process that sends the event; `peekaboo permissions request-event-synthesizing` requests it for the selected bridge host by default, or for the local CLI when used with `--no-remote`. macOS does not acknowledge whether the target app handled a process-targeted hotkey; Peekaboo reports that the event was sent to a live process after event-posting permission preflight.
+`--focus-background` is a delivery mode, not a focus mode. It cannot be combined with foreground focus timeout, retry, or Space-switching flags. `hotkey` also rejects `--snapshot` and `--no-auto-focus`; `click` can use snapshot metadata to resolve the target process. It requires Event Synthesizing access for the process that sends the event; `peekaboo permissions request-event-synthesizing` requests it for the selected bridge host by default, or for the local CLI when used with `--no-remote`. macOS does not acknowledge whether the target app handled a process-targeted event; Peekaboo reports that the event was sent to a live process after event-posting permission preflight.
 
 ### `--focus-timeout-seconds <seconds>`
 Sets how long to wait for focus operations (default: 5.0).

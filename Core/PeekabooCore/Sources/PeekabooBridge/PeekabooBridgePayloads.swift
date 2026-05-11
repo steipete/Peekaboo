@@ -130,6 +130,25 @@ public struct PeekabooBridgeTargetedHotkeyRequest: Codable, Sendable {
     }
 }
 
+public struct PeekabooBridgeTargetedClickRequest: Codable, Sendable {
+    public let target: ClickTarget
+    public let clickType: ClickType
+    public let snapshotId: String?
+    public let targetProcessIdentifier: Int32
+
+    public init(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: Int32)
+    {
+        self.target = target
+        self.clickType = clickType
+        self.snapshotId = snapshotId
+        self.targetProcessIdentifier = targetProcessIdentifier
+    }
+}
+
 public struct PeekabooBridgeSwipeRequest: Codable, Sendable {
     public let from: CGPoint
     public let to: CGPoint

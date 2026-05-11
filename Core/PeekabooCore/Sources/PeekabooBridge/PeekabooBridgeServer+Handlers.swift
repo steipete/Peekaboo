@@ -19,7 +19,7 @@ extension PeekabooBridgeServer {
         case .desktopObservation:
             try await self.handleDesktopObservationRequest(request)
         case .detectElements, .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey,
-             .targetedHotkey, .swipe, .drag, .moveMouse, .waitForElement:
+             .targetedHotkey, .targetedClick, .swipe, .drag, .moveMouse, .waitForElement:
             try await self.handleAutomationRequest(request)
         case .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow:
@@ -226,6 +226,22 @@ extension PeekabooBridgeServer {
             try await targetedHotkeyService.hotkey(
                 keys: payload.keys,
                 holdDuration: payload.holdDuration,
+                targetProcessIdentifier: pid_t(payload.targetProcessIdentifier))
+            return .ok
+        case let .targetedClick(payload):
+            guard
+                let targetedClickService = self.services.automation as? any TargetedClickServiceProtocol,
+                targetedClickService.supportsTargetedClicks
+            else {
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .operationNotSupported,
+                    message: "Background clicks are not supported by this bridge host")
+            }
+
+            try await targetedClickService.click(
+                target: payload.target,
+                clickType: payload.clickType,
+                snapshotId: payload.snapshotId,
                 targetProcessIdentifier: pid_t(payload.targetProcessIdentifier))
             return .ok
         case let .swipe(payload):

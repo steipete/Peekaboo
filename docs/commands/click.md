@@ -20,12 +20,14 @@ read_when:
 | `--wait-for <ms>` | Millisecond timeout while waiting for the element to appear (default 5000). |
 | `--double` / `--right` | Perform double-click or secondary-click instead of the default single click. |
 | Focus flags | `--no-auto-focus`, `--focus-timeout-seconds`, `--focus-retry-count`, `--space-switch`, `--bring-to-current-space` (see `FocusCommandOptions`). |
+| `--focus-background` | Send the click to a target process without focusing it. Use `--app`, `--pid`, or a snapshot with process metadata. |
 
 ## Implementation notes
 - Validation makes sure you only provide one targeting strategy (ID/query vs. `--coords`) and that coordinate strings parse cleanly into doubles.
 - When no `--snapshot` is provided, the command grabs the most recent snapshot ID (if any) before waiting for elements. Coordinate clicks skip snapshot usage entirely to avoid stale caches.
 - Element-based clicks call `AutomationServiceBridge.waitForElement` with the supplied timeout so you don’t have to insert manual sleeps. Helpful hints are printed when timeouts expire.
 - Focus is enforced just before the click by `ensureFocused`; by default it will hop Spaces if necessary unless you pass `--no-auto-focus`.
+- `--focus-background` uses process-targeted CoreGraphics mouse events and skips foreground focus. It requires Event Synthesizing access and a resolvable target process. Coordinate clicks need explicit `--app` or `--pid`; element clicks can reuse snapshot process metadata.
 - JSON output reports `clickedElement`, the resolved coordinates, wait time, execution time, the frontmost app after the click, and `targetPoint` diagnostics for element/query targets. `targetPoint` includes the original snapshot midpoint, the final resolved point, the snapshot ID, and whether a moved-window adjustment was applied.
 
 ## Examples
@@ -38,6 +40,9 @@ peekaboo click "Allow" --wait-for 8000 --space-switch
 
 # Issue a right-click at raw coordinates
 peekaboo click --coords 1024,88 --right --no-auto-focus
+
+# Click Safari coordinates without activating Safari
+peekaboo click --coords 420,180 --app Safari --focus-background
 ```
 
 ## Troubleshooting

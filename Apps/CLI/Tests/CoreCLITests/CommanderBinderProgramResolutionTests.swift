@@ -142,17 +142,20 @@ struct CommanderBinderProgramResolutionTests {
 
     @Test
     @MainActor
-    func `Commander program rejects background focus flag for click`() throws {
+    func `Commander program resolves click background focus flag`() throws {
         let descriptors = CommanderRegistryBuilder.buildDescriptors()
         let program = Program(descriptors: descriptors.map(\.metadata))
-        #expect(throws: (any Error).self) {
-            _ = try program.resolve(argv: [
-                "peekaboo",
-                "click",
-                "--coords", "10,10",
-                "--focus-background"
-            ])
-        }
+        let invocation = try program.resolve(argv: [
+            "peekaboo",
+            "click",
+            "--coords", "10,10",
+            "--app", "Safari",
+            "--focus-background"
+        ])
+        let values = invocation.parsedValues
+        #expect(values.options["coords"] == ["10,10"])
+        #expect(values.options["app"] == ["Safari"])
+        #expect(values.flags.contains("focusBackground"))
     }
 
     @Test

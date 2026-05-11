@@ -51,6 +51,11 @@ public struct ClickTool: MCPTool {
                 "right": SchemaBuilder.boolean(
                     description: "Optional. Right-click (secondary click) instead of left-click.",
                     default: false),
+                "background": SchemaBuilder.boolean(
+                    description: "Optional. Deliver the click to the target process without focusing it.",
+                    default: false),
+                "pid": SchemaBuilder.number(
+                    description: "Optional. Target process ID for background coordinate clicks."),
             ],
             required: [])
     }
@@ -72,10 +77,15 @@ public struct ClickTool: MCPTool {
 
         do {
             let resolution = try await self.resolveClickTarget(for: request)
+            let effectiveTargetProcessIdentifier = try self.backgroundProcessIdentifier(
+                request: request,
+                resolution: resolution)
             try await self.performClick(
                 target: resolution.automationTarget,
                 snapshotId: resolution.snapshotId,
-                intent: request.intent)
+                intent: request.intent,
+                background: request.background,
+                targetProcessIdentifier: effectiveTargetProcessIdentifier)
 
             let invalidatedSnapshotId = await UISnapshotManager.shared
                 .invalidateActiveSnapshot(id: resolution.snapshotIdToInvalidate)
@@ -83,6 +93,7 @@ public struct ClickTool: MCPTool {
             return self.buildResponse(
                 intent: request.intent,
                 resolution: resolution,
+                effectiveTargetProcessIdentifier: effectiveTargetProcessIdentifier,
                 executionTime: executionTime,
                 invalidatedSnapshotId: invalidatedSnapshotId)
         } catch let error as ClickToolError {
@@ -107,6 +118,7 @@ public struct ClickTool: MCPTool {
                 location: point,
                 automationTarget: .coordinates(point),
                 elementDescription: nil,
+                targetProcessIdentifier: request.pid,
                 snapshotId: nil,
                 snapshotIdToInvalidate: request.snapshotId)
         case let .elementId(identifier):
@@ -120,6 +132,7 @@ public struct ClickTool: MCPTool {
                 windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
                 elementLabel: element.displayLabel,
+                targetProcessIdentifier: snapshot.applicationProcessId,
                 snapshotId: snapshot.id)
         case let .query(text):
             let snapshot = try await self.requireSnapshot(id: request.snapshotId)
@@ -132,20 +145,57 @@ public struct ClickTool: MCPTool {
                 windowTitle: snapshot.windowTitle,
                 elementRole: element.humanRole,
                 elementLabel: element.displayLabel,
+                targetProcessIdentifier: snapshot.applicationProcessId,
                 snapshotId: snapshot.id)
         }
     }
 
-    private func performClick(target: ClickTarget, snapshotId: String?, intent: ClickIntent) async throws {
-        try await self.context.automation.click(
-            target: target,
-            clickType: intent.automationType,
-            snapshotId: snapshotId)
+    private func performClick(
+        target: ClickTarget,
+        snapshotId: String?,
+        intent: ClickIntent,
+        background: Bool,
+        targetProcessIdentifier: pid_t?) async throws
+    {
+        if background {
+            guard let targetProcessIdentifier else {
+                throw ClickToolError("Background click requires a snapshot target process or explicit pid.")
+            }
+            guard let automation = self.context.automation as? any TargetedClickServiceProtocol else {
+                throw ClickToolError("This automation host does not support background click delivery.")
+            }
+            try await automation.click(
+                target: target,
+                clickType: intent.automationType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: targetProcessIdentifier)
+        } else {
+            try await self.context.automation.click(
+                target: target,
+                clickType: intent.automationType,
+                snapshotId: snapshotId)
+        }
+    }
+
+    private func backgroundProcessIdentifier(
+        request: ClickRequest,
+        resolution: ClickResolution) throws -> pid_t?
+    {
+        guard request.background else { return nil }
+        if let pid = request.pid {
+            guard pid > 0 else {
+                throw ClickToolError("pid must be greater than 0.")
+            }
+            return pid_t(pid)
+        }
+        guard let targetProcessIdentifier = resolution.targetProcessIdentifier else { return nil }
+        return pid_t(targetProcessIdentifier)
     }
 
     private func buildResponse(
         intent: ClickIntent,
         resolution: ClickResolution,
+        effectiveTargetProcessIdentifier: pid_t?,
         executionTime: TimeInterval,
         invalidatedSnapshotId: String?) -> ToolResponse
     {
@@ -167,6 +217,9 @@ public struct ClickTool: MCPTool {
         if let invalidatedSnapshotId {
             metaDict["invalidated_snapshot"] = .string(invalidatedSnapshotId)
             metaDict["requires_fresh_see"] = .bool(true)
+        }
+        if let processId = effectiveTargetProcessIdentifier.map({ Int32($0) }) {
+            metaDict["target_pid"] = .double(Double(processId))
         }
 
         let summary = ToolEventSummary(
@@ -235,6 +288,8 @@ private struct ClickRequest {
     let target: ClickRequestTarget
     let snapshotId: String?
     let intent: ClickIntent
+    let background: Bool
+    let pid: Int32?
 
     init(arguments: ToolArguments) throws {
         if let coords = arguments.getString("coords") {
@@ -251,6 +306,15 @@ private struct ClickRequest {
         let isDouble = arguments.getBool("double") ?? false
         let isRight = arguments.getBool("right") ?? false
         self.intent = ClickIntent(double: isDouble, right: isRight)
+        self.background = arguments.getBool("background") ?? false
+        if let rawPID = arguments.getNumber("pid") {
+            guard let pid = Int32(exactly: rawPID) else {
+                throw ClickToolError("pid is outside the supported Int32 range.")
+            }
+            self.pid = pid
+        } else {
+            self.pid = nil
+        }
     }
 }
 
@@ -268,6 +332,7 @@ private struct ClickResolution {
     let windowTitle: String?
     let elementRole: String?
     let elementLabel: String?
+    let targetProcessIdentifier: Int32?
     let snapshotId: String?
     let snapshotIdToInvalidate: String?
 
@@ -279,6 +344,7 @@ private struct ClickResolution {
         windowTitle: String? = nil,
         elementRole: String? = nil,
         elementLabel: String? = nil,
+        targetProcessIdentifier: Int32? = nil,
         snapshotId: String?,
         snapshotIdToInvalidate: String? = nil)
     {
@@ -289,6 +355,7 @@ private struct ClickResolution {
         self.windowTitle = windowTitle
         self.elementRole = elementRole
         self.elementLabel = elementLabel
+        self.targetProcessIdentifier = targetProcessIdentifier
         self.snapshotId = snapshotId
         self.snapshotIdToInvalidate = snapshotIdToInvalidate ?? snapshotId
     }

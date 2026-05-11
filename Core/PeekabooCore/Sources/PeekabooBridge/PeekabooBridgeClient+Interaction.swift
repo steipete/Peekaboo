@@ -94,6 +94,20 @@ extension PeekabooBridgeClient {
                 targetProcessIdentifier: Int32(targetProcessIdentifier))))
     }
 
+    public func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t) async throws
+    {
+        try await self.sendExpectOK(
+            .targetedClick(PeekabooBridgeTargetedClickRequest(
+                target: target,
+                clickType: clickType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: Int32(targetProcessIdentifier))))
+    }
+
     public func swipe(
         from: CGPoint,
         to: CGPoint,

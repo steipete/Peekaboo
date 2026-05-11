@@ -37,6 +37,33 @@ enum AutomationServiceBridge {
         }.value
     }
 
+    static func click(
+        automation: any UIAutomationServiceProtocol,
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t
+    ) async throws {
+        try await Task { @MainActor in
+            guard let targetedClickService = automation as? any TargetedClickServiceProtocol else {
+                throw PeekabooError.serviceUnavailable(
+                    "Background clicks require an automation service that supports targeted click delivery"
+                )
+            }
+
+            guard targetedClickService.supportsTargetedClicks else {
+                throw self.targetedClickUnavailableError(service: targetedClickService)
+            }
+
+            try await targetedClickService.click(
+                target: target,
+                clickType: clickType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: targetProcessIdentifier
+            )
+        }.value
+    }
+
     static func typeActions(
         automation: any UIAutomationServiceProtocol,
         request: TypeActionsRequest
@@ -130,6 +157,17 @@ enum AutomationServiceBridge {
         return .serviceUnavailable(
             service.targetedHotkeyUnavailableReason ??
                 "Remote bridge host does not support background hotkeys; use --no-remote or update the host"
+        )
+    }
+
+    private static func targetedClickUnavailableError(service: any TargetedClickServiceProtocol) -> PeekabooError {
+        if service.targetedClickRequiresEventSynthesizingPermission {
+            return .permissionDeniedEventSynthesizing
+        }
+
+        return .serviceUnavailable(
+            service.targetedClickUnavailableReason ??
+                "Remote bridge host does not support background clicks; use --no-remote or update the host"
         )
     }
 

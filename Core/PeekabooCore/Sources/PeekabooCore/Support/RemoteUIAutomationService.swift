@@ -6,22 +6,32 @@ import PeekabooBridge
 import PeekabooFoundation
 
 @MainActor
-public class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, TargetedHotkeyServiceProtocol {
+public class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, TargetedHotkeyServiceProtocol,
+TargetedClickServiceProtocol {
     let client: PeekabooBridgeClient
     public let supportsTargetedHotkeys: Bool
     public let targetedHotkeyUnavailableReason: String?
     public let targetedHotkeyRequiresEventSynthesizingPermission: Bool
+    public let supportsTargetedClicks: Bool
+    public let targetedClickUnavailableReason: String?
+    public let targetedClickRequiresEventSynthesizingPermission: Bool
 
     public init(
         client: PeekabooBridgeClient,
         supportsTargetedHotkeys: Bool = false,
         targetedHotkeyUnavailableReason: String? = nil,
-        targetedHotkeyRequiresEventSynthesizingPermission: Bool = false)
+        targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
+        supportsTargetedClicks: Bool = false,
+        targetedClickUnavailableReason: String? = nil,
+        targetedClickRequiresEventSynthesizingPermission: Bool = false)
     {
         self.client = client
         self.supportsTargetedHotkeys = supportsTargetedHotkeys
         self.targetedHotkeyUnavailableReason = targetedHotkeyUnavailableReason
         self.targetedHotkeyRequiresEventSynthesizingPermission = targetedHotkeyRequiresEventSynthesizingPermission
+        self.supportsTargetedClicks = supportsTargetedClicks
+        self.targetedClickUnavailableReason = targetedClickUnavailableReason
+        self.targetedClickRequiresEventSynthesizingPermission = targetedClickRequiresEventSynthesizingPermission
     }
 
     public func detectElements(
@@ -51,6 +61,38 @@ public class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, T
 
     public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
         try await self.client.click(target: target, clickType: clickType, snapshotId: snapshotId)
+    }
+
+    public func click(
+        target: ClickTarget,
+        clickType: ClickType,
+        snapshotId: String?,
+        targetProcessIdentifier: pid_t) async throws
+    {
+        guard self.supportsTargetedClicks else {
+            throw Self.targetedClickUnavailableError(
+                reason: self.targetedClickUnavailableReason,
+                requiresEventSynthesizingPermission: self.targetedClickRequiresEventSynthesizingPermission)
+        }
+
+        do {
+            try await self.client.click(
+                target: target,
+                clickType: clickType,
+                snapshotId: snapshotId,
+                targetProcessIdentifier: targetProcessIdentifier)
+        } catch let envelope as PeekabooBridgeErrorEnvelope {
+            switch envelope.code {
+            case .permissionDenied:
+                throw Self.permissionDeniedError(for: envelope)
+            case .invalidRequest:
+                throw PeekabooError.invalidInput(envelope.message)
+            case .operationNotSupported:
+                throw PeekabooError.serviceUnavailable(envelope.message)
+            default:
+                throw envelope
+            }
+        }
     }
 
     public func type(
@@ -120,6 +162,18 @@ public class RemoteUIAutomationService: DetectElementsRequestTimeoutAdjusting, T
 
         return .serviceUnavailable(
             reason ?? "Remote bridge host does not support background hotkeys; use --no-remote or update the host")
+    }
+
+    private static func targetedClickUnavailableError(
+        reason: String?,
+        requiresEventSynthesizingPermission: Bool) -> PeekabooError
+    {
+        if requiresEventSynthesizingPermission {
+            return .permissionDeniedEventSynthesizing
+        }
+
+        return .serviceUnavailable(
+            reason ?? "Remote bridge host does not support background clicks; use --no-remote or update the host")
     }
 
     private static func permissionDeniedError(for envelope: PeekabooBridgeErrorEnvelope) -> PeekabooError {

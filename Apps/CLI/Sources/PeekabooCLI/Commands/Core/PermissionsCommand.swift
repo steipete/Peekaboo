@@ -239,7 +239,7 @@ extension PermissionsCommand.RequestEventSynthesizingSubcommand: ParsableCommand
         MainActorCommandDescription.describe {
             CommandDescription(
                 commandName: "request-event-synthesizing",
-                abstract: "Request Event Synthesizing permission for background hotkeys"
+                abstract: "Request Event Synthesizing permission for background input"
             )
         }
     }

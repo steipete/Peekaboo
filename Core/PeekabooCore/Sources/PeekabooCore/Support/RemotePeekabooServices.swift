@@ -36,6 +36,9 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         supportsTargetedHotkeys: Bool = false,
         targetedHotkeyUnavailableReason: String? = nil,
         targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
+        supportsTargetedClicks: Bool = false,
+        targetedClickUnavailableReason: String? = nil,
+        targetedClickRequiresEventSynthesizingPermission: Bool = false,
         supportsPostEventPermissionRequest: Bool = false,
         supportsElementActions: Bool = false,
         supportsDesktopObservation: Bool = false,
@@ -54,13 +57,19 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
                 client: client,
                 supportsTargetedHotkeys: supportsTargetedHotkeys,
                 targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
-                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
+                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission,
+                supportsTargetedClicks: supportsTargetedClicks,
+                targetedClickUnavailableReason: targetedClickUnavailableReason,
+                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission)
         } else {
             RemoteUIAutomationService(
                 client: client,
                 supportsTargetedHotkeys: supportsTargetedHotkeys,
                 targetedHotkeyUnavailableReason: targetedHotkeyUnavailableReason,
-                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission)
+                targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission,
+                supportsTargetedClicks: supportsTargetedClicks,
+                targetedClickUnavailableReason: targetedClickUnavailableReason,
+                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission)
         }
         self.windows = RemoteWindowManagementService(client: client)
         let snapshotManager = RemoteSnapshotManager(client: client)
