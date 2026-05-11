@@ -78,7 +78,8 @@
     "darwin"
   ],
   "cpu": [
-    "arm64"
+    "arm64",
+    "x64"
   ],
   "devDependencies": {
     "chrome-devtools-mcp": "0.23.0"

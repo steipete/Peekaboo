@@ -210,6 +210,10 @@ extension LegacyScreenCaptureOperator {
     }
 
     func shouldUseLegacyCGCapture() -> Bool {
+        if ScreenCaptureService.captureEnginePreference == .legacy {
+            return true
+        }
+
         #if os(macOS)
         if #available(macOS 14.0, *) {
             let env = ProcessInfo.processInfo.environment["PEEKABOO_ALLOW_LEGACY_CAPTURE"]?.lowercased()

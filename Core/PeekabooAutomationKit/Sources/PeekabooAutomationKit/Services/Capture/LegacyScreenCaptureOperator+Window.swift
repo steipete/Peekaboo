@@ -236,7 +236,8 @@ extension LegacyScreenCaptureOperator {
         windowID: CGWindowID,
         correlationId: String) async throws -> CGImage
     {
-        if self.shouldUseLegacyCGCapture() {
+        let forceCoreGraphics = self.shouldUseLegacyCGCapture()
+        if forceCoreGraphics {
             do {
                 let image = try await self.captureWindowWithCGWindowList(
                     windowID: windowID,
@@ -247,10 +248,16 @@ extension LegacyScreenCaptureOperator {
                     correlationId: correlationId)
                 return image
             } catch {
+                let explicitLegacy = ScreenCaptureService.captureEnginePreference == .legacy
                 self.logger.warning(
-                    "CGWindowList capture failed, falling back to SCScreenshotManager",
+                    explicitLegacy
+                        ? "CGWindowList capture failed for explicit legacy capture engine"
+                        : "CGWindowList capture failed, falling back to SCScreenshotManager",
                     metadata: ["error": String(describing: error)],
                     correlationId: correlationId)
+                if explicitLegacy {
+                    throw error
+                }
                 return try await self.captureWindowWithScreenshotManager(
                     windowID: windowID,
                     correlationId: correlationId)

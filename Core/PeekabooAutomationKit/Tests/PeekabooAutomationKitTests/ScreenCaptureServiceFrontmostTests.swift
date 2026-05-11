@@ -1,10 +1,19 @@
 import CoreGraphics
 import PeekabooFoundation
 import XCTest
-@_spi(Testing) import PeekabooAutomationKit
+@testable @_spi(Testing) import PeekabooAutomationKit
 
 @MainActor
 final class ScreenCaptureServiceFrontmostTests: XCTestCase {
+    func testExplicitLegacyEngineForcesCoreGraphicsWindowCapture() {
+        let logging = MockLoggingService()
+        let legacyOperator = LegacyScreenCaptureOperator(logger: logging.logger(category: "test"))
+
+        ScreenCaptureService.$captureEnginePreference.withValue(.legacy) {
+            XCTAssertTrue(legacyOperator.shouldUseLegacyCGCapture())
+        }
+    }
+
     func testCaptureFrontmostUsesApplicationResolverIdentity() async throws {
         let app = ServiceApplicationInfo(
             processIdentifier: 1234,
