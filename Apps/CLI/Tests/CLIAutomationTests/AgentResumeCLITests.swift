@@ -56,7 +56,7 @@ struct AgentResumeCLITests {
             let jsonData = try JSONSerialization.data(withJSONObject: jsonError, options: .prettyPrinted)
             let jsonString = String(data: jsonData, encoding: .utf8)
             #expect(jsonString != nil)
-            #expect(try #require(jsonString?.contains("\"success\" : false")))
+            #expect(try #require(jsonString).contains("\"success\" : false"))
         } catch {
             #expect(Bool(false), "JSON serialization should not fail")
         }

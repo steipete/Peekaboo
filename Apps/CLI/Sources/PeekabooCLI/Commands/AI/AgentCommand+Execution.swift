@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 import PeekabooAgentRuntime
 import PeekabooCore
@@ -145,7 +146,7 @@ extension AgentCommand {
             return result
         } catch {
             self.printAgentExecutionError("Agent execution failed: \(error.localizedDescription)")
-            throw error
+            throw ExitCode.failure
         }
     }
 

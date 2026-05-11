@@ -15,9 +15,7 @@ extension PeekabooAgentService {
                 maxTokens: 4096,
                 providerOptions: .init(openai: .init(verbosity: .medium)))
         case .anthropic:
-            GenerationSettings(
-                maxTokens: 4096,
-                providerOptions: .init(anthropic: .init(thinking: .enabled(budgetTokens: 12000))))
+            GenerationSettings(maxTokens: 4096)
         case .google:
             GenerationSettings(maxTokens: 4096)
         default:

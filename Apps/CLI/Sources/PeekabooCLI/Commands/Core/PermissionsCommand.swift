@@ -30,14 +30,14 @@ extension PermissionsCommand {
         @Flag(name: .customLong("no-remote"), help: "Skip remote hosts and query permissions locally")
         var noRemote = false
 
+        @Flag(name: .customLong("all-sources"), help: "Show bridge and local permission status side by side")
+        var allSources = false
+
         @Option(
             name: .customLong("bridge-socket"),
             help: "Override the Peekaboo Bridge socket path for permission checks"
         )
         var bridgeSocket: String?
-
-        @Flag(name: .customLong("all-sources"), help: "Show bridge and local permission status side by side")
-        var allSources = false
 
         private var resolvedRuntime: CommandRuntime {
             guard let runtime else {

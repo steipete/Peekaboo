@@ -5,7 +5,7 @@ import PeekabooAutomation
 import TachikomaMCP
 
 /// Transport types supported by the MCP server
-public enum TransportType: CustomStringConvertible {
+public enum TransportType: CustomStringConvertible, Sendable {
     case stdio
     case http
     case sse

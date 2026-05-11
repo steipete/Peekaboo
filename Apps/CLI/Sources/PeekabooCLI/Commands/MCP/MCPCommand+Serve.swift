@@ -4,6 +4,7 @@
 //
 
 import Commander
+import Darwin
 import Logging
 import PeekabooCore
 
@@ -36,12 +37,15 @@ extension MCPCommand {
         @MainActor
         mutating func run(using runtime: CommandRuntime) async throws {
             do {
-                // Convert string transport to PeekabooCore.TransportType
-                let transportType: PeekabooCore.TransportType = switch self.transport.lowercased() {
-                case "stdio": .stdio
-                case "http": .http
-                case "sse": .sse
-                default: .stdio
+                guard let transportType = Self.transportType(named: self.transport) else {
+                    runtime.logger.setJsonOutputMode(runtime.configuration.jsonOutput)
+                    let message = "Invalid transport '\(self.transport)'. Use stdio, http, or sse."
+                    if runtime.configuration.jsonOutput {
+                        outputError(message: message, code: .INVALID_ARGUMENT, logger: runtime.logger)
+                    } else {
+                        fputs("Error: \(message)\n", stderr)
+                    }
+                    throw ExitCode.failure
                 }
 
                 if runtime.services is RemotePeekabooServices {
@@ -53,9 +57,20 @@ extension MCPCommand {
 
                 let server = try await PeekabooMCPServer()
                 try await server.serve(transport: transportType, port: self.port)
+            } catch let exitCode as ExitCode {
+                throw exitCode
             } catch {
                 runtime.logger.error("Failed to start MCP server: \(error)")
                 throw ExitCode.failure
+            }
+        }
+
+        static func transportType(named name: String) -> PeekabooCore.TransportType? {
+            switch name.lowercased() {
+            case "stdio": .stdio
+            case "http": .http
+            case "sse": .sse
+            default: nil
             }
         }
     }

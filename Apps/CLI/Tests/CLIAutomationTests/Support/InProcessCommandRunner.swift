@@ -189,6 +189,14 @@ enum InProcessCommandRunner {
 }
 
 enum ExternalCommandRunner {
+    private static let repositoryRoot: URL = {
+        var url = URL(fileURLWithPath: #filePath)
+        for _ in 0..<6 {
+            url.deleteLastPathComponent()
+        }
+        return url
+    }()
+
     enum Error: Swift.Error, LocalizedError {
         case executableNotFound(String)
         case peekabooCLIPathMissing
@@ -212,13 +220,15 @@ enum ExternalCommandRunner {
         allowedExitCodes: Set<Int32> = [0],
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) throws -> CommandRunResult {
-        let wrapperPath = "./scripts/poltergeist-wrapper.sh"
+        let wrapperPath = self.repositoryRoot
+            .appendingPathComponent("scripts/poltergeist-wrapper.sh")
+            .path
         guard FileManager.default.isExecutableFile(atPath: wrapperPath) else {
             throw Error.executableNotFound(wrapperPath)
         }
 
         let process = Process()
-        process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        process.currentDirectoryURL = self.repositoryRoot
         process.executableURL = URL(fileURLWithPath: wrapperPath)
         process.arguments = ["peekaboo", "--"] + arguments
         process.environment = environment

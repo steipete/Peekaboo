@@ -1,3 +1,4 @@
+import Commander
 import Foundation
 import Testing
 @testable import PeekabooCLI
@@ -13,7 +14,14 @@ struct PermissionsCommandTests {
 
     @Test
     func `permissions status parses all sources flag`() throws {
-        let command = try PermissionsCommand.StatusSubcommand.parse(["--all-sources", "--no-remote"])
+        let command = try CommanderCLIBinder.instantiateCommand(
+            ofType: PermissionsCommand.StatusSubcommand.self,
+            parsedValues: ParsedValues(
+                positional: [],
+                options: [:],
+                flags: ["all-sources", "no-remote"]
+            )
+        )
 
         #expect(command.allSources == true)
         #expect(command.noRemote == true)

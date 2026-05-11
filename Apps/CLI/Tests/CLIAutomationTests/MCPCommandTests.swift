@@ -69,6 +69,18 @@ struct MCPCommandTests {
         }
     }
 
+    @Test
+    func `Reject invalid transport before starting server`() async throws {
+        let result = try await InProcessCommandRunner.runShared(
+            ["mcp", "serve", "--transport", "bogus", "--json"],
+            allowedExitCodes: [1]
+        )
+
+        #expect(result.exitStatus == 1)
+        #expect(result.stdout.contains("\"success\" : false"))
+        #expect(result.stdout.contains("Invalid transport 'bogus'"))
+    }
+
     // MARK: - Validation Tests
 
     @Test
@@ -107,12 +119,10 @@ struct MCPServerBehaviorTests {
     }
 
     @Test
-    func `Server validates transport types`() throws {
-        var serve = try CLIOutputCapture.suppressStderr {
-            try MCPCommand.Serve.parse([])
-        }
-
-        // Invalid transport should be handled in run(); default to stdio.
-        serve.transport = "invalid"
+    func `Server validates transport types`() {
+        #expect(MCPCommand.Serve.transportType(named: "stdio") == .stdio)
+        #expect(MCPCommand.Serve.transportType(named: "http") == .http)
+        #expect(MCPCommand.Serve.transportType(named: "sse") == .sse)
+        #expect(MCPCommand.Serve.transportType(named: "invalid") == nil)
     }
 }

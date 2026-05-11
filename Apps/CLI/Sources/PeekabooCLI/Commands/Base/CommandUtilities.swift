@@ -127,11 +127,11 @@ func withCommandTimeout<T: Sendable>(
 
     let timeoutTask = Task.detached {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-        workTask.cancel()
         race.resume(with: Result<T, any Error>.failure(PeekabooError.timeout(
             operation: operationName,
             duration: seconds
         )))
+        workTask.cancel()
     }
 
     return try await withTaskCancellationHandler {
@@ -166,11 +166,11 @@ func withMainActorCommandTimeout<T: Sendable>(
 
     let timeoutTask = Task.detached {
         try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-        workTask.cancel()
         race.resume(with: Result<T, any Error>.failure(PeekabooError.timeout(
             operation: operationName,
             duration: seconds
         )))
+        workTask.cancel()
     }
 
     return try await withTaskCancellationHandler {

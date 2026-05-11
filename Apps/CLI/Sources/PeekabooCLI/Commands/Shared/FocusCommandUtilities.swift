@@ -72,6 +72,10 @@ func ensureFocused(
     }
 
     guard let windowID = targetWindow else {
+        if case let .bestWindow(applicationName, _) = targetRequest {
+            _ = try await services.applications.findApplication(identifier: applicationName)
+            try await services.applications.activateApplication(identifier: applicationName)
+        }
         return
     }
 

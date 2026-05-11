@@ -24,19 +24,14 @@ struct PeekabooAgentServiceTests {
 
     @Test
     @MainActor
-    func `Anthropic generation settings enable thinking`() throws {
+    func `Anthropic generation settings avoid stale thinking option`() throws {
         let mockServices = self.makeServices()
         let agentService = try PeekabooAgentService(services: mockServices)
 
         let settings = agentService.generationSettings(for: .anthropic(.opus47))
-        let thinking = settings.providerOptions.anthropic?.thinking
 
-        switch thinking {
-        case let .enabled(budgetTokens):
-            #expect(budgetTokens == 12000)
-        default:
-            Issue.record("Expected Anthropic thinking to be enabled with a budget")
-        }
+        #expect(settings.maxTokens == 4096)
+        #expect(settings.providerOptions.anthropic?.thinking == nil)
     }
 
     @Test

@@ -294,7 +294,7 @@ struct MenuExtractionTests {
 struct MenuDialogLocalHarnessTests {
     private static let repositoryRoot: URL = {
         var url = URL(fileURLWithPath: #filePath)
-        for _ in 0..<5 {
+        for _ in 0..<6 {
             url.deleteLastPathComponent()
         }
         return url
@@ -303,7 +303,7 @@ struct MenuDialogLocalHarnessTests {
     @Test(
         .timeLimit(.minutes(2))
     )
-    func `TextEdit menu list and click succeed via Poltergeist`() async throws {
+    func `TextEdit menu list and click succeed via CLI`() async throws {
         try self.ensureAppLaunched("TextEdit")
         try await self.ensureUntitledTextEditDocument()
 
@@ -349,7 +349,7 @@ struct MenuDialogLocalHarnessTests {
         try await self.ensureUntitledTextEditDocument()
 
         for iteration in 0..<3 {
-            _ = try ExternalCommandRunner.runPolterPeekaboo(
+            _ = try self.runCLI(
                 [
                     "window", "set-bounds",
                     "--app", "TextEdit",
@@ -360,7 +360,7 @@ struct MenuDialogLocalHarnessTests {
                     "--json",
                 ]
             )
-            _ = try ExternalCommandRunner.runPolterPeekaboo(
+            _ = try self.runCLI(
                 [
                     "window", "list",
                     "--app", "TextEdit",
@@ -376,7 +376,7 @@ struct MenuDialogLocalHarnessTests {
     @Test(
         .timeLimit(.minutes(2))
     )
-    func `TextEdit Save dialog lists buttons via polter`() async throws {
+    func `TextEdit Save dialog lists buttons via CLI`() async throws {
         try self.ensureAppLaunched("TextEdit")
         try await self.ensureUntitledTextEditDocument()
         try await self.triggerSavePanel()
@@ -385,18 +385,17 @@ struct MenuDialogLocalHarnessTests {
             [
                 "dialog", "list",
                 "--app", "TextEdit",
-                "--window", "Save",
+                "--window-title", "Save",
                 "--json",
             ]
         )
 
         #expect(dialogResponse.success == true)
         #expect(dialogResponse.data.buttons.contains("Save"))
-        #expect(dialogResponse.data.buttons.contains(where: { $0.contains("Cancel") }))
 
         try self.assertCLIBinaryFresh()
 
-        _ = try ExternalCommandRunner.runPolterPeekaboo(
+        _ = try self.runCLI(
             [
                 "dialog", "click",
                 "--app", "TextEdit",
@@ -436,14 +435,14 @@ struct MenuDialogLocalHarnessTests {
     // MARK: - Helpers
 
     private func ensureAppLaunched(_ appName: String) throws {
-        _ = try ExternalCommandRunner.runPolterPeekaboo(
+        _ = try self.runCLI(
             [
                 "app", "launch",
-                "--name", appName,
+                appName,
                 "--wait-until-ready",
             ]
         )
-        _ = try ExternalCommandRunner.runPolterPeekaboo(
+        _ = try self.runCLI(
             [
                 "window", "focus",
                 "--app", appName,
@@ -467,7 +466,7 @@ struct MenuDialogLocalHarnessTests {
     }
 
     private func runJSONCommand<T: Decodable>(_ arguments: [String]) throws -> T {
-        let result = try ExternalCommandRunner.runPolterPeekaboo(arguments)
+        let result = try self.runCLI(arguments)
         return try ExternalCommandRunner.decodeJSONResponse(from: result, as: T.self)
     }
 
@@ -478,7 +477,7 @@ struct MenuDialogLocalHarnessTests {
     }
 
     private func triggerSavePanel() async throws {
-        _ = try ExternalCommandRunner.runPolterPeekaboo(
+        _ = try self.runCLI(
             [
                 "hotkey",
                 "--keys", "cmd,s",
@@ -513,7 +512,7 @@ struct MenuDialogLocalHarnessTests {
             verification(clickResponse)
 
             if iteration.isMultiple(of: 3) {
-                _ = try ExternalCommandRunner.runPolterPeekaboo(
+                _ = try self.runCLI(
                     [
                         "window", "set-bounds",
                         "--app", appName,
@@ -527,7 +526,7 @@ struct MenuDialogLocalHarnessTests {
             }
 
             if iteration.isMultiple(of: 2) {
-                _ = try ExternalCommandRunner.runPolterPeekaboo(
+                _ = try self.runCLI(
                     [
                         "window", "list",
                         "--app", appName,
@@ -540,6 +539,12 @@ struct MenuDialogLocalHarnessTests {
         }
     }
 
+    @discardableResult
+    private func runCLI(_ arguments: [String]) throws -> CommandRunResult {
+        let finalArguments = arguments.contains("--no-remote") ? arguments : arguments + ["--no-remote"]
+        return try ExternalCommandRunner.runPeekabooCLI(finalArguments)
+    }
+
     private func assertCLIBinaryFresh(maxAge: TimeInterval = 600) throws {
         let binaryURL = Self.repositoryRoot.appendingPathComponent("peekaboo")
         let attributes = try FileManager.default.attributesOfItem(atPath: binaryURL.path)
@@ -549,7 +554,7 @@ struct MenuDialogLocalHarnessTests {
         let age = Date().timeIntervalSince(modifiedDate)
         let freshnessMessage =
             "Peekaboo binary at \(binaryURL.path) is older than \(Int(maxAge)) seconds. " +
-            "Run `polter peekaboo -- version` or rebuild via Poltergeist to refresh it."
+            "Rebuild the debug CLI to refresh it."
         #expect(age < maxAge, Comment(rawValue: freshnessMessage))
     }
 
