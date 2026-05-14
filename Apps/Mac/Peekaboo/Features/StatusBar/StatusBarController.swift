@@ -22,6 +22,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     /// Icon animation
     private let animationController = MenuBarAnimationController()
 
+    func removeStatusItem() {
+        NSStatusBar.system.removeStatusItem(self.statusItem)
+    }
+
     init(
         agent: PeekabooAgent,
         sessionStore: SessionStore,

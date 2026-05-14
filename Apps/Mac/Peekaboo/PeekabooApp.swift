@@ -195,6 +195,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // Visualizer components
     var visualizerCoordinator: VisualizerCoordinator?
     private var visualizerEventReceiver: VisualizerEventReceiver?
+    private var didConnectDockIconManager = false
+    private var didConnectVisualizerSettings = false
+    private var didSetupKeyboardShortcuts = false
+    private var didSetupNotificationObservers = false
 
     func applicationDidFinishLaunching(_: Notification) {
         self.logger.info("Peekaboo launching... (Poltergeist test)")
@@ -218,29 +222,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.permissions = context.permissions
         self.agent = context.agent
 
-        // Now create status bar with connected state
-        self.statusBarController = StatusBarController(
-            agent: context.agent,
-            sessionStore: context.sessionStore,
-            permissions: context.permissions,
-            settings: context.settings,
-            updater: self.updaterController)
+        if self.statusBarController == nil {
+            self.statusBarController = StatusBarController(
+                agent: context.agent,
+                sessionStore: context.sessionStore,
+                permissions: context.permissions,
+                settings: context.settings,
+                updater: self.updaterController)
+        }
 
         // Connect dock icon manager to settings
-        DockIconManager.shared.connectToSettings(context.settings)
+        if !self.didConnectDockIconManager {
+            DockIconManager.shared.connectToSettings(context.settings)
+            self.didConnectDockIconManager = true
+        }
 
         // Connect visualizer coordinator to settings
-        if let coordinator = self.visualizerCoordinator {
+        if !self.didConnectVisualizerSettings, let coordinator = self.visualizerCoordinator {
             coordinator.connectSettings(context.settings)
+            self.didConnectVisualizerSettings = true
         }
 
         // Setup keyboard shortcuts
-        self.setupKeyboardShortcuts()
+        if !self.didSetupKeyboardShortcuts {
+            self.setupKeyboardShortcuts()
+            self.didSetupKeyboardShortcuts = true
+        }
 
         // Setup notification observers
-        self.setupNotificationObservers()
+        if !self.didSetupNotificationObservers {
+            self.setupNotificationObservers()
+            self.didSetupNotificationObservers = true
+        }
 
-        self.startBridgeHost(services: context.services)
+        if self.bridgeHost == nil {
+            self.startBridgeHost(services: context.services)
+        }
 
         // Show onboarding if needed
         if self.settings?.agentModeEnabled == true, self.settings?.hasValidAPIKey != true {
@@ -274,7 +291,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false // Menu bar app stays running
     }
 
+    func applicationShouldHandleReopen(_: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if flag {
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            self.showMainWindow()
+        }
+        return false
+    }
+
     func applicationWillTerminate(_: Notification) {
+        self.statusBarController?.removeStatusItem()
+        self.statusBarController = nil
+
         if let bridgeHost = self.bridgeHost {
             Task { await bridgeHost.stop() }
         }
