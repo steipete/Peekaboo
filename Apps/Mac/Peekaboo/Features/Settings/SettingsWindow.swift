@@ -254,7 +254,15 @@ struct AISettingsView: View {
                 ("gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite"),
                 ("gemini-3-flash", "Gemini 3 Flash"),
             ]),
+            ("minimax", [
+                ("MiniMax-M2.7", "MiniMax M2.7"),
+                ("MiniMax-M2.7-highspeed", "MiniMax M2.7 Highspeed"),
+            ]),
             ("ollama", self.ollamaModelOptions),
+            ("lmstudio", [
+                ("openai/gpt-oss-120b", "GPT-OSS 120B"),
+                ("openai/gpt-oss-20b", "GPT-OSS 20B"),
+            ]),
         ]
 
         // Add custom providers
@@ -294,6 +302,10 @@ struct AISettingsView: View {
             "gemini-3.1-pro-preview": "Google Gemini 3.1 Pro Preview for multimodal agent runs.",
             "gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite for low-latency agent runs.",
             "gemini-3-flash": "Google Gemini Flash tuned for fast, lower-latency multimodal agent runs.",
+            "MiniMax-M2.7": "MiniMax M2.7 using the Anthropic-compatible API.",
+            "MiniMax-M2.7-highspeed": "MiniMax M2.7 Highspeed using the Anthropic-compatible API.",
+            "openai/gpt-oss-120b": "Local GPT-OSS 120B through LM Studio.",
+            "openai/gpt-oss-20b": "Local GPT-OSS 20B through LM Studio.",
             // Ollama models
             "llava:latest": "Open-source multimodal model that runs locally. Good for " +
                 "privacy-conscious users and offline usage.",
@@ -388,6 +400,14 @@ struct AISettingsView: View {
                     apiKey: Binding(
                         get: { self.settings.googleAPIKey },
                         set: { self.settings.googleAPIKey = $0 }))
+            }
+
+            Section("MiniMax Configuration") {
+                APIKeyField(
+                    provider: .minimax,
+                    apiKey: Binding(
+                        get: { self.settings.miniMaxAPIKey },
+                        set: { self.settings.miniMaxAPIKey = $0 }))
             }
 
             Section("Ollama Configuration") {

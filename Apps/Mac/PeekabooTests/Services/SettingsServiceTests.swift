@@ -194,7 +194,7 @@ struct PeekabooSettingsConfigHydrationTests {
     }
 
     @Test
-    func `Configuration-backed provider aliases hydrate to Google and built-ins include Grok`() throws {
+    func `Configuration-backed provider aliases hydrate to Google and built-ins include Grok and MiniMax`() throws {
         try withIsolatedSettingsEnvironment { configDir in
             let configPath = configDir.appendingPathComponent("config.json")
             let configJSON = """
@@ -218,6 +218,63 @@ struct PeekabooSettingsConfigHydrationTests {
             #expect(settings.selectedModel == "gemini-3-flash")
             #expect(settings.allAvailableProviders.contains("google"))
             #expect(settings.allAvailableProviders.contains("grok"))
+            #expect(settings.allAvailableProviders.contains("minimax"))
+        }
+    }
+
+    @Test
+    func `Configuration-backed LM Studio provider is keyless`() throws {
+        try withIsolatedSettingsEnvironment { configDir in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let configJSON = """
+            {
+              "aiProviders": {
+                "providers": "lm-studio/openai/gpt-oss-120b"
+              },
+              "agent": {
+                "defaultModel": "openai/gpt-oss-120b"
+              }
+            }
+            """
+            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
+
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings()
+
+            #expect(settings.selectedProvider == "lmstudio")
+            #expect(settings.selectedModel == "openai/gpt-oss-120b")
+            #expect(settings.hasValidAPIKey)
+            #expect(settings.allAvailableProviders.contains("lmstudio"))
+        }
+    }
+
+    @Test
+    func `Configuration-backed MiniMax API key validates settings provider`() throws {
+        try withIsolatedSettingsEnvironment { configDir in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let configJSON = """
+            {
+              "aiProviders": {
+                "providers": "minimax/MiniMax-M2.7",
+                "minimaxApiKey": "config-minimax-key"
+              },
+              "agent": {
+                "defaultModel": "MiniMax-M2.7"
+              }
+            }
+            """
+            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
+
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings()
+
+            #expect(settings.selectedProvider == "minimax")
+            #expect(settings.selectedModel == "MiniMax-M2.7")
+            #expect(settings.hasValidAPIKey)
         }
     }
 }
@@ -242,6 +299,7 @@ private func withIsolatedSettingsEnvironment(_ body: (URL) throws -> Void) throw
         "GROK_API_KEY",
         "GEMINI_API_KEY",
         "GOOGLE_API_KEY",
+        "MINIMAX_API_KEY",
     ]
     let previousCredentialEnvironment = credentialEnvironmentKeys.reduce(into: [String: String]()) { values, key in
         if let value = getenv(key).map({ String(cString: $0) }) {

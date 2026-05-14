@@ -16,6 +16,9 @@ struct AIProviderParserTests {
         #expect(AIProviderParser.parse("ollama/llava:latest") == AIProviderParser.ProviderConfig(
             provider: "ollama",
             model: "llava:latest"))
+        #expect(AIProviderParser.parse("minimax/MiniMax-M2.7") == AIProviderParser.ProviderConfig(
+            provider: "minimax",
+            model: "MiniMax-M2.7"))
     }
 
     @Test
@@ -90,6 +93,13 @@ struct AIProviderParserTests {
             hasAnthropic: true,
             hasOllama: false)
         #expect(model2 == "claude-opus-4-7")
+
+        let model3 = AIProviderParser.determineDefaultModel(
+            from: "openai/gpt-5.5,minimax/MiniMax-M2.7",
+            hasOpenAI: false,
+            hasMiniMax: true,
+            hasOllama: false)
+        #expect(model3 == "MiniMax-M2.7")
     }
 
     @Test
@@ -122,6 +132,13 @@ struct AIProviderParserTests {
             hasOpenAI: false,
             hasAnthropic: false)
         #expect(model3 == "gpt-5.5")
+
+        let model4 = AIProviderParser.determineDefaultModel(
+            from: "",
+            hasOpenAI: false,
+            hasAnthropic: false,
+            hasGemini: true)
+        #expect(model4 == "gemini-3-flash")
     }
 
     @Test

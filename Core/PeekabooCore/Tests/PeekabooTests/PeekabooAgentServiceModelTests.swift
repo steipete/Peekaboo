@@ -1,3 +1,4 @@
+import Foundation
 import Tachikoma
 import Testing
 @testable import PeekabooAgentRuntime
@@ -36,6 +37,204 @@ struct PeekabooAgentServiceTests {
 
     @Test
     @MainActor
+    func `Gemini only credentials initialize Gemini default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["GEMINI_API_KEY": "test-gemini-key"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.google(.gemini3Flash).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `MiniMax only credentials initialize MiniMax default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["MINIMAX_API_KEY": "test-minimax-key"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.minimax(.m27).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Generated default model does not block Gemini default agent`() throws {
+        try self.withIsolatedAgentEnvironment(
+            ["GEMINI_API_KEY": "test-gemini-key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "anthropic/claude-opus-4-7,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "claude-opus-4-7"
+              }
+            }
+            """) {
+                let services = self.makeServices()
+                let agentService = try #require(services.agent as? PeekabooAgentService)
+
+                #expect(agentService.defaultModel == LanguageModel.google(.gemini3Flash).description)
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Generated default model does not block MiniMax default agent`() throws {
+        try self.withIsolatedAgentEnvironment(
+            ["MINIMAX_API_KEY": "test-minimax-key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "anthropic/claude-opus-4-7,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "claude-opus-4-7"
+              }
+            }
+            """) {
+                let services = self.makeServices()
+                let agentService = try #require(services.agent as? PeekabooAgentService)
+
+                #expect(agentService.defaultModel == LanguageModel.minimax(.m27).description)
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Explicit environment provider list does not fall back to unrelated credentials`() throws {
+        try self.withIsolatedAgentEnvironment([
+            "PEEKABOO_AI_PROVIDERS": "openai/gpt-5.5",
+            "GEMINI_API_KEY": "test-gemini-key",
+        ]) {
+            let services = self.makeServices()
+
+            #expect(services.agent == nil)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Empty environment provider list does not block available credentials`() throws {
+        try self.withIsolatedAgentEnvironment([
+            "PEEKABOO_AI_PROVIDERS": "   ",
+            "GEMINI_API_KEY": "test-gemini-key",
+        ]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.google(.gemini3Flash).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Explicit config provider list does not fall back to unrelated credentials`() throws {
+        try self.withIsolatedAgentEnvironment(
+            ["GEMINI_API_KEY": "test-gemini-key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "openai/gpt-5.5"
+              },
+              "agent": {
+                "defaultModel": "gpt-5.5"
+              }
+            }
+            """) {
+                let services = self.makeServices()
+
+                #expect(services.agent == nil)
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Configured Ollama provider initializes local default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "ollama/llama3.3"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.ollama(.llama33).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Bare Ollama provider initializes local default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "ollama"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.ollama(.llama33).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Configured Ollama vision fallback does not initialize agent`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "ollama/llava:latest"]) {
+            let services = self.makeServices()
+
+            #expect(services.agent == nil)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Configured Ollama provider tolerates comma whitespace`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "openai/gpt-5.5, ollama/llama3.3"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.ollama(.llama33).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Configured LM Studio provider initializes local default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "lmstudio/openai/gpt-oss-120b"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.lmstudio(.gptOSS120B).description)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Hyphenated LM Studio provider matches unqualified configured default`() throws {
+        try self.withIsolatedAgentEnvironment(
+            ["PEEKABOO_AI_PROVIDERS": "lm-studio/openai/gpt-oss-120b"],
+            configurationJSON: """
+            {
+              "agent": {
+                "defaultModel": "openai/gpt-oss-120b"
+              }
+            }
+            """) {
+                let services = self.makeServices()
+                let agentService = try #require(services.agent as? PeekabooAgentService)
+
+                #expect(agentService.defaultModel == LanguageModel.lmstudio(.gptOSS120B).description)
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Bare LM Studio provider initializes local default agent`() throws {
+        try self.withIsolatedAgentEnvironment(["PEEKABOO_AI_PROVIDERS": "lmstudio"]) {
+            let services = self.makeServices()
+            let agentService = try #require(services.agent as? PeekabooAgentService)
+
+            #expect(agentService.defaultModel == LanguageModel.lmstudio(.gptOSS120B).description)
+        }
+    }
+
+    @Test
+    @MainActor
     func `Custom default model initialization`() throws {
         let mockServices = self.makeServices()
         let customModel = LanguageModel.openai(.gpt55)
@@ -44,6 +243,66 @@ struct PeekabooAgentServiceTests {
             defaultModel: customModel)
 
         #expect(agentService.defaultModel == customModel.description)
+    }
+
+    private func withIsolatedAgentEnvironment(
+        _ overrides: [String: String],
+        configurationJSON: String? = nil,
+        body: () throws -> Void) throws
+    {
+        let keys = [
+            "PEEKABOO_CONFIG_DIR",
+            "PEEKABOO_CONFIG_DISABLE_MIGRATION",
+            "PEEKABOO_AI_PROVIDERS",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "MINIMAX_API_KEY",
+            "PEEKABOO_OLLAMA_BASE_URL",
+            "OLLAMA_BASE_URL",
+        ]
+        let previous = Dictionary(uniqueKeysWithValues: keys.map { key in
+            (key, getenv(key).map { String(cString: $0) })
+        })
+        defer {
+            for key in keys {
+                if case let value?? = previous[key] {
+                    setenv(key, value, 1)
+                } else {
+                    unsetenv(key)
+                }
+            }
+            ConfigurationManager.shared.resetForTesting()
+        }
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-agent-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        if let configurationJSON {
+            try configurationJSON.write(
+                to: tempDir.appendingPathComponent("config.json"),
+                atomically: true,
+                encoding: .utf8)
+        }
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+        unsetenv("PEEKABOO_AI_PROVIDERS")
+        unsetenv("OPENAI_API_KEY")
+        unsetenv("ANTHROPIC_API_KEY")
+        unsetenv("GEMINI_API_KEY")
+        unsetenv("GOOGLE_API_KEY")
+        unsetenv("MINIMAX_API_KEY")
+        unsetenv("PEEKABOO_OLLAMA_BASE_URL")
+        unsetenv("OLLAMA_BASE_URL")
+        for (key, value) in overrides {
+            setenv(key, value, 1)
+        }
+        ConfigurationManager.shared.resetForTesting()
+
+        try body()
     }
 
     @Test

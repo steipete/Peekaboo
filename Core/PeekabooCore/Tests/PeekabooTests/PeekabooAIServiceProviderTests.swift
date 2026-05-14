@@ -1,4 +1,5 @@
 import Foundation
+import Tachikoma
 import Testing
 @testable import PeekabooAutomation
 
@@ -48,5 +49,335 @@ struct PeekabooAIServiceProviderTests {
         #expect(service.availableModels().count == 1)
         #expect(model.modelId == "local-proxy/gpt-5.4-mini")
         #expect(model.supportsVision)
+    }
+
+    @Test
+    @MainActor
+    func `Falls back to Gemini when only Gemini key is present`() throws {
+        try self.withIsolatedEnvironment(["GEMINI_API_KEY": "key"]) {
+            let service = PeekabooAIService()
+            #expect(service.resolvedDefaultModel == .google(.gemini3Flash))
+            #expect(service.availableModels() == [.google(.gemini3Flash)])
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Generated default provider list still falls back to Gemini credentials`() throws {
+        try self.withIsolatedEnvironment(
+            ["GEMINI_API_KEY": "key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "openai/gpt-5.5,anthropic/claude-opus-4-7"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                #expect(service.resolvedDefaultModel == .google(.gemini3Flash))
+                #expect(service.availableModels() == [.google(.gemini3Flash)])
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Settings generated provider list still falls back to Gemini credentials`() throws {
+        try self.withIsolatedEnvironment(
+            ["GEMINI_API_KEY": "key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "anthropic/claude-opus-4-7,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "claude-opus-4-7"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                let visionFallback = LanguageModel.ollama(.custom("llava:latest"))
+                #expect(service.resolvedDefaultModel == .google(.gemini3Flash))
+                #expect(service.resolvedDefaultVisionModel == .google(.gemini3Flash))
+                #expect(service.availableModels() == [.google(.gemini3Flash), visionFallback])
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Falls back to MiniMax when only MiniMax key is present`() throws {
+        try self.withIsolatedEnvironment(["MINIMAX_API_KEY": "key"]) {
+            let service = PeekabooAIService()
+            #expect(service.resolvedDefaultModel == .minimax(.m27))
+            #expect(service.resolvedDefaultVisionModel == nil)
+            #expect(service.availableModels() == [.minimax(.m27)])
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Generated default provider list still falls back to MiniMax credentials`() throws {
+        try self.withIsolatedEnvironment(
+            ["MINIMAX_API_KEY": "key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "openai/gpt-5.5,anthropic/claude-opus-4-7"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                #expect(service.resolvedDefaultModel == .minimax(.m27))
+                #expect(service.availableModels() == [.minimax(.m27)])
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Settings generated provider list still falls back to MiniMax credentials`() throws {
+        try self.withIsolatedEnvironment(
+            ["MINIMAX_API_KEY": "key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "anthropic/claude-opus-4-7,ollama/llava:latest"
+              },
+              "agent": {
+                "defaultModel": "claude-opus-4-7"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                let visionFallback = LanguageModel.ollama(.custom("llava:latest"))
+                #expect(service.resolvedDefaultModel == .minimax(.m27))
+                #expect(service.resolvedDefaultVisionModel == visionFallback)
+                #expect(service.availableModels() == [.minimax(.m27), visionFallback])
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Explicit single provider list does not fall back to unrelated credentials`() throws {
+        try self.withIsolatedEnvironment(
+            ["GEMINI_API_KEY": "key"],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "openai/gpt-5.5"
+              },
+              "agent": {
+                "defaultModel": "gpt-5.5"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                #expect(service.resolvedDefaultModel == .openai(.gpt55))
+                #expect(service.availableModels() == [.openai(.gpt55)])
+            }
+    }
+
+    @Test
+    @MainActor
+    func `MiniMax only credentials do not default image analysis to text model`() async throws {
+        try await self.withIsolatedEnvironment(["MINIMAX_API_KEY": "key"]) {
+            let service = PeekabooAIService()
+            await #expect(throws: TachikomaError.self) {
+                _ = try await service.analyzeImageDetailed(imageData: Data(), question: "What is this?")
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func `Config only MiniMax key is applied to Tachikoma`() throws {
+        try self.withIsolatedEnvironment(
+            [:],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "minimax/MiniMax-M2.7",
+                "minimaxApiKey": "config-minimax-key"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                #expect(service.resolvedDefaultModel == .minimax(.m27))
+                #expect(TachikomaConfiguration.current.getAPIKey(for: .minimax) == "config-minimax-key")
+            }
+    }
+
+    @Test
+    @MainActor
+    func `Configured Ollama base URL is applied to Tachikoma`() throws {
+        try self.withIsolatedEnvironment(
+            [:],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "ollama/qwen2.5vl:latest",
+                "ollamaBaseUrl": "http://ollama.example:11434"
+              }
+            }
+            """) {
+                _ = PeekabooAIService()
+                #expect(TachikomaConfiguration.current.getBaseURL(for: .ollama) == "http://ollama.example:11434")
+            }
+    }
+
+    @Test
+    @MainActor
+    func `LM Studio hyphenated provider alias resolves local model`() throws {
+        try self.withIsolatedEnvironment(
+            [:],
+            configurationJSON: """
+            {
+              "aiProviders": {
+                "providers": "lm-studio/openai/gpt-oss-120b"
+              }
+            }
+            """) {
+                let service = PeekabooAIService()
+                let model = try #require(service.availableModels().first)
+
+                if case .lmstudio = model {
+                    #expect(model.modelId == "openai/gpt-oss-120b")
+                } else {
+                    Issue.record("Expected LM Studio model, got \\(model)")
+                }
+            }
+    }
+
+    @Test
+    @MainActor
+    func `OLLAMA_BASE_URL environment is applied to Tachikoma`() throws {
+        try self.withIsolatedEnvironment(["OLLAMA_BASE_URL": "http://remote-ollama:11434"]) {
+            _ = PeekabooAIService()
+            #expect(TachikomaConfiguration.current.getBaseURL(for: .ollama) == "http://remote-ollama:11434")
+        }
+    }
+
+    private func withIsolatedEnvironment(
+        _ overrides: [String: String],
+        configurationJSON: String? = nil,
+        body: () throws -> Void) throws
+    {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        if let configurationJSON {
+            try configurationJSON.write(
+                to: tempDir.appendingPathComponent("config.json"),
+                atomically: true,
+                encoding: .utf8)
+        }
+
+        let keys = [
+            "PEEKABOO_CONFIG_DIR",
+            "PEEKABOO_CONFIG_DISABLE_MIGRATION",
+            "PEEKABOO_AI_PROVIDERS",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "MINIMAX_API_KEY",
+            "PEEKABOO_OLLAMA_BASE_URL",
+            "OLLAMA_BASE_URL",
+        ]
+        let previous = Dictionary(uniqueKeysWithValues: keys.map { key in
+            (key, getenv(key).map { String(cString: $0) })
+        })
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+        self.clearTachikomaKeys()
+        for key in keys where !key.hasPrefix("PEEKABOO_CONFIG") {
+            unsetenv(key)
+        }
+        for (key, value) in overrides {
+            setenv(key, value, 1)
+        }
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        defer {
+            for key in keys {
+                if case let value?? = previous[key] {
+                    setenv(key, value, 1)
+                } else {
+                    unsetenv(key)
+                }
+            }
+            self.clearTachikomaKeys()
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        try body()
+    }
+
+    private func withIsolatedEnvironment(
+        _ overrides: [String: String],
+        configurationJSON: String? = nil,
+        body: () async throws -> Void) async throws
+    {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        if let configurationJSON {
+            try configurationJSON.write(
+                to: tempDir.appendingPathComponent("config.json"),
+                atomically: true,
+                encoding: .utf8)
+        }
+
+        let keys = [
+            "PEEKABOO_CONFIG_DIR",
+            "PEEKABOO_CONFIG_DISABLE_MIGRATION",
+            "PEEKABOO_AI_PROVIDERS",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "MINIMAX_API_KEY",
+            "PEEKABOO_OLLAMA_BASE_URL",
+            "OLLAMA_BASE_URL",
+        ]
+        let previous = Dictionary(uniqueKeysWithValues: keys.map { key in
+            (key, getenv(key).map { String(cString: $0) })
+        })
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("PEEKABOO_CONFIG_DISABLE_MIGRATION", "1", 1)
+        self.clearTachikomaKeys()
+        for key in keys where !key.hasPrefix("PEEKABOO_CONFIG") {
+            unsetenv(key)
+        }
+        for (key, value) in overrides {
+            setenv(key, value, 1)
+        }
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        defer {
+            for key in keys {
+                if case let value?? = previous[key] {
+                    setenv(key, value, 1)
+                } else {
+                    unsetenv(key)
+                }
+            }
+            self.clearTachikomaKeys()
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        try await body()
+    }
+
+    private func clearTachikomaKeys() {
+        TachikomaConfiguration.current.removeAPIKey(for: .openai)
+        TachikomaConfiguration.current.removeAPIKey(for: .anthropic)
+        TachikomaConfiguration.current.removeAPIKey(for: .google)
+        TachikomaConfiguration.current.removeAPIKey(for: .minimax)
+        TachikomaConfiguration.current.removeBaseURL(for: .ollama)
     }
 }

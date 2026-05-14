@@ -64,6 +64,13 @@ final class PeekabooSettings {
         }
     }
 
+    var miniMaxAPIKey: String = "" {
+        didSet {
+            self.save()
+            self.saveAPIKeyToCredentials("MINIMAX_API_KEY", self.miniMaxAPIKey)
+        }
+    }
+
     var ollamaBaseURL: String = "http://localhost:11434" {
         didSet { self.save() }
     }
@@ -371,8 +378,12 @@ final class PeekabooSettings {
         case "google":
             return !self.googleAPIKey.isEmpty || self.isUsingGoogleEnvironment ||
                 self.hasCredentialValue(forAny: ["GEMINI_API_KEY", "GOOGLE_API_KEY"])
-        case "ollama":
-            return true // Ollama doesn't require API key
+        case "minimax":
+            return !self.miniMaxAPIKey.isEmpty || self.isUsingMiniMaxEnvironment ||
+                self.hasCredentialValue(forAny: ["MINIMAX_API_KEY"]) ||
+                self.configManager.getMiniMaxAPIKey()?.isEmpty == false
+        case "ollama", "lmstudio", "lm-studio":
+            return true // Local providers don't require API keys.
         default:
             // Check if it's a custom provider
             if let customProvider = self.customProviders[self.selectedProvider] {
@@ -401,8 +412,12 @@ final class PeekabooSettings {
             for: ["GEMINI_API_KEY", "GOOGLE_API_KEY"]) != nil
     }
 
+    var isUsingMiniMaxEnvironment: Bool {
+        self.miniMaxAPIKey.isEmpty && self.detectedEnvironmentVariable(for: ["MINIMAX_API_KEY"]) != nil
+    }
+
     var allAvailableProviders: [String] {
-        let builtIn = ["openai", "anthropic", "grok", "google", "ollama"]
+        let builtIn = ["openai", "anthropic", "grok", "google", "minimax", "ollama", "lmstudio"]
         let custom = Array(customProviders.keys)
         return builtIn + custom.sorted()
     }
@@ -437,6 +452,7 @@ extension PeekabooSettings {
         self.anthropicAPIKey = self.userDefaults.string(forKey: self.namespaced("anthropicAPIKey")) ?? ""
         self.grokAPIKey = self.userDefaults.string(forKey: self.namespaced("grokAPIKey")) ?? ""
         self.googleAPIKey = self.userDefaults.string(forKey: self.namespaced("googleAPIKey")) ?? ""
+        self.miniMaxAPIKey = self.userDefaults.string(forKey: self.namespaced("miniMaxAPIKey")) ?? ""
         self.ollamaBaseURL = self.userDefaults.string(forKey: self.namespaced(
             "ollamaBaseURL")) ?? "http://localhost:11434"
 
@@ -523,6 +539,7 @@ extension PeekabooSettings {
         self.userDefaults.set(self.anthropicAPIKey, forKey: "\(self.keyPrefix)anthropicAPIKey")
         self.userDefaults.set(self.grokAPIKey, forKey: "\(self.keyPrefix)grokAPIKey")
         self.userDefaults.set(self.googleAPIKey, forKey: "\(self.keyPrefix)googleAPIKey")
+        self.userDefaults.set(self.miniMaxAPIKey, forKey: "\(self.keyPrefix)miniMaxAPIKey")
         self.userDefaults.set(self.ollamaBaseURL, forKey: "\(self.keyPrefix)ollamaBaseURL")
         self.userDefaults.set(self.selectedModel, forKey: "\(self.keyPrefix)selectedModel")
         self.userDefaults.set(self.useCustomVisionModel, forKey: "\(self.keyPrefix)useCustomVisionModel")
@@ -656,8 +673,12 @@ extension PeekabooSettings {
                     "grok/\(self.selectedModel)"
                 case "google":
                     "google/\(self.selectedModel)"
+                case "minimax":
+                    "minimax/\(self.selectedModel)"
                 case "ollama":
                     "ollama/\(self.selectedModel)"
+                case "lmstudio", "lm-studio":
+                    "lmstudio/\(self.selectedModel)"
                 default:
                     "anthropic/claude-opus-4-7"
                 }
@@ -710,8 +731,12 @@ extension PeekabooSettings {
                     "grok/\(self.selectedModel)"
                 case "google":
                     "google/\(self.selectedModel)"
+                case "minimax":
+                    "minimax/\(self.selectedModel)"
                 case "ollama":
                     "ollama/\(self.selectedModel)"
+                case "lmstudio", "lm-studio":
+                    "lmstudio/\(self.selectedModel)"
                 default:
                     // Check if it's a custom provider
                     if self.customProviders[self.selectedProvider] != nil {
@@ -881,6 +906,10 @@ extension PeekabooSettings {
             "grok-4"
         case "google":
             "gemini-3-flash"
+        case "minimax":
+            "MiniMax-M2.7"
+        case "lmstudio", "lm-studio":
+            "openai/gpt-oss-120b"
         default:
             "llava:latest"
         }
@@ -896,6 +925,8 @@ extension PeekabooSettings {
             .grok
         case "GEMINI_API_KEY", "GOOGLE_API_KEY":
             .google
+        case "MINIMAX_API_KEY":
+            .minimax
         default:
             nil
         }
@@ -911,6 +942,8 @@ extension PeekabooSettings {
             ["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"]
         case .google:
             ["GEMINI_API_KEY", "GOOGLE_API_KEY"]
+        case .minimax:
+            ["MINIMAX_API_KEY"]
         default:
             []
         }
@@ -920,6 +953,8 @@ extension PeekabooSettings {
         switch provider.lowercased() {
         case "gemini", "google":
             "google"
+        case "lm-studio", "lmstudio":
+            "lmstudio"
         default:
             provider
         }

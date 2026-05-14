@@ -86,7 +86,10 @@ struct AgentCommand: RuntimeOptionsConfigurable {
     @Option(name: .long, help: "Queue mode for queued prompts: one-at-a-time (default) or all")
     var queueMode: String?
 
-    @Option(name: .long, help: "AI model to use (allowed: gpt-5.5, claude-opus-4-7, or gemini-3-flash)")
+    @Option(
+        name: .long,
+        help: "AI model to use (for example: gpt-5.5, claude-opus-4-7, gemini-3-flash, minimax-m2.7, ollama/<model>, or lmstudio/<model>)"
+    )
     var model: String?
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
     var resume = false
@@ -204,7 +207,20 @@ extension AgentCommand {
 
         let services = runtime.services
 
-        guard let agentService = services.agent else {
+        let requestedModel: LanguageModel?
+        do {
+            requestedModel = try self.validatedModelSelection()
+        } catch {
+            self.printAgentExecutionError(error.localizedDescription)
+            throw ExitCode.failure
+        }
+
+        let agentService: any AgentServiceProtocol
+        if let existing = services.agent {
+            agentService = existing
+        } else if let requestedModel {
+            agentService = try PeekabooAgentService(services: services, defaultModel: requestedModel)
+        } else {
             self.emitAgentUnavailableMessage()
             return
         }
@@ -219,15 +235,8 @@ extension AgentCommand {
             return
         }
 
-        let requestedModel: LanguageModel?
-        do {
-            requestedModel = try self.validatedModelSelection()
-        } catch {
-            self.printAgentExecutionError(error.localizedDescription)
-            throw ExitCode.failure
-        }
-
-        guard self.hasConfiguredAIProvider(configuration: services.configuration) else {
+        guard self.hasConfiguredAIProvider(configuration: services.configuration) || self.isLocalModel(requestedModel)
+        else {
             self.emitAgentUnavailableMessage()
             return
         }
@@ -324,14 +333,27 @@ extension AgentCommand {
         let hasOpenAI = configuration.getOpenAIAPIKey()?.isEmpty == false
         let hasAnthropic = configuration.getAnthropicAPIKey()?.isEmpty == false
         let hasGemini = configuration.getGeminiAPIKey()?.isEmpty == false
-        return hasOpenAI || hasAnthropic || hasGemini
+        let hasMiniMax = configuration.getMiniMaxAPIKey()?.isEmpty == false
+        let hasLocalProvider = configuration.getAIProviders()
+            .split(separator: ",")
+            .contains { entry in
+                let provider = entry
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .split(separator: "/", maxSplits: 1)
+                    .first?
+                    .lowercased()
+                return provider == "ollama" || provider == "lmstudio" || provider == "lm-studio"
+            }
+        return hasOpenAI || hasAnthropic || hasGemini || hasMiniMax || hasLocalProvider
     }
 
     func emitAgentUnavailableMessage() {
         if self.jsonOutput {
+            let message = "Agent service not available. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, " +
+                "GEMINI_API_KEY, MINIMAX_API_KEY, or configure ollama/<model> or lmstudio/<model>."
             let error = [
                 "success": false,
-                "error": "Agent service not available. Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
+                "error": message
             ] as [String: Any]
             if let jsonData = try? JSONSerialization.data(withJSONObject: error, options: .prettyPrinted),
                let jsonString = String(data: jsonData, encoding: .utf8) {
@@ -342,7 +364,8 @@ extension AgentCommand {
         } else {
             let errorPrefix = [
                 "\(TerminalColor.red)Error: Agent service not available.",
-                " Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
+                " Please set OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, MINIMAX_API_KEY,",
+                " or configure ollama/<model> or lmstudio/<model>."
             ].joined()
             let errorMessageLine = [errorPrefix, "\(TerminalColor.reset)"].joined()
             print(errorMessageLine)

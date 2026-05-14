@@ -42,8 +42,19 @@ struct AgentCommandTests {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("grok-4") == nil)
-        #expect(command.parseModelString("llama3.3") == nil)
+        #expect(command.parseModelString("definitely-not-a-model") == nil)
+    }
+
+    @Test
+    func `Local Ollama and LM Studio tool-capable models are accepted`() throws {
+        let command = try AgentCommand.parse([])
+
+        #expect(command.parseModelString("ollama") == .ollama(.llama33))
+        #expect(command.parseModelString("llama3.3") == .ollama(.llama33))
         #expect(command.parseModelString("ollama/llava") == nil)
+        #expect(command.parseModelString("ollama/qwen2.5vl:3b") == nil)
+        #expect(command.parseModelString("lmstudio") == .lmstudio(.gptOSS120B))
+        #expect(command.parseModelString("lmstudio/openai/gpt-oss-120b") == .lmstudio(.gptOSS120B))
     }
 
     @Test
@@ -51,10 +62,19 @@ struct AgentCommandTests {
         let command = try AgentCommand.parse([])
 
         #expect(command.parseModelString("gemini-3.1-pro-preview") == .google(.gemini31ProPreview))
-        #expect(command.parseModelString("gemini-3.1-flash-lite") == .google(.gemini31ProPreview))
-        #expect(command.parseModelString("gemini-3-flash") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini-3.1-flash-lite") == .google(.gemini31FlashLite))
+        #expect(command.parseModelString("gemini-3-flash") == .google(.gemini3Flash))
         #expect(command.parseModelString("gemini") == .google(.gemini31ProPreview))
-        #expect(command.parseModelString("gemini-2.5-pro") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString("gemini-2.5-pro") == .google(.gemini25Pro))
+    }
+
+    @Test
+    func `Current MiniMax models are accepted`() throws {
+        let command = try AgentCommand.parse([])
+
+        #expect(command.parseModelString("MiniMax-M2.7") == .minimax(.m27))
+        #expect(command.parseModelString("minimax-m2.7-highspeed") == .minimax(.m27Highspeed))
+        #expect(command.parseModelString("minimax") == .minimax(.m27))
     }
 
     @Test
@@ -64,7 +84,9 @@ struct AgentCommandTests {
         #expect(command.parseModelString("  gpt-5  ") == .openai(.gpt55))
         #expect(command.parseModelString("\tgpt-5\n") == .openai(.gpt55))
         #expect(command.parseModelString(" claude-sonnet-4.5 ") == .anthropic(.opus47))
-        #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini31ProPreview))
+        #expect(command.parseModelString(" gemini-3-flash ") == .google(.gemini3Flash))
+        #expect(command.parseModelString(" minimax-m2.7 ") == .minimax(.m27))
+        #expect(command.parseModelString(" ollama/llama3.3 ") == .ollama(.llama33))
     }
 }
 
@@ -89,7 +111,7 @@ struct ModelSelectionIntegrationTests {
 
         command.model = "gemini-3-flash"
         let parsedGemini = command.model.flatMap { command.parseModelString($0) }
-        #expect(parsedGemini == .google(.gemini31ProPreview))
+        #expect(parsedGemini == .google(.gemini3Flash))
     }
 
     @Test
@@ -100,6 +122,8 @@ struct ModelSelectionIntegrationTests {
             ("gpt-5.5", .openai(.gpt55)),
             ("claude-opus-4.7", .anthropic(.opus47)),
             ("gemini-3.1-pro-preview", .google(.gemini31ProPreview)),
+            ("MiniMax-M2.7", .minimax(.m27)),
+            ("ollama/llama3.3", .ollama(.llama33)),
         ]
 
         for (input, expected) in testCases {
@@ -122,7 +146,7 @@ struct ModelSelectionIntegrationTests {
     @Test
     func `Invalid model option surfaces user-friendly error`() throws {
         var command = try AgentCommand.parse([])
-        command.model = "llama-3.2"
+        command.model = "gpt-4o"
 
         let error = #expect(throws: PeekabooError.self) {
             try command.validatedModelSelection()

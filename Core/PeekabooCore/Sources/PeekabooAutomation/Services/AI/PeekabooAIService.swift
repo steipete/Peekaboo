@@ -94,19 +94,26 @@ public final class PeekabooAIService {
     private let configuration: ConfigurationManager
     private let resolvedModels: [LanguageModel]
     private let defaultModel: LanguageModel
+    private let defaultVisionModel: LanguageModel?
 
     /// Exposed for tests (internal)
     var resolvedDefaultModel: LanguageModel {
         self.defaultModel
     }
 
+    /// Exposed for tests (internal)
+    var resolvedDefaultVisionModel: LanguageModel? {
+        self.defaultVisionModel
+    }
+
     public init(configuration: ConfigurationManager = .shared) {
         self.configuration = configuration
         TachikomaConfiguration.profileDirectoryName = ".peekaboo"
         _ = configuration.loadConfiguration()
+        configuration.applyAIProviderKeys()
         self.resolvedModels = Self.resolveAvailableModels(configuration: configuration)
         self.defaultModel = self.resolvedModels.first ?? .openai(.gpt55)
-        // Rely on TachikomaConfiguration to load from env/credentials (profile set at startup)
+        self.defaultVisionModel = self.resolvedModels.first { $0.supportsVision }
     }
 
     public struct AnalysisResult: Sendable {
@@ -127,8 +134,7 @@ public final class PeekabooAIService {
         question: String,
         model: LanguageModel? = nil) async throws -> AnalysisResult
     {
-        // Analyze an image with a question returning structured metadata
-        let selectedModel = model ?? self.defaultModel
+        let selectedModel = try self.resolveVisionModel(model)
 
         // Create a message with the image using Tachikoma's API
         let base64String = imageData.base64EncodedString()
@@ -201,6 +207,20 @@ public final class PeekabooAIService {
         self.resolvedModels
     }
 
+    private func resolveVisionModel(_ model: LanguageModel?) throws -> LanguageModel {
+        if let model {
+            guard model.supportsVision else {
+                throw TachikomaError.unsupportedOperation("Model \(model.description) does not support vision")
+            }
+            return model
+        }
+
+        guard let defaultVisionModel else {
+            throw TachikomaError.unsupportedOperation("No configured vision-capable AI model is available")
+        }
+        return defaultVisionModel
+    }
+
     private static func parseProviderEntry(_ entry: String, configuration: ConfigurationManager) -> LanguageModel? {
         if let parsed = AIProviderParser.parse(entry) {
             let provider = parsed.provider.lowercased()
@@ -218,6 +238,9 @@ public final class PeekabooAIService {
             case "google", "gemini":
                 if case .google = loose { return loose }
                 return nil
+            case "minimax":
+                if case .minimax = loose { return loose }
+                return nil
             case "mistral":
                 if case .mistral = loose { return loose }
                 return nil
@@ -231,7 +254,7 @@ public final class PeekabooAIService {
                 // For Ollama, prefer preserving the exact model id string.
                 // Heuristics for custom model capabilities live in Tachikoma (LanguageModel.Ollama).
                 return .ollama(.custom(modelString))
-            case "lmstudio":
+            case "lmstudio", "lm-studio":
                 return .lmstudio(.custom(modelString))
             default:
                 if let customModel = self.customProviderModel(
@@ -256,13 +279,115 @@ public final class PeekabooAIService {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .compactMap { self.parseProviderEntry($0, configuration: configuration) }
 
-        if !parsed.isEmpty { return parsed }
+        if !parsed.isEmpty {
+            if self.hasExplicitProviderList(configuration: configuration) {
+                return parsed
+            }
+
+            let available = parsed.filter { self.hasCredentialsOrLocalRuntime(for: $0, configuration: configuration) }
+            if !available.isEmpty {
+                return self.appendingGeneratedVisionFallbacks(from: parsed, to: available)
+            }
+        }
 
         // Fallback: prefer Anthropic if a key is present, else OpenAI
         if let key = configuration.getAnthropicAPIKey(), !key.isEmpty {
-            return [.anthropic(.opus47)]
+            return self.appendingGeneratedVisionFallbacks(from: parsed, to: [.anthropic(.opus47)])
+        }
+        if let key = configuration.getGeminiAPIKey(), !key.isEmpty {
+            return self.appendingGeneratedVisionFallbacks(from: parsed, to: [.google(.gemini3Flash)])
+        }
+        if let key = configuration.getMiniMaxAPIKey(), !key.isEmpty {
+            return self.appendingGeneratedVisionFallbacks(from: parsed, to: [.minimax(.m27)])
         }
         return [.openai(.gpt55), .anthropic(.opus47)]
+    }
+
+    private static func appendingGeneratedVisionFallbacks(
+        from parsed: [LanguageModel],
+        to models: [LanguageModel]) -> [LanguageModel]
+    {
+        var result = models
+        for model in parsed where self.isLocalVisionFallback(model) && !result.contains(model) {
+            result.append(model)
+        }
+        return result
+    }
+
+    private static func isLocalVisionFallback(_ model: LanguageModel) -> Bool {
+        switch model {
+        case .ollama, .lmstudio:
+            model.supportsVision
+        default:
+            false
+        }
+    }
+
+    private static func hasExplicitProviderList(configuration: ConfigurationManager) -> Bool {
+        if ProcessInfo.processInfo.environment["PEEKABOO_AI_PROVIDERS"]?.isEmpty == false {
+            return true
+        }
+        guard let providers = configuration.configuration?.aiProviders?.providers,
+              !providers.isEmpty
+        else {
+            return false
+        }
+        return !self.isGeneratedProviderList(
+            providers,
+            configuredDefault: configuration.configuration?.agent?.defaultModel)
+    }
+
+    private static func isGeneratedProviderList(_ providers: String, configuredDefault: String?) -> Bool {
+        let entries = providers
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+
+        if entries == ["openai/gpt-5.5", "anthropic/claude-opus-4-7"] {
+            return true
+        }
+
+        let entriesWithoutVisionFallback = entries.filter { entry in
+            entry != "ollama/llava" && entry != "ollama/llava:latest"
+        }
+
+        guard entriesWithoutVisionFallback.count == 1,
+              entriesWithoutVisionFallback.count < entries.count,
+              let entry = entriesWithoutVisionFallback.first,
+              let configuredDefault = configuredDefault?.lowercased(),
+              let model = entry.split(separator: "/", maxSplits: 1).last.map(String.init)
+        else {
+            return false
+        }
+        return model == configuredDefault || entry == configuredDefault
+    }
+
+    private static func hasCredentialsOrLocalRuntime(
+        for model: LanguageModel,
+        configuration: ConfigurationManager) -> Bool
+    {
+        switch model {
+        case .openai:
+            configuration.getOpenAIAPIKey()?.isEmpty == false
+        case .anthropic:
+            configuration.getAnthropicAPIKey()?.isEmpty == false
+        case .google:
+            configuration.getGeminiAPIKey()?.isEmpty == false
+        case .minimax:
+            configuration.getMiniMaxAPIKey()?.isEmpty == false
+        case .grok:
+            self.hasAnyCredential(["X_AI_API_KEY", "XAI_API_KEY", "GROK_API_KEY"], configuration: configuration)
+        case .ollama, .lmstudio:
+            model.supportsTools
+        default:
+            true
+        }
+    }
+
+    private static func hasAnyCredential(_ keys: [String], configuration: ConfigurationManager) -> Bool {
+        keys.contains { key in
+            ProcessInfo.processInfo.environment[key]?.isEmpty == false ||
+                configuration.credentialValue(for: key)?.isEmpty == false
+        }
     }
 
     private static func providerAndModelName(for model: LanguageModel) -> (provider: String, model: String) {
@@ -275,6 +400,7 @@ public final class PeekabooAIService {
         case let .grok(m): ("grok", m.modelId)
         case let .ollama(m): ("ollama", m.modelId)
         case let .lmstudio(m): ("lmstudio", m.modelId)
+        case let .minimax(m): ("minimax", m.modelId)
         case let .azureOpenAI(deployment, _, _, _): ("azure-openai", deployment)
         case let .openRouter(modelId): ("openrouter", modelId)
         case let .together(modelId): ("together", modelId)

@@ -1,7 +1,7 @@
 ---
 title: AI providers
 summary: 'Configure model providers and credentials for the Peekaboo agent runtime.'
-description: Configure OpenAI, Anthropic Claude, xAI Grok, Google Gemini, and Ollama for the Peekaboo agent.
+description: Configure OpenAI, Anthropic Claude, xAI Grok, Google Gemini, MiniMax, and Ollama for the Peekaboo agent.
 read_when:
   - 'configuring model credentials or provider selection'
   - 'debugging agent model, tool-calling, or local Ollama setup'
@@ -18,18 +18,22 @@ Peekaboo's agent runtime is provider-agnostic — it talks to any chat-completio
 | **OpenAI** | gpt-5, gpt-5-mini, gpt-4.1 | `OPENAI_API_KEY` |
 | **Anthropic** | claude-opus-4-7, claude-sonnet-4-6, claude-haiku-4-5 | `ANTHROPIC_API_KEY` |
 | **xAI** | grok-4 | `XAI_API_KEY` |
-| **Google** | gemini-3-pro, gemini-3-flash | `GEMINI_API_KEY` |
+| **Google** | gemini-3.1-pro-preview, gemini-3-flash | `GEMINI_API_KEY` |
+| **MiniMax** | MiniMax-M2.7, MiniMax-M2.7-highspeed | `MINIMAX_API_KEY` |
 | **Ollama** | any local model with tool-calling | runs at `http://localhost:11434` |
+| **LM Studio** | any local OpenAI-compatible model with tool-calling | runs at `http://localhost:1234/v1` |
 
 Other Tachikoma-supported providers also work — see the [Tachikoma docs](https://github.com/steipete/Tachikoma) for the full list.
 
 ## Credentials
 
-Credentials live in `~/.peekaboo/credentials.json`, encrypted at rest with the macOS Keychain when available. Set them once via the CLI:
+Credentials live in `~/.peekaboo/credentials`, encrypted at rest with the macOS Keychain when available. Set them once via the CLI:
 
 ```bash
-peekaboo config set-credential openai     # interactive
-peekaboo config set-credential anthropic
+peekaboo config set-credential OPENAI_API_KEY <key>
+peekaboo config set-credential ANTHROPIC_API_KEY <key>
+peekaboo config set-credential GEMINI_API_KEY <key>
+peekaboo config set-credential MINIMAX_API_KEY <key>
 ```
 
 Environment variables override the stored values, which is handy in CI:
@@ -44,8 +48,11 @@ See [configuration.md](configuration.md) for the full precedence table.
 
 ```bash
 peekaboo agent --model claude-opus-4-7 "summarize this window"
+peekaboo agent --model gemini-3-flash "summarize this window"
+peekaboo agent --model minimax "summarize this window"
 peekaboo agent --model gpt-5-mini "click Continue and wait for the dialog"
-peekaboo agent --model ollama:llama3.1:8b "describe this screenshot"
+peekaboo agent --model ollama/llama3.1:8b "describe this screenshot"
+peekaboo agent --model lmstudio/openai/gpt-oss-120b "summarize this window"
 ```
 
 Defaults come from `agent.defaultModel` in `~/.peekaboo/config.json`. Set a per-project default with `PEEKABOO_AGENT_MODEL`.
@@ -60,7 +67,7 @@ Want everything on-device? Run an Ollama model with tool calling and point the C
 
 ```bash
 ollama run llama3.1:8b
-peekaboo agent --model ollama:llama3.1:8b "open System Settings"
+peekaboo agent --model ollama/llama3.1:8b "open System Settings"
 ```
 
 No network requests leave the machine. Captures, AX queries, and reasoning all stay local.

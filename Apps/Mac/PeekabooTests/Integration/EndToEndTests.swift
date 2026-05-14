@@ -147,7 +147,7 @@ struct ConcurrencyTests {
         async let result3 = failsWithUnavailableService("Task 3")
 
         let results = await [result1, result2, result3]
-        #expect(results.allSatisfy(\.self))
+        #expect(results.allSatisfy { value in value })
     }
 
     @Test

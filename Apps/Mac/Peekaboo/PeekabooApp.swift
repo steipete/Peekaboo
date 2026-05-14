@@ -43,6 +43,9 @@ struct PeekabooApp: App {
         if !self.settings.googleAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(
             self.settings.googleAPIKey,
             for: .google) }
+        if !self.settings.miniMaxAPIKey.isEmpty { TachikomaConfiguration.current.setAPIKey(
+            self.settings.miniMaxAPIKey,
+            for: .minimax) }
         if self.settings.ollamaBaseURL != "http://localhost:11434" { TachikomaConfiguration.current.setBaseURL(
             self.settings.ollamaBaseURL,
             for: .ollama) }

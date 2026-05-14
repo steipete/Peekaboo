@@ -4,9 +4,12 @@
 
 ### Added
 - `peekaboo click --focus-background` and the MCP `click` tool now support process-targeted background mouse delivery for apps identified by `--app`, `--pid`, or snapshot metadata.
+- `peekaboo agent` now supports MiniMax M2.7 through Tachikoma's Anthropic-compatible provider path. Thanks @xiaofeiwa for #130.
+- `peekaboo agent` now accepts `ollama/<model>` and `lmstudio/<model>` local model selections, including local-only provider defaults. Thanks @0x5845 for #137.
 
 ### Fixed
 - Ollama vision model IDs such as `qwen2.5vl:3b` now stay intact through Tachikoma model parsing instead of falling back to `llama3.3` (#16).
+- `peekaboo agent` now initializes with Gemini-only or MiniMax-only credentials instead of falling back to an unavailable OpenAI/Anthropic default. Thanks @lonexreb for #133.
 - Window captures now retry transient `SCScreenshotManager` failures before reporting a minimized/off-screen/Space hint. Thanks @lonexreb for #135.
 - The macOS app now keeps one status item/controller across app state reconnects and removes the status item on teardown, avoiding duplicate or ghost menu bar icons. Thanks @lonexreb for #134.
 - Release automation now verifies CLI, npm, macOS app, checksum, appcast, and uploaded GitHub assets before publish.

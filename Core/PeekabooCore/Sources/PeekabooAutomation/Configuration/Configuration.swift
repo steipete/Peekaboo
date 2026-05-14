@@ -45,17 +45,20 @@ public struct Configuration: Codable {
         public var providers: String?
         public var openaiApiKey: String?
         public var anthropicApiKey: String?
+        public var minimaxApiKey: String?
         public var ollamaBaseUrl: String?
 
         public init(
             providers: String? = nil,
             openaiApiKey: String? = nil,
             anthropicApiKey: String? = nil,
+            minimaxApiKey: String? = nil,
             ollamaBaseUrl: String? = nil)
         {
             self.providers = providers
             self.openaiApiKey = openaiApiKey
             self.anthropicApiKey = anthropicApiKey
+            self.minimaxApiKey = minimaxApiKey
             self.ollamaBaseUrl = ollamaBaseUrl
         }
     }

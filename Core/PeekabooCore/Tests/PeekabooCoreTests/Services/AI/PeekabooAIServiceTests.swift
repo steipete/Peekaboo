@@ -193,6 +193,63 @@ struct PeekabooAIServiceTests {
 
     @Test
     @MainActor
+    func `Falls back to Gemini when only Gemini key is present`() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("GEMINI_API_KEY", "key", 1)
+        unsetenv("PEEKABOO_AI_PROVIDERS")
+        unsetenv("OPENAI_API_KEY")
+        unsetenv("ANTHROPIC_API_KEY")
+        unsetenv("MINIMAX_API_KEY")
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            unsetenv("GEMINI_API_KEY")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.resolvedDefaultModel == .google(.gemini3Flash))
+        #expect(service.availableModels() == [.google(.gemini3Flash)])
+    }
+
+    @Test
+    @MainActor
+    func `Falls back to MiniMax when only MiniMax key is present`() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        setenv("PEEKABOO_CONFIG_DIR", tempDir.path, 1)
+        setenv("MINIMAX_API_KEY", "key", 1)
+        unsetenv("PEEKABOO_AI_PROVIDERS")
+        unsetenv("OPENAI_API_KEY")
+        unsetenv("ANTHROPIC_API_KEY")
+        unsetenv("GEMINI_API_KEY")
+        unsetenv("GOOGLE_API_KEY")
+        defer {
+            unsetenv("PEEKABOO_CONFIG_DIR")
+            unsetenv("MINIMAX_API_KEY")
+            ConfigurationManager.shared.resetForTesting()
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        ConfigurationManager.shared.resetForTesting()
+        _ = ConfigurationManager.shared.loadConfiguration()
+
+        let service = PeekabooAIService()
+        #expect(service.resolvedDefaultModel == .minimax(.m27))
+        #expect(service.availableModels() == [.minimax(.m27)])
+    }
+
+    @Test
+    @MainActor
     func `Falls back to OpenAI when no config or keys present`() {
         unsetenv("PEEKABOO_CONFIG_DIR")
         unsetenv("OPENAI_API_KEY")

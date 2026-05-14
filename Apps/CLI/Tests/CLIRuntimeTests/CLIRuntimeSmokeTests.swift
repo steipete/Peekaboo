@@ -380,6 +380,50 @@ struct CLIRuntimeSmokeTests {
     }
 
     @Test
+    func `peekaboo agent hosted model override bypasses unavailable configured default`() async throws {
+        guard Self.ensureLocalRuntimeAvailable() else { return }
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("peekaboo-cli-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try """
+        {
+          "aiProviders": {
+            "providers": "openai/gpt-5.5"
+          }
+        }
+        """.write(
+            to: tempDir.appendingPathComponent("config.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let result = try await TestChildProcess.runPeekaboo([
+            "agent",
+            "say hi",
+            "--dry-run",
+            "--model",
+            "gemini-3-flash",
+            "--json",
+            "--no-remote",
+        ], environment: [
+            "PEEKABOO_CONFIG_DIR": tempDir.path,
+            "PEEKABOO_CONFIG_DISABLE_MIGRATION": "1",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "MINIMAX_API_KEY": "",
+            "GEMINI_API_KEY": "dummy",
+        ])
+
+        #expect(result.status == .exited(0))
+        #expect(result.standardOutput.contains("\"success\" : true") || result.standardOutput
+            .contains("\"success\": true"))
+        #expect(result.standardOutput.contains("Dry run completed"))
+    }
+
+    @Test
     func `peekaboo learn prints comprehensive guide`() async throws {
         guard Self.ensureLocalRuntimeAvailable() else { return }
         let result = try await TestChildProcess.runPeekaboo(["learn", "--no-remote"])

@@ -64,22 +64,22 @@ public final class PeekabooAgentService: AgentServiceProtocol {
 
             // Determine the provider based on the model
             let apiKey: String? = switch model {
+            case .ollama, .lmstudio:
+                "local"
             case .openai:
                 config.getAPIKey(for: .openai)
             case .anthropic:
                 config.getAPIKey(for: .anthropic)
             case .google:
                 config.getAPIKey(for: .google)
+            case .minimax:
+                config.getAPIKey(for: .minimax)
             case .mistral:
                 config.getAPIKey(for: .mistral)
             case .groq:
                 config.getAPIKey(for: .groq)
             case .grok:
                 config.getAPIKey(for: .grok)
-            case .ollama:
-                config.getAPIKey(for: .ollama)
-            case .lmstudio:
-                config.getAPIKey(for: .lmstudio)
             case .azureOpenAI:
                 config.getAPIKey(for: .azureOpenAI)
             case .openRouter:

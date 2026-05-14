@@ -24,8 +24,14 @@ extension AgentCommand {
             }
         case let .google(model):
             if Self.supportedGoogleInputs.contains(model) {
-                return .google(.gemini31ProPreview)
+                return .google(model)
             }
+        case let .minimax(model):
+            if Self.supportedMiniMaxInputs.contains(model) {
+                return .minimax(model)
+            }
+        case .ollama, .lmstudio:
+            return parsed.supportsTools ? parsed : nil
         default:
             break
         }
@@ -72,23 +78,35 @@ extension AgentCommand {
         .gemini25FlashLite,
     ]
 
+    private static let supportedMiniMaxInputs: Set<LanguageModel.MiniMax> = [
+        .m27,
+        .m27Highspeed,
+    ]
+
     private static var allowedModelList: String {
         let openAIModels = Self.supportedOpenAIInputs.map(\.modelId)
         let anthropicModels = Self.supportedAnthropicInputs.map(\.modelId)
         let googleModels = Self.supportedGoogleInputs.map(\.userFacingModelId)
-        return (openAIModels + anthropicModels + googleModels).sorted().joined(separator: ", ")
+        let miniMaxModels = Self.supportedMiniMaxInputs.map(\.modelId)
+        return (openAIModels + anthropicModels + googleModels + miniMaxModels + ["ollama/<model>", "lmstudio/<model>"])
+            .sorted()
+            .joined(separator: ", ")
     }
 
     @MainActor
     func hasCredentials(for model: LanguageModel) -> Bool {
         let configuration = self.services.configuration
         switch model {
+        case .ollama, .lmstudio:
+            return true
         case .openai:
             return configuration.getOpenAIAPIKey()?.isEmpty == false
         case .anthropic:
             return configuration.getAnthropicAPIKey()?.isEmpty == false
         case .google:
             return configuration.getGeminiAPIKey()?.isEmpty == false
+        case .minimax:
+            return configuration.getMiniMaxAPIKey()?.isEmpty == false
         default:
             return false
         }
@@ -102,6 +120,12 @@ extension AgentCommand {
             "Anthropic"
         case .google:
             "Google"
+        case .minimax:
+            "MiniMax"
+        case .ollama:
+            "Ollama"
+        case .lmstudio:
+            "LM Studio"
         default:
             "the selected provider"
         }
@@ -115,8 +139,23 @@ extension AgentCommand {
             "ANTHROPIC_API_KEY"
         case .google:
             "GEMINI_API_KEY"
+        case .minimax:
+            "MINIMAX_API_KEY"
+        case .ollama:
+            "OLLAMA_BASE_URL or PEEKABOO_OLLAMA_BASE_URL"
+        case .lmstudio:
+            "LM Studio local server URL"
         default:
             "provider API key"
+        }
+    }
+
+    func isLocalModel(_ model: LanguageModel?) -> Bool {
+        switch model {
+        case .ollama, .lmstudio:
+            true
+        default:
+            false
         }
     }
 }

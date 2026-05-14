@@ -84,6 +84,8 @@ public enum AIProviderParser {
         from providerList: String,
         hasOpenAI: Bool = false,
         hasAnthropic: Bool = false,
+        hasGemini: Bool = false,
+        hasMiniMax: Bool = false,
         hasOllama: Bool = false,
         configuredDefault: String? = nil) -> String
     {
@@ -100,6 +102,10 @@ public enum AIProviderParser {
                 if hasOpenAI { return "gpt-5.5" }
             case "anthropic":
                 if hasAnthropic { return "claude-opus-4-7" }
+            case "google", "gemini":
+                if hasGemini { return "gemini-3-flash" }
+            case "minimax":
+                if hasMiniMax { return config.model }
             case "ollama":
                 if hasOllama { return config.model }
             default:
@@ -112,6 +118,10 @@ public enum AIProviderParser {
             return "claude-opus-4-7"
         } else if hasOpenAI {
             return "gpt-5.5"
+        } else if hasGemini {
+            return "gemini-3-flash"
+        } else if hasMiniMax {
+            return "MiniMax-M2.7"
         } else {
             return "gpt-5.5"
         }

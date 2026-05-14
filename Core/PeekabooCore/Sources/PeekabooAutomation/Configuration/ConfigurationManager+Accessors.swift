@@ -96,13 +96,52 @@ extension ConfigurationManager {
         return nil
     }
 
+    /// Get MiniMax API key with proper precedence
+    public func getMiniMaxAPIKey() -> String? {
+        if let envValue = self.environmentValue(for: "MINIMAX_API_KEY") {
+            return envValue
+        }
+
+        if let credValue = credentials["MINIMAX_API_KEY"] {
+            return credValue
+        }
+
+        if let configValue = configuration?.aiProviders?.minimaxApiKey {
+            return configValue
+        }
+
+        return nil
+    }
+
+    /// Apply Peekaboo-managed provider keys to Tachikoma.
+    public func applyAIProviderKeys(to configuration: TachikomaConfiguration = .current) {
+        if let key = self.getOpenAIAPIKey(), !key.isEmpty {
+            configuration.setAPIKey(key, for: .openai)
+        }
+        if let key = self.getAnthropicAPIKey(), !key.isEmpty {
+            configuration.setAPIKey(key, for: .anthropic)
+        }
+        if let key = self.getGeminiAPIKey(), !key.isEmpty {
+            configuration.setAPIKey(key, for: .google)
+        }
+        if let key = self.getMiniMaxAPIKey(), !key.isEmpty {
+            configuration.setAPIKey(key, for: .minimax)
+        }
+        let ollamaBaseURL = self.getOllamaBaseURL()
+        if !ollamaBaseURL.isEmpty {
+            configuration.setBaseURL(ollamaBaseURL, for: .ollama)
+        }
+    }
+
     /// Get Ollama base URL with proper precedence
     public func getOllamaBaseURL() -> String {
-        self.getValue(
-            cliValue: nil as String?,
-            envVar: "PEEKABOO_OLLAMA_BASE_URL",
-            configValue: self.configuration?.aiProviders?.ollamaBaseUrl,
-            defaultValue: "http://localhost:11434")
+        if let envValue = self.environmentValue(for: "PEEKABOO_OLLAMA_BASE_URL") {
+            return envValue
+        }
+        if let envValue = self.environmentValue(for: "OLLAMA_BASE_URL") {
+            return envValue
+        }
+        return self.configuration?.aiProviders?.ollamaBaseUrl ?? "http://localhost:11434"
     }
 
     /// Get default save path with proper precedence
@@ -145,6 +184,8 @@ extension ConfigurationManager {
         switch provider.lowercased() {
         case "gemini", "google":
             return "google"
+        case "minimax":
+            return "minimax"
         default:
             return Provider.from(identifier: provider).identifier
         }
