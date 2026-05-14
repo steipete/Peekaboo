@@ -213,6 +213,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     fileprivate func connectToState(_ context: AppStateConnectionContext) {
+        // The HiddenWindow scene's `.task` re-runs whenever macOS routes a
+        // reopen event to it (e.g. Dock-icon click). Without this guard a
+        // second StatusBarController would be installed on every reopen,
+        // orphaning the previous controller's NSStatusItem and adding a new
+        // ghost icon to the menu bar each time.
+        guard self.statusBarController == nil else { return }
+
         self.settings = context.settings
         self.sessionStore = context.sessionStore
         self.permissions = context.permissions

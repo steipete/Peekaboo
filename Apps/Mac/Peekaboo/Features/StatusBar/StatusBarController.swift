@@ -22,6 +22,16 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     /// Icon animation
     private let animationController = MenuBarAnimationController()
 
+    deinit {
+        // NSStatusBar.system retains the NSStatusItem until it is explicitly
+        // removed, so a deallocated controller would otherwise leave a ghost
+        // icon in the menu bar. Removal must happen on the main actor.
+        let item = self.statusItem
+        Task { @MainActor in
+            NSStatusBar.system.removeStatusItem(item)
+        }
+    }
+
     init(
         agent: PeekabooAgent,
         sessionStore: SessionStore,
