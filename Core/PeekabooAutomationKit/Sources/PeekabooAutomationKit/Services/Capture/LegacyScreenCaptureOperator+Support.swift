@@ -66,60 +66,71 @@ extension LegacyScreenCaptureOperator {
         windowID: CGWindowID,
         correlationId: String) async throws -> CGImage
     {
-        // Re-resolve shareable content and the target window on every attempt.
         // ScreenCaptureKit can transiently return an invalid filter or leak its
         // internal continuation when a window is in a fluid state (just
-        // minimised, off-screen, moving displays). The modern image-window path
-        // already wraps `SCScreenshotManager.captureImage` in `RetryHandler`
-        // (ScreenCaptureKitOperator+Window.swift:197); mirror that here so the
-        // `see` command no longer times out on the first transient failure.
+        // minimised, off-screen, moving displays). The modern image-window
+        // path already wraps `SCScreenshotManager.captureImage` in
+        // `RetryHandler` (ScreenCaptureKitOperator+Window.swift:197); mirror
+        // that here so the `see` command no longer times out on the first
+        // transient failure. The single-attempt body is extracted to keep
+        // main-actor isolation explicit; each attempt re-resolves shareable
+        // content so a stale window handle cannot survive across retries.
         try await RetryHandler.withRetry(policy: .standard) {
-            let content = try await ScreenCaptureKitCaptureGate.shareableContent(
-                excludingDesktopWindows: false,
-                onScreenWindowsOnly: false)
-            guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
-                throw OperationError.captureFailed(
-                    reason: "Window \(windowID) is not in ScreenCaptureKit shareable content " +
-                        "(it may be minimised, off-screen, or on another Space).")
-            }
-            guard let display = content.displays.first(where: { $0.frame.intersects(scWindow.frame) }) else {
-                throw OperationError.captureFailed(
-                    reason: "Window \(windowID) is not on any available display")
-            }
-
-            let nativeScale = ScreenCaptureScaleResolver.plan(
-                preference: .native,
-                displayID: display.displayID,
-                fallbackPixelWidth: display.width,
-                frameWidth: display.frame.width).nativeScale
-
-            let filter = SCContentFilter(display: display, including: [scWindow])
-            let config = self.makeScreenshotConfiguration()
-            // Display-bound filters expect display-local geometry. This mirrors the reliable modern path and keeps
-            // single-shot captures crisp without relying on the obsolete CoreGraphics window API.
-            config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
-                globalRect: scWindow.frame,
-                displayFrame: display.frame)
-            config.width = max(Int(scWindow.frame.width * nativeScale), 1)
-            config.height = max(Int(scWindow.frame.height * nativeScale), 1)
-            config.captureResolution = .best
-            config.ignoreShadowsSingleWindow = true
-            if #available(macOS 14.2, *) {
-                config.includeChildWindows = false
-            }
-
-            self.logger.debug(
-                "Capturing window via display-bound SCScreenshotManager",
-                metadata: [
-                    "windowID": windowID,
-                    "displayID": display.displayID,
-                ],
+            try await self.captureWindowWithScreenshotManagerAttempt(
+                windowID: windowID,
                 correlationId: correlationId)
-
-            return try await ScreenCaptureKitCaptureGate.captureImage(
-                contentFilter: filter,
-                configuration: config)
         }
+    }
+
+    private func captureWindowWithScreenshotManagerAttempt(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
+        let content = try await ScreenCaptureKitCaptureGate.shareableContent(
+            excludingDesktopWindows: false,
+            onScreenWindowsOnly: false)
+        guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
+            throw OperationError.captureFailed(
+                reason: "Window \(windowID) is not in ScreenCaptureKit shareable content " +
+                    "(it may be minimised, off-screen, or on another Space).")
+        }
+        guard let display = content.displays.first(where: { $0.frame.intersects(scWindow.frame) }) else {
+            throw OperationError.captureFailed(
+                reason: "Window \(windowID) is not on any available display")
+        }
+
+        let nativeScale = ScreenCaptureScaleResolver.plan(
+            preference: .native,
+            displayID: display.displayID,
+            fallbackPixelWidth: display.width,
+            frameWidth: display.frame.width).nativeScale
+
+        let filter = SCContentFilter(display: display, including: [scWindow])
+        let config = self.makeScreenshotConfiguration()
+        // Display-bound filters expect display-local geometry. This mirrors the reliable modern path and keeps
+        // single-shot captures crisp without relying on the obsolete CoreGraphics window API.
+        config.sourceRect = ScreenCapturePlanner.displayLocalSourceRect(
+            globalRect: scWindow.frame,
+            displayFrame: display.frame)
+        config.width = max(Int(scWindow.frame.width * nativeScale), 1)
+        config.height = max(Int(scWindow.frame.height * nativeScale), 1)
+        config.captureResolution = .best
+        config.ignoreShadowsSingleWindow = true
+        if #available(macOS 14.2, *) {
+            config.includeChildWindows = false
+        }
+
+        self.logger.debug(
+            "Capturing window via display-bound SCScreenshotManager",
+            metadata: [
+                "windowID": windowID,
+                "displayID": display.displayID,
+            ],
+            correlationId: correlationId)
+
+        return try await ScreenCaptureKitCaptureGate.captureImage(
+            contentFilter: filter,
+            configuration: config)
     }
 
     @MainActor
