@@ -18,9 +18,10 @@ extension PeekabooServices {
         let hasOpenAI = self.configuration.getOpenAIAPIKey() != nil && !self.configuration.getOpenAIAPIKey()!.isEmpty
         let hasAnthropic = self.configuration.getAnthropicAPIKey() != nil && !self.configuration.getAnthropicAPIKey()!
             .isEmpty
+        let hasGemini = self.configuration.getGeminiAPIKey() != nil && !self.configuration.getGeminiAPIKey()!.isEmpty
         let hasOllama = false
 
-        if hasOpenAI || hasAnthropic || hasOllama {
+        if hasOpenAI || hasAnthropic || hasGemini || hasOllama {
             let agentConfig = self.configuration.getConfiguration()
             let providers = self.configuration.getAIProviders()
             let environmentProviders = EnvironmentVariables.value(for: "PEEKABOO_AI_PROVIDERS")
@@ -29,6 +30,7 @@ extension PeekabooServices {
                 providers: providers,
                 hasOpenAI: hasOpenAI,
                 hasAnthropic: hasAnthropic,
+                hasGemini: hasGemini,
                 hasOllama: hasOllama,
                 configuredDefault: agentConfig?.agent?.defaultModel,
                 isEnvironmentProvided: environmentProviders != nil)
@@ -99,6 +101,8 @@ extension PeekabooServices {
             "claude-opus-4-7"
         } else if sources.hasOpenAI {
             "gpt-5.5"
+        } else if sources.hasGemini {
+            "gemini-3-flash"
         } else if sources.hasOllama {
             "gpt-5.5"
         } else {
@@ -132,6 +136,7 @@ private struct ModelSources {
     let providers: String
     let hasOpenAI: Bool
     let hasAnthropic: Bool
+    let hasGemini: Bool
     let hasOllama: Bool
     let configuredDefault: String?
     let isEnvironmentProvided: Bool
