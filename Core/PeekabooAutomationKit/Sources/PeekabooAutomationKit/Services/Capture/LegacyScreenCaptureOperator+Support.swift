@@ -66,12 +66,24 @@ extension LegacyScreenCaptureOperator {
         windowID: CGWindowID,
         correlationId: String) async throws -> CGImage
     {
+        try await RetryHandler.withRetry(policy: .standard) {
+            try await self.captureWindowWithScreenshotManagerAttempt(
+                windowID: windowID,
+                correlationId: correlationId)
+        }
+    }
+
+    private func captureWindowWithScreenshotManagerAttempt(
+        windowID: CGWindowID,
+        correlationId: String) async throws -> CGImage
+    {
         let content = try await ScreenCaptureKitCaptureGate.shareableContent(
             excludingDesktopWindows: false,
             onScreenWindowsOnly: false)
         guard let scWindow = content.windows.first(where: { $0.windowID == windowID }) else {
             throw OperationError.captureFailed(
-                reason: "Failed to locate window \(windowID) in ScreenCaptureKit shareable content")
+                reason: "Window \(windowID) is not in ScreenCaptureKit shareable content " +
+                    "(it may be minimized, off-screen, or on another Space)")
         }
         guard let display = content.displays.first(where: { $0.frame.intersects(scWindow.frame) }) else {
             throw OperationError.captureFailed(
