@@ -63,7 +63,10 @@ extension PeekabooServices {
                 guard let model = determination.model else {
                     self.agent = nil
                     self.logger.warning(
-                        "\(AgentDisplayTokens.Status.warning) Configured AI providers are not available - agent service disabled")
+                        """
+                        \(AgentDisplayTokens.Status.warning) Configured AI providers are not available - \
+                        agent service disabled
+                        """)
                     return
                 }
                 let languageModel = Self.parseModelStringForAgent(model)

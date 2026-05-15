@@ -187,64 +187,21 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
 
             let appName = await self.resultApplicationName(snapshotId: activeSnapshotId)
 
-            // Prepare result
-            let clickLocation: CGPoint
-            let clickedElement: String?
-            let targetPointDiagnostics: InteractionTargetPointDiagnostics?
-
-            switch clickTarget {
-            case let .elementId(id):
-                if let element = waitResult.element {
-                    let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
-                        element: element,
-                        elementId: id,
-                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
-                        snapshots: self.services.snapshots
-                    )
-                    clickLocation = resolution.point
-                    targetPointDiagnostics = resolution.diagnostics
-                    clickedElement = self.formatElementInfo(element)
-                } else {
-                    // Shouldn't happen but handle gracefully
-                    clickLocation = .zero
-                    targetPointDiagnostics = nil
-                    clickedElement = "Element ID: \(id)"
-                }
-
-            case let .coordinates(point):
-                clickLocation = point
-                targetPointDiagnostics = InteractionTargetPointResolver.coordinate(point, source: .coordinates)
-                    .diagnostics
-                clickedElement = nil
-
-            case let .query(query):
-                if let element = waitResult.element {
-                    let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
-                        element: element,
-                        elementId: element.id,
-                        snapshotId: activeSnapshotId.isEmpty ? nil : activeSnapshotId,
-                        snapshots: self.services.snapshots
-                    )
-                    clickLocation = resolution.point
-                    targetPointDiagnostics = resolution.diagnostics
-                    clickedElement = self.formatElementInfo(element)
-                } else {
-                    // Use a default description
-                    clickLocation = .zero
-                    targetPointDiagnostics = nil
-                    clickedElement = "Element matching: \(query)"
-                }
-            }
+            let details = try await self.clickOutputDetails(
+                clickTarget: clickTarget,
+                waitResult: waitResult,
+                snapshotId: activeSnapshotId
+            )
 
             // Output results
             let result = ClickResult(
                 success: true,
-                clickedElement: clickedElement,
-                clickLocation: clickLocation,
+                clickedElement: details.clickedElement,
+                clickLocation: details.location,
                 waitTime: waitResult.waitTime,
                 executionTime: Date().timeIntervalSince(startTime),
                 targetApp: appName,
-                targetPoint: targetPointDiagnostics
+                targetPoint: details.targetPointDiagnostics
             )
 
             if let observationForInvalidation {
@@ -261,6 +218,43 @@ struct ClickCommand: ErrorHandlingCommand, OutputFormattable, RuntimeOptionsConf
         } catch {
             self.handleError(error)
             throw ExitCode.failure
+        }
+    }
+
+    private func clickOutputDetails(
+        clickTarget: ClickTarget,
+        waitResult: WaitForElementResult,
+        snapshotId: String
+    ) async throws
+    -> (location: CGPoint, clickedElement: String?, targetPointDiagnostics: InteractionTargetPointDiagnostics?) {
+        switch clickTarget {
+        case let .elementId(id):
+            guard let element = waitResult.element else {
+                return (.zero, "Element ID: \(id)", nil)
+            }
+            let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+                element: element,
+                elementId: id,
+                snapshotId: snapshotId.isEmpty ? nil : snapshotId,
+                snapshots: self.services.snapshots
+            )
+            return (resolution.point, self.formatElementInfo(element), resolution.diagnostics)
+
+        case let .coordinates(point):
+            let diagnostics = InteractionTargetPointResolver.coordinate(point, source: .coordinates).diagnostics
+            return (point, nil, diagnostics)
+
+        case let .query(query):
+            guard let element = waitResult.element else {
+                return (.zero, "Element matching: \(query)", nil)
+            }
+            let resolution = try await InteractionTargetPointResolver.elementCenterResolution(
+                element: element,
+                elementId: element.id,
+                snapshotId: snapshotId.isEmpty ? nil : snapshotId,
+                snapshots: self.services.snapshots
+            )
+            return (resolution.point, self.formatElementInfo(element), resolution.diagnostics)
         }
     }
 

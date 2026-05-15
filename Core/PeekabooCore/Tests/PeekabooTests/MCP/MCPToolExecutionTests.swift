@@ -789,75 +789,6 @@ struct MCPToolExecutionTests {
     }
 
     @Test
-    func `set_value tool calls element action service`() async throws {
-        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
-        let context = await MCPToolTestHelpers.makeContext(automation: automation)
-        let tool = SetValueTool(context: context)
-        let snapshot = await UISnapshotManager.shared.createSnapshot()
-        let snapshotId = await snapshot.id
-
-        let response = try await tool.execute(arguments: ToolArguments(raw: [
-            "on": "T1",
-            "value": "hello",
-            "snapshot": snapshotId,
-        ]))
-
-        #expect(response.isError == false)
-        let call = await MainActor.run { automation.setValueCalls.first }
-        #expect(call?.target == "T1")
-        #expect(call?.value == .string("hello"))
-        #expect(call?.snapshotId == snapshotId)
-        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
-        #expect(invalidated == nil)
-    }
-
-    @Test
-    func `set_value tool forwards latest snapshot id when snapshot argument is omitted`() async throws {
-        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
-        let context = await MCPToolTestHelpers.makeContext(automation: automation)
-        let tool = SetValueTool(context: context)
-        let snapshot = await UISnapshotManager.shared.createSnapshot()
-        let snapshotId = await snapshot.id
-
-        let response = try await tool.execute(arguments: ToolArguments(raw: [
-            "on": "T1",
-            "value": "hello",
-        ]))
-
-        #expect(response.isError == false)
-        let call = await MainActor.run { automation.setValueCalls.first }
-        #expect(call?.snapshotId == snapshotId)
-        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
-        #expect(invalidated == nil)
-    }
-
-    @Test
-    func `perform_action tool validates request shape`() async throws {
-        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
-        let context = await MCPToolTestHelpers.makeContext(automation: automation)
-        let tool = PerformActionTool(context: context)
-        let snapshot = await UISnapshotManager.shared.createSnapshot()
-        let snapshotId = await snapshot.id
-
-        let missing = try await tool.execute(arguments: ToolArguments(raw: ["on": "B1"]))
-        #expect(missing.isError == true)
-
-        let response = try await tool.execute(arguments: ToolArguments(raw: [
-            "on": "B1",
-            "action": "AXPress",
-            "snapshot": snapshotId,
-        ]))
-
-        #expect(response.isError == false)
-        let call = await MainActor.run { automation.performActionCalls.first }
-        #expect(call?.target == "B1")
-        #expect(call?.actionName == "AXPress")
-        #expect(call?.snapshotId == snapshotId)
-        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
-        #expect(invalidated == nil)
-    }
-
-    @Test
     func `Move tool center uses screen and cursor services`() async throws {
         let automation = await MainActor.run {
             MockAutomationService(accessibilityGranted: true, currentMouseLocation: CGPoint(x: 10, y: 20))
@@ -942,6 +873,77 @@ struct MCPToolExecutionTests {
             return nil
         }
         return Int32(pid)
+    }
+}
+
+struct MCPElementActionToolExecutionTests {
+    @Test
+    func `set_value tool calls element action service`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = SetValueTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "T1",
+            "value": "hello",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.setValueCalls.first }
+        #expect(call?.target == "T1")
+        #expect(call?.value == .string("hello"))
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `set_value tool forwards latest snapshot id when snapshot argument is omitted`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = SetValueTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "T1",
+            "value": "hello",
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.setValueCalls.first }
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
+    }
+
+    @Test
+    func `perform_action tool validates request shape`() async throws {
+        let automation = await MainActor.run { MockElementActionAutomationService(accessibilityGranted: true) }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = PerformActionTool(context: context)
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+
+        let missing = try await tool.execute(arguments: ToolArguments(raw: ["on": "B1"]))
+        #expect(missing.isError == true)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "on": "B1",
+            "action": "AXPress",
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let call = await MainActor.run { automation.performActionCalls.first }
+        #expect(call?.target == "B1")
+        #expect(call?.actionName == "AXPress")
+        #expect(call?.snapshotId == snapshotId)
+        let invalidated = await UISnapshotManager.shared.getSnapshot(id: snapshotId)
+        #expect(invalidated == nil)
     }
 }
 

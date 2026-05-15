@@ -88,7 +88,10 @@ struct AgentCommand: RuntimeOptionsConfigurable {
 
     @Option(
         name: .long,
-        help: "AI model to use (for example: gpt-5.5, claude-opus-4-7, gemini-3-flash, minimax-m2.7, ollama/<model>, or lmstudio/<model>)"
+        help: """
+        AI model to use (for example: gpt-5.5, claude-opus-4-7, \
+        gemini-3-flash, minimax-m2.7, ollama/<model>, or lmstudio/<model>)
+        """
     )
     var model: String?
     @Flag(name: .long, help: "Resume the most recent session (use with task argument)")
