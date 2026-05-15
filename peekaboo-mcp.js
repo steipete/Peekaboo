@@ -1,30 +1,37 @@
 #!/usr/bin/env node
 // Peekaboo MCP wrapper that restarts the Swift server on crash
 
-import { spawn, execSync } from 'child_process';
-import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
+import { chmodSync, existsSync, realpathSync, statSync } from 'fs';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { dirname, join } from 'path';
-import { existsSync } from 'fs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const binaryPath = join(__dirname, 'peekaboo');
+const modulePath = realpathSync(fileURLToPath(import.meta.url));
+const __dirname = dirname(modulePath);
+const defaultBinaryPath = join(__dirname, 'peekaboo');
 
 const MAX_RESTARTS = 5;
 const RESTART_WINDOW_MS = 60_000;
 const INITIAL_DELAY_MS = 1000;
 const MAX_DELAY_MS = 30_000;
 
-class PeekabooMCPWrapper {
-  constructor() {
+export class PeekabooMCPWrapper {
+  constructor(options = {}) {
+    this.binaryPath = options.binaryPath || defaultBinaryPath;
+    this.initialDelayMs = options.initialDelayMs || INITIAL_DELAY_MS;
+    this.maxDelayMs = options.maxDelayMs || MAX_DELAY_MS;
     this.restartTimestamps = [];
-    this.delay = INITIAL_DELAY_MS;
+    this.delay = this.initialDelayMs;
     this.child = null;
+    this.restartTimer = null;
     this.shuttingDown = false;
   }
 
   start() {
-    if (!existsSync(binaryPath)) {
-      console.error(`[Peekaboo MCP] Binary not found at ${binaryPath}`);
+    if (this.shuttingDown) return;
+
+    if (!existsSync(this.binaryPath)) {
+      console.error(`[Peekaboo MCP] Binary not found at ${this.binaryPath}`);
       process.exit(1);
     }
 
@@ -36,7 +43,7 @@ class PeekabooMCPWrapper {
     }
 
     console.error('[Peekaboo MCP] Starting Swift server...');
-    this.child = spawn(binaryPath, ['mcp', 'serve'], {
+    this.child = spawn(this.binaryPath, ['mcp', 'serve'], {
       stdio: 'inherit',
       env: {
         ...process.env,
@@ -45,6 +52,7 @@ class PeekabooMCPWrapper {
     });
 
     this.child.on('exit', (code, signal) => {
+      this.child = null;
       if (this.shuttingDown) return process.exit(code || 0);
 
       if (code === 0 || signal === 'SIGINT' || signal === 'SIGTERM') {
@@ -56,10 +64,12 @@ class PeekabooMCPWrapper {
     });
 
     this.child.on('error', (err) => {
+      this.child = null;
       console.error('[Peekaboo MCP] Failed to launch:', err.message);
       if (err.code === 'EACCES') {
         try {
-          execSync(`chmod +x "${binaryPath}"`);
+          const mode = statSync(this.binaryPath).mode;
+          chmodSync(this.binaryPath, mode | 0o111);
           console.error('[Peekaboo MCP] Fixed executable bit, retrying...');
           this.handleCrash(1);
           return;
@@ -72,40 +82,65 @@ class PeekabooMCPWrapper {
   }
 
   handleCrash(code, signal) {
+    if (this.shuttingDown) return;
+
     console.error(`[Peekaboo MCP] Server crashed (code ${code}${signal ? `, signal ${signal}` : ''}).`);
     this.restartTimestamps.push(Date.now());
-    setTimeout(() => {
-      this.delay = Math.min(this.delay * 2, MAX_DELAY_MS);
+    this.clearRestartTimer();
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      if (this.shuttingDown) return;
+      this.delay = Math.min(this.delay * 2, this.maxDelayMs);
       this.start();
     }, this.delay);
   }
 
   shutdown() {
     this.shuttingDown = true;
+    this.clearRestartTimer();
     if (this.child && !this.child.killed) {
       this.child.kill('SIGTERM');
     }
   }
+
+  clearRestartTimer() {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+  }
 }
 
-const wrapper = new PeekabooMCPWrapper();
-wrapper.start();
+if (isMainModule()) {
+  const wrapper = new PeekabooMCPWrapper();
+  wrapper.start();
 
-process.on('SIGINT', () => {
-  console.error('\n[Peekaboo MCP] SIGINT received, shutting down...');
-  wrapper.shutdown();
-});
+  process.on('SIGINT', () => {
+    console.error('\n[Peekaboo MCP] SIGINT received, shutting down...');
+    wrapper.shutdown();
+  });
 
-process.on('SIGTERM', () => {
-  console.error('[Peekaboo MCP] SIGTERM received, shutting down...');
-  wrapper.shutdown();
-});
+  process.on('SIGTERM', () => {
+    console.error('[Peekaboo MCP] SIGTERM received, shutting down...');
+    wrapper.shutdown();
+  });
 
-process.on('uncaughtException', (err) => {
-  console.error('[Peekaboo MCP] Uncaught exception:', err);
-  wrapper.shutdown();
-});
+  process.on('uncaughtException', (err) => {
+    console.error('[Peekaboo MCP] Uncaught exception:', err);
+    wrapper.shutdown();
+  });
 
-process.on('unhandledRejection', (reason) => {
-  console.error('[Peekaboo MCP] Unhandled rejection:', reason);
-});
+  process.on('unhandledRejection', (reason) => {
+    console.error('[Peekaboo MCP] Unhandled rejection:', reason);
+  });
+}
+
+function isMainModule() {
+  const entry = process.argv[1];
+  if (entry === undefined) return false;
+
+  const entryUrl = pathToFileURL(entry).href;
+  if (import.meta.url === entryUrl) return true;
+
+  return pathToFileURL(realpathSync(modulePath)).href === pathToFileURL(realpathSync(entry)).href;
+}

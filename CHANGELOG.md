@@ -2,6 +2,9 @@
 
 ## [3.2.1] - Unreleased
 
+### Fixed
+- `peekaboo-mcp` now shuts down cleanly during restart backoff and repairs executable permissions without shelling out through an install path.
+
 ## [3.2.0] - 2026-05-15
 
 ### Added
