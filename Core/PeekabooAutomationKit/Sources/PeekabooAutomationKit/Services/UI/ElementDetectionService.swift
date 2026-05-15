@@ -77,29 +77,42 @@ public final class ElementDetectionService {
             windowTitle: windowName,
             windowID: resolvedWindowID,
             windowBounds: windowContext?.windowBounds,
-            shouldFocusWebContent: windowContext?.shouldFocusWebContent)
+            shouldFocusWebContent: windowContext?.shouldFocusWebContent,
+            traversalBudget: windowContext?.traversalBudget)
 
         var elementIdMap: [String: DetectedElement] = [:]
         let allowWebFocus = windowContext?.shouldFocusWebContent ?? true
+        let budget = windowContext?.traversalBudget
+        let usesDefaultBudget = (budget ?? AXTraversalBudget()) == AXTraversalBudget()
         let detectedElements: [DetectedElement]
         let usedCache: Bool
-        let cacheKey = self.axTreeCache.key(
-            windowID: resolvedWindowID,
-            processID: targetApp.processIdentifier,
-            allowWebFocus: allowWebFocus)
-        if let cacheKey, let cached = self.axTreeCache.elements(for: cacheKey) {
+        let truncationInfo: DetectionTruncationInfo?
+        let cacheKey = usesDefaultBudget
+            ? self.axTreeCache.key(
+                windowID: resolvedWindowID,
+                processID: targetApp.processIdentifier,
+                allowWebFocus: allowWebFocus)
+            : nil
+        if let cacheKey, let cached = self.axTreeCache.result(for: cacheKey) {
             self.logger.debug("Using cached AX tree for window \(cacheKey.windowID)")
-            detectedElements = cached
+            detectedElements = cached.elements
             usedCache = true
+            truncationInfo = cached.truncationInfo
         } else {
-            detectedElements = try await self.collectElementsWithTimeout(
+            let collection = try await self.collectElementsWithTimeout(
                 window: windowResolution.window,
                 appElement: windowResolution.appElement,
                 appIsActive: targetApp.isActive,
                 allowWebFocus: allowWebFocus,
+                budget: budget,
                 elementIdMap: &elementIdMap)
+            detectedElements = collection.elements
+            truncationInfo = collection.truncationInfo
             if let cacheKey {
-                self.axTreeCache.store(detectedElements, for: cacheKey)
+                self.axTreeCache.store(
+                    detectedElements,
+                    truncationInfo: collection.truncationInfo,
+                    for: cacheKey)
             }
             usedCache = false
         }
@@ -113,7 +126,8 @@ public final class ElementDetectionService {
             elements: detectedElements,
             usedCache: usedCache,
             windowContext: resolvedWindowContext,
-            isDialog: windowResolution.isDialog)
+            isDialog: windowResolution.isDialog,
+            truncationInfo: truncationInfo)
     }
 }
 
@@ -123,10 +137,13 @@ extension ElementDetectionService {
         appElement: Element,
         appIsActive: Bool,
         allowWebFocus: Bool,
+        budget: AXTraversalBudget?,
         elementIdMap: inout [String: DetectedElement],
-        timeoutSeconds: Double = 20.0) async throws -> [DetectedElement]
+        timeoutSeconds: Double = 20.0) async throws -> (
+            elements: [DetectedElement],
+            truncationInfo: DetectionTruncationInfo?)
     {
-        let (elements, map) = try await ElementDetectionTimeoutRunner.run(seconds: timeoutSeconds) {
+        let (elements, map, truncationInfo) = try await ElementDetectionTimeoutRunner.run(seconds: timeoutSeconds) {
             let deadline = Date().addingTimeInterval(timeoutSeconds)
             var localMap: [String: DetectedElement] = [:]
             let request = ElementCollectionRequest(
@@ -134,32 +151,43 @@ extension ElementDetectionService {
                 appElement: appElement,
                 appIsActive: appIsActive,
                 allowWebFocus: allowWebFocus,
-                deadline: deadline)
-            let elements = await self.collectElements(
+                deadline: deadline,
+                budget: budget)
+            let collection = await self.collectElements(
                 request,
                 elementIdMap: &localMap)
-            return (elements, localMap)
+            return (collection.elements, localMap, collection.truncationInfo)
         }
         elementIdMap = map
-        return elements
+        return (elements, truncationInfo)
     }
 }
 
 extension ElementDetectionService {
+    private struct ElementCollection {
+        let elements: [DetectedElement]
+        let truncationInfo: DetectionTruncationInfo?
+    }
+
     private func collectElements(
         _ request: ElementCollectionRequest,
-        elementIdMap: inout [String: DetectedElement]) async -> [DetectedElement]
+        elementIdMap: inout [String: DetectedElement]) async -> ElementCollection
     {
         var detectedElements: [DetectedElement] = []
         var attempt = 0
+        var truncationInfo: DetectionTruncationInfo?
 
         repeat {
             elementIdMap.removeAll(keepingCapacity: true)
             detectedElements.removeAll(keepingCapacity: true)
 
-            let collection = self.axTreeCollector.collect(window: request.window, deadline: request.deadline)
+            let collection = self.axTreeCollector.collect(
+                window: request.window,
+                deadline: request.deadline,
+                budget: request.budget)
             detectedElements = collection.elements
             elementIdMap = collection.elementIdMap
+            truncationInfo = collection.truncationInfo
 
             if request.appIsActive, let menuBar = request.appElement.menuBar() {
                 self.menuBarElementCollector.appendMenuBar(
@@ -186,7 +214,9 @@ extension ElementDetectionService {
             try? await Task.sleep(nanoseconds: 150_000_000)
         } while true
 
-        return detectedElements
+        return ElementCollection(
+            elements: detectedElements,
+            truncationInfo: truncationInfo)
     }
 }
 
@@ -196,4 +226,5 @@ private struct ElementCollectionRequest {
     let appIsActive: Bool
     let allowWebFocus: Bool
     let deadline: Date
+    let budget: AXTraversalBudget?
 }

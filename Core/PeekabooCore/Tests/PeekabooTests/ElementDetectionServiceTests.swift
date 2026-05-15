@@ -342,6 +342,18 @@ struct ElementDetectionCacheTests {
     }
 
     @Test
+    func `Cache preserves truncation metadata`() {
+        let cache = ElementDetectionCache()
+        let key = ElementDetectionCache.Key(windowID: 7, processID: pid_t(42), allowWebFocus: true)
+        let truncationInfo = DetectionTruncationInfo(maxElementCountReached: true)
+
+        cache.store([Self.element(id: "elem_1")], truncationInfo: truncationInfo, for: key)
+
+        #expect(cache.result(for: key)?.elements.map(\.id) == ["elem_1"])
+        #expect(cache.result(for: key)?.truncationInfo == truncationInfo)
+    }
+
+    @Test
     func `Cache expires stale elements`() {
         var now = Date(timeIntervalSince1970: 1000)
         let cache = ElementDetectionCache(ttl: 1.0) { now }

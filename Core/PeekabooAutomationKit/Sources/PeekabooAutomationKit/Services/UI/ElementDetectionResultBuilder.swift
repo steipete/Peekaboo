@@ -10,9 +10,24 @@ import PeekabooFoundation
         usedCache: Bool,
         windowContext: WindowContext?,
         isDialog: Bool,
-        detectionTime: TimeInterval = 0.0) -> ElementDetectionResult
+        detectionTime: TimeInterval = 0.0,
+        truncationInfo: DetectionTruncationInfo? = nil) -> ElementDetectionResult
     {
-        ElementDetectionResult(
+        var warnings: [String] = []
+        if usedCache {
+            warnings.append("ax_cache_hit")
+        }
+        if truncationInfo?.maxDepthReached == true {
+            warnings.append("ax_truncated_depth")
+        }
+        if truncationInfo?.maxElementCountReached == true {
+            warnings.append("ax_truncated_count")
+        }
+        if truncationInfo?.maxChildrenPerNodeReached == true {
+            warnings.append("ax_truncated_children")
+        }
+
+        return ElementDetectionResult(
             snapshotId: snapshotId,
             screenshotPath: screenshotPath,
             elements: self.group(elements),
@@ -20,9 +35,10 @@ import PeekabooFoundation
                 detectionTime: detectionTime,
                 elementCount: elements.count,
                 method: usedCache ? "AXorcist (cached)" : "AXorcist",
-                warnings: usedCache ? ["ax_cache_hit"] : [],
+                warnings: warnings,
                 windowContext: windowContext,
-                isDialog: isDialog))
+                isDialog: isDialog,
+                truncationInfo: truncationInfo))
     }
 
     public static func group(_ elements: [DetectedElement]) -> DetectedElements {

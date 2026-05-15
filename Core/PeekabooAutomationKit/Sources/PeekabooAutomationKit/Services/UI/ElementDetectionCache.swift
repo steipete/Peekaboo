@@ -19,9 +19,19 @@ import PeekabooFoundation
         }
     }
 
+    public struct CachedElements: Sendable {
+        public let elements: [DetectedElement]
+        public let truncationInfo: DetectionTruncationInfo?
+
+        public init(elements: [DetectedElement], truncationInfo: DetectionTruncationInfo? = nil) {
+            self.elements = elements
+            self.truncationInfo = truncationInfo
+        }
+    }
+
     private struct Entry {
         let cachedAt: Date
-        let elements: [DetectedElement]
+        let result: CachedElements
     }
 
     private let ttl: TimeInterval
@@ -39,18 +49,24 @@ import PeekabooFoundation
     }
 
     public func elements(for key: Key) -> [DetectedElement]? {
+        self.result(for: key)?.elements
+    }
+
+    public func result(for key: Key) -> CachedElements? {
         guard let entry = self.entries[key] else { return nil }
 
         if self.now().timeIntervalSince(entry.cachedAt) <= self.ttl {
-            return entry.elements
+            return entry.result
         }
 
         self.entries.removeValue(forKey: key)
         return nil
     }
 
-    public func store(_ elements: [DetectedElement], for key: Key) {
-        self.entries[key] = Entry(cachedAt: self.now(), elements: elements)
+    public func store(_ elements: [DetectedElement], truncationInfo: DetectionTruncationInfo? = nil, for key: Key) {
+        self.entries[key] = Entry(
+            cachedAt: self.now(),
+            result: CachedElements(elements: elements, truncationInfo: truncationInfo))
     }
 
     public func removeAll() {
