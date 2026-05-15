@@ -79,6 +79,14 @@ extension UIAutomationService {
         return result
     }
 
+    public func inspectAccessibilityTree(windowContext: WindowContext?) async throws -> ElementDetectionResult {
+        self.logger.debug("Delegating accessibility tree inspection to ElementDetectionService")
+        let result = try await self.elementDetectionService.inspectElements(
+            snapshotId: nil,
+            windowContext: windowContext)
+        return result
+    }
+
     // MARK: - Click Operations
 
     /**

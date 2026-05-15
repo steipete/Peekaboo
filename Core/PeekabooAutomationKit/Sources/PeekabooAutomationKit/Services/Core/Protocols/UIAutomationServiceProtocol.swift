@@ -121,11 +121,21 @@ public protocol UIAutomationServiceProtocol: Sendable {
     /// - Returns: The first element matching the criteria
     /// - Throws: PeekabooError.elementNotFound if no matching element is found
     func findElement(matching criteria: UIElementSearchCriteria, in appName: String?) async throws -> DetectedElement
+
+    /// Inspect the accessibility tree of the current or target window without capturing a screenshot.
+    /// - Parameter windowContext: Optional window context to narrow the inspection target.
+    /// - Returns: Detection result with accessibility-derived elements.
+    /// - Throws: PeekabooError if the inspection fails.
+    func inspectAccessibilityTree(windowContext: WindowContext?) async throws -> ElementDetectionResult
 }
 
 extension UIAutomationServiceProtocol {
     public func currentMouseLocation() -> CGPoint? {
         nil
+    }
+
+    public func inspectAccessibilityTree(windowContext: WindowContext?) async throws -> ElementDetectionResult {
+        throw PeekabooError.notImplemented("inspectAccessibilityTree")
     }
 }
 
