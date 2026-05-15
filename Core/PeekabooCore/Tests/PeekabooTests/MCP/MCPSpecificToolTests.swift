@@ -50,6 +50,24 @@ struct MCPSpecificToolTests {
         }
     }
 
+    @Test
+    func `Inspect UI tool schema has correct properties`() {
+        let tool = makeTestTool(InspectUITool.init)
+
+        guard case let .object(schema) = tool.inputSchema,
+              let properties = schema["properties"],
+              case let .object(props) = properties
+        else {
+            Issue.record("Expected object schema with properties")
+            return
+        }
+
+        #expect(props["app_target"] != nil)
+        #expect(props["snapshot"] != nil)
+        #expect(props["annotate"] == nil)
+        #expect(props["path"] == nil)
+    }
+
     // MARK: - Dialog Tool Tests
 
     @Test
@@ -364,6 +382,7 @@ struct MCPToolDescriptionTests {
         let tools: [any MCPTool] = [
             makeTestTool(ImageTool.init),
             makeTestTool(SeeTool.init),
+            makeTestTool(InspectUITool.init),
             makeTestTool(ClickTool.init),
             makeTestTool(TypeTool.init),
             makeTestTool(SetValueTool.init),
@@ -399,6 +418,7 @@ struct MCPToolDescriptionTests {
             makeTestTool(PermissionsTool.init),
             makeTestTool(SleepTool.init),
             makeTestTool(SeeTool.init),
+            makeTestTool(InspectUITool.init),
             makeTestTool(ClickTool.init),
             makeTestTool(TypeTool.init),
             makeTestTool(SetValueTool.init),

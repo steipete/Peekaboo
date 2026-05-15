@@ -183,11 +183,12 @@ struct MCPToolRegistryIntegrationTests {
             filters: noToolFilters)
         let names = Set(tools.map(\.name))
 
-        #expect(tools.count == 25)
+        #expect(tools.count == 26)
         #expect(names.contains("clipboard"))
         #expect(names.contains("paste"))
         #expect(names.contains("set_value"))
         #expect(names.contains("perform_action"))
+        #expect(names.contains("inspect_ui"))
         #expect(!names.contains("capture"))
     }
 
@@ -203,18 +204,20 @@ struct MCPToolRegistryIntegrationTests {
             filters: noToolFilters))
 
         let tools = registry.allTools()
-        #expect(tools.count == 25)
+        #expect(tools.count == 26)
 
         // Verify some key tools are present
         let imageToolExists = registry.tool(named: "image") != nil
         let clickToolExists = registry.tool(named: "click") != nil
         let agentToolExists = registry.tool(named: "agent") != nil
         let clipboardToolExists = registry.tool(named: "clipboard") != nil
+        let inspectUIToolExists = registry.tool(named: "inspect_ui") != nil
 
         #expect(imageToolExists)
         #expect(clickToolExists)
         #expect(agentToolExists)
         #expect(clipboardToolExists)
+        #expect(inspectUIToolExists)
     }
 
     @Test
