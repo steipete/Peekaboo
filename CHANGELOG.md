@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.3] - Unreleased
+## [3.2.0] - 2026-05-15
 
 ### Added
 - `peekaboo click --focus-background` and the MCP `click` tool now support process-targeted background mouse delivery for apps identified by `--app`, `--pid`, or snapshot metadata.
