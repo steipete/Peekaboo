@@ -31,6 +31,7 @@ public enum PeekabooToolType: String, CaseIterable, Sendable {
     case findElement = "find_element"
     case listElements = "list_elements"
     case focused
+    case inspectUI = "inspect_ui"
 
     // Menu & Dock
     case menuClick = "menu_click"
@@ -75,6 +76,7 @@ public enum PeekabooToolType: String, CaseIterable, Sendable {
         case .findElement: "Find Element"
         case .listElements: "List Elements"
         case .focused: "Get Focused Element"
+        case .inspectUI: "Inspect UI"
         case .menuClick: "Click Menu"
         case .listMenus: "List Menus"
         case .listDock: "List Dock Items"
@@ -101,7 +103,7 @@ public enum PeekabooToolType: String, CaseIterable, Sendable {
         case .listApps, .launchApp: "[apps]"
         case .listWindows, .focusWindow, .resizeWindow: "[win]"
         case .scroll: "[scrl]"
-        case .findElement, .listElements, .focused: "🔍"
+        case .findElement, .listElements, .focused, .inspectUI: "🔍"
         case .shell: "[sh]"
         case .menuClick, .listMenus: "[menu]"
         case .listDock, .dockClick: "[menu]"
@@ -124,7 +126,7 @@ public enum PeekabooToolType: String, CaseIterable, Sendable {
             .app
         case .focusWindow, .listWindows, .resizeWindow, .listSpaces, .switchSpace, .moveWindowToSpace, .listScreens:
             .window
-        case .findElement, .listElements, .focused:
+        case .findElement, .listElements, .focused, .inspectUI:
             .element
         case .menuClick, .listMenus:
             .menu

@@ -63,6 +63,7 @@ public enum ToolType: String, CaseIterable, Sendable {
     case findElement = "find_element"
     case listElements = "list_elements"
     case focused
+    case inspectUI = "inspect_ui"
 
     // MARK: - System
 
@@ -98,7 +99,7 @@ public enum ToolType: String, CaseIterable, Sendable {
             .menu
         case .listDock, .dockClick, .dockLaunch:
             .dock
-        case .findElement, .listElements, .focused:
+        case .findElement, .listElements, .focused, .inspectUI:
             .element
         case .shell, .wait, .clipboard, .copyToClipboard, .pasteFromClipboard, .listSpaces, .switchSpace,
              .moveWindowToSpace:
@@ -161,6 +162,7 @@ public enum ToolType: String, CaseIterable, Sendable {
         case .taskCompleted: "Task Completed"
         case .needMoreInformation: "Need More Information"
         case .needInfo: "Need Information"
+        case .inspectUI: "Inspect UI"
         case .clipboard: "Clipboard"
         case .copyToClipboard: "Copy to Clipboard"
         case .pasteFromClipboard: "Paste from Clipboard"

@@ -33,6 +33,7 @@ public enum MCPToolCatalog {
 
             // UI automation tools
             SeeTool(context: context),
+            InspectUITool(context: context),
             ClickTool(context: context),
             TypeTool(context: context),
             SetValueTool(context: context),
