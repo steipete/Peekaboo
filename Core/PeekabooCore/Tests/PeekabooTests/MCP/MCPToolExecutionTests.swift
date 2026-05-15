@@ -397,6 +397,86 @@ struct MCPToolExecutionTests {
         #expect(await MainActor.run { screenCapture.lastWindowID } == 42)
     }
 
+    // MARK: - Inspect UI Tool Tests
+
+    @Test
+    func `Inspect UI tool returns text without screenshot`() async throws {
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot-inspect",
+            screenshotPath: "",
+            elements: DetectedElements(
+                buttons: [
+                    DetectedElement(
+                        id: "B1",
+                        type: .button,
+                        label: "Submit",
+                        bounds: CGRect(x: 100, y: 200, width: 80, height: 32)),
+                ],
+                textFields: [
+                    DetectedElement(
+                        id: "T1",
+                        type: .textField,
+                        label: "Username",
+                        value: "alice",
+                        bounds: CGRect(x: 100, y: 100, width: 200, height: 24)),
+                ]),
+            metadata: DetectionMetadata(
+                detectionTime: 0.01,
+                elementCount: 2,
+                method: "AXorcist",
+                windowContext: WindowContext(applicationName: "TestApp", windowTitle: "Main")))
+        let automation = await MainActor.run {
+            MockAutomationService(
+                accessibilityGranted: true,
+                detectionResult: detectionResult)
+        }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = InspectUITool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [:]))
+        #expect(response.isError == false)
+
+        guard case let .text(text: output, annotations: _, _meta: _) = response.content.first else {
+            Issue.record("Expected text response for inspect_ui output")
+            return
+        }
+
+        #expect(output.contains("UI Text Inspection"))
+        #expect(output.contains("Application: TestApp"))
+        #expect(output.contains("Window: Main"))
+        #expect(output.contains("B1"))
+        #expect(output.contains("Submit"))
+        #expect(output.contains("T1"))
+        #expect(output.contains("Username"))
+        #expect(output.contains("value: \"alice\""))
+        #expect(output.contains("Use element IDs"))
+        #expect(output.contains("If text looks incomplete"))
+        #expect(response.content.count == 1)
+    }
+
+    @Test
+    func `Inspect UI tool app target passes identifier to window context`() async throws {
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "snapshot-inspect-target",
+            screenshotPath: "",
+            elements: DetectedElements(),
+            metadata: DetectionMetadata(detectionTime: 0.01, elementCount: 0, method: "AXorcist"))
+        let automation = await MainActor.run {
+            MockAutomationService(
+                accessibilityGranted: true,
+                detectionResult: detectionResult)
+        }
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
+        let tool = InspectUITool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "app_target": "Safari",
+        ]))
+        #expect(response.isError == false)
+        let lastContext = await MainActor.run { automation.lastWindowContext }
+        #expect(lastContext?.applicationName == "Safari")
+    }
+
     // MARK: - App Tool Tests
 
     @Test
@@ -1047,6 +1127,14 @@ private class MockAutomationService: TargetedClickServiceProtocol {
             return detectionResult
         }
         throw PeekabooError.notImplemented("mock detectElements")
+    }
+
+    func inspectAccessibilityTree(windowContext: WindowContext?) async throws -> ElementDetectionResult {
+        self.lastWindowContext = windowContext
+        if let detectionResult = self.detectionResult {
+            return detectionResult
+        }
+        throw PeekabooError.notImplemented("mock inspectAccessibilityTree")
     }
 
     func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
