@@ -21,7 +21,8 @@ extension DesktopObservationService {
             windowTitle: context?.windowTitle,
             windowID: context?.windowID,
             windowBounds: context?.windowBounds,
-            shouldFocusWebContent: request.detection.allowWebFocusFallback)
+            shouldFocusWebContent: request.detection.allowWebFocusFallback,
+            traversalBudget: request.detection.traversalBudget)
 
         return try await tracer.span("detection.ax") {
             try await self.detectElements(

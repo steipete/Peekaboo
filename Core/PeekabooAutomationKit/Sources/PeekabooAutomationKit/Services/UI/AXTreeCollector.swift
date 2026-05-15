@@ -9,18 +9,38 @@ struct AXTreeCollector {
     struct Result {
         let elements: [DetectedElement]
         let elementIdMap: [String: DetectedElement]
+        let truncationInfo: DetectionTruncationInfo?
     }
 
     private struct TraversalState {
         var elements: [DetectedElement]
         var elementIdMap: [String: DetectedElement]
         var visitedElements: Set<Element>
+        var truncationFlags: TruncationFlags
 
         @MainActor
         init() {
             self.elements = []
             self.elementIdMap = [:]
             self.visitedElements = Set<Element>()
+            self.truncationFlags = TruncationFlags()
+        }
+    }
+
+    private struct TruncationFlags {
+        var maxDepthReached = false
+        var maxElementCountReached = false
+        var maxChildrenPerNodeReached = false
+
+        var isEmpty: Bool {
+            !self.maxDepthReached && !self.maxElementCountReached && !self.maxChildrenPerNodeReached
+        }
+
+        func toInfo() -> DetectionTruncationInfo {
+            DetectionTruncationInfo(
+                maxDepthReached: self.maxDepthReached,
+                maxElementCountReached: self.maxElementCountReached,
+                maxChildrenPerNodeReached: self.maxChildrenPerNodeReached)
         }
     }
 
@@ -41,8 +61,9 @@ struct AXTreeCollector {
 
     private let logger = Logger(subsystem: "boo.peekaboo.core", category: "AXTreeCollector")
 
-    func collect(window: Element, deadline: Date) -> Result {
+    func collect(window: Element, deadline: Date, budget: AXTraversalBudget? = nil) -> Result {
         var state = TraversalState()
+        let resolvedBudget = (budget ?? AXTraversalBudget()).normalizedForTraversal
 
         // Traverse only the captured window. Walking the app root also visits sibling windows,
         // which makes `see --app` slower and returns elements outside the screenshot.
@@ -50,21 +71,35 @@ struct AXTreeCollector {
             window,
             depth: 0,
             deadline: deadline,
+            budget: resolvedBudget,
             state: &state)
 
-        return Result(elements: state.elements, elementIdMap: state.elementIdMap)
+        let truncationInfo: DetectionTruncationInfo? = state.truncationFlags.isEmpty
+            ? nil
+            : state.truncationFlags.toInfo()
+        return Result(
+            elements: state.elements,
+            elementIdMap: state.elementIdMap,
+            truncationInfo: truncationInfo)
     }
 
     private func processElement(
         _ element: Element,
         depth: Int,
         deadline: Date,
+        budget: AXTraversalBudget,
         state: inout TraversalState)
     {
-        guard depth < AXTraversalPolicy.maxTraversalDepth else { return }
+        guard depth < budget.maxDepth else {
+            state.truncationFlags.maxDepthReached = true
+            return
+        }
         guard !Task.isCancelled else { return }
         guard Date() < deadline else { return }
-        guard state.elements.count < AXTraversalPolicy.maxElementCount else { return }
+        guard state.elements.count < budget.maxElementCount else {
+            state.truncationFlags.maxElementCountReached = true
+            return
+        }
         guard state.visitedElements.insert(element).inserted else { return }
         guard let descriptor = AXDescriptorReader.describe(element) else { return }
 
@@ -106,6 +141,7 @@ struct AXTreeCollector {
             of: element,
             depth: depth + 1,
             deadline: deadline,
+            budget: budget,
             state: &state)
     }
 
@@ -113,17 +149,25 @@ struct AXTreeCollector {
         of element: Element,
         depth: Int,
         deadline: Date,
+        budget: AXTraversalBudget,
         state: inout TraversalState)
     {
         guard !Task.isCancelled else { return }
         guard let children = element.children() else { return }
-        let limitedChildren = children.prefix(AXTraversalPolicy.maxChildrenPerNode)
+        if children.count > budget.maxChildrenPerNode {
+            state.truncationFlags.maxChildrenPerNodeReached = true
+        }
+        let limitedChildren = children.prefix(budget.maxChildrenPerNode)
         for child in limitedChildren {
-            guard state.elements.count < AXTraversalPolicy.maxElementCount else { break }
+            guard state.elements.count < budget.maxElementCount else {
+                state.truncationFlags.maxElementCountReached = true
+                break
+            }
             self.processElement(
                 child,
                 depth: depth,
                 deadline: deadline,
+                budget: budget,
                 state: &state)
         }
     }
@@ -276,5 +320,14 @@ struct AXTreeCollector {
         }
 
         return nil
+    }
+}
+
+private extension AXTraversalBudget {
+    var normalizedForTraversal: AXTraversalBudget {
+        AXTraversalBudget(
+            maxDepth: max(0, self.maxDepth),
+            maxElementCount: max(0, self.maxElementCount),
+            maxChildrenPerNode: max(0, self.maxChildrenPerNode))
     }
 }

@@ -40,6 +40,22 @@ public struct AXTraversalBudget: Sendable, Codable, Equatable {
     }
 }
 
+public struct DetectionTruncationInfo: Sendable, Codable, Equatable {
+    public let maxDepthReached: Bool
+    public let maxElementCountReached: Bool
+    public let maxChildrenPerNodeReached: Bool
+
+    public init(
+        maxDepthReached: Bool = false,
+        maxElementCountReached: Bool = false,
+        maxChildrenPerNodeReached: Bool = false)
+    {
+        self.maxDepthReached = maxDepthReached
+        self.maxElementCountReached = maxElementCountReached
+        self.maxChildrenPerNodeReached = maxChildrenPerNodeReached
+    }
+}
+
 public struct DesktopDetectionOptions: Sendable, Codable, Equatable {
     public var mode: DetectionMode
     public var allowWebFocusFallback: Bool

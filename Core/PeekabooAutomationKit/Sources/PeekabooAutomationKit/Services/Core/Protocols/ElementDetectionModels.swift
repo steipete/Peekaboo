@@ -148,6 +148,9 @@ public nonisolated struct WindowContext: Sendable, Codable {
     /// Whether element detection should attempt to focus embedded web content when inputs are missing
     public let shouldFocusWebContent: Bool?
 
+    /// Optional traversal budget to constrain AX tree collection
+    public let traversalBudget: AXTraversalBudget?
+
     public init(
         applicationName: String? = nil,
         applicationBundleId: String? = nil,
@@ -155,7 +158,8 @@ public nonisolated struct WindowContext: Sendable, Codable {
         windowTitle: String? = nil,
         windowID: Int? = nil,
         windowBounds: CGRect? = nil,
-        shouldFocusWebContent: Bool? = nil)
+        shouldFocusWebContent: Bool? = nil,
+        traversalBudget: AXTraversalBudget? = nil)
     {
         self.applicationName = applicationName
         self.applicationBundleId = applicationBundleId
@@ -164,6 +168,7 @@ public nonisolated struct WindowContext: Sendable, Codable {
         self.windowID = windowID
         self.windowBounds = windowBounds
         self.shouldFocusWebContent = shouldFocusWebContent
+        self.traversalBudget = traversalBudget
     }
 }
 
@@ -187,13 +192,17 @@ public struct DetectionMetadata: Sendable, Codable {
     /// Whether a dialog was captured instead of a regular window
     public let isDialog: Bool
 
+    /// Truncation metadata if traversal budgets were reached
+    public let truncationInfo: DetectionTruncationInfo?
+
     public init(
         detectionTime: TimeInterval,
         elementCount: Int,
         method: String,
         warnings: [String] = [],
         windowContext: WindowContext? = nil,
-        isDialog: Bool = false)
+        isDialog: Bool = false,
+        truncationInfo: DetectionTruncationInfo? = nil)
     {
         self.detectionTime = detectionTime
         self.elementCount = elementCount
@@ -201,5 +210,6 @@ public struct DetectionMetadata: Sendable, Codable {
         self.warnings = warnings
         self.windowContext = windowContext
         self.isDialog = isDialog
+        self.truncationInfo = truncationInfo
     }
 }
