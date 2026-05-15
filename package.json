@@ -41,7 +41,7 @@
     "docs:site": "node scripts/build-docs-site.mjs",
     "lint:docs": "node scripts/docs-lint.mjs",
     "polter": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules script -q /dev/null node ../poltergeist/dist/polter.js",
-    "polter:dev": "cd /Users/steipete/Projects/Peekaboo && FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules pnpm --dir ../poltergeist exec tsx ../poltergeist/src/polter.ts",
+    "polter:dev": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules pnpm --dir ../poltergeist exec tsx ../poltergeist/src/polter.ts",
     "peekaboo": "FORCE_COLOR=1 CLICOLOR_FORCE=1 NODE_PATH=../poltergeist/node_modules script -q /dev/null ./scripts/poltergeist-wrapper.sh peekaboo",
     "peekaboo:dev": "pnpm run polter:dev -- peekaboo",
     "poltergeist:start": "./scripts/poltergeist-wrapper.sh start",
