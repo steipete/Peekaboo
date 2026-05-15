@@ -59,6 +59,17 @@ public final class ElementDetectionService {
         windowContext: WindowContext?) async throws -> ElementDetectionResult
     {
         self.logger.info("Starting element detection")
+        return try await self.inspectElements(
+            snapshotId: snapshotId,
+            windowContext: windowContext)
+    }
+
+    /// Inspect UI elements via the accessibility tree without a screenshot.
+    public func inspectElements(
+        snapshotId: String?,
+        windowContext: WindowContext?) async throws -> ElementDetectionResult
+    {
+        self.logger.info("Starting accessibility tree inspection")
 
         let effectiveSnapshotId = snapshotId ?? UUID().uuidString
 
