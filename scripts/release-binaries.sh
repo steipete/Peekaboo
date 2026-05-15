@@ -421,9 +421,16 @@ if [ "$INCLUDE_MAC_APP" = true ]; then
     if [ "$MAC_APP_APPCAST" = false ]; then
         MAC_APP_ARGS+=(--no-appcast)
     fi
-    if ! RELEASE_DIR="$RELEASE_DIR" "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_APP_ARGS[@]}"; then
-        echo -e "${RED}❌ macOS app release failed!${NC}"
-        exit 1
+    if [ ${#MAC_APP_ARGS[@]} -gt 0 ]; then
+        if ! RELEASE_DIR="$RELEASE_DIR" "$PROJECT_ROOT/scripts/release-macos-app.sh" "${MAC_APP_ARGS[@]}"; then
+            echo -e "${RED}❌ macOS app release failed!${NC}"
+            exit 1
+        fi
+    else
+        if ! RELEASE_DIR="$RELEASE_DIR" "$PROJECT_ROOT/scripts/release-macos-app.sh"; then
+            echo -e "${RED}❌ macOS app release failed!${NC}"
+            exit 1
+        fi
     fi
     MAC_APP_ZIP_PATH="$RELEASE_DIR/Peekaboo-${VERSION}.app.zip"
     if [ ! -f "$MAC_APP_ZIP_PATH" ]; then
