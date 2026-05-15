@@ -40,6 +40,10 @@ extension PeekabooAgentService {
         self.makeAgentTool(from: SeeTool(context: self.makeToolContext()))
     }
 
+    public func createInspectUITool() -> AgentTool {
+        self.makeAgentTool(from: InspectUITool(context: self.makeToolContext()))
+    }
+
     public func createImageTool() -> AgentTool {
         self.makeAgentTool(from: ImageTool(context: self.makeToolContext()))
     }
