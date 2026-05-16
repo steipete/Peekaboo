@@ -189,6 +189,40 @@ struct InspectUIToolExecutionTests {
     }
 
     @Test
+    func `Inspect UI tool stores detection result for follow-up automation`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "automation-owned-snapshot",
+            screenshotPath: "",
+            elements: DetectedElements(buttons: [
+                DetectedElement(
+                    id: "B1",
+                    type: .button,
+                    label: "Submit",
+                    bounds: CGRect(x: 100, y: 200, width: 80, height: 32)),
+            ]),
+            metadata: DetectionMetadata(detectionTime: 0.01, elementCount: 1, method: "AXorcist"))
+        let automation = await MainActor.run {
+            InspectUITestAutomationService(
+                accessibilityGranted: true,
+                detectionResult: detectionResult)
+        }
+        let context = await Self.makeContext(automation: automation)
+        let tool = InspectUITool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        let storedResult = try await context.snapshots.getDetectionResult(snapshotId: snapshotId)
+        #expect(storedResult?.snapshotId == snapshotId)
+        #expect(storedResult?.elements.findById("B1")?.label == "Submit")
+    }
+
+    @Test
     func `Inspect UI tool app target passes identifier to window context`() async throws {
         let automation = await MainActor.run {
             InspectUITestAutomationService(

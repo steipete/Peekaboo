@@ -58,28 +58,33 @@ public struct InspectUITool: MCPTool {
 
             let result = try await self.context.automation.inspectAccessibilityTree(
                 windowContext: windowContext)
+            let snapshotResult = self.bindResult(result, to: snapshot.id)
 
-            await snapshot.setUIElements(self.convertElements(result.elements.all))
+            try await self.context.snapshots.storeDetectionResult(
+                snapshotId: snapshot.id,
+                result: snapshotResult)
+
+            await snapshot.setUIElements(self.convertElements(snapshotResult.elements.all))
 
             let summaryText = await self.buildSummary(
                 snapshot: snapshot,
-                result: result,
+                result: snapshotResult,
                 target: target)
 
             let metadata: Value = .object([
                 "snapshot_id": .string(snapshot.id),
-                "element_count": .double(Double(result.elements.all.count)),
-                "actionable_count": .double(Double(result.elements.all.count(where: \.isEnabled))),
-                "used_cache": .bool(result.metadata.method.contains("cached")),
+                "element_count": .double(Double(snapshotResult.elements.all.count)),
+                "actionable_count": .double(Double(snapshotResult.elements.all.count(where: \.isEnabled))),
+                "used_cache": .bool(snapshotResult.metadata.method.contains("cached")),
             ])
 
             var summary = ToolEventSummary(
-                targetApp: result.metadata.windowContext?.applicationName,
-                windowTitle: result.metadata.windowContext?.windowTitle,
+                targetApp: snapshotResult.metadata.windowContext?.applicationName,
+                windowTitle: snapshotResult.metadata.windowContext?.windowTitle,
                 actionDescription: "Inspect UI",
                 notes: String(describing: target))
-            summary.captureApp = result.metadata.windowContext?.applicationName
-            summary.captureWindow = result.metadata.windowContext?.windowTitle
+            summary.captureApp = snapshotResult.metadata.windowContext?.applicationName
+            summary.captureWindow = snapshotResult.metadata.windowContext?.windowTitle
 
             let mergedMeta = ToolEventSummary.merge(summary: summary, into: metadata)
 
@@ -160,6 +165,18 @@ public struct InspectUITool: MCPTool {
 
     private func convertElements(_ detected: [DetectedElement]) -> [UIElement] {
         DetectedElementSnapshotConverter.convert(detected)
+    }
+
+    private func bindResult(_ result: ElementDetectionResult, to snapshotId: String) -> ElementDetectionResult {
+        guard result.snapshotId != snapshotId else {
+            return result
+        }
+
+        return ElementDetectionResult(
+            snapshotId: snapshotId,
+            screenshotPath: result.screenshotPath,
+            elements: result.elements,
+            metadata: result.metadata)
     }
 
     @MainActor
