@@ -1,7 +1,7 @@
+@preconcurrency import AXorcist
 import Foundation
 import XCTest
 @testable import PeekabooAutomationKit
-@preconcurrency import AXorcist
 
 @MainActor
 final class AXTreeCollectorBudgetTests: XCTestCase {
