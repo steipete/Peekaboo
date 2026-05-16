@@ -8,11 +8,28 @@ struct MenuBarElementCollector {
     func appendMenuBar(
         _ menuBar: Element,
         elements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
+        elementIdMap: inout [String: DetectedElement],
+        budget: AXTraversalBudget? = nil) -> DetectionTruncationInfo?
     {
-        guard let menus = menuBar.children() else { return }
+        let resolvedBudget = (budget ?? AXTraversalBudget()).normalizedForTraversal
+        var truncationInfo: DetectionTruncationInfo?
+        guard let menus = menuBar.children() else { return nil }
+        if menus.count > resolvedBudget.maxChildrenPerNode {
+            truncationInfo = DetectionTruncationInfo.merge(
+                truncationInfo,
+                DetectionTruncationInfo(maxChildrenPerNodeReached: true))
+        }
 
-        for menu in menus {
+        for menu in menus.prefix(resolvedBudget.maxChildrenPerNode) {
+            guard self.canAppendElement(
+                depth: 0,
+                elementCount: elements.count,
+                budget: resolvedBudget,
+                truncationInfo: &truncationInfo)
+            else {
+                break
+            }
+
             let menuId = "menu_\(elements.count)"
             let menuElement = DetectedElement(
                 id: menuId,
@@ -28,17 +45,49 @@ struct MenuBarElementCollector {
             elementIdMap[menuId] = menuElement
 
             if let menuItems = menu.children() {
-                self.appendMenuItems(menuItems, elements: &elements, elementIdMap: &elementIdMap)
+                self.appendMenuItems(
+                    menuItems,
+                    depth: 1,
+                    elements: &elements,
+                    elementIdMap: &elementIdMap,
+                    budget: resolvedBudget,
+                    truncationInfo: &truncationInfo)
             }
         }
+        return truncationInfo
     }
 
     private func appendMenuItems(
         _ items: [Element],
+        depth: Int,
         elements: inout [DetectedElement],
-        elementIdMap: inout [String: DetectedElement])
+        elementIdMap: inout [String: DetectedElement],
+        budget: AXTraversalBudget,
+        truncationInfo: inout DetectionTruncationInfo?)
     {
-        for item in items {
+        guard depth < budget.maxDepth else {
+            truncationInfo = DetectionTruncationInfo.merge(
+                truncationInfo,
+                DetectionTruncationInfo(maxDepthReached: true))
+            return
+        }
+
+        if items.count > budget.maxChildrenPerNode {
+            truncationInfo = DetectionTruncationInfo.merge(
+                truncationInfo,
+                DetectionTruncationInfo(maxChildrenPerNodeReached: true))
+        }
+
+        for item in items.prefix(budget.maxChildrenPerNode) {
+            guard self.canAppendElement(
+                depth: depth,
+                elementCount: elements.count,
+                budget: budget,
+                truncationInfo: &truncationInfo)
+            else {
+                break
+            }
+
             let itemId = "menuitem_\(elements.count)"
             let menuItemElement = DetectedElement(
                 id: itemId,
@@ -54,9 +103,38 @@ struct MenuBarElementCollector {
             elementIdMap[itemId] = menuItemElement
 
             if let submenu = item.children(), !submenu.isEmpty {
-                self.appendMenuItems(submenu, elements: &elements, elementIdMap: &elementIdMap)
+                self.appendMenuItems(
+                    submenu,
+                    depth: depth + 1,
+                    elements: &elements,
+                    elementIdMap: &elementIdMap,
+                    budget: budget,
+                    truncationInfo: &truncationInfo)
             }
         }
+    }
+
+    private func canAppendElement(
+        depth: Int,
+        elementCount: Int,
+        budget: AXTraversalBudget,
+        truncationInfo: inout DetectionTruncationInfo?) -> Bool
+    {
+        guard depth < budget.maxDepth else {
+            truncationInfo = DetectionTruncationInfo.merge(
+                truncationInfo,
+                DetectionTruncationInfo(maxDepthReached: true))
+            return false
+        }
+
+        guard elementCount < budget.maxElementCount else {
+            truncationInfo = DetectionTruncationInfo.merge(
+                truncationInfo,
+                DetectionTruncationInfo(maxElementCountReached: true))
+            return false
+        }
+
+        return true
     }
 
     private func menuItemAttributes(_ item: Element) -> [String: String] {

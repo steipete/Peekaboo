@@ -56,6 +56,19 @@ public struct DetectionTruncationInfo: Sendable, Codable, Equatable {
     }
 }
 
+extension DetectionTruncationInfo {
+    static func merge(
+        _ lhs: DetectionTruncationInfo?,
+        _ rhs: DetectionTruncationInfo?) -> DetectionTruncationInfo?
+    {
+        guard lhs != nil || rhs != nil else { return nil }
+        return DetectionTruncationInfo(
+            maxDepthReached: lhs?.maxDepthReached == true || rhs?.maxDepthReached == true,
+            maxElementCountReached: lhs?.maxElementCountReached == true || rhs?.maxElementCountReached == true,
+            maxChildrenPerNodeReached: lhs?.maxChildrenPerNodeReached == true || rhs?.maxChildrenPerNodeReached == true)
+    }
+}
+
 public struct DesktopDetectionOptions: Sendable, Codable, Equatable {
     public var mode: DetectionMode
     public var allowWebFocusFallback: Bool
@@ -75,6 +88,24 @@ public struct DesktopDetectionOptions: Sendable, Codable, Equatable {
         self.includeMenuBarElements = includeMenuBarElements
         self.preferOCR = preferOCR
         self.traversalBudget = traversalBudget
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case mode
+        case allowWebFocusFallback
+        case includeMenuBarElements
+        case preferOCR
+        case traversalBudget
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.mode = try container.decode(DetectionMode.self, forKey: .mode)
+        self.allowWebFocusFallback = try container.decode(Bool.self, forKey: .allowWebFocusFallback)
+        self.includeMenuBarElements = try container.decode(Bool.self, forKey: .includeMenuBarElements)
+        self.preferOCR = try container.decode(Bool.self, forKey: .preferOCR)
+        self.traversalBudget = try container.decodeIfPresent(AXTraversalBudget.self, forKey: .traversalBudget)
+            ?? AXTraversalBudget()
     }
 }
 

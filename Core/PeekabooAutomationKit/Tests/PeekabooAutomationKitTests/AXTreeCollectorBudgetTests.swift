@@ -1,4 +1,5 @@
 @preconcurrency import AXorcist
+import CoreGraphics
 import Foundation
 import XCTest
 @testable import PeekabooAutomationKit
@@ -111,5 +112,52 @@ final class AXTreeCollectorBudgetTests: XCTestCase {
 
         XCTAssertTrue(result.elements.isEmpty, "Negative depth/count budgets should clamp to zero")
         XCTAssertTrue(result.truncationInfo?.maxDepthReached == true, "Should flag maxDepthReached")
+    }
+
+    func testDesktopDetectionOptionsDecodesOldPayloadWithoutTraversalBudget() throws {
+        let options = DesktopDetectionOptions(
+            mode: .accessibility,
+            allowWebFocusFallback: false,
+            includeMenuBarElements: true,
+            preferOCR: false)
+        let encoded = try JSONEncoder().encode(options)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        object.removeValue(forKey: "traversalBudget")
+        let oldPayload = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(DesktopDetectionOptions.self, from: oldPayload)
+
+        XCTAssertEqual(decoded.traversalBudget, AXTraversalBudget())
+        XCTAssertEqual(decoded.allowWebFocusFallback, false)
+    }
+
+    func testOCRMergePreservesTruncationMetadata() {
+        let truncationInfo = DetectionTruncationInfo(maxElementCountReached: true)
+        let detection = ElementDetectionResult(
+            snapshotId: "snapshot",
+            screenshotPath: "",
+            elements: DetectedElements(buttons: [
+                DetectedElement(
+                    id: "elem_1",
+                    type: .button,
+                    label: "OK",
+                    bounds: CGRect(x: 1, y: 1, width: 10, height: 10)),
+            ]),
+            metadata: DetectionMetadata(
+                detectionTime: 0,
+                elementCount: 1,
+                method: "AXorcist",
+                warnings: ["ax_truncated_count"],
+                truncationInfo: truncationInfo))
+        let ocrElement = DetectedElement(
+            id: "ocr_1",
+            type: .staticText,
+            label: "OCR",
+            bounds: CGRect(x: 2, y: 2, width: 10, height: 10))
+
+        let merged = ObservationOCRMapper.merge(ocrElements: [ocrElement], into: detection)
+
+        XCTAssertEqual(merged.metadata.truncationInfo, truncationInfo)
+        XCTAssertTrue(merged.metadata.warnings.contains("ax_truncated_count"))
     }
 }
