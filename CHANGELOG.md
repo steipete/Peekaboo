@@ -7,6 +7,7 @@
 - `pnpm run peekaboo:dev` no longer depends on a hardcoded local checkout path.
 - `peekaboo agent` now tells models to use the current tool schema instead of stale tool names and arguments. Thanks @vyctorbrzezowski for #139.
 - AX element detection now honors traversal budgets and reports truncation when depth, count, or per-node child limits are reached. Thanks @vyctorbrzezowski for #140.
+- `peekaboo agent` and MCP clients now have an `inspect_ui` tool for AX-only UI text/control inspection without capturing screenshots. Thanks @vyctorbrzezowski for #141.
 
 ## [3.2.0] - 2026-05-15
 
