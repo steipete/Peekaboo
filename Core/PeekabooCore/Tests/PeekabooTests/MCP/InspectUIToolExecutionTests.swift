@@ -223,6 +223,52 @@ struct InspectUIToolExecutionTests {
     }
 
     @Test
+    func `Inspect UI tool refreshes snapshot target metadata`() async throws {
+        await UISnapshotManager.shared.removeAllSnapshots()
+        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshotId = await snapshot.id
+        await snapshot.setTargetMetadata(from: WindowContext(
+            applicationName: "OldApp",
+            applicationProcessId: 111,
+            windowTitle: "Old Window"))
+
+        let detectionResult = ElementDetectionResult(
+            snapshotId: "automation-owned-snapshot",
+            screenshotPath: "",
+            elements: DetectedElements(buttons: [
+                DetectedElement(
+                    id: "B1",
+                    type: .button,
+                    label: "Submit",
+                    bounds: CGRect(x: 100, y: 200, width: 80, height: 32)),
+            ]),
+            metadata: DetectionMetadata(
+                detectionTime: 0.01,
+                elementCount: 1,
+                method: "AXorcist",
+                windowContext: WindowContext(
+                    applicationName: "NewApp",
+                    applicationProcessId: 222,
+                    windowTitle: "New Window")))
+        let automation = await MainActor.run {
+            InspectUITestAutomationService(
+                accessibilityGranted: true,
+                detectionResult: detectionResult)
+        }
+        let context = await Self.makeContext(automation: automation)
+        let tool = InspectUITool(context: context)
+
+        let response = try await tool.execute(arguments: ToolArguments(raw: [
+            "snapshot": snapshotId,
+        ]))
+
+        #expect(response.isError == false)
+        #expect(snapshot.applicationName == "NewApp")
+        #expect(snapshot.windowTitle == "New Window")
+        #expect(snapshot.applicationProcessId == 222)
+    }
+
+    @Test
     func `Inspect UI tool app target passes identifier to window context`() async throws {
         let automation = await MainActor.run {
             InspectUITestAutomationService(

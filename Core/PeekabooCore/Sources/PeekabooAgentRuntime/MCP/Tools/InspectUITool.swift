@@ -64,6 +64,7 @@ public struct InspectUITool: MCPTool {
                 snapshotId: snapshot.id,
                 result: snapshotResult)
 
+            await snapshot.setTargetMetadata(from: snapshotResult.metadata.windowContext)
             await snapshot.setUIElements(self.convertElements(snapshotResult.elements.all))
 
             let summaryText = await self.buildSummary(
