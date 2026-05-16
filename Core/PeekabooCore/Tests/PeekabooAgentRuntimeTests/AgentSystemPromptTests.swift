@@ -22,8 +22,7 @@ struct AgentSystemPromptTests {
         for token in Self.forbiddenTokens {
             #expect(
                 !prompt.contains(token),
-                "Prompt still references stale tool/argument: \(token)"
-            )
+                "Prompt still references stale tool/argument: \(token)")
         }
     }
 
@@ -31,7 +30,9 @@ struct AgentSystemPromptTests {
     func `generated prompt references real see parameter app_target`() {
         guard #available(macOS 14.0, *) else { return }
         let prompt = AgentSystemPrompt.generate()
-        #expect(prompt.contains("app_target"), "Prompt should guide agents to use the real `app_target` parameter for `see`.")
+        #expect(
+            prompt.contains("app_target"),
+            "Prompt should guide agents to use the real `app_target` parameter for `see`.")
     }
 
     @Test
@@ -61,7 +62,6 @@ struct AgentSystemPromptTests {
         let prompt = AgentSystemPrompt.generate()
         #expect(
             prompt.contains(#""item_type": "application_windows", "app": "Safari""#),
-            "Prompt should include the required `app` argument when listing application windows."
-        )
+            "Prompt should include the required `app` argument when listing application windows.")
     }
 }
