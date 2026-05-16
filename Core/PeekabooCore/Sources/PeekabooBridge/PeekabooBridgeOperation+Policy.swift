@@ -9,7 +9,8 @@ extension PeekabooBridgeOperation {
             [.screenRecording]
         case .targetedHotkey, .targetedClick:
             [.postEvent]
-        case .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey, .swipe, .drag, .moveMouse,
+        case .inspectAccessibilityTree,
+             .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey, .swipe, .drag, .moveMouse,
              .waitForElement, .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow, .listMenus, .listFrontmostMenus,
              .clickMenuItem, .clickMenuItemByName, .listMenuExtras, .clickMenuExtra, .menuExtraOpenMenuFrame,
@@ -62,6 +63,7 @@ extension PeekabooBridgeOperation {
         .captureFrontmost,
         .captureArea,
         .detectElements,
+        .inspectAccessibilityTree,
         .desktopObservation,
         .click,
         .type,

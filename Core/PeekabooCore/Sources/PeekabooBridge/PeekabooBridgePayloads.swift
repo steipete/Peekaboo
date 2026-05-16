@@ -54,6 +54,10 @@ public struct PeekabooBridgeDetectElementsRequest: Codable, Sendable {
     public let windowContext: WindowContext?
 }
 
+public struct PeekabooBridgeInspectAccessibilityTreeRequest: Codable, Sendable {
+    public let windowContext: WindowContext?
+}
+
 public struct PeekabooBridgeClickRequest: Codable, Sendable {
     public let target: ClickTarget
     public let clickType: ClickType

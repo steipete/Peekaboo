@@ -15,6 +15,8 @@ TargetedClickServiceProtocol {
     public let supportsTargetedClicks: Bool
     public let targetedClickUnavailableReason: String?
     public let targetedClickRequiresEventSynthesizingPermission: Bool
+    public let supportsInspectAccessibilityTree: Bool
+    public let inspectAccessibilityTreeUnavailableReason: String?
 
     public init(
         client: PeekabooBridgeClient,
@@ -23,7 +25,9 @@ TargetedClickServiceProtocol {
         targetedHotkeyRequiresEventSynthesizingPermission: Bool = false,
         supportsTargetedClicks: Bool = false,
         targetedClickUnavailableReason: String? = nil,
-        targetedClickRequiresEventSynthesizingPermission: Bool = false)
+        targetedClickRequiresEventSynthesizingPermission: Bool = false,
+        supportsInspectAccessibilityTree: Bool = false,
+        inspectAccessibilityTreeUnavailableReason: String? = nil)
     {
         self.client = client
         self.supportsTargetedHotkeys = supportsTargetedHotkeys
@@ -32,6 +36,8 @@ TargetedClickServiceProtocol {
         self.supportsTargetedClicks = supportsTargetedClicks
         self.targetedClickUnavailableReason = targetedClickUnavailableReason
         self.targetedClickRequiresEventSynthesizingPermission = targetedClickRequiresEventSynthesizingPermission
+        self.supportsInspectAccessibilityTree = supportsInspectAccessibilityTree
+        self.inspectAccessibilityTreeUnavailableReason = inspectAccessibilityTreeUnavailableReason
     }
 
     public func detectElements(
@@ -57,6 +63,16 @@ TargetedClickServiceProtocol {
             snapshotId: snapshotId,
             windowContext: windowContext,
             requestTimeoutSec: requestTimeoutSec)
+    }
+
+    public func inspectAccessibilityTree(windowContext: WindowContext?) async throws -> ElementDetectionResult {
+        guard self.supportsInspectAccessibilityTree else {
+            throw Self.inspectAccessibilityTreeUnavailableError(reason: self.inspectAccessibilityTreeUnavailableReason)
+        }
+
+        return try await self.client.inspectAccessibilityTree(
+            windowContext: windowContext,
+            requestTimeoutSec: 30)
     }
 
     public func click(target: ClickTarget, clickType: ClickType, snapshotId: String?) async throws {
@@ -174,6 +190,11 @@ TargetedClickServiceProtocol {
 
         return .serviceUnavailable(
             reason ?? "Remote bridge host does not support background clicks; use --no-remote or update the host")
+    }
+
+    private static func inspectAccessibilityTreeUnavailableError(reason: String?) -> PeekabooError {
+        .serviceUnavailable(
+            reason ?? "Remote bridge host does not support inspect_ui; use `see`, --no-remote, or update the host")
     }
 
     private static func permissionDeniedError(for envelope: PeekabooBridgeErrorEnvelope) -> PeekabooError {

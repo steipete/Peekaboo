@@ -39,6 +39,8 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
         supportsTargetedClicks: Bool = false,
         targetedClickUnavailableReason: String? = nil,
         targetedClickRequiresEventSynthesizingPermission: Bool = false,
+        supportsInspectAccessibilityTree: Bool = false,
+        inspectAccessibilityTreeUnavailableReason: String? = nil,
         supportsPostEventPermissionRequest: Bool = false,
         supportsElementActions: Bool = false,
         supportsDesktopObservation: Bool = false,
@@ -60,7 +62,9 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
                 targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission,
                 supportsTargetedClicks: supportsTargetedClicks,
                 targetedClickUnavailableReason: targetedClickUnavailableReason,
-                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission)
+                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission,
+                supportsInspectAccessibilityTree: supportsInspectAccessibilityTree,
+                inspectAccessibilityTreeUnavailableReason: inspectAccessibilityTreeUnavailableReason)
         } else {
             RemoteUIAutomationService(
                 client: client,
@@ -69,7 +73,9 @@ public final class RemotePeekabooServices: PeekabooServiceProviding {
                 targetedHotkeyRequiresEventSynthesizingPermission: targetedHotkeyRequiresEventSynthesizingPermission,
                 supportsTargetedClicks: supportsTargetedClicks,
                 targetedClickUnavailableReason: targetedClickUnavailableReason,
-                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission)
+                targetedClickRequiresEventSynthesizingPermission: targetedClickRequiresEventSynthesizingPermission,
+                supportsInspectAccessibilityTree: supportsInspectAccessibilityTree,
+                inspectAccessibilityTreeUnavailableReason: inspectAccessibilityTreeUnavailableReason)
         }
         self.windows = RemoteWindowManagementService(client: client)
         let snapshotManager = RemoteSnapshotManager(client: client)

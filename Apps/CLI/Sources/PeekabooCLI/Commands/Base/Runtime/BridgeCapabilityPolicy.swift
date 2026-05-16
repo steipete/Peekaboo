@@ -38,6 +38,11 @@ enum BridgeCapabilityPolicy {
             handshake.supportedOperations.contains(.desktopObservation)
     }
 
+    static func supportsInspectAccessibilityTree(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 7) &&
+            handshake.supportedOperations.contains(.inspectAccessibilityTree)
+    }
+
     static func supportsPostEventPermissionRequest(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
         handshake.negotiatedVersion >= PeekabooBridgeProtocolVersion(major: 1, minor: 2) &&
             handshake.supportedOperations.contains(.requestPostEventPermission)

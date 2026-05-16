@@ -10,9 +10,10 @@ struct PeekabooMCPServerTests {
         let server = try await makeServer()
         let names = await server.registeredToolNamesForTesting()
 
-        #expect(names.count == 25)
+        #expect(names.count == 26)
         #expect(names == names.sorted())
         #expect(names.contains("image"))
+        #expect(names.contains("inspect_ui"))
         #expect(names.contains("click"))
         #expect(names.contains("clipboard"))
         #expect(names.contains("paste"))
@@ -28,9 +29,8 @@ struct PeekabooMCPServerTests {
             defaultStrategy: .synthOnly,
             setValue: .synthOnly,
             performAction: .synthOnly))
-        services.installAgentRuntimeDefaults()
 
-        let server = try await PeekabooMCPServer()
+        let server = try await PeekabooMCPServer(toolContext: MCPToolContext(services: services))
         let names = await server.registeredToolNamesForTesting()
 
         #expect(!names.contains("set_value"))
@@ -41,6 +41,5 @@ struct PeekabooMCPServerTests {
 @MainActor
 private func makeServer() async throws -> PeekabooMCPServer {
     let services = PeekabooServices()
-    services.installAgentRuntimeDefaults()
-    return try await PeekabooMCPServer()
+    return try await PeekabooMCPServer(toolContext: MCPToolContext(services: services))
 }
