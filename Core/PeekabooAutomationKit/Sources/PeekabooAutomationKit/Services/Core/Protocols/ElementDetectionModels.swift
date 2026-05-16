@@ -159,7 +159,7 @@ public nonisolated struct WindowContext: Sendable, Codable {
         windowID: Int? = nil,
         windowBounds: CGRect? = nil,
         shouldFocusWebContent: Bool? = nil,
-        traversalBudget: AXTraversalBudget? = nil)
+        traversalBudget: AXTraversalBudget?)
     {
         self.applicationName = applicationName
         self.applicationBundleId = applicationBundleId
@@ -169,6 +169,26 @@ public nonisolated struct WindowContext: Sendable, Codable {
         self.windowBounds = windowBounds
         self.shouldFocusWebContent = shouldFocusWebContent
         self.traversalBudget = traversalBudget
+    }
+
+    public init(
+        applicationName: String? = nil,
+        applicationBundleId: String? = nil,
+        applicationProcessId: Int32? = nil,
+        windowTitle: String? = nil,
+        windowID: Int? = nil,
+        windowBounds: CGRect? = nil,
+        shouldFocusWebContent: Bool? = nil)
+    {
+        self.init(
+            applicationName: applicationName,
+            applicationBundleId: applicationBundleId,
+            applicationProcessId: applicationProcessId,
+            windowTitle: windowTitle,
+            windowID: windowID,
+            windowBounds: windowBounds,
+            shouldFocusWebContent: shouldFocusWebContent,
+            traversalBudget: nil)
     }
 }
 
@@ -202,7 +222,7 @@ public struct DetectionMetadata: Sendable, Codable {
         warnings: [String] = [],
         windowContext: WindowContext? = nil,
         isDialog: Bool = false,
-        truncationInfo: DetectionTruncationInfo? = nil)
+        truncationInfo: DetectionTruncationInfo?)
     {
         self.detectionTime = detectionTime
         self.elementCount = elementCount
@@ -211,5 +231,23 @@ public struct DetectionMetadata: Sendable, Codable {
         self.windowContext = windowContext
         self.isDialog = isDialog
         self.truncationInfo = truncationInfo
+    }
+
+    public init(
+        detectionTime: TimeInterval,
+        elementCount: Int,
+        method: String,
+        warnings: [String] = [],
+        windowContext: WindowContext? = nil,
+        isDialog: Bool = false)
+    {
+        self.init(
+            detectionTime: detectionTime,
+            elementCount: elementCount,
+            method: method,
+            warnings: warnings,
+            windowContext: windowContext,
+            isDialog: isDialog,
+            truncationInfo: nil)
     }
 }
