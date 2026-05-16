@@ -54,4 +54,14 @@ struct AgentSystemPromptTests {
         let prompt = AgentSystemPrompt.generate()
         #expect(prompt.contains("`sleep`"), "Prompt should reference the real `sleep` tool for waits.")
     }
+
+    @Test
+    func `generated prompt includes app when listing application windows`() {
+        guard #available(macOS 14.0, *) else { return }
+        let prompt = AgentSystemPrompt.generate()
+        #expect(
+            prompt.contains(#""item_type": "application_windows", "app": "Safari""#),
+            "Prompt should include the required `app` argument when listing application windows."
+        )
+    }
 }

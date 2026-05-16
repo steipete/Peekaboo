@@ -119,10 +119,11 @@ public struct AgentSystemPrompt {
     private static func windowManagementSection() -> String {
         """
         **Window Management Strategy**
-        1. Use the `list` tool with `{ "item_type": "application_windows" }` to see available windows.
+        1. Use the `list` tool with `{ "item_type": "application_windows", "app": "Safari" }` to see available windows.
         2. If the target window is missing, call `list_apps` to check whether the app is running.
         3. Launch applications with the `launch_app` tool: `{ "name": "Safari" }`.
-        4. Use the `list` tool with `{ "item_type": "application_windows" }` again to confirm the window exists.
+        4. Use the `list` tool with `{ "item_type": "application_windows", "app": "Safari" }`
+           again to confirm the window exists.
         5. Capture background apps with `see` using `{ "app_target": "Safari" }`.
         6. Use the `window` tool for focus/move/resize operations, always specifying
            `{ "action": "focus", "app": "Google Chrome" }` (or the relevant action plus identifiers).
