@@ -199,6 +199,32 @@ struct CommandRuntimeInjectionTests {
     }
 
     @Test
+    func `inspect UI support requires advertised protocol operation`() {
+        let supported = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 7),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .inspectAccessibilityTree]
+        )
+        let older = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 6),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen, .inspectAccessibilityTree]
+        )
+        let hidden = PeekabooBridgeHandshakeResponse(
+            negotiatedVersion: PeekabooBridgeProtocolVersion(major: 1, minor: 7),
+            hostKind: .gui,
+            build: nil,
+            supportedOperations: [.captureScreen]
+        )
+
+        #expect(CommandRuntime.supportsInspectAccessibilityTree(for: supported))
+        #expect(!CommandRuntime.supportsInspectAccessibilityTree(for: older))
+        #expect(!CommandRuntime.supportsInspectAccessibilityTree(for: hidden))
+    }
+
+    @Test
     func `environment bridge socket disables daemon auto start`() {
         let options = CommandRuntimeOptions()
         let environment = ["PEEKABOO_BRIDGE_SOCKET": "/tmp/explicit.sock"]

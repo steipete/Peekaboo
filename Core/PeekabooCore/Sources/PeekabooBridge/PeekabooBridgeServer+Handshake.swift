@@ -114,6 +114,9 @@ extension PeekabooBridgeServer {
         if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 6) {
             compatible.remove(.targetedClick)
         }
+        if negotiated < PeekabooBridgeProtocolVersion(major: 1, minor: 7) {
+            compatible.remove(.inspectAccessibilityTree)
+        }
         return compatible
     }
 

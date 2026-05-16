@@ -18,8 +18,8 @@ extension PeekabooBridgeServer {
             try await self.handleCaptureRequest(request)
         case .desktopObservation:
             try await self.handleDesktopObservationRequest(request)
-        case .detectElements, .click, .type, .typeActions, .setValue, .performAction, .scroll, .hotkey,
-             .targetedHotkey, .targetedClick, .swipe, .drag, .moveMouse, .waitForElement:
+        case .detectElements, .inspectAccessibilityTree, .click, .type, .typeActions, .setValue, .performAction,
+             .scroll, .hotkey, .targetedHotkey, .targetedClick, .swipe, .drag, .moveMouse, .waitForElement:
             try await self.handleAutomationRequest(request)
         case .listWindows, .focusWindow, .moveWindow, .resizeWindow, .setWindowBounds, .closeWindow,
              .minimizeWindow, .maximizeWindow, .getFocusedWindow:
@@ -163,6 +163,10 @@ extension PeekabooBridgeServer {
             let result = try await self.services.automation.detectElements(
                 in: payload.imageData,
                 snapshotId: payload.snapshotId,
+                windowContext: payload.windowContext)
+            return .elementDetection(result)
+        case let .inspectAccessibilityTree(payload):
+            let result = try await self.services.automation.inspectAccessibilityTree(
                 windowContext: payload.windowContext)
             return .elementDetection(result)
         case let .click(payload):

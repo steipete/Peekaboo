@@ -32,18 +32,31 @@ public actor PeekabooMCPServer {
         self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
         self.toolRegistry = await MCPToolRegistry()
         self.toolContext = await MainActor.run { MCPToolContext.makeDefault() }
+        self.server = Self.makeServer(name: PeekabooMCPVersion.serverName, version: PeekabooMCPVersion.current)
 
+        await self.setupHandlers()
+        await self.registerAllTools()
+    }
+
+    init(toolContext: MCPToolContext) async throws {
+        self.logger = os.Logger(subsystem: "boo.peekaboo.mcp", category: "server")
+        self.toolRegistry = await MCPToolRegistry()
+        self.toolContext = toolContext
+        self.server = Self.makeServer(name: PeekabooMCPVersion.serverName, version: PeekabooMCPVersion.current)
+
+        await self.setupHandlers()
+        await self.registerAllTools()
+    }
+
+    private static func makeServer(name: String, version: String) -> Server {
         // Initialize the official MCP Server
-        self.server = Server(
-            name: self.serverName,
-            version: self.serverVersion,
+        Server(
+            name: name,
+            version: version,
             capabilities: Server.Capabilities(
                 prompts: .init(listChanged: false),
                 resources: .init(subscribe: false, listChanged: false),
                 tools: .init(listChanged: true)))
-
-        await self.setupHandlers()
-        await self.registerAllTools()
     }
 
     private func setupHandlers() async {

@@ -82,7 +82,10 @@ struct MCPErrorHandlingTests {
 
     @Test
     func `Server handles unsupported transport types`() async throws {
-        let server = try await PeekabooMCPServer()
+        let context = await MainActor.run {
+            MCPToolContext(services: PeekabooServices())
+        }
+        let server = try await PeekabooMCPServer(toolContext: context)
 
         // HTTP transport not implemented
         do {

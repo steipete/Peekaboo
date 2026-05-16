@@ -17,6 +17,7 @@ public enum PeekabooBridgeRequest: Codable, Sendable {
     case captureFrontmost(PeekabooBridgeCaptureFrontmostRequest)
     case captureArea(PeekabooBridgeCaptureAreaRequest)
     case detectElements(PeekabooBridgeDetectElementsRequest)
+    case inspectAccessibilityTree(PeekabooBridgeInspectAccessibilityTreeRequest)
     case desktopObservation(DesktopObservationRequest)
     case click(PeekabooBridgeClickRequest)
     case type(PeekabooBridgeTypeRequest)
@@ -104,6 +105,7 @@ extension PeekabooBridgeRequest {
         case .captureFrontmost: .captureFrontmost
         case .captureArea: .captureArea
         case .detectElements: .detectElements
+        case .inspectAccessibilityTree: .inspectAccessibilityTree
         case .desktopObservation: .desktopObservation
         case .click: .click
         case .type: .type

@@ -244,6 +244,10 @@ extension CommandRuntime {
         BridgeCapabilityPolicy.supportsDesktopObservation(for: handshake)
     }
 
+    static func supportsInspectAccessibilityTree(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
+        BridgeCapabilityPolicy.supportsInspectAccessibilityTree(for: handshake)
+    }
+
     static func supportsPostEventPermissionRequest(for handshake: PeekabooBridgeHandshakeResponse) -> Bool {
         BridgeCapabilityPolicy.supportsPostEventPermissionRequest(for: handshake)
     }

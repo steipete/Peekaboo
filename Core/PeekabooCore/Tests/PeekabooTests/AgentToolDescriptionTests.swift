@@ -204,6 +204,9 @@ struct AgentToolDescriptionTests {
         let seeTool = allTools.first { $0.name == "see" }
         #expect(seeTool?.category == .vision)
 
+        let inspectUITool = allTools.first { $0.name == "inspect_ui" }
+        #expect(inspectUITool?.category == .element)
+
         let launchTool = allTools.first { $0.name == "launch_app" }
         #expect(launchTool?.category == .app)
     }

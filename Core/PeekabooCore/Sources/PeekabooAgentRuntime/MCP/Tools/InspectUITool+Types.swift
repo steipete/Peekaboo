@@ -13,6 +13,9 @@ struct InspectUIRequest {
 
 @MainActor
 struct InspectUISummaryBuilder {
+    private static let maxRenderedElements = 120
+    private static let maxFieldLength = 240
+
     let snapshot: UISnapshot
     let result: ElementDetectionResult
     let target: ObservationTargetArgument
@@ -34,7 +37,7 @@ struct InspectUISummaryBuilder {
 
     private func headerLines() -> [String] {
         [
-            "🔍 UI Text Inspection",
+            "UI Text Inspection",
             "Snapshot ID: \(self.snapshot.id)",
         ]
     }
@@ -56,12 +59,20 @@ struct InspectUISummaryBuilder {
             return ["No accessible UI elements found. Try `see` for screenshot-based detection."]
         }
 
-        let elementsByRole = Dictionary(grouping: elements, by: { $0.type.rawValue })
+        let renderedElements = Array(elements.prefix(Self.maxRenderedElements))
+        let omittedCount = elements.count - renderedElements.count
+        let elementsByRole = Dictionary(grouping: renderedElements, by: { $0.type.rawValue })
         var lines = ["UI Elements:"]
         for (role, roleElements) in elementsByRole.sorted(by: { $0.key < $1.key }) {
             lines.append("")
             lines.append(self.roleHeader(role: role, elements: roleElements))
             lines.append(contentsOf: roleElements.map(self.describeElement))
+        }
+        if omittedCount > 0 {
+            lines.append("")
+            lines.append(
+                "\(omittedCount) additional elements omitted from text output. " +
+                    "Use `see` or a narrower app_target if you need more context.")
         }
         return lines
     }
@@ -73,29 +84,36 @@ struct InspectUISummaryBuilder {
 
     private func describeElement(_ element: DetectedElement) -> String {
         var parts = ["  \(element.id)"]
-        if let label = element.label, !label.isEmpty {
+        if let label = self.clipped(element.label) {
             parts.append("\"\(label)\"")
         }
-        let sizeText = "size \(Int(element.bounds.width))×\(Int(element.bounds.height))"
+        let sizeText = "size \(Int(element.bounds.width))x\(Int(element.bounds.height))"
         parts.append("at (\(Int(element.bounds.origin.x)), \(Int(element.bounds.origin.y))) \(sizeText)")
-        if let value = element.value, !value.isEmpty {
+        if let value = self.clipped(element.value) {
             parts.append("value: \"\(value)\"")
         }
-        if let desc = element.attributes["description"], !desc.isEmpty {
+        if let desc = self.clipped(element.attributes["description"]) {
             parts.append("desc: \"\(desc)\"")
         }
-        if let help = element.attributes["help"], !help.isEmpty {
+        if let help = self.clipped(element.attributes["help"]) {
             parts.append("help: \"\(help)\"")
         }
-        if let shortcut = element.attributes["keyboardShortcut"], !shortcut.isEmpty {
+        if let shortcut = self.clipped(element.attributes["keyboardShortcut"]) {
             parts.append("shortcut: \(shortcut)")
         }
-        if let identifier = element.attributes["identifier"], !identifier.isEmpty {
+        if let identifier = self.clipped(element.attributes["identifier"]) {
             parts.append("identifier: \(identifier)")
         }
         if !element.isEnabled {
             parts.append("[not actionable]")
         }
         return parts.joined(separator: " - ")
+    }
+
+    private func clipped(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        guard value.count > Self.maxFieldLength else { return value }
+        let index = value.index(value.startIndex, offsetBy: Self.maxFieldLength)
+        return String(value[..<index]) + "..."
     }
 }

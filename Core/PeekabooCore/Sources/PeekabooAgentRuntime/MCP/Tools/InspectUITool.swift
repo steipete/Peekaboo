@@ -28,11 +28,12 @@ public struct InspectUITool: MCPTool {
             properties: [
                 "app_target": SchemaBuilder.string(
                     description: """
-                    Optional. Specifies the inspection target (same as see/image tools).
-                    Omit or use an empty string for all screens.
-                    Use 'frontmost' for the current foreground application.
+                    Optional. Specifies the app/window to inspect via Accessibility.
+                    Omit, use an empty string, or use 'frontmost' for the current foreground application.
                     Use 'AppName' (e.g., 'Safari') for a specific application.
                     Use 'PID:PROCESS_ID' to target a specific process.
+                    Use 'AppName:WindowTitle' or 'PID:PROCESS_ID:WindowTitle' for a specific window title.
+                    Screen and menu bar targets require screenshots; use `see` for those.
                     """),
                 "snapshot": SchemaBuilder.string(
                     description: """
@@ -52,8 +53,8 @@ public struct InspectUITool: MCPTool {
 
         do {
             let snapshot = try await self.getOrCreateSnapshot(snapshotId: request.snapshotId)
-            let target = try ObservationTargetArgument.parse(request.appTarget)
-            let windowContext = self.makeWindowContext(for: target)
+            let target = try self.parseTarget(request.appTarget)
+            let windowContext = try self.makeWindowContext(for: target)
 
             let result = try await self.context.automation.inspectAccessibilityTree(
                 windowContext: windowContext)
@@ -68,7 +69,7 @@ public struct InspectUITool: MCPTool {
             let metadata: Value = .object([
                 "snapshot_id": .string(snapshot.id),
                 "element_count": .double(Double(result.elements.all.count)),
-                "actionable_count": .double(Double(result.elements.all.count(where: { $0.isEnabled }))),
+                "actionable_count": .double(Double(result.elements.all.count(where: \.isEnabled))),
                 "used_cache": .bool(result.metadata.method.contains("cached")),
             ])
 
@@ -102,31 +103,63 @@ public struct InspectUITool: MCPTool {
         return await UISnapshotManager.shared.createSnapshot()
     }
 
-    private func makeWindowContext(for target: ObservationTargetArgument) -> WindowContext {
-        WindowContext(
-            applicationName: target.focusIdentifier,
-            shouldFocusWebContent: true)
+    private func parseTarget(_ rawTarget: String?) throws -> ObservationTargetArgument {
+        guard let rawTarget,
+              !rawTarget.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return .frontmost
+        }
+
+        let target = try ObservationTargetArgument.parse(rawTarget)
+        switch target {
+        case .screen, .menubar:
+            throw PeekabooError.invalidInput(
+                "inspect_ui supports frontmost, AppName, AppName:WindowTitle, PID:PROCESS_ID, and " +
+                    "PID:PROCESS_ID:WindowTitle targets. Use `see` for screen or menu bar targets.")
+        case .frontmost, .application, .pid:
+            return target
+        }
+    }
+
+    private func makeWindowContext(for target: ObservationTargetArgument) throws -> WindowContext {
+        switch target {
+        case .frontmost:
+            return WindowContext(shouldFocusWebContent: true)
+        case let .application(identifier, window):
+            let selection = try self.windowSelectionFields(window)
+            return WindowContext(
+                applicationName: identifier,
+                windowTitle: selection.title,
+                windowID: selection.id,
+                shouldFocusWebContent: true)
+        case let .pid(pid, window):
+            let selection = try self.windowSelectionFields(window)
+            return WindowContext(
+                applicationProcessId: pid,
+                windowTitle: selection.title,
+                windowID: selection.id,
+                shouldFocusWebContent: true)
+        case .screen, .menubar:
+            throw PeekabooError.invalidInput("inspect_ui cannot inspect screen or menu bar targets. Use `see` instead.")
+        }
+    }
+
+    private func windowSelectionFields(_ selection: WindowSelection) throws -> (title: String?, id: Int?) {
+        switch selection {
+        case .automatic:
+            return (nil, nil)
+        case let .title(title):
+            return (title, nil)
+        case let .id(windowID):
+            return (nil, Int(windowID))
+        case .index:
+            throw PeekabooError.invalidInput(
+                "inspect_ui does not support window index targets. Use a window title or `see` instead.")
+        }
     }
 
     private func convertElements(_ detected: [DetectedElement]) -> [UIElement] {
-        detected.map { element in
-            UIElement(
-                id: element.id,
-                elementId: element.id,
-                role: element.type.rawValue,
-                title: element.label,
-                label: element.label,
-                value: element.value,
-                description: element.attributes["description"],
-                help: element.attributes["help"],
-                roleDescription: element.attributes["roleDescription"],
-                identifier: element.attributes["identifier"],
-                frame: element.bounds,
-                isActionable: element.isEnabled,
-                parentId: nil,
-                children: [],
-                keyboardShortcut: element.attributes["keyboardShortcut"])
-        }
+        DetectedElementSnapshotConverter.convert(detected)
     }
 
     @MainActor

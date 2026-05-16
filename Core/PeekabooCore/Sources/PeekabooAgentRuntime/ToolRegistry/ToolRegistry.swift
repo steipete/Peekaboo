@@ -233,6 +233,8 @@ public enum ToolRegistry {
         let category: ToolCategory = switch tool.name {
         case "see", "screenshot", "window_capture":
             .vision
+        case "inspect_ui":
+            .element
         case "click", "type", "press", "scroll", "hotkey", "swipe", "drag", "move":
             .automation
         case "list_apps", "launch_app":

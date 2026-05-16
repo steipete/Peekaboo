@@ -94,6 +94,9 @@ enum RuntimeHostResolver {
                         targetedClickUnavailableReason: targetedClickAvailability.unavailableReason,
                         targetedClickRequiresEventSynthesizingPermission:
                         targetedClickAvailability.missingPermissions.contains(.postEvent),
+                        supportsInspectAccessibilityTree: BridgeCapabilityPolicy.supportsInspectAccessibilityTree(
+                            for: handshake
+                        ),
                         supportsPostEventPermissionRequest: BridgeCapabilityPolicy.supportsPostEventPermissionRequest(
                             for: handshake
                         ),
