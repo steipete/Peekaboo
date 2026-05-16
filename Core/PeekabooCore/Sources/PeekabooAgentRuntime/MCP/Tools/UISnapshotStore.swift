@@ -33,6 +33,13 @@ actor UISnapshot {
         self.lastAccessedAt = Date()
     }
 
+    func setTargetMetadata(from context: WindowContext?) {
+        self.cachedApplicationName = context?.applicationName
+        self.cachedWindowTitle = context?.windowTitle
+        self.cachedApplicationProcessId = context?.applicationProcessId
+        self.lastAccessedAt = Date()
+    }
+
     func getElement(byId id: String) -> UIElement? {
         self.uiElements.first { $0.id == id }
     }
