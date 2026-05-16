@@ -148,7 +148,8 @@ public enum ObservationOCRMapper {
                 method: method,
                 warnings: metadata.warnings,
                 windowContext: metadata.windowContext,
-                isDialog: metadata.isDialog))
+                isDialog: metadata.isDialog,
+                truncationInfo: metadata.truncationInfo))
     }
 
     public static func detectionResult(

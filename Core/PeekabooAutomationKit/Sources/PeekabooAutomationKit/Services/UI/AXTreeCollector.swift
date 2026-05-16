@@ -324,7 +324,7 @@ struct AXTreeCollector {
 }
 
 extension AXTraversalBudget {
-    fileprivate var normalizedForTraversal: AXTraversalBudget {
+    var normalizedForTraversal: AXTraversalBudget {
         AXTraversalBudget(
             maxDepth: max(0, self.maxDepth),
             maxElementCount: max(0, self.maxElementCount),

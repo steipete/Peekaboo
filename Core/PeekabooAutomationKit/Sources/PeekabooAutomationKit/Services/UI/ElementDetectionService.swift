@@ -190,10 +190,12 @@ extension ElementDetectionService {
             truncationInfo = collection.truncationInfo
 
             if request.appIsActive, let menuBar = request.appElement.menuBar() {
-                self.menuBarElementCollector.appendMenuBar(
+                let menuBarTruncation = self.menuBarElementCollector.appendMenuBar(
                     menuBar,
                     elements: &detectedElements,
-                    elementIdMap: &elementIdMap)
+                    elementIdMap: &elementIdMap,
+                    budget: request.budget)
+                truncationInfo = DetectionTruncationInfo.merge(truncationInfo, menuBarTruncation)
             }
 
             let hasTextField = detectedElements.contains(where: { $0.type == .textField })
