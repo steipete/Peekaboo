@@ -140,8 +140,8 @@ extension ElementDetectionService {
         budget: AXTraversalBudget?,
         elementIdMap: inout [String: DetectedElement],
         timeoutSeconds: Double = 20.0) async throws -> (
-            elements: [DetectedElement],
-            truncationInfo: DetectionTruncationInfo?)
+        elements: [DetectedElement],
+        truncationInfo: DetectionTruncationInfo?)
     {
         let (elements, map, truncationInfo) = try await ElementDetectionTimeoutRunner.run(seconds: timeoutSeconds) {
             let deadline = Date().addingTimeInterval(timeoutSeconds)
