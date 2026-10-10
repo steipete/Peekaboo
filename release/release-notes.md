@@ -1,73 +1,14 @@
-## 4.9.0 - 2026-10-06
+## 4.9.1 - 2026-10-10
 
-**Highlights:** Add exact app- and PID-scoped menu-bar extra clicks, keep foreground file dialogs bound to their parent window, tailor Agent guidance to the acquired tool catalog, show visualizer overlays from a hidden companion app, restore clipboard slots faithfully across processes, and harden release archive and artifact validation.
+**Highlights:** Stop idle `peekaboo mcp` servers from burning CPU whenever other applications launch or quit, accept renamed or symlinked CLI executables, refuse to overwrite configuration files that cannot be read, and keep capture output intact at the retention limit.
 
-- Add exact app/PID-scoped menu-extra clicks with bounded AX owner preparation and revalidation, preserving displayed-CG names and indices without scanning unrelated applications. Thanks @buremba! #953.
-- Keep targeted foreground file-dialog focus, navigation, and result receipts under one parent-window owner; negotiate exact execution with Bridge hosts and scope document reads to that parent without losing file-on-disk verification when Save closes it.
-- Fix application-targeted file sheets losing their parent-window identity; preserve compatible panels and ignore unrelated alerts when selecting a unique file panel. Thanks @buremba! #951.
-- Recognize native file-panel identifiers and reuse fresh classification evidence to avoid redundant button scans; batch strict dialog AX reads without truncating hierarchy discovery.
-- Recognize equivalent saved-file paths such as `/tmp` and `/private/tmp` in dialog diagnostics, preserving reported paths and directory-only enforcement.
-- Tailor Agent and learn guidance to the available tool catalog, removing irrelevant recipes while preserving execution authority, observation requirements and session history.
-- Show eligible visualizer overlays from a hidden companion app without unhiding or activating it, accepting input, or changing background-input suppression.
-- Avoid redundant PNG encoding for unchanged live capture frames, preserving original bytes and metadata while retaining transformed-frame encoding, actual-byte caps, and artifact validation.
-- Restore clipboard slots from the current persisted contents instead of a stale per-process cache, and keep multi-item clipboards' item order and boundaries through save and restore. Thanks @rudycelekli! #990.
-- Update AXorcist to 0.2.1 to unwrap live Accessibility values and clear inherited typing and final hotkey modifier flags. Thanks @jandubois! #797.
-- Prepare the final-qualification launcher's atomic receipt publisher before spawning the suspended coordinator, so loaded release Macs no longer spend the identity-acknowledgement window compiling Swift; each use still re-verifies the exact executable, and the exit receipt keeps a fresh build.
-- Reject negative SDK automation waits before preparation or earlier input, and keep large positive waits safely cancellable without integer overflow. Thanks @rudycelekli! #973.
-- Preserve literal environment values inside configuration JSON strings and omit expanded documents from decode warnings; retain numeric substitutions and credential references. Thanks @rudycelekli! #972.
-- Reject non-ASCII tar size/checksum text and PAX record lengths/keys before decoding can disguise malformed bytes, preserving binary tar numbers and UTF-8 values. Thanks @rudycelekli! #966.
-- Retain failed browser connection attempts across ordinary provider tools and invalidate cached verification after socket loss, preventing implicit reconnects and stale success. Thanks @rudycelekli! #949.
-- Honor cancellation and connection deadlines during browser application-metadata reads; reconcile failures without repeating a blocked lookup, retaining connected or uncertain provider ownership. Thanks @rudycelekli! #950.
-- Preserve literal log-helper search and filter text without shell re-parsing, including quotes, backslashes and trailing newlines; retain output, streaming and private-mode arguments. Thanks @rudycelekli! #934.
-- Reject missing log-helper option values promptly with a targeted usage error instead of looping indefinitely, before any log access; match native log severity for historical error-only queries. Thanks @rudycelekli! #938.
-- Preserve conventional shell exit statuses when a wrapped source-build command is terminated by a signal, while retaining mapping integrity checks and lock cleanup. Thanks @rudycelekli! #932.
-- Reject malformed or overflowing release versions before computing build numbers, preserving stable versions and supported alpha/beta/rc aliases instead of allowing extra identifiers to alias a different build. Thanks @rudycelekli! #936.
-- Require explicit npm error codes when detecting unpublished versions; server/authentication failures and contradictory responses no longer become absence merely because a diagnostic contains E404. Thanks @rudycelekli! #965.
-- Reject symlinked or nonregular controller sources and catalogs when producing source receipts, while preserving regular executable files and frozen-commit receipts. Thanks @rudycelekli! #957.
-- Bound ZIP data descriptors before allocating or reading their untrusted gap, preserving valid descriptor checks while avoiding malformed-archive memory amplification. Thanks @rudycelekli! #967.
-- Resolve composed symlink targets before accepting artifact trees and archives, refusing root escapes and native-unreadable chains beyond 32 traversals while preserving contained framework and dangling links. Thanks @rudycelekli! #954.
-- Reject archive entries nested beneath regular files as well as symlinks, independent of entry order, before extraction. Thanks @rudycelekli! #955.
-- Fix the Playground log wrapper's moved script path and clarify repository-root examples, preserving arguments and exit status. Thanks @rudycelekli! #933.
-- Fix signed Bridge typing receipts after already-empty clears and already-satisfied caret moves, preserving zero-dispatch no-ops and strict key, delivery and dispatch-count validation.
-- Preserve accepted dispatch evidence and retry-unsafe status after unchanged readback instead of reporting a no-dispatch no-op or a safe retry; positively observed changes still confirm the action. Thanks @rudycelekli! #942.
-- Preserve recorded response-loss evidence when action sequences or quit batches are cancelled, retaining indeterminate outcomes and unsafe retry guidance. Thanks @rudycelekli! #943.
-- Share literal-replacement eligibility between native typing and Bridge validation without changing confirmation policy, and clarify that typing counts represent keystrokes and accepted typing units rather than raw event or Accessibility setter calls.
-- Accept equivalent PID aliases consistently in read-only window listing and target resolution, while retaining conflicting-PID errors and strict single-selector mutation gates. Thanks @rudycelekli! #945.
-- Clarify `type --clear` help and generated learning guidance to distinguish eligible native Accessibility clearing from keyboard routes, without changing delivery, targeting, or success rules.
-- Format complete keyboard shortcut names without rewriting substrings, distinguish forward and backward delete aliases in compatibility summaries, and reuse the immutable symbol table. Thanks @rudycelekli! #962.
-- Preserve fractional timeout durations in command and dialog diagnostics instead of truncating them to whole seconds, without changing deadlines or error codes. Thanks @rudycelekli! #946.
-- Preserve pending native-operation evidence when combining action receipts, without downgrading it to accepted delivery or weakening response-loss and retry-safety semantics. Thanks @rudycelekli! #944.
-- Escape update-feed URLs and metadata as XML while preserving decoded values and literal replacement characters, including multi-parameter URLs. Thanks @rudycelekli! #935.
-- Validate Swift compatibility-library loader paths and required library architectures per executable slice, so another architecture cannot hide a missing path. Thanks @rudycelekli! #937.
-- Reject ZIP entries with unconsumed trailing DEFLATE bytes before extraction, even when their inflated size and CRC match. Thanks @rudycelekli! #956.
-- Distinguish missing blank title-bar space from changed retained geometry in background paste preparation diagnostics, without relaxing clearance or input guards.
-- Keep CLI and MCP action summaries explicit about unverified or unreported receiver effects, and report paste clipboard cleanup separately without changing canonical outcomes, JSON, retry rules, or exit status.
-- Strip terminal control scalars from agent/task titles before both VibeTunnel and ANSI output, preserving Unicode joiners and preventing embedded title text from injecting terminal commands. Thanks @rudycelekli! #964.
-- Avoid agent-summary crashes on unrepresentable numeric metadata, preserve each consumer's rounding and lookup rules, and report unusable shell exit codes as unavailable rather than success. Thanks @rudycelekli! #961.
-- Preserve apostrophes and escaped characters in JSON documentation reading hints, retaining the legacy single-quoted fallback and malformed-input diagnostics. Thanks @rudycelekli! #941.
-- Explain evaluated Bridge host requirements when `see --fresh` cannot obtain authenticated producer-bound snapshots, instead of incorrectly claiming fresh AX is unsupported or a binary update is sufficient; preserve host selection, trust, and error codes.
-- Correct the visualizer log helper's receiver subsystem and include info/debug output while preserving explicit predicates, without changing logging settings or rendering behavior.
-- Preserve failed log-query exit statuses through tail-limited terminal and file output instead of reporting success from the downstream pipeline. Thanks @rudycelekli! #959.
-- Preserve complete JSON log output and forward live events without waiting for stream completion; retain line limits for completed text queries. Thanks @rudycelekli! #958.
-- Bound npm MCP wrapper shutdown: cancel pending restarts, allow five seconds for the owned server to exit after SIGTERM, then terminate that same child if necessary. Thanks @rudycelekli! #947.
-- Keep MCP wrapper imports free of server-start side effects for eval, print and stdin consumers, including arguments matching its own path or symlink; preserve real entrypoints and unrelated filesystem errors. Thanks @rudycelekli! #948.
-- Refuse companion-app deployment when source or staged directory permissions prevent moving or cleaning up the bundle, before stopping the running GUI, while preserving read-only files and leaving artifact permissions unchanged.
-- Stop inferring a captured window's main state from selection, list position, or visibility; retain the existing `false`/unavailable convention and preserve already-supplied main-state metadata without extra Accessibility reads.
-- Keep Playground log filters and message text literal, reject missing option values, preserve export failures and complete JSON/live output, and match native error severity. Thanks @rudycelekli! #968.
-- Validate smooth duration and step overrides for the human MCP move profile, which forces smooth movement but previously dispatched out-of-range overrides. Thanks @rudycelekli! #970.
-- Report MCP cursor movement directions in screen coordinates, where eastward movement was previously reported as west. Thanks @rudycelekli! #960.
-- Report dialog classification and truncation from cached snapshots instead of always returning a non-dialog, untruncated result. Thanks @rudycelekli! #989.
-- Publish release CLI archives and the app ZIP atomically so a failed write leaves any previous artifact intact. Thanks @rudycelekli! #979.
-- Drain ZIP entry readers before the archive closes its descriptor, so a rejected payload no longer crashes later with an uncaught EBADF (#985). Thanks @rudycelekli! #986.
-- Reject release package resolution when the pinned Sparkle checkout has tracked, staged, or untracked changes. Thanks @rudycelekli! #978.
-- Install the Swift compatibility libraries that standalone CLI builds need next to the binary, so a standalone install loads after moving; release builds keep the mandatory older-SDK runtime audit. Thanks @rudycelekli! #982.
-- Bound release-preflight CLI probes with a timeout and report spawn or timeout failures instead of hanging or misreading them as contract failures. Thanks @rudycelekli! #984.
-- Clean up Node runtime build downloads and work directories when an early transfer or temporary-directory allocation fails. Thanks @rudycelekli! #980.
-- Render capture-timeout and rate-limit retry durations that cannot be represented as integers without trapping. Thanks @rudycelekli! #981.
-- Preserve managed screenshots when a snapshot reuses its own stored image as input, copying through a staged file before replacing the artifact. Thanks @rudycelekli! #987.
-- Require canonical lowercase ASCII hex selected-leaf candidate digests, rejecting full-width digits and letters that Swift's hex check accepted. Thanks @rudycelekli! #983.
-- Report the qualification guardian's own failure when the managed launcher's identity acknowledgement reaches an exited guardian, instead of crashing on an uncaught EPIPE before cleanup; guardian deadlines and the acknowledgement protocol are unchanged.
-
-### Compatibility
-
-- App/PID-scoped `menubar click` and exact-owner file-dialog execution require a 4.9.0 GUI Bridge host that advertises those capabilities at protocol 1.43. With an older Peekaboo app as the Bridge host, these requests refuse before any input instead of falling back to a global search or unscoped dialog handling; update the app together with the CLI.
+- Stop an idle `peekaboo mcp` (and other window-tracking hosts) from burning CPU whenever unrelated applications launch or quit: AXorcist now indexes workspace applications by identity and stops re-reading resolved PIDs, cutting the cost from ~0.68 s to ~0.02 s of CPU per launch and quit on a Mac with ~600 running applications. Thanks @coygeek for the detailed report! #1005.
+- Accept renamed or symlinked CLI executables when routing commands, normalizing agent tasks, and classifying JSON result envelopes.
+- Refuse configuration mutations (custom provider add/remove, configuration updates) when an existing config file cannot be read, instead of overwriting it with defaults or cached data. Thanks @rudycelekli! #1007.
+- Retain capture-action child stdout/stderr when the 64 KiB retention limit splits a trailing UTF-8 scalar, instead of discarding the whole valid prefix and recording an empty stream receipt. Thanks @rudycelekli! #1006.
+- Accept signed global coordinates for foreground MCP move and drag within existing magnitude bounds, preserving target guards and before-delivery validation. Thanks @rudycelekli! #963.
+- Update AXorcist to 0.2.2 so SwiftPM consumers of Peekaboo's library products get the idle-observer CPU fix, plus `collectAll` request-timeout handling, complete observation subscriptions, and fast observer-removal failure reporting.
+- Update the shared Swift Log lock to 1.16.1 and Swift Configuration to 1.2.2 for corrected multiplexed log metadata and empty configuration values, preserving the supported Swift and macOS baselines.
+- Preserve documentation source text through syntax highlighting, parse CRLF metadata, render unfinished EOF fences, retain link entities/query parameters, and assign unique heading targets. Thanks @rudycelekli! #931, #939, #940, #969, #971.
+- Link the npm version page from the published GitHub release body, keeping scoped package paths literal and requiring the registry package name to match the local package before rendering.
+- Publish the Sparkle minimum macOS version as the item element Sparkle reads, migrating existing feed entries whose enclosure attribute Sparkle ignored.
