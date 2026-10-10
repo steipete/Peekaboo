@@ -118,7 +118,7 @@ navigator package-root reference. Promoting Commander to a root package also res
 dependency, which is outside the consuming graph's canonical lock. Keep Commander as a dependency rather than adding
 it as another workspace root; the compile-only real-submodule fixture verifies that its uncommitted source stays live.
 
-The public root `Package.swift` pins AXorcist exact `0.2.1`, matching the internal AXorcist submodule.
+The public root `Package.swift` pins AXorcist exact `0.2.2`, matching the internal AXorcist submodule.
 Standalone AutomationKit, Foundation, Protocols, Visualizer, and submodule builds are not given a Commander override:
 those graphs do not select Peekaboo's live Commander package.
 Adding another consuming package requires adding its explicit context to the helper and qualifying it. A transitive
