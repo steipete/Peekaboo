@@ -8,12 +8,19 @@ function fail(message) {
   throw new Error(message);
 }
 
+function validReleaseVersion(value) {
+  if (typeof value !== 'string') return false;
+  const match = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(value);
+  return match !== null && (!match[4] || match[4].split('.').every((part) =>
+    !/^[0-9]+$/.test(part) || /^(0|[1-9][0-9]*)$/.test(part)));
+}
+
 export function canonicalReleasePlan({
   sourceCommit, version, helperCommit, helperExecutableSHA256, helperLibrarySHA256, proofSHA256 = null,
   preflightCompleted = false, publicationEligible = false,
 }) {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit ?? '')) fail('release source commit is invalid');
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(version ?? '')) {
+  if (!validReleaseVersion(version)) {
     fail('release version is invalid');
   }
   if (!/^[0-9a-f]{40}$/.test(helperCommit ?? '')) fail('release helper commit is invalid');
@@ -61,7 +68,7 @@ export function canonicalPublicationReceipt({
   sourceCommit, version, checksumsSHA256, githubBodySHA256, assets,
 }) {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit ?? '')) fail('publication source commit is invalid');
-  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(version ?? '')) {
+  if (!validReleaseVersion(version)) {
     fail('publication version is invalid');
   }
   if (!/^[0-9a-f]{64}$/.test(checksumsSHA256 ?? '') ||
