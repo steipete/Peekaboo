@@ -475,10 +475,36 @@ function uniqueHeadingIDs(html) {
 
 function inline(text, currentRel) {
   const stash = [];
-  let out = text.replace(/`([^`]+)`/g, (_, code) => {
+  let out = "";
+  for (let index = 0; index < text.length;) {
+    if (text[index] !== "`") {
+      out += text[index++];
+      continue;
+    }
+    let end = index + 1;
+    while (text[end] === "`") end += 1;
+    const marker = text.slice(index, end);
+    let closing = -1;
+    for (let probe = end; probe < text.length;) {
+      if (text[probe] !== "`") { probe += 1; continue; }
+      let runEnd = probe + 1;
+      while (text[runEnd] === "`") runEnd += 1;
+      if (runEnd - probe === marker.length) { closing = probe; break; }
+      probe = runEnd;
+    }
+    if (closing < 0) {
+      out += marker;
+      index = end;
+      continue;
+    }
+    let code = text.slice(end, closing).replace(/\r\n?|\n/g, " ");
+    if (code.startsWith(" ") && code.endsWith(" ") && /[^ ]/.test(code)) {
+      code = code.slice(1, -1);
+    }
     stash.push(`<code>${escapeHtml(code)}</code>`);
-    return `\u0000${stash.length - 1}\u0000`;
-  });
+    out += `\u0000${stash.length - 1}\u0000`;
+    index = closing + marker.length;
+  }
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
