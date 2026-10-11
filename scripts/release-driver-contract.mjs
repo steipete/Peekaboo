@@ -296,7 +296,8 @@ export function githubReleaseAssetsNeedingUpload({ assets, expectedAssets }) {
   return Object.keys(expectedAssets ?? {}).sort().filter((name) => {
     const observed = assets.find((asset) => asset?.name === name);
     const expected = expectedAssets[name];
-    return !observed || observed.size !== expected.size || observed.digest !== `sha256:${expected.sha256}`;
+    return !observed || (observed.state !== undefined && observed.state !== 'uploaded') ||
+      observed.size !== expected.size || observed.digest !== `sha256:${expected.sha256}`;
   });
 }
 
@@ -331,6 +332,9 @@ export function validateGitHubRelease({
   for (const [name, expected] of Object.entries(expectedAssets ?? {})) {
     const matches = assets.filter((asset) => asset?.name === name);
     if (matches.length !== 1) fail(`GitHub release asset count differs for ${name}`);
+    if (matches[0].state !== undefined && matches[0].state !== 'uploaded') {
+      fail(`GitHub release asset upload is incomplete for ${name}`);
+    }
     if (matches[0].size !== expected.size) fail(`GitHub release asset size differs for ${name}`);
     if (matches[0].digest !== `sha256:${expected.sha256}`) {
       fail(`GitHub release asset digest differs for ${name}`);
