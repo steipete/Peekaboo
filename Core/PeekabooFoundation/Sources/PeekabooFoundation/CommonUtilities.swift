@@ -84,7 +84,10 @@ extension String {
 extension TimeInterval {
     /// Convert to nanoseconds for Task.sleep
     public var nanoseconds: UInt64 {
-        UInt64(self * 1_000_000_000)
+        guard self > 0 else { return 0 }
+        let scaled = self * 1_000_000_000
+        guard scaled.isFinite, scaled < Double(UInt64.max) else { return UInt64.max }
+        return UInt64(scaled)
     }
 
     /// Common sleep durations
