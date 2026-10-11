@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const itemPattern = /^[ \t]*<item>[\s\S]*?^[ \t]*<\/item>[ \t]*(?:\r?\n)?/gm;
+const itemPattern = /[ \t]*<item>[\s\S]*?<\/item>[ \t]*(?:\r?\n)?/g;
 
 function escapeXml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -125,7 +125,7 @@ ${firstIndent}</item>`;
   if (nextFirstItem) {
     updated = withoutCurrentVersion.replace(nextFirstItem, () => `${item}\n${nextFirstItem}`);
   } else {
-    const languagePattern = /(<language>en<\/language>[ \t]*\r?\n)/;
+    const languagePattern = /(<language>en<\/language>[ \t]*(?:\r?\n)?)/;
     if (!languagePattern.test(withoutCurrentVersion)) {
       throw new Error("Appcast channel is missing <language>en</language>");
     }
