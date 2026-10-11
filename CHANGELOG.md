@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update Swift Subprocess to 1.0.1 for close-on-exec pipe handling and single-owner output-descriptor cleanup in CLI child processes, preserving the Swift 6.2 and macOS baselines.
 - Stop an idle `peekaboo mcp` (and other window-tracking hosts) from burning CPU whenever unrelated applications launch or quit: AXorcist now indexes workspace applications by identity and stops re-reading resolved PIDs, cutting the cost from ~0.68 s to ~0.02 s of CPU per launch and quit on a Mac with ~600 running applications. Thanks @coygeek for the detailed report! #1005.
 - Update AXorcist to 0.2.2 so SwiftPM consumers of Peekaboo's library products get the idle-observer CPU fix, plus `collectAll` request-timeout handling, complete observation subscriptions, and fast observer-removal failure reporting.
 - Update the shared Swift Log lock to 1.16.1 and Swift Configuration to 1.2.2 for corrected multiplexed log metadata and empty configuration values, preserving the supported Swift and macOS baselines.
