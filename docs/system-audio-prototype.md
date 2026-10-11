@@ -148,6 +148,47 @@ Known-signal acquisition, process isolation, playback preservation, and native
 cleanup therefore remain unverified. This stack does not establish a permission
 dialog or a macOS defect as the cause.
 
+### Consent-cleared live validation (2026-10-11)
+
+Further investigation found the user TCC service waiting in
+`CFUserNotificationReceiveResponse`. A pending system-audio consent dialog for
+the prototype was hosted by UserNotificationCenter at a nonstandard window layer:
+the ordinary window inventory omitted it, but exact-window observation exposed
+its text and Allow button. Two queued prototype dialogs were approved through
+the trusted Peekaboo Bridge, with fresh observations between actions.
+
+A temporary tap-only aggregate experiment then captured both selected-process and
+system output. The original implementation was restored and rebuilt; its executable
+SHA-256 matched the previously tested build
+`c7bad5a9c5ed7cc3d210be159531cd10761bd8d0ca2908bf97ad82aaf214d5ea`.
+Restoring the ad-hoc signature triggered another prototype consent dialog, which
+was observed and approved. Both original-implementation controls then completed
+with final CAF files, success receipts, empty stderr, and no staging directories.
+The aggregate experiment was reverted; no capture-code change is needed for these
+successful controls. The installed Peekaboo app remained unchanged.
+
+| Original implementation control | Elapsed | Frames at 48 kHz | Signal check |
+| --- | --- | --- | --- |
+| Selected 440 Hz process, simultaneous 880 Hz process | 3.32 s | 151,552 | 440 Hz present; 880 Hz below -60 dB relative to 440 Hz |
+| Explicit system output, both processes | 3.22 s | 148,992 | Both tones present at approximately equal amplitude |
+
+Signal analysis converted the local CAF to 16-bit WAV, selected its first channel,
+and projected a 1.5-second interior interval onto sine/cosine pairs at 440 and
+880 Hz. The selected-process result measured approximately 300 PCM units at
+440 Hz and less than 0.001 at 880 Hz; this finite, quantized synthetic control
+does not prove isolation for every process topology or output device. System
+output measured approximately 300 units at each frequency. Audio stayed on the Mac.
+The test players remained running until harness cleanup; no recorder or player
+remained afterward. This does not establish audible playback preservation,
+tap/aggregate destruction success, or the native recorder exit status obtained
+through LaunchServices.
+
+These tests demonstrate known-signal acquisition and two-process selection on
+this host after explicit consent. Denied-permission behavior, native resource
+cleanup, playback preservation, other device configurations, and Bridge/MCP
+integration remain validation gates. An enabled Settings switch alone did not
+establish that all pending consent dialogs had been answered.
+
 After proving the native lifecycle, move capture APIs into the shared automation layer and expose them as
 `capture audio` plus an MCP operation. Native work needs a separately contained worker,
 with verified permission attribution and explicit typed capability negotiation. Return
