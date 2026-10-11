@@ -1,0 +1,62 @@
+name: Release Peekaboo
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Prepared release version (e.g., 4.10.0 or 4.10.0-beta.1)'
+        required: true
+        type: string
+      dry-run:
+        description: 'Sign, notarize, and verify without publishing'
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # pin: set to the merged release-workflows commit
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@0000000000000000000000000000000000000000
+    with:
+      version: ${{ inputs.version }}
+      dry-run: ${{ inputs.dry-run }}
+      repository-type: openclaw
+      signing-environment: release
+      build-runner: xcode-27
+      app-name: Peekaboo
+      bundle-identifier: boo.peekaboo.mac
+      minimum-system-version: '15.0'
+      app-build-script: scripts/hosted-release/build-app.sh
+      app-entitlements: Apps/Mac/Peekaboo/Peekaboo.entitlements
+      sparkle-public-key: AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=
+      sparkle-version: '2.10.0'
+      appcast-path: appcast.xml
+      appcast-feed-url: https://raw.githubusercontent.com/openclaw/Peekaboo/main/appcast.xml
+      dmg-background: assets/dmg-background.png
+      dmg-layout: >-
+        {"window_size":[720,460],"icon_size":128,"app_position":[180,230],"applications_position":[540,230],"volume_name":"Peekaboo"}
+      cli-build-script: scripts/hosted-release/build-cli.sh
+      cli-binary-name: peekaboo
+      cli-identifier: boo.peekaboo.peekaboo
+      cli-archive-prefix: peekaboo-macos
+      cli-smoke-args: --help
+      npm-pack-script: scripts/hosted-release/pack-npm.sh
+      npm-publish-workflow: npm-publish.yml
+      homebrew-workflow: update-homebrew.yml
+    # Required even for environment-only secrets; the reusable signing job's
+    # release environment supplies the values after approval.
+    secrets:
+      MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGNING_P12 }}
+      MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}

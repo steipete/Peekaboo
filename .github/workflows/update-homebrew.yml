@@ -8,6 +8,7 @@ on:
       version:
         description: 'Version to update (e.g., 2.0.1)'
         required: true
+        type: string
 
 # Cross-repository dispatch uses only the explicit HOMEBREW_TAP_TOKEN below.
 permissions:
