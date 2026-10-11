@@ -47,7 +47,7 @@ function validateCandidate(existingItems, entry) {
   for (const existing of existingItems) {
     const version = itemVersion(existing[0]);
     const build = itemBuild(existing[0]);
-    if (build === null) continue;
+    if (version === null || build === null) throw new Error('Published appcast version or build number is missing');
     if (version === entry.version) {
       if (build !== candidateBuild) throw new Error('Appcast replacement changed the existing build number');
     } else if (build >= candidateBuild) {
