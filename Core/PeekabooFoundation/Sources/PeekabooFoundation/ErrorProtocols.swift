@@ -176,8 +176,15 @@ public actor ErrorRecoveryManager {
 
     /// Attempt to recover from an error
     public func attemptRecovery(for error: some RecoverableError) async throws {
+        try Task.checkCancellation()
         let errorKey = "\(type(of: error))_\(error.errorCode)"
         let attempts = self.recoveryAttempts[errorKey] ?? 0
+        guard error.isRecoverable else {
+            throw ErrorRecoveryFailure(
+                originalError: error,
+                attempts: attempts,
+                reason: "Error is not recoverable")
+        }
 
         guard attempts < error.maxRecoveryAttempts else {
             throw ErrorRecoveryFailure(
