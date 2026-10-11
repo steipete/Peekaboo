@@ -171,6 +171,7 @@ public struct ErrorContextBuilder {
 /// Manages error recovery attempts
 public actor ErrorRecoveryManager {
     private var recoveryAttempts: [String: Int] = [:]
+    private var recoveriesInProgress: Set<String> = []
 
     public init() {}
 
@@ -186,6 +187,14 @@ public actor ErrorRecoveryManager {
                 reason: "Maximum recovery attempts exceeded")
         }
 
+        guard !self.recoveriesInProgress.contains(errorKey) else {
+            throw ErrorRecoveryFailure(
+                originalError: error,
+                attempts: attempts,
+                reason: "Recovery already in progress")
+        }
+        self.recoveriesInProgress.insert(errorKey)
+        defer { self.recoveriesInProgress.remove(errorKey) }
         self.recoveryAttempts[errorKey] = attempts + 1
 
         do {
