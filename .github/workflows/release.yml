@@ -42,7 +42,7 @@ jobs:
       appcast-feed-url: https://raw.githubusercontent.com/openclaw/Peekaboo/main/appcast.xml
       dmg-background: assets/dmg-background.png
       dmg-layout: >-
-        {"window_size":[720,460],"icon_size":128,"app_position":[180,230],"applications_position":[540,230],"volume_name":"Peekaboo"}
+        {"window-size":[720,460],"icon-size":128,"app-position":[180,230],"applications-position":[540,230],"volume-name":"Peekaboo"}
       cli-build-script: scripts/hosted-release/build-cli.sh
       cli-binary-name: peekaboo
       cli-identifier: boo.peekaboo.peekaboo
