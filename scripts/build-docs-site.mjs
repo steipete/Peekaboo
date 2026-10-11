@@ -335,7 +335,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     cells.push(current.trim().replace(/\\\|/g, "|"));
     return cells;
   };
-  const isDivider = (line) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/.test(line);
+  const isDivider = (line) => splitRow(line).every((cell) => /^:?-{2,}:?$/.test(cell));
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -392,7 +392,8 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       }
       continue;
     }
-    if (line.trimStart().startsWith("|") && line.includes("|", line.indexOf("|") + 1) && isDivider(lines[i + 1] || "")) {
+    if (line.includes("|") && isDivider(lines[i + 1] || "") &&
+        splitRow(line).length === splitRow(lines[i + 1]).length) {
       flushParagraph();
       closeList();
       const header = splitRow(line);
@@ -403,7 +404,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       });
       i += 1;
       const rows = [];
-      while (i + 1 < lines.length && lines[i + 1].trimStart().startsWith("|")) {
+      while (i + 1 < lines.length && lines[i + 1].includes("|") && lines[i + 1].trim()) {
         i += 1;
         rows.push(splitRow(lines[i]));
       }
