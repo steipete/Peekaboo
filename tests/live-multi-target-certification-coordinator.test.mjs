@@ -670,8 +670,10 @@ function fixture() {
       interval_milliseconds: 10,
       code_signature_hash: 'a'.repeat(40),
     },
-    external_foreground_timeout_seconds: 5,
-    operation_timeout_seconds: 65,
+    // Live runs make this test process the external operator. The 5-second product minimum is measured from the
+    // monitor fence and a nice'd release preflight overran it, so only window-free tests use that minimum.
+    external_foreground_timeout_seconds: 30,
+    operation_timeout_seconds: 140,
     test_runtime: {
       catalog_path: catalogPath,
       finalizer_path: finalizer,
@@ -989,6 +991,7 @@ test('duplicate exact physical targets fail before child launch', () => {
 test('operation timeout covers typing, both external windows, and lifecycle overhead', () => {
   const fix = fixture();
   try {
+    fix.plan.external_foreground_timeout_seconds = 5;
     fix.plan.operation_timeout_seconds = 64;
     writePrivate(fix.planPath, fix.plan);
     const run = spawnSync(process.execPath, [coordinator, '--plan', fix.planPath], {
@@ -1294,11 +1297,50 @@ stdout.write = (chunk, ...args) => {
       )));
       const characterCount = [...controllerPlan.type_text].length;
       const typingDurationMilliseconds = characterCount * controllerPlan.typing_delay_milliseconds;
+      assert.equal(characterCount, 1000);
+      assert.equal(Buffer.byteLength(controllerPlan.type_text, 'utf8'), 1000);
+      assert.equal(controllerPlan.typing_delay_milliseconds, 50);
+      assert.ok(controllerPlan.type_text.startsWith(
+        `peekaboo-certification-background:${completion.execution_nonce}:${controllerID}:`,
+      ));
+      assert.equal(typingDurationMilliseconds, 50_000);
+      assert.equal(
+        fix.plan.operation_timeout_seconds * 1000,
+        typingDurationMilliseconds
+          + (2 * fix.plan.external_foreground_timeout_seconds * 1000)
+          + 30_000,
+      );
+    }
+  } finally {
+    fs.rmSync(fix.root, { recursive: true, force: true });
+  }
+});
+
+test('minimum 5-second external windows accept the exact operation budget with bounded typing', async () => {
+  const fix = fixture();
+  try {
+    fix.plan.external_foreground_timeout_seconds = 5;
+    fix.plan.operation_timeout_seconds = 65;
+    // Stop at the baseline sentinel: controller plans exist, but no live window can race host scheduling.
+    fix.plan.monitor.sentinel.start_identity = `${SENTINEL_PID}99`;
+    writePrivate(fix.planPath, fix.plan);
+    const run = await runInteractive(fix);
+    assert.notEqual(run.code, 0);
+    assert.match(run.stderr, /baseline sentinel process generation differs from the exact plan/);
+    assert.equal(run.events.some((event) => event.event === 'external-foreground-window'), false);
+    const failed = run.events.at(-1);
+    assert.equal(failed.event, 'failed');
+    for (const controllerID of ['controller-a', 'controller-b']) {
+      const controllerPlan = JSON.parse(fs.readFileSync(path.join(
+        failed.run_root, 'controllers', controllerID, 'plan.json',
+      )));
+      const characterCount = [...controllerPlan.type_text].length;
+      const typingDurationMilliseconds = characterCount * controllerPlan.typing_delay_milliseconds;
       assert.equal(characterCount, 500);
       assert.equal(Buffer.byteLength(controllerPlan.type_text, 'utf8'), 500);
       assert.equal(controllerPlan.typing_delay_milliseconds, 50);
       assert.ok(controllerPlan.type_text.startsWith(
-        `peekaboo-certification-background:${completion.execution_nonce}:${controllerID}:`,
+        `peekaboo-certification-background:${failed.execution_nonce}:${controllerID}:`,
       ));
       assert.equal(typingDurationMilliseconds, 25_000);
       assert.equal(
