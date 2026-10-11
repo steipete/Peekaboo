@@ -57,7 +57,7 @@ export class PeekabooMCPWrapper {
     this.child.on('exit', (code, signal) => {
       this.clearShutdownTimer();
       this.child = null;
-      if (this.shuttingDown) return process.exit(code || 0);
+      if (this.shuttingDown) return process.exit(code || process.exitCode || 0);
 
       if (code === 0 || signal === 'SIGINT' || signal === 'SIGTERM') {
         console.error('[Peekaboo MCP] Server exited cleanly');
@@ -145,11 +145,14 @@ if (isMainModule()) {
 
   process.on('uncaughtException', (err) => {
     console.error('[Peekaboo MCP] Uncaught exception:', err);
+    process.exitCode = 1;
     wrapper.shutdown();
   });
 
   process.on('unhandledRejection', (reason) => {
     console.error('[Peekaboo MCP] Unhandled rejection:', reason);
+    process.exitCode = 1;
+    wrapper.shutdown();
   });
 }
 
