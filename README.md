@@ -51,9 +51,9 @@ peekaboo see --app Finder --json
 
 That is the core loop: observe the current screen, choose an element from the result, and act on it.
 
-## What's new in 4.9.0
+## What's new in 4.9.1
 
-Peekaboo 4.9.0 adds exact app- and PID-scoped menu-bar extra clicks (`menubar click --app` / `--pid`) and keeps foreground file dialogs bound to their parent window from focus through the saved-file receipt. Agent guidance now matches the tools each run actually has, visualizer overlays show from a hidden companion app, clipboard slots restore faithfully across processes, and release archives and artifacts are validated far more strictly. Scoped menu-bar clicks and exact file-dialog execution need the matching 4.9.0 Peekaboo app as the Bridge host; see the changelog Compatibility notes.
+Peekaboo 4.9.1 is a fix release. An idle `peekaboo mcp` server no longer burns CPU whenever other applications launch or quit (about 30× less work per launch on a Mac with ~600 running processes), the CLI accepts renamed or symlinked executables such as `pb`, configuration changes refuse to overwrite a config file that cannot be read, and capture output cut at the retention limit keeps its valid text. 4.9.0 added exact app- and PID-scoped menu-bar extra clicks and parent-bound foreground file dialogs; see the changelog for both releases.
 
 ## Automate an app
 
