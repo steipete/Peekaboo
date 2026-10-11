@@ -222,7 +222,7 @@ function copyTree(src, dest) {
 
 function parseFrontmatter(raw) {
   raw = raw.replace(/\r\n/g, "\n");
-  const match = raw.match(/^---\n([\s\S]*?)\n---\n?/);
+  const match = raw.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
   if (!match) return { frontmatter: {}, body: raw };
   const fm = {};
   for (const line of match[1].split("\n")) {
