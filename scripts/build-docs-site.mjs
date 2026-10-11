@@ -425,16 +425,17 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       continue;
     }
     const bullet = line.match(/^\s*-\s+(.+)$/);
-    const numbered = line.match(/^\s*\d+\.\s+(.+)$/);
+    const numbered = line.match(/^\s*(\d+)\.\s+(.+)$/);
     if (bullet || numbered) {
       flushParagraph();
       const tag = bullet ? "ul" : "ol";
       if (list && list !== tag) closeList();
       if (!list) {
         list = tag;
-        html.push(`<${tag}>`);
+        const start = numbered && numbered[1] !== "1" ? ` start="${numbered[1]}"` : "";
+        html.push(`<${tag}${start}>`);
       }
-      html.push(`<li>${inline((bullet || numbered)[1], currentRel)}</li>`);
+      html.push(`<li>${inline(bullet ? bullet[1] : numbered[2], currentRel)}</li>`);
       continue;
     }
     paragraph.push(line.trim());
