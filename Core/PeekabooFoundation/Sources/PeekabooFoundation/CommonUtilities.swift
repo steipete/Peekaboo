@@ -57,7 +57,10 @@ public func performOperation<T>(
     errorContext: String) async throws -> T
 {
     do {
+        try Task.checkCancellation()
         return try await operation()
+    } catch is CancellationError {
+        throw CancellationError()
     } catch {
         throw error.asPeekabooError(context: errorContext)
     }
