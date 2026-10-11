@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import diagnosticsChannel from 'node:diagnostics_channel';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -118,6 +119,13 @@ test('subprocess runner rejects nonzero success envelopes and malformed output',
 
 test('subprocess runner refuses bounded-output, timeout, and launch failures without retry', async (t) => {
   const stub = fixture(t);
+  const missing = join(stub.directory, 'missing');
+  // Observe launches in the parent: under CPU contention the 1 s timeout can kill the stub before it logs.
+  const children = [];
+  const onProcess = ({ process: child }) => children.push(child);
+  diagnosticsChannel.subscribe('child_process', onProcess);
+  t.after(() => diagnosticsChannel.unsubscribe('child_process', onProcess));
+
   await assert.rejects(createPeekabooRunner(stub.executable, { maxBuffer: 512 })(['overflow']), (error) => {
     assert.equal(error.process.code, 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER');
     assert.equal(error.response, undefined);
@@ -128,12 +136,20 @@ test('subprocess runner refuses bounded-output, timeout, and launch failures wit
     assert.equal(error.process.signal, 'SIGTERM');
     return true;
   });
-  assert.deepEqual(stub.calls().map((call) => call[0]), ['overflow', 'wait']);
-  await assert.rejects(createPeekabooRunner(join(stub.directory, 'missing'))(['see']), (error) => {
+  await assert.rejects(createPeekabooRunner(missing)(['see']), (error) => {
     assert.equal(error.process.code, 'ENOENT');
     assert.equal(error.response, undefined);
     return true;
   });
+  assert.deepEqual(children.map((child) => child.spawnargs), [
+    [stub.executable, 'overflow', '--json'],
+    [stub.executable, 'wait', '--json'],
+    [missing, 'see', '--json'],
+  ]);
+  assert.equal(children[1].killed, true);
+  assert.equal(children[1].signalCode, 'SIGTERM');
+  // The overflow stub logs before writing; the timed-out stub may be killed before it boots far enough to log.
+  assert.match(stub.calls().map((call) => call[0]).join(' '), /^overflow( wait)?$/);
 });
 
 const fieldTask = { app: 'Synthetic App', windowId: 42, fieldIdentifier: 'report', text: '--literal \\n 雪 🦞' };
