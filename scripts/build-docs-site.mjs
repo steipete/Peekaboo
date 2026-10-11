@@ -475,8 +475,8 @@ function uniqueHeadingIDs(html) {
 
 function inline(text, currentRel) {
   const stash = [];
-  let out = text.replace(/`([^`]+)`/g, (_, code) => {
-    stash.push(`<code>${escapeHtml(code)}</code>`);
+  let out = text.replace(/`([^`]+)`|\\([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/g, (_, code, character) => {
+    stash.push(code !== undefined ? `<code>${escapeHtml(code)}</code>` : escapeHtml(character));
     return `\u0000${stash.length - 1}\u0000`;
   });
   out = escapeHtml(out)
