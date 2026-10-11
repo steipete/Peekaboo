@@ -9,7 +9,100 @@ read_when:
 Run from the repository root. Releases publish `@steipete/peekaboo`, universal CLI archives, checksums, and an
 OpenClaw Foundation Developer ID signed/notarized `Peekaboo.app`, standalone and npm CLIs, branded drag-to-Applications DMG, and Sparkle appcast entry.
 
-Every shipped macOS code object uses `Developer ID Application: OpenClaw Foundation (FWJYW4S8P8)`. Peekaboo 3.8 and later bridge hosts continue accepting both the Foundation team and transition-era personal-team clients so staged upgrades remain possible; Foundation-signed 3.9.6+ CLIs do not authenticate to pre-3.8 GUI bridge hosts. The release driver signs through the shared managed passwordless Foundation keychain, notarizes the standalone CLI as well as the app and DMG, and verifies exact authority, Team ID, Developer ID requirement, and online notarization for extracted archive payloads.
+Every shipped macOS code object uses `Developer ID Application: OpenClaw Foundation (FWJYW4S8P8)`. Peekaboo 3.8 and later bridge hosts continue accepting both the Foundation team and transition-era personal-team clients so staged upgrades remain possible; Foundation-signed 3.9.6+ CLIs do not authenticate to pre-3.8 GUI bridge hosts. Both release paths notarize the standalone CLI as well as the app and DMG and verify exact authority, Team ID, Developer ID requirement, and online notarization for extracted archive payloads.
+
+## Hosted release (GitHub Actions)
+
+Use `.github/workflows/release.yml` as the primary release path once its placeholder reusable-workflow SHA has
+been replaced with the reviewed, merged `openclaw/release-workflows` commit and the environment below is provisioned.
+The all-zero pin deliberately cannot run. The local driver remains the fallback while hosted rollout is completed.
+
+Prepare a release PR against `main`: update all version surfaces listed in [Prepare](#1-prepare), date the target
+changelog sections as `## X.Y.Z - YYYY-MM-DD`, and update `release/release-notes.md` to contain exactly that version's
+root changelog notes. Run the preparation checks and merge the PR before dispatching. The hosted workflow freezes the
+protected default-branch source SHA, requires its CI to be green, and derives publication notes from that dated section.
+It builds the app and CLI with recursive submodules on `xcode-27` and records the actual Xcode, Swift, and SDK versions.
+
+Run a dry run first for a new consumer or toolchain, then dispatch publication for the same prepared version:
+
+```bash
+gh workflow run release.yml --repo openclaw/Peekaboo --ref main -f version=<version> -F dry-run=true
+# After reviewing the successful dry run:
+gh workflow run release.yml --repo openclaw/Peekaboo --ref main -f version=<version> -F dry-run=false
+```
+
+Approve the pending `release` environment deployment after reviewing the frozen source and build artifacts. Builds
+are credential-free; the signer consumes only artifacts and data inputs, without checking out or executing caller
+code. Approval gates signing and notarization, and no tag or draft is created until signing succeeds. A dry run uses
+real signing and Apple notarization, then verifies workflow artifacts; it creates no tag, GitHub release, npm/Homebrew
+handoff, or closeout PR. Publication verifies the uploaded draft assets before making the release public.
+
+Independent secretless verifiers on `macos-15` (arm64), `macos-15-intel`, and `macos-26` (arm64) check checksums,
+Foundation signatures and online notarization, stapled app/DMG tickets, Gatekeeper acceptance, and identical app trees
+in the ZIP and mounted DMG. They verify the Sparkle EdDSA signature and appcast metadata, launch each native CLI with
+`--version` and `--help`, and audit Swift runtime imports against an older SDK on macOS 26. The publisher requires
+the asset digests to match every verifier's attestation and rechecks the tag. The release body retains the frozen
+notes and links verification evidence, toolchain metadata, notarization submissions, and checksums.
+
+After publication, the workflow dispatches `npm-publish.yml` with `version`, waits for it to succeed, then dispatches
+`update-homebrew.yml` with the same input and waits again. Keep the npm workflow filename: npm's trusted publisher is
+bound to it. That workflow publishes the exact checksummed tarball and verifies registry integrity using OIDC, without
+an npm token. Homebrew selects the per-architecture CLI assets and waits for the matching tap update. If a handoff
+fails, follow the run's resume hint; either downstream workflow can also be dispatched manually with `version` after
+checking the release state. Do not rebuild or replace already-published artifacts to retry a handoff.
+
+Merge the generated closeout PR after reviewing its published `appcast.xml` and next `Unreleased` section. The live
+Sparkle feed is served from `main`; a release asset alone does not update installed apps. Verify the feed, published
+release notes, npm version/tarball/integrity/dist-tag, and Homebrew update before calling the release complete.
+
+### One-time hosted setup
+
+Replace the all-zero SHA pin in `release.yml` with the merged reusable-workflow commit. Configure the caller repo's
+`release` environment with Peter as required reviewer and deployment restrictions for the default branch and `v*`
+tags. Enable Actions to create pull requests for closeout. The caller grants only `contents: write` (tag/release),
+`actions: write` (handoffs and run inspection), and `pull-requests: write` (closeout); the reusable workflow narrows
+individual jobs. It must declare `environment: release` on its signing job. Per
+[GitHub's reusable-workflow secret contract](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#using-inputs-and-secrets-in-a-reusable-workflow),
+the caller must also explicitly map all six secret names, including environment-only secrets, and the reusable
+workflow must declare them in `on.workflow_call.secrets`. The signing job receives the environment's values after
+approval; the caller intentionally does not use `secrets: inherit`.
+
+Provision these environment-scoped secrets through the coordinator (names only):
+
+- `MACOS_SIGNING_P12`
+- `MACOS_SIGNING_P12_PASSWORD`
+- `ASC_KEY_ID`
+- `ASC_ISSUER_ID`
+- `ASC_PRIVATE_KEY_P8`
+- `SPARKLE_PRIVATE_KEY`
+
+Keep the existing npm trusted-publisher binding to `openclaw/Peekaboo` / `npm-publish.yml` and the existing repository
+`HOMEBREW_TAP_TOKEN` for the tap dispatch. The shared workflow must support Sparkle `2.10.0` with its pinned download
+checksum. The public Sparkle key and feed URL in `release.yml` agree with `Apps/Mac/Peekaboo/Info.plist` and
+`.mac-release.env`; update them together if the feed or key changes.
+
+### Credential-free script contract
+
+The reusable build/package jobs must install Node and the exact `package.json` pnpm pin (currently `11.28.4`), honor
+the runner's selected Xcode, and invoke these executable scripts without arguments from the frozen checkout. Each
+script reads the prepared version from `package.json`; an optional `VERSION` must match it. App and CLI builds require
+a clean checkout and initialize the ignored Swift workspace mapping. Each output directory must be absent before its
+script runs; retries should use a fresh checkout or remove only the previous job's generated output.
+
+| Script | Input | Output |
+| --- | --- | --- |
+| `scripts/hosted-release/build-app.sh` | Recursive submodules, locked packages; optional `PEEKABOO_BUILD_JOBS` | Unsigned `dist/sparkle-app/Peekaboo.app`, Release configuration with the local driver's `platform=macOS,arch=arm64` destination, semantic/build-number/source stamps, and `CODE_SIGNING_ALLOWED=NO` |
+| `scripts/hosted-release/build-cli.sh` | Recursive submodules; `version.json` equal to `package.json` | Ad-hoc arm64+x86_64 `dist/sparkle-cli/peekaboo` and required `libswiftCompatibility*.dylib` companions |
+| `scripts/hosted-release/pack-npm.sh` | The signed universal CLI and companions staged at `dist/sparkle-cli/` by the reusable package job | Exactly one `dist/sparkle-npm/steipete-peekaboo-<version>.tgz`; embedded CLI and companion bytes checked against the staged input |
+
+The npm script copies the signed payload to the repository root where `package.json`'s `files` list expects it and
+runs `pnpm pack`; it never builds or signs. These scripts do not load `.mac-release.env`, 1Password, a signing keychain,
+or the local release helper. The reusable workflow owns signing, notarization, archive assembly, and publication.
+
+## Local release driver (fallback)
+
+The remaining sections describe the existing maintainer-Mac path. It signs through the shared managed passwordless
+Foundation keychain and remains available if hosted release infrastructure is unavailable.
 
 ### Signing environment
 

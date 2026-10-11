@@ -11,6 +11,7 @@ on:
       version:
         description: 'Release version whose uploaded npm tarball to publish (e.g., 4.7.0)'
         required: true
+        type: string
 
 permissions:
   contents: read

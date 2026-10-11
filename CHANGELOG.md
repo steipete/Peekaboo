@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add an approval-gated GitHub Actions release path for signed and notarized app, DMG, CLI, npm, and Homebrew deliverables, with independent artifact verification and an appcast closeout PR.
 - Update Swift Subprocess to 1.0.1 for close-on-exec pipe handling and single-owner output-descriptor cleanup in CLI child processes, preserving the Swift 6.2 and macOS baselines.
 
 ## 4.9.1 - 2026-10-10
