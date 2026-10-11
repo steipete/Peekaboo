@@ -95,6 +95,10 @@ public enum ErrorStandardizer {
             return standardized
         }
 
+        if error is CancellationError {
+            return CancelledOperationError()
+        }
+
         // Convert known error types
         switch error {
         case let peekabooError as PeekabooError:
@@ -107,6 +111,10 @@ public enum ErrorStandardizer {
     }
 
     private static func standardizeNSError(_ error: NSError) -> any StandardizedError {
+        if error.domain == NSURLErrorDomain, error.code == NSURLErrorCancelled {
+            return CancelledOperationError()
+        }
+
         // Handle common Cocoa errors
         switch error.domain {
         case NSCocoaErrorDomain:
@@ -120,6 +128,12 @@ public enum ErrorStandardizer {
 
         return PeekabooError.operationError(message: error.localizedDescription)
     }
+}
+
+private struct CancelledOperationError: StandardizedError {
+    let code: StandardErrorCode = .cancelled
+    let userMessage = "Operation cancelled"
+    let context: [String: String] = [:]
 }
 
 // MARK: - Error Recovery Suggestions
