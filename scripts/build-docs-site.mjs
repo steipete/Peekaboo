@@ -479,6 +479,13 @@ function inline(text, currentRel) {
     stash.push(`<code>${escapeHtml(code)}</code>`);
     return `\u0000${stash.length - 1}\u0000`;
   });
+  out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, source) => {
+    const plainAlt = alt.replace(/\u0000(\d+)\u0000/g, (_, index) =>
+      decodeRenderedEntities(stash[Number(index)].startsWith("<code>")
+        ? stash[Number(index)].slice(6, -7) : stash[Number(index)]));
+    stash.push(`<img src="${escapeAttr(source)}" alt="${escapeAttr(plainAlt)}" loading="lazy">`);
+    return `\u0000${stash.length - 1}\u0000`;
+  });
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
