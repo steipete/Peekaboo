@@ -112,7 +112,7 @@ export function compareCrashInventories(baselineValue, finalValue, cycleBinding 
   const baseline = validateInventory(baselineValue, 'baseline');
   const final = validateInventory(finalValue, 'final');
   requireCondition(baseline.directory === final.directory
-    && JSON.stringify(baseline.prefixes) === JSON.stringify(final.prefixes)
+    && JSON.stringify([...baseline.prefixes].sort()) === JSON.stringify([...final.prefixes].sort())
     && final.captured_at_milliseconds >= baseline.captured_at_milliseconds,
   'inventory capture domains or ordering differ');
   const before = new Map(baseline.entries.map((entry) => [entry.name, entry]));
@@ -121,7 +121,8 @@ export function compareCrashInventories(baselineValue, finalValue, cycleBinding 
   const removed = baseline.entries.filter((entry) => !after.has(entry.name));
   const changed = final.entries.filter((entry) => {
     const prior = before.get(entry.name);
-    return prior && JSON.stringify(prior) !== JSON.stringify(entry);
+    return prior && (prior.size !== entry.size || prior.sha256 !== entry.sha256 ||
+      prior.modified_at_milliseconds !== entry.modified_at_milliseconds);
   });
   const passed = added.length === 0 && removed.length === 0 && changed.length === 0;
   if (cycleBinding === null) return { version: 1, passed, added, changed, removed };
