@@ -155,6 +155,7 @@ public struct InteractionTargetSelector: Equatable, Sendable {
             break
 
         case let .windowCLI(allowMissingTarget):
+            try self.validateNumericRanges()
             if !allowMissingTarget,
                self.applicationIdentifier == nil,
                self.rawProcessIdentifier == nil,
