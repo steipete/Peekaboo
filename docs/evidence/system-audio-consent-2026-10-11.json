@@ -1,0 +1,666 @@
+{
+  "schema_version": 1,
+  "test_date": "2026-10-11",
+  "platform": "Apple Silicon; macOS 26.7; built-in output at 48 kHz",
+  "original_binary_sha256": "c7bad5a9c5ed7cc3d210be159531cd10761bd8d0ca2908bf97ad82aaf214d5ea",
+  "checked_teardown_binary_sha256": "c0135dae0eea2139168d2fb3125fc0793301dd4c84159d222871daf1ecdcf162",
+  "checked_teardown_source_sha256": "84f167bd7e5701a6dab7e056618d4e213c7c769005c9f766d7f5d428ccb48cc1",
+  "allowed_captures": [
+    {
+      "case": "original-cleared-2026-10-11-process",
+      "elapsed_seconds": 3.32,
+      "receipt": {
+        "channels": 2,
+        "frames": 151552,
+        "nonzeroSamples": 299270,
+        "peak": 0.0091552110388875,
+        "rms": 0.0064302964037686525,
+        "sampleRate": 48000,
+        "samples": 303104
+      },
+      "caf_sha256": "60941c0a153ec300147681056262435e24a963ccd1f4c29a7760076552e6c3b0",
+      "analysis": {
+        "pcm_sha256": "079966b477d6e8c607eb88158fb47b0f447af557c9f81b676d4d90b3a6a8f6e4",
+        "frames": 151552,
+        "channels": 2,
+        "sample_rate": 48000,
+        "nonzero_pcm16_samples": 299068,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 287.40482695697216,
+              "880": 0.21259433830045948,
+              "1320": 0.04327930862199782
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 299.9791110812337,
+              "880": 0.00018386726275701522,
+              "1320": 0.027076068947688978
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 299.9810356936485,
+              "880": 0.00011267664312729567,
+              "1320": 0.027851994712661303
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "original-cleared-2026-10-11-system",
+      "elapsed_seconds": 3.22,
+      "receipt": {
+        "channels": 2,
+        "frames": 148992,
+        "nonzeroSamples": 293260,
+        "peak": 0.01611468754708767,
+        "rms": 0.00907829083315505,
+        "sampleRate": 48000,
+        "samples": 297984
+      },
+      "caf_sha256": "acebf0a5fefbb14f5ccac0d5b6fa22c0ac6a93fb87daa26b6ea6386bd8f539d8",
+      "analysis": {
+        "pcm_sha256": "4a93503d7dd6ac2540b5ce1f31746a07bb307282a38a78161bf68625eb008c5b",
+        "frames": 148992,
+        "channels": 2,
+        "sample_rate": 48000,
+        "nonzero_pcm16_samples": 292924,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 284.6530127771625,
+              "880": 284.64925176603543,
+              "1320": 0.22628853038787514
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 299.97597845548745,
+              "880": 299.9837351945306,
+              "1320": 0.006061318439507198
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 299.978464472271,
+              "880": 299.9830348409767,
+              "1320": 0.009808511912333595
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "teardown-final-process",
+      "elapsed_seconds": 3.37,
+      "receipt": {
+        "channels": 2,
+        "frames": 151552,
+        "nativeTeardown": {
+          "destroyAggregate": 0,
+          "destroyIOProc": 0,
+          "destroyTap": 0,
+          "stop": 0
+        },
+        "nonzeroSamples": 298764,
+        "peak": 0.009155568666756153,
+        "rms": 0.006424564980671558,
+        "sampleRate": 48000,
+        "samples": 303104
+      },
+      "caf_sha256": "0714a02d916c614cbaf037bd023593464385e8acb6939d8f36937075ad35b807",
+      "analysis": {
+        "pcm_sha256": "98459a8f59b8ab5dc8f6658378fd470294b82abc0734c1fbcaf8a4813ed0c2ca",
+        "frames": 151552,
+        "channels": 2,
+        "sample_rate": 48000,
+        "nonzero_pcm16_samples": 298100,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 285.89971196995117,
+              "880": 0.18643378139262384,
+              "1320": 0.11285419607538555
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 299.983596132188,
+              "880": 0.000037152124053827655,
+              "1320": 0.007479116657490488
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 299.98582210943397,
+              "880": 0.00007825785434554511,
+              "1320": 0.00487892264780341
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case": "teardown-final-system",
+      "elapsed_seconds": 3.17,
+      "receipt": {
+        "channels": 2,
+        "frames": 145408,
+        "nativeTeardown": {
+          "destroyAggregate": 0,
+          "destroyIOProc": 0,
+          "destroyTap": 0,
+          "stop": 0
+        },
+        "nonzeroSamples": 286830,
+        "peak": 0.01735810935497284,
+        "rms": 0.009085303700195637,
+        "sampleRate": 48000,
+        "samples": 290816
+      },
+      "caf_sha256": "e582a32b16c0cd45c42f75659410e137e0744b0004d5f02cf5016bb01c8a20b0",
+      "analysis": {
+        "pcm_sha256": "045556793935cde56c4dda1c210c2466a3929dce12c9e502aac183c9af9dbc41",
+        "frames": 145408,
+        "channels": 2,
+        "sample_rate": 48000,
+        "nonzero_pcm16_samples": 286422,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 285.65581245266634,
+              "880": 287.06176286289804,
+              "1320": 0.11333728292272988
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 299.970679949776,
+              "880": 299.9803177944914,
+              "1320": 0.026947057720178327
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 299.965571485018,
+              "880": 299.97900711934005,
+              "1320": 0.018863875564982414
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "denied_capture": {
+    "name": "denied-teardown-confirmed",
+    "mode": "deny",
+    "elapsed_seconds": 4.897425958188251,
+    "binary_sha256": "c0135dae0eea2139168d2fb3125fc0793301dd4c84159d222871daf1ecdcf162",
+    "launchservices_status_not_recorder_status": 0,
+    "receipt": {
+      "channels": 2,
+      "frames": 200704,
+      "nativeTeardown": {
+        "destroyAggregate": 0,
+        "destroyIOProc": 0,
+        "destroyTap": 0,
+        "stop": 0
+      },
+      "nonzeroSamples": 0,
+      "peak": 0,
+      "rms": 0,
+      "sampleRate": 48000,
+      "samples": 401408,
+      "warning": "All samples are zero: silence or denied capture; permission and audible playback are unverified."
+    },
+    "stderr": "",
+    "events": [],
+    "players_running_at_recorder_end": [
+      true
+    ],
+    "caf_artifacts": [
+      {
+        "kind": "final",
+        "decodable": true,
+        "bytes": 1609728,
+        "frames": 200704,
+        "sample_rate": 48000,
+        "nonzero_pcm16_samples": 0,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 3,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "revoked_capture": {
+    "name": "revoked-teardown-final",
+    "mode": "revoke",
+    "elapsed_seconds": 32.566393750021234,
+    "revocation_observed_elapsed_seconds": 9.140749750193208,
+    "binary_sha256": "c0135dae0eea2139168d2fb3125fc0793301dd4c84159d222871daf1ecdcf162",
+    "launchservices_status_not_recorder_status": 0,
+    "receipt": {
+      "channels": 2,
+      "frames": 1531392,
+      "nativeTeardown": {
+        "destroyAggregate": 0,
+        "destroyIOProc": 0,
+        "destroyTap": 0,
+        "stop": 0
+      },
+      "nonzeroSamples": 3058798,
+      "peak": 0.01825738698244095,
+      "rms": 0.008503890987143582,
+      "sampleRate": 48000,
+      "samples": 3062784
+    },
+    "stderr": "",
+    "events": [
+      {
+        "event": "post_revocation_marker_started",
+        "elapsed_seconds": 9.182341667125002
+      }
+    ],
+    "players_running_at_recorder_end": [
+      true,
+      true
+    ],
+    "caf_artifacts": [
+      {
+        "kind": "final",
+        "decodable": true,
+        "bytes": 12255232,
+        "frames": 1531392,
+        "sample_rate": 48000,
+        "caf_sha256": "016c47f2947b89401e58bda9510fef8245d262723ac9d4c96d742a2e45857751",
+        "nonzero_pcm16_samples": 3057236,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 286.882823754972,
+              "880": 0.13918688728109585,
+              "1320": 0.12642125942959487
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 299.9680189191934,
+              "880": 0.00015754610410317982,
+              "1320": 0.023238795057814586
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 299.96593936665283,
+              "880": 0.00014345197822690866,
+              "1320": 0.021283192608864607
+            }
+          },
+          {
+            "begin_seconds": 3,
+            "amplitudes_pcm16": {
+              "440": 299.9672541252532,
+              "880": 0.0000679163130755656,
+              "1320": 0.028702325671950003
+            }
+          },
+          {
+            "begin_seconds": 4,
+            "amplitudes_pcm16": {
+              "440": 299.9704048672814,
+              "880": 0.00006014668570415963,
+              "1320": 0.03170934821650246
+            }
+          },
+          {
+            "begin_seconds": 5,
+            "amplitudes_pcm16": {
+              "440": 299.9711164834662,
+              "880": 0.000041666666636677606,
+              "1320": 0.029770151823730735
+            }
+          },
+          {
+            "begin_seconds": 6,
+            "amplitudes_pcm16": {
+              "440": 299.9697140217516,
+              "880": 3.198294432526302e-14,
+              "1320": 0.028276238752853962
+            }
+          },
+          {
+            "begin_seconds": 7,
+            "amplitudes_pcm16": {
+              "440": 299.9682868335792,
+              "880": 0.00004166666667779093,
+              "1320": 0.029110296442117375
+            }
+          },
+          {
+            "begin_seconds": 8,
+            "amplitudes_pcm16": {
+              "440": 299.9727891316655,
+              "880": 0.24419962753557628,
+              "1320": 88.98061559364248
+            }
+          },
+          {
+            "begin_seconds": 9,
+            "amplitudes_pcm16": {
+              "440": 299.97000496846675,
+              "880": 0.0005074994816461146,
+              "1320": 299.97381312398386
+            }
+          },
+          {
+            "begin_seconds": 10,
+            "amplitudes_pcm16": {
+              "440": 299.97702459557973,
+              "880": 0.00020455802056563798,
+              "1320": 299.983805380155
+            }
+          },
+          {
+            "begin_seconds": 11,
+            "amplitudes_pcm16": {
+              "440": 299.97866897561147,
+              "880": 0.000057853846977038665,
+              "1320": 299.98618500429626
+            }
+          },
+          {
+            "begin_seconds": 12,
+            "amplitudes_pcm16": {
+              "440": 299.97010061798863,
+              "880": 0.00020141057580890683,
+              "1320": 299.96931647771083
+            }
+          },
+          {
+            "begin_seconds": 13,
+            "amplitudes_pcm16": {
+              "440": 299.97630426028667,
+              "880": 0.000247694783294466,
+              "1320": 299.98458015422455
+            }
+          },
+          {
+            "begin_seconds": 14,
+            "amplitudes_pcm16": {
+              "440": 299.98672155391074,
+              "880": 0.00017022251944120103,
+              "1320": 299.99271448454914
+            }
+          },
+          {
+            "begin_seconds": 15,
+            "amplitudes_pcm16": {
+              "440": 299.9788578170006,
+              "880": 0.00011647918413679385,
+              "1320": 299.9991692137252
+            }
+          },
+          {
+            "begin_seconds": 16,
+            "amplitudes_pcm16": {
+              "440": 299.97094546508885,
+              "880": 0.00005634677141688152,
+              "1320": 299.9998947853781
+            }
+          },
+          {
+            "begin_seconds": 17,
+            "amplitudes_pcm16": {
+              "440": 299.96615539654823,
+              "880": 0.000041666666664752696,
+              "1320": 299.9984451085491
+            }
+          },
+          {
+            "begin_seconds": 18,
+            "amplitudes_pcm16": {
+              "440": 299.96840822840426,
+              "880": 0.000034803922880671784,
+              "1320": 299.9959495065262
+            }
+          },
+          {
+            "begin_seconds": 19,
+            "amplitudes_pcm16": {
+              "440": 299.9630534918748,
+              "880": 0.000026993118175498007,
+              "1320": 300.00292174277337
+            }
+          },
+          {
+            "begin_seconds": 20,
+            "amplitudes_pcm16": {
+              "440": 299.9615602061076,
+              "880": 0.0000672555248768952,
+              "1320": 300.0018229041241
+            }
+          },
+          {
+            "begin_seconds": 21,
+            "amplitudes_pcm16": {
+              "440": 299.9632121394016,
+              "880": 0.00004935122924178899,
+              "1320": 300.004606347088
+            }
+          },
+          {
+            "begin_seconds": 22,
+            "amplitudes_pcm16": {
+              "440": 299.9671092903694,
+              "880": 0.0000416666666572999,
+              "1320": 300.0052367152797
+            }
+          },
+          {
+            "begin_seconds": 23,
+            "amplitudes_pcm16": {
+              "440": 299.96719747344883,
+              "880": 0.00009772883521307186,
+              "1320": 300.00389047773945
+            }
+          },
+          {
+            "begin_seconds": 24,
+            "amplitudes_pcm16": {
+              "440": 299.966218845207,
+              "880": 9.766865941002857e-15,
+              "1320": 300.0053889617877
+            }
+          },
+          {
+            "begin_seconds": 25,
+            "amplitudes_pcm16": {
+              "440": 299.9670737822341,
+              "880": 9.766230692073482e-15,
+              "1320": 300.0049956447494
+            }
+          },
+          {
+            "begin_seconds": 26,
+            "amplitudes_pcm16": {
+              "440": 299.96535338407483,
+              "880": 0.00010935666759104081,
+              "1320": 300.0004253435638
+            }
+          },
+          {
+            "begin_seconds": 27,
+            "amplitudes_pcm16": {
+              "440": 299.9668945096451,
+              "880": 0.000149162889347575,
+              "1320": 299.9959535503564
+            }
+          },
+          {
+            "begin_seconds": 28,
+            "amplitudes_pcm16": {
+              "440": 299.9701292877876,
+              "880": 0.00004229299077318084,
+              "1320": 299.99739624918
+            }
+          },
+          {
+            "begin_seconds": 29,
+            "amplitudes_pcm16": {
+              "440": 299.97246241131074,
+              "880": 0.00006790563265850105,
+              "1320": 299.9950783777722
+            }
+          },
+          {
+            "begin_seconds": 30,
+            "amplitudes_pcm16": {
+              "440": 299.97374920992377,
+              "880": 0.00012426391334615,
+              "1320": 299.9943117568809
+            }
+          },
+          {
+            "begin_seconds": 31,
+            "amplitudes_pcm16": {
+              "440": 300.2027954041018,
+              "880": 0.0942240894545918,
+              "1320": 300.06644576807554
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "fresh_capture_after_revocation": {
+    "name": "denied-after-revocation",
+    "mode": "deny",
+    "elapsed_seconds": 4.684481207979843,
+    "revocation_observed_elapsed_seconds": null,
+    "binary_sha256": "c0135dae0eea2139168d2fb3125fc0793301dd4c84159d222871daf1ecdcf162",
+    "launchservices_status_not_recorder_status": 0,
+    "receipt": {
+      "channels": 2,
+      "frames": 191488,
+      "nativeTeardown": {
+        "destroyAggregate": 0,
+        "destroyIOProc": 0,
+        "destroyTap": 0,
+        "stop": 0
+      },
+      "nonzeroSamples": 0,
+      "peak": 0,
+      "rms": 0,
+      "sampleRate": 48000,
+      "samples": 382976,
+      "warning": "All samples are zero: silence or denied capture; permission and audible playback are unverified."
+    },
+    "stderr": "",
+    "events": [],
+    "players_running_at_recorder_end": [
+      true
+    ],
+    "caf_artifacts": [
+      {
+        "kind": "final",
+        "decodable": true,
+        "bytes": 1536000,
+        "frames": 191488,
+        "sample_rate": 48000,
+        "caf_sha256": "64d96c3610392807a67541807e7c26a4eef9f302e0353c7adb0787fd9b4abb56",
+        "nonzero_pcm16_samples": 0,
+        "windows": [
+          {
+            "begin_seconds": 0,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 1,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 2,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          },
+          {
+            "begin_seconds": 3,
+            "amplitudes_pcm16": {
+              "440": 0,
+              "880": 0,
+              "1320": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "observation_notes": [
+    "Revocation OFF was freshly observed through trusted Peekaboo before the marker process was created.",
+    "Harness elapsed times and recorded-frame window times have different origins.",
+    "Success receipts report checked native teardown before final publication.",
+    "Retained tap continued to persist the new marker; a fresh capture under the same revoked identity produced only zero samples.",
+    "No physical speaker loopback or human listening observation was performed."
+  ]
+}

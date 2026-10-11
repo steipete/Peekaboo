@@ -1,0 +1,29 @@
+Redacted excerpts from trusted Peekaboo Bridge terminal observations.
+Only the separate test prototype's consent was changed. Installed Peekaboo was unchanged.
+Private identifiers, window/process IDs, paths, credentials, IPs and endpoints removed.
+
+2026-10-11T06:55:47Z explicit denial control:
+  observed system dialog: test prototype requests system-audio recording
+  clicked: Don't Allow
+  subsequent observation: dialog no longer present
+  subsequent Settings observation: test prototype audio-only switch value=0
+  recorder: checked-teardown executable SHA-256 c0135dae0eea2139168d2fb3125fc0793301dd4c84159d222871daf1ecdcf162
+  final receipt: nonzeroSamples=0; nativeTeardown stop/destroyIOProc/destroyAggregate/destroyTap=0
+
+2026-10-11T06:56:10Z allow controls:
+  clicked: test prototype audio-only switch
+  subsequent Settings observation: switch value=1
+  selected-process and explicit-system controls: final CAFs and success receipts
+
+2026-10-11T06:56:54Z retained-tap revocation control:
+  before capture: test prototype audio-only switch value=1
+  action during 30-second system capture: clicked the same switch
+  subsequent Settings observation: switch value=0
+  OFF observation recorded at harness elapsed_seconds=9.140749750193208
+  new protected 1320 Hz source started at elapsed_seconds=9.182341667125002
+  final receipt: frames=1531392; nativeTeardown stop/destroyIOProc/destroyAggregate/destroyTap=0
+  final CAF analysis: 1320 Hz amplitude approximately 300 PCM16 units in later windows
+  result: protected post-OFF signal reached persistent output; security concern remains open
+
+These are redacted transcript excerpts, not screenshots or a consent API contract.
+Complete derived recorder/analysis measurements are in system-audio-consent-2026-10-11.json.

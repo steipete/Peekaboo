@@ -6,6 +6,11 @@ read_when:
 
 # System audio capture prototype
 
+**Merge blocker:** the October 11 revocation control below demonstrates that an
+existing tap continued to persist a protected marker after its host's audio
+permission switch was turned off. This experimental probe is not a safe supported
+capture interface. Do not merge or integrate it while that boundary is unresolved.
+
 Investigated 2026-10-09 against `openclaw/Peekaboo` commit
 `c02c26927d77ddcc17a61233cd4bc0cf83de485a`.
 This is an isolated development probe, not a released Peekaboo command or MCP tool.
@@ -80,9 +85,9 @@ Forced deadline exit bypasses Swift cleanup: it may leave a private (mode 0700)
 `.peekaboo-audio-*` directory beside the requested output containing an incomplete
 CAF. This file is not published as a result. Inspect/remove those owned partials
 after a failed test; the probe does not claim confirmed native cleanup on a stall.
-A native destruction stall after CAF finalization can also leave the closed final
-file without a success receipt. The output path alone does not establish a
-successful operation or confirmed resource teardown.
+A native destruction stall can leave a closed staged CAF without a success receipt.
+Checked native teardown now precedes publication of the requested final CAF.
+The output path alone does not establish successful operation or exhaustive cleanup.
 
 ## Evidence and limits
 
@@ -96,7 +101,7 @@ Test host: macOS 26.7, Apple Silicon, Xcode Swift 6.4.
 - The first SSH launch was attributed to `com.apple.sshd-keygen-wrapper` in TCC logs.
 - Launching the named app from the external volume failed with Launch Services -10810.
 - A small app copy in the user's Applications directory launched successfully.
-  TCC attributed the audio request to `com.pearcecodes.peekaboo.audio-prototype`.
+  TCC attributed the audio request to the separate test prototype's bundle identity.
   A small local output path avoids an additional removable-volume access prompt.
 - TCC preflight reported unknown audio authorization. A system-audio prompt was
   not verified. A native stack sample established that the process was blocked
@@ -188,6 +193,62 @@ this host after explicit consent. Denied-permission behavior, native resource
 cleanup, playback preservation, other device configurations, and Bridge/MCP
 integration remain validation gates. An enabled Settings switch alone did not
 establish that all pending consent dialogs had been answered.
+
+### Denial, revocation, and checked teardown (2026-10-11)
+
+Inspectable, redacted terminal receipts and measurements are committed in
+[`evidence/system-audio-consent-2026-10-11.json`](evidence/system-audio-consent-2026-10-11.json).
+The original October 11 allowed-capture receipts are included, along with current
+matching-build controls. Paths, PIDs, hostnames, IPs, private bundle identifiers,
+and endpoints are omitted. Recordings stayed on the test host; the artifact contains
+derived signal measurements, PCM/CAF digests, and recorder receipts rather than
+potentially unrelated system audio.
+
+The recorder now checks native stop, IOProc destruction, aggregate destruction,
+and tap destruction **before** publishing the final CAF or success receipt. Successful
+receipts include those four OSStatus results. A failure keeps publication blocked;
+the isolated deadline still bounds stalled native calls. This verifies successful
+native teardown API results on the tested paths, not arbitrary failure recovery.
+
+| Control on checked-teardown build | Evidence | Result |
+| --- | --- | --- |
+| Denied prototype consent; selected process plays 440 Hz | Explicit Don't Allow, then OFF state; final CAF has 200,704 frames, zero float32 nonzero samples and zero decoded PCM16 nonzero samples | No protected samples persisted; a silent CAF and warning are produced |
+| Allowed process selection; simultaneous 440/880 Hz sources | 151,552 frames; interior 440 Hz amplitude about 300 PCM16 units and 880 Hz below 0.001 | Selected synthetic source captured |
+| Allowed system output; simultaneous 440/880 Hz sources | 145,408 frames; both interior amplitudes about 300 PCM16 units | Both synthetic sources captured |
+| Consent ON at start, then verified OFF during retained system tap | OFF observed at harness +9.14075 s; new 1320 Hz source started at +9.18234 s; marker appears at about 300 PCM16 units in later final-CAF windows | **Failed revocation boundary; merge blocked** |
+
+The revocation run produced 1,531,392 frames and a final CAF. It kept both players
+running until harness cleanup, and native stop/destruction results were all zero.
+The marker source did not exist before the OFF observation, so its persistence
+cannot be explained by draining only previously authorized, queued audio. The
+next fresh capture under the same revoked host identity produced 191,488 frames
+with zero nonzero samples, while the retained-tap run had persisted the new marker.
+That control distinguishes the observed retained-resource behavior from an OFF
+switch that merely failed to change new-capture access. The
+permission observation clock is relative to harness start; analysis windows are
+relative to the first recorded frame and must not be treated as the same time axis.
+This establishes the Settings-OFF behavior on macOS 26.7; it does not establish
+Apple's intended effective-revocation contract or a portable OS guarantee.
+
+An experimental per-write tap-property round-trip did not establish a solution
+and was reverted. Core Audio tap creation, silence, a live source process, and an
+enabled Settings switch are not substitutes for a proven revocation-aware write
+boundary. The requested negative revocation proof is not available: the live
+control demonstrates the opposite. No security clearance is claimed.
+
+For local reanalysis, convert a retained private CAF to signed 16-bit WAV with
+`afconvert -f WAVE -d LEI16 INPUT.caf OUTPUT.wav`, then run
+`python3 scripts/analyze-system-audio-proof.py OUTPUT.wav`. The script prints no
+paths or process identifiers. Its one-second first-channel sine/cosine projections
+are finite tone tests, not a general audio-isolation proof. The denied-control
+receipt also reports exact float32 nonzero counts before PCM16 conversion.
+
+Playback is configured as `CATapMuteBehavior.unmuted`; both test players remained
+running. Apple documents that policy as forwarding audio to hardware as well as
+the tap ([CATapMuteBehavior](https://developer.apple.com/documentation/coreaudio/catapmutebehavior)).
+An independent hardware-output or human listening check was not performed, so
+audible playback preservation remains open. Human maintainer approval of the
+standalone feasibility scope is also still required.
 
 After proving the native lifecycle, move capture APIs into the shared automation layer and expose them as
 `capture audio` plus an MCP operation. Native work needs a separately contained worker,

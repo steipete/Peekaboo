@@ -59,6 +59,7 @@ struct CaptureEvidence: Codable {
     let rms: Double
     let nonzeroSamples: Int64
     let warning: String?
+    let nativeTeardown: [String: OSStatus]
 }
 
 /// All mutable state is confined to the IOProc's serial queue. Read/close only
@@ -188,7 +189,11 @@ func record(_ request: CaptureRequest) async throws -> CaptureEvidence {
     description.isPrivate = true
     var tap: AudioObjectID = 0
     try check(AudioHardwareCreateProcessTap(description, &tap), "create tap")
-    defer { AudioHardwareDestroyProcessTap(tap) }
+    defer {
+        if tap != kAudioObjectUnknown {
+            AudioHardwareDestroyProcessTap(tap)
+        }
+    }
     address.mSelector = kAudioTapPropertyFormat
     var asbd = AudioStreamBasicDescription()
     var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
@@ -236,7 +241,11 @@ func record(_ request: CaptureRequest) async throws -> CaptureEvidence {
     ]
     var device: AudioObjectID = 0
     try check(AudioHardwareCreateAggregateDevice(settings as CFDictionary, &device), "create aggregate")
-    defer { AudioHardwareDestroyAggregateDevice(device) }
+    defer {
+        if device != kAudioObjectUnknown {
+            AudioHardwareDestroyAggregateDevice(device)
+        }
+    }
 
     let staging = request.output.deletingLastPathComponent().appendingPathComponent(
         ".peekaboo-audio-\(UUID().uuidString)", isDirectory: true)
@@ -268,6 +277,14 @@ func record(_ request: CaptureRequest) async throws -> CaptureEvidence {
     try await Task.sleep(for: .seconds(request.seconds))
     try check(AudioDeviceStop(device, callback), "stop recording")
     stopped = true
+    guard let ownedCallback = callback else { throw ProbeError.invalid("Missing owned IOProc.") }
+    try check(AudioDeviceDestroyIOProcID(device, ownedCallback), "destroy IOProc")
+    callback = nil
+    queue.sync { sink.close() }
+    try check(AudioHardwareDestroyAggregateDevice(device), "destroy aggregate")
+    device = kAudioObjectUnknown
+    try check(AudioHardwareDestroyProcessTap(tap), "destroy tap")
+    tap = kAudioObjectUnknown
     return try queue.sync {
         sink.close()
         if let error = sink.error {
@@ -290,7 +307,13 @@ func record(_ request: CaptureRequest) async throws -> CaptureEvidence {
             nonzeroSamples: sink.nonzeroSamples,
             warning: sink.nonzeroSamples == 0
                 ? "All samples are zero: silence or denied capture; permission and audible playback are unverified."
-                : nil)
+                : nil,
+            nativeTeardown: [
+                "stop": noErr,
+                "destroyIOProc": noErr,
+                "destroyAggregate": noErr,
+                "destroyTap": noErr,
+            ])
     }
 }
 
