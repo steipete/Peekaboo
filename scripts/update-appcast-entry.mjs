@@ -97,6 +97,13 @@ export function validateAppcast(xml, expected) {
 }
 
 export function updateAppcastEntry(xml, entry) {
+  for (const name of ['version', 'releaseUrl', 'assetUrl', 'buildNumber', 'zipLength',
+    'edSignature', 'minimumSystemVersion', 'pubDate']) {
+    if (typeof entry?.[name] !== 'string' || entry[name].trim().length === 0) {
+      throw new Error(`Appcast ${name} is required`);
+    }
+  }
+  if (!/^[1-9][0-9]*$/.test(entry.zipLength)) throw new Error('Appcast asset length is invalid');
   const existingItems = [...xml.matchAll(itemPattern)];
   validateCandidate(existingItems, entry);
   const firstIndent = existingItems[0]?.[0].match(/^([ \t]*)<item>/)?.[1] ?? "        ";
