@@ -167,10 +167,25 @@ export function extractReleaseNotes(changelog, version) {
   const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const heading = new RegExp(`^## \\[?${escaped}\\]?(?: - .+)?$`);
   const lines = changelog.split('\n');
-  const start = lines.findIndex((line) => heading.test(line));
-  if (start < 0) fail(`changelog has no release section for ${version}`);
-  const relativeEnd = lines.slice(start + 1).findIndex((line) => line.startsWith('## '));
-  const end = relativeEnd < 0 ? lines.length : start + 1 + relativeEnd;
+  const headings = [];
+  let fence = null;
+  for (const [index, line] of lines.entries()) {
+    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) {
+        fence = null;
+      }
+      continue;
+    }
+    if (marker) {
+      fence = marker[1];
+      continue;
+    }
+    if (line.startsWith('## ')) headings.push(index);
+  }
+  const start = headings.find((index) => heading.test(lines[index]));
+  if (start === undefined) fail(`changelog has no release section for ${version}`);
+  const end = headings.find((index) => index > start) ?? lines.length;
   return normalizedNotes(lines.slice(start, end).join('\n'));
 }
 
