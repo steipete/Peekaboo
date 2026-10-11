@@ -35,8 +35,10 @@ nonisolated func waitForProcessExit(
     }
 
     let once = LeaveOnce()
-    process.terminationHandler = { _ in
+    let previousTerminationHandler = process.terminationHandler
+    process.terminationHandler = { process in
         once.leave()
+        previousTerminationHandler?(process)
     }
     // Cover the race where the child exits before the handler is installed.
     if !process.isRunning {
