@@ -5,8 +5,11 @@ import Foundation
 /// Format JSON for pretty printing with optional indentation
 public func formatJSON(_ jsonString: String, indent: String = "   ") -> String? {
     guard let data = jsonString.data(using: .utf8),
-          let json = try? JSONSerialization.jsonObject(with: data),
-          let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),
+          let json = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]),
+          let prettyData = try? JSONSerialization.data(
+              withJSONObject: json,
+              options: [.prettyPrinted, .sortedKeys, .fragmentsAllowed]
+          ),
           let prettyString = String(data: prettyData, encoding: .utf8) else {
         return nil
     }
