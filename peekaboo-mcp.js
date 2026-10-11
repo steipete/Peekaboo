@@ -31,7 +31,7 @@ export class PeekabooMCPWrapper {
   }
 
   start() {
-    if (this.shuttingDown) return;
+    if (this.shuttingDown || this.child || this.restartTimer) return;
 
     if (!existsSync(this.binaryPath)) {
       console.error(`[Peekaboo MCP] Binary not found at ${this.binaryPath}`);
