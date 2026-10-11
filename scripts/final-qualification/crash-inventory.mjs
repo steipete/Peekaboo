@@ -46,7 +46,8 @@ function validateInventory(value, label) {
   value.entries.forEach((entry, index) => {
     exactKeys(entry, ['name', 'size', 'modified_at_milliseconds', 'sha256'],
       `${label}.entries[${index}]`);
-    requireCondition(/^[A-Za-z0-9._-]+$/.test(entry.name)
+    requireCondition(typeof entry.name === 'string' && /^[A-Za-z0-9._-]+$/.test(entry.name)
+      && value.prefixes.some((prefix) => entry.name.startsWith(prefix))
       && Number.isSafeInteger(entry.size) && entry.size >= 0
       && Number.isSafeInteger(entry.modified_at_milliseconds)
       && SHA256.test(entry.sha256), `${label}.entries[${index}] is malformed`);
