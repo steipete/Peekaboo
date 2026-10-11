@@ -284,7 +284,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
 
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    html.push(`<p>${inline(paragraph.join(" "), currentRel)}</p>`);
+    html.push(`<p>${inline(paragraph.join("\n"), currentRel)}</p>`);
     paragraph = [];
   };
   const closeList = () => {
@@ -437,7 +437,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       html.push(`<li>${inline((bullet || numbered)[1], currentRel)}</li>`);
       continue;
     }
-    paragraph.push(line.trim());
+    paragraph.push(line.trimStart());
   }
   if (fence) {
     const body = highlightCode(fence.lines.join("\n"), fence.lang);
@@ -479,6 +479,10 @@ function inline(text, currentRel) {
     stash.push(`<code>${escapeHtml(code)}</code>`);
     return `\u0000${stash.length - 1}\u0000`;
   });
+  out = out.replace(/ {2,}\n|\\\n/g, () => {
+    stash.push("<br>");
+    return `\u0000${stash.length - 1}\u0000`;
+  }).replace(/\n/g, " ");
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
