@@ -147,12 +147,14 @@ if (isMainModule()) {
     console.error('[Peekaboo MCP] Uncaught exception:', err);
     process.exitCode = 1;
     wrapper.shutdown();
+    if (!wrapper.child) process.exit(1);
   });
 
   process.on('unhandledRejection', (reason) => {
     console.error('[Peekaboo MCP] Unhandled rejection:', reason);
     process.exitCode = 1;
     wrapper.shutdown();
+    if (!wrapper.child) process.exit(1);
   });
 }
 
