@@ -176,7 +176,25 @@ EOF
 
 cat >"$FAKE_BIN/xcrun" <<'EOF'
 #!/usr/bin/env bash
+set -euo pipefail
+case "$1:$2" in
+  notarytool:submit)
+    [[ "$*" == *'--output-format json'* && "$*" == *'--keychain-profile fixture'* ]]
+    printf '{"id":"00000000-0000-4000-8000-000000000001","status":"%s"}\n' \
+      "${PEEKABOO_TEST_NOTARY_STATUS:-Accepted}"
+    ;;
+  stapler:staple)
+    printf 'staple\n' >> "${PEEKABOO_TEST_STAPLE_LOG:?}"
+    [[ "$(wc -l < "$PEEKABOO_TEST_STAPLE_LOG")" -ge "${PEEKABOO_TEST_STAPLE_SUCCESS:-1}" ]]
+    ;;
+esac
 exit 0
+EOF
+cat >"$FAKE_BIN/sleep" <<'EOF'
+#!/usr/bin/env bash
+if [[ -n "${PEEKABOO_TEST_SLEEP_LOG:-}" && "$1" != 0.01 ]]; then
+  printf '%s\n' "$1" >> "$PEEKABOO_TEST_SLEEP_LOG"
+fi
 EOF
 
 chmod +x "$FAKE_BIN"/*
@@ -254,6 +272,32 @@ rg -Fxq -- "background=$BACKGROUND" "$UV_ARGS_FILE"
 rg -Fq -- 'volume_icon=' "$UV_ARGS_FILE"
 rg -Fxq -- 'Peekaboo 3.9.5' "$UV_ARGS_FILE"
 rg -Fxq -- "$BUILT_DMG_PATH" "$UV_ARGS_FILE"
+
+for verdict in Accepted Invalid; do
+  staple_log="$TEST_DIR/staple-$verdict"
+  sleep_log="$TEST_DIR/sleep-$verdict"
+  notary_exit=0
+  PEEKABOO_TEST_DETACH_COUNTER="$COUNTER_FILE" \
+  PEEKABOO_TEST_UV_ARGS="$UV_ARGS_FILE" \
+  PEEKABOO_TEST_APP_TEMPLATE="$APP_TEMPLATE" \
+  PEEKABOO_TEST_NOTARY_STATUS="$verdict" \
+  PEEKABOO_TEST_STAPLE_LOG="$staple_log" \
+  PEEKABOO_TEST_STAPLE_SUCCESS=4 \
+  PEEKABOO_TEST_SLEEP_LOG="$sleep_log" \
+  PATH="$FAKE_BIN:$PATH" \
+    "$ROOT_DIR/scripts/create-release-dmg.sh" --version 3.9.5 --app-zip "$APP_ZIP" \
+    --output "$BUILT_DMG_PATH" --background "$BACKGROUND" --notary-profile fixture \
+    >"$TEST_DIR/notary-$verdict.out" 2>&1 || notary_exit=$?
+  if [[ "$verdict" == Accepted ]]; then
+    [[ "$notary_exit" == 0 ]] || cat "$TEST_DIR/notary-$verdict.out" >&2
+    [[ "$notary_exit" == 0 && "$(wc -l < "$staple_log")" -eq 4 ]]
+    [[ "$(cat "$sleep_log")" == $'2\n4\n6' ]]
+    rg -Fq 'transport: notarytool' "$TEST_DIR/notary-$verdict.out"
+  else
+    [[ "$notary_exit" != 0 && ! -e "$staple_log" ]]
+    rg -Fq 'submission was not accepted with a UUID' "$TEST_DIR/notary-$verdict.out"
+  fi
+done
 
 python3 - "$ROOT_DIR/scripts/dmgbuild-settings.py" <<'PY'
 import runpy

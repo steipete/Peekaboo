@@ -137,26 +137,38 @@ login-keychain or Dropbox fallbacks, and the private locator is never tracked in
 
 ### Local notarization transport
 
-`scripts/notarize-terminal-artifact.sh` accepts `--notary-transport auto|notarytool|api` (default `auto`).
-`scripts/build-terminal-artifacts.sh all` forwards the same option to each notary step. With API-key credentials,
-`auto` first runs the existing `notarytool` submission with S3 acceleration disabled. If submission exits nonzero
-without a parseable Apple verdict (`Accepted`, `Invalid`, or `Rejected`), it resubmits the identical retained bytes
-through Apple's Notary REST API. An Apple rejection never triggers the fallback. `notarytool` disables fallback;
-`api` skips notarytool entirely for links known to be congested. Keychain-profile submissions remain on notarytool;
-`--notary-transport api` requires API-key credentials. The separate legacy `release-binaries.sh` submission path
-continues using notarytool.
+`scripts/release-binaries.sh` accepts `--notary-transport auto|notarytool|api`, or the equivalent
+`PEEKABOO_NOTARY_TRANSPORT` environment variable (default `auto`; the flag takes precedence). It exports the
+selection to `release-macos-app.sh` and `create-release-dmg.sh`, so the standalone CLI, app ZIP submission,
+and DMG all use the shared submission helper. The transport is not part of the frozen release plan or proof
+identity: `--resume-publication` accepts a different transport without rebuilding or replacing retained artifacts.
+The app and DMG scripts also accept the environment variable when run directly.
+
+With API-key credentials, `auto` first submits with `notarytool`, S3 acceleration disabled, and JSON output.
+If submission exits nonzero without a parseable Apple verdict (`Accepted`, `Invalid`, or `Rejected`), it resubmits
+the identical retained bytes through Apple's Notary REST API. An Apple rejection never triggers the fallback.
+`notarytool` disables fallback; `api` skips notarytool entirely for links known to be congested. Keychain-profile
+submissions remain on notarytool; selecting `api` with a profile fails clearly. Every public submission requires
+`Accepted` and a UUID submission ID before continuing. Temporary P8 files are mode 0600 and removed on success or failure.
+
+`scripts/notarize-terminal-artifact.sh` accepts the same `--notary-transport auto|notarytool|api` flag (default
+`auto`), and `scripts/build-terminal-artifacts.sh all` forwards it to each terminal/fleet qualification step.
+That wrapper retains its isolated credential boundary, artifact verification, and atomic version-2 receipts;
+receipts record `submission.transport` (`notarytool` or `api`) without changing existing bindings.
 
 The isolated, stdlib-only Python helper signs short-lived ES256 JWTs with the already-materialized key, uploads to
-S3 with up to 24 concurrent multipart requests (8 MiB parts, increased for very large submissions), checks part
-ETags and final object size, and polls with fresh JWTs. Each part has four attempts with backoff; upload failures
-abort the multipart session, and the REST attempt has a one-hour deadline. No dependencies are downloaded at
-release time. HTTPS uses the system roots shipped on the release Mac. Rejected submissions print only the developer
-log URL's host and path, never its query or authentication material. Endpoint overrides are restricted to explicit
-loopback fixtures with throwaway keys.
+S3 with up to 24 concurrent multipart requests (5 MiB parts, increased to stay within 10,000 parts for large submissions),
+checks part ETags and final object size, and polls with fresh JWTs. A 40 MiB app ZIP uses eight upload streams.
+Parts, Notary API requests, and multipart creation/completion and HEAD requests have up to four attempts with
+backoff for connection failures, HTTP 429, and HTTP 5xx; authentication and validation errors fail immediately.
+Retries remain within the one-hour REST attempt deadline. Retrying a lost submission-creation response may create
+a second submission. Upload failures abort the multipart session. No dependencies are downloaded at release time.
+HTTPS uses the system roots shipped on the release Mac. Rejected submissions print only the developer log URL's
+host and path, never its query or authentication material. Endpoint overrides are restricted to explicit loopback
+fixtures with throwaway keys.
 
-Both transports use the same Accepted/UUID checks, stapling, artifact verification, and atomic version-2 receipt
-publication. Receipts add `submission.transport` (`notarytool` or `api`) without changing existing bindings.
-App and DMG stapling retries up to four times, waiting 2, 4, and 6 seconds for ticket propagation before giving up.
+App and DMG stapling retries up to four times, waiting 2, 4, and 6 seconds for ticket propagation before giving up,
+in both the public release scripts and the terminal wrapper. Final artifact verification remains required.
 
 ## 1. Prepare
 
