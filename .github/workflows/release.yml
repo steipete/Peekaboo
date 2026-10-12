@@ -30,8 +30,8 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # Includes the reviewed zippered-runtime fix; @v1 still predates it.
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@59b46b029dbc6e7d3a81a680ceff116cfb3eca67
+    # Includes reviewed runtime and historical-appcast fixes missing from @v1.
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@072d93f5e499311fc3702a03f1c27f0a48483ef8
     with:
       version: ${{ inputs.version || github.ref_name }}
       require-signed-tag: true

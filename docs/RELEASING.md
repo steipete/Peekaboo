@@ -32,10 +32,12 @@ npm tarball are verified before publication. Failed handoffs can be retried by
 the corresponding hosted workflow after checking published integrity; do not
 rebuild or overwrite an existing version.
 
-The shared Sparkle workflow pins the reviewed `59b46b0` commit, which includes
-zippered macOS runtime validation from `openclaw/release-workflows#75`. The fleet
-`@v1` tag still predates that fix; switch back after a separately authorized
-shared-workflow release includes it.
+The shared Sparkle workflow pins the reviewed `072d93f` commit, which includes
+zippered macOS runtime validation from `openclaw/release-workflows#75` and preserves
+legacy appcast build numbers through `openclaw/release-workflows#76`. New releases
+must still use a unique version and a build above all existing entries. The fleet
+`@v1` tag still predates these fixes; switch back after a separately authorized
+shared-workflow release includes them.
 `npm-publish.yml` must keep its filename: the trusted publisher for
 `@steipete/peekaboo` names it. No npm token is needed.
 
