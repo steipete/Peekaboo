@@ -13,9 +13,10 @@ Every shipped macOS code object uses `Developer ID Application: OpenClaw Foundat
 
 ## Hosted release (GitHub Actions)
 
-Use `.github/workflows/release.yml` as the primary release path once its placeholder reusable-workflow SHA has
-been replaced with the reviewed, merged `openclaw/release-workflows` commit and the environment below is provisioned.
-The all-zero pin deliberately cannot run. The local driver remains the fallback while hosted rollout is completed.
+Use `.github/workflows/release.yml` as the primary release path after the environment below is provisioned.
+For its first dry run, the caller pins `openclaw/release-workflows` PR #66 head
+`3a9fb01ac5cd0f24a3a28fc9e9e4c998539c0722`; re-pin it to the reviewed merged commit once #66 lands.
+The local driver remains the fallback while hosted rollout is completed.
 
 Prepare a release PR against `main`: update all version surfaces listed in [Prepare](#1-prepare), date the target
 changelog sections as `## X.Y.Z - YYYY-MM-DD`, and update `release/release-notes.md` to contain exactly that version's
@@ -35,7 +36,10 @@ Approve the pending `release` environment deployment after reviewing the frozen 
 are credential-free; the signer consumes only artifacts and data inputs, without checking out or executing caller
 code. Approval gates signing and notarization, and no tag or draft is created until signing succeeds. A dry run uses
 real signing and Apple notarization, then verifies workflow artifacts; it creates no tag, GitHub release, npm/Homebrew
-handoff, or closeout PR. Publication verifies the uploaded draft assets before making the release public.
+handoff, or closeout PR. A dry run rehearses a prepared, unreleased version: it requires a dated changelog section
+and matching `package.json` version, and refuses versions with an existing tag (the local driver creates lightweight
+tags) or appcast entry, so it cannot replay a published release. Publication verifies the uploaded draft assets before
+making the release public.
 
 Independent secretless verifiers on `macos-15` (arm64), `macos-15-intel`, and `macos-26` (arm64) check checksums,
 Foundation signatures and online notarization, stapled app/DMG tickets, Gatekeeper acceptance, and identical app trees
@@ -57,11 +61,13 @@ release notes, npm version/tarball/integrity/dist-tag, and Homebrew update befor
 
 ### One-time hosted setup
 
-Replace the all-zero SHA pin in `release.yml` with the merged reusable-workflow commit. Configure the caller repo's
-`release` environment with Peter as required reviewer and deployment restrictions for the default branch and `v*`
-tags. Enable Actions to create pull requests for closeout. The caller grants only `contents: write` (tag/release),
-`actions: write` (handoffs and run inspection), and `pull-requests: write` (closeout); the reusable workflow narrows
-individual jobs. It must declare `environment: release` on its signing job. Per
+After PR #66 lands, replace its head SHA pin in `release.yml` with the merged reusable-workflow commit. Configure
+the caller repo's `release` environment with Peter as required reviewer and deployment restrictions for the default branch and `v*`
+tags. Enable Actions to create pull requests for closeout. The caller uses workflow-level `permissions: {}` and
+grants the calling job the archetype's exact job-level union: `actions: write`, `checks: read`, `contents: write`,
+`statuses: read`, and `pull-requests: write` (PR #1051). A reusable workflow cannot request more than its caller
+grants; missing `checks` and `statuses` caused a `startup_failure`. The reusable workflow narrows individual jobs
+and must declare `environment: release` on its signing job. Per
 [GitHub's reusable-workflow secret contract](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows#using-inputs-and-secrets-in-a-reusable-workflow),
 the caller must also explicitly map all six secret names, including environment-only secrets, and the reusable
 workflow must declare them in `on.workflow_call.secrets`. The signing job receives the environment's values after
@@ -128,6 +134,29 @@ Sparkle signing receives `MAC_RELEASE_SPARKLE_OP_REF` from the private release e
 the shared release helper's prompt-free service-account path. The helper writes a mode-0600 temporary key, verifies
 its public key against the tracked `SUPublicEDKey`, and removes it on success or failure; releases do not use
 login-keychain or Dropbox fallbacks, and the private locator is never tracked in this repository.
+
+### Local notarization transport
+
+`scripts/notarize-terminal-artifact.sh` accepts `--notary-transport auto|notarytool|api` (default `auto`).
+`scripts/build-terminal-artifacts.sh all` forwards the same option to each notary step. With API-key credentials,
+`auto` first runs the existing `notarytool` submission with S3 acceleration disabled. If submission exits nonzero
+without a parseable Apple verdict (`Accepted`, `Invalid`, or `Rejected`), it resubmits the identical retained bytes
+through Apple's Notary REST API. An Apple rejection never triggers the fallback. `notarytool` disables fallback;
+`api` skips notarytool entirely for links known to be congested. Keychain-profile submissions remain on notarytool;
+`--notary-transport api` requires API-key credentials. The separate legacy `release-binaries.sh` submission path
+continues using notarytool.
+
+The isolated, stdlib-only Python helper signs short-lived ES256 JWTs with the already-materialized key, uploads to
+S3 with up to 24 concurrent multipart requests (8 MiB parts, increased for very large submissions), checks part
+ETags and final object size, and polls with fresh JWTs. Each part has four attempts with backoff; upload failures
+abort the multipart session, and the REST attempt has a one-hour deadline. No dependencies are downloaded at
+release time. HTTPS uses the system roots shipped on the release Mac. Rejected submissions print only the developer
+log URL's host and path, never its query or authentication material. Endpoint overrides are restricted to explicit
+loopback fixtures with throwaway keys.
+
+Both transports use the same Accepted/UUID checks, stapling, artifact verification, and atomic version-2 receipt
+publication. Receipts add `submission.transport` (`notarytool` or `api`) without changing existing bindings.
+App and DMG stapling retries up to four times, waiting 2, 4, and 6 seconds for ticket propagation before giving up.
 
 ## 1. Prepare
 

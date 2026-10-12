@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fall back to parallel Notary REST uploads when local API-key notarization hits a notarytool transport failure, with explicit transport selection, bounded retries, and unchanged artifact verification.
+
 - Add an approval-gated GitHub Actions release path for signed and notarized app, DMG, CLI, npm, and Homebrew deliverables, with independent artifact verification and an appcast closeout PR.
 - Update Swift Subprocess to 1.0.1 for close-on-exec pipe handling and single-owner output-descriptor cleanup in CLI child processes, preserving the Swift 6.2 and macOS baselines.
 
