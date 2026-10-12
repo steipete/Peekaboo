@@ -11,7 +11,7 @@ const failures = [];
 const extraMarkdownFiles = [path.resolve('README.md')];
 const skillMarkdownFiles = [path.resolve('skills/peekaboo/SKILL.md')];
 const sourceContractFiles = [path.resolve('scripts/test-background-computer-use.sh')];
-const sourceCliDocsFiles = [path.resolve('scripts/release-binaries.sh')];
+const sourceCliDocsFiles = [];
 const staleCliPatterns = [
   [/peekaboo capture --output\b/, 'use `peekaboo see --no-elements --path` or `peekaboo capture live --path`'],
   [/peekaboo capture --window-focused\b/, 'use `peekaboo see --no-elements --mode frontmost`'],

@@ -842,7 +842,7 @@ async function main() {
   }
 
   console.log(`\n${colors.green}${colors.bright}✅ All checks passed! Ready for the release workflow. 🎉${colors.reset}\n`);
-  console.log(`Follow docs/RELEASING.md and run scripts/release-binaries.sh with the intended publish flags.`);
+  console.log(`Follow docs/RELEASING.md and dispatch the hosted release rehearsal.`);
   console.log(`This preflight does not tag, publish, notarize, or create a GitHub release.\n`);
 }
 

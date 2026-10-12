@@ -1,21 +1,23 @@
 name: Release Peekaboo
 
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
         description: 'Prepared release version (e.g., 4.10.0 or 4.10.0-beta.1)'
         required: true
         type: string
-      dry-run:
+      dry_run:
         description: 'Sign, notarize, and verify without publishing'
-        default: false
+        default: true
         type: boolean
 
 permissions: {}
 
 concurrency:
-  group: release
+  group: release-${{ inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -28,11 +30,13 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # pin: openclaw/release-workflows#66 head (review fixes) for the first dry run; re-pin to the merged commit once #66 lands
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@10b7c3f37dcaa60a932bc4a2faabdb8009c51abd
+    # Reviewed immutable Sparkle archetype; finalized to the merge commit before landing.
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@fccbec3727d1f8b838e561d8729aa6531097e82f
     with:
-      version: ${{ inputs.version }}
-      dry-run: ${{ inputs.dry-run }}
+      version: ${{ inputs.version || github.ref_name }}
+      require-signed-tag: true
+      ci-check-events: '["push"]'
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
       repository-type: openclaw
       signing-environment: release
       build-runner: xcode-27
@@ -52,7 +56,7 @@ jobs:
       cli-binary-name: peekaboo
       cli-identifier: boo.peekaboo.peekaboo
       cli-archive-prefix: peekaboo-macos
-      cli-smoke-args: --help
+      cli-smoke-args: '["--help"]'
       npm-pack-script: scripts/hosted-release/pack-npm.sh
       npm-publish-workflow: npm-publish.yml
       homebrew-workflow: update-homebrew.yml
