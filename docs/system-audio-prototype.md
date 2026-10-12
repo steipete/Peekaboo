@@ -38,7 +38,8 @@ change; terminate task-owned old captures before testing the matching build.
 using **fixed, generated fixture samples**. It creates temporary synthetic CAF
 files and removes its owned fixture directory. This is not denied/revoked live
 capture and cannot establish permission or audible playback.
-The deadline/full-pipe checks remain process-contained test fixtures.
+Full/closed-pipe checks exercise actual refusal and invalid-request diagnostics.
+Retired native recording deadlines and their test-only entry points are removed.
 
 Compile and run on a Mac:
 

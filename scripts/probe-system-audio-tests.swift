@@ -79,14 +79,7 @@ func runSelfTests() throws {
     silent.close()
     try require(silent.samples == 128 && silent.peak == 0 && silent.rms == 0, "silence still has frames")
     try require(silent.nonzeroSamples == 0, "silent buffers do not establish permission or playback")
-    try testTerminationWithFullPipe(arguments: ["--self-test-deadline"], expectedStatus: 2)
     try testTerminationWithFullPipe(arguments: ["system", "nan", "fixture.caf"], expectedStatus: 1)
-    try testTerminationWithFullPipe(arguments: ["--self-test-deadline"], expectedStatus: 2, closedReader: true)
-    try testTerminationWithFullPipe(arguments: ["--self-test-scheduled-deadline"], expectedStatus: 2)
-    try testTerminationWithFullPipe(
-        arguments: ["--self-test-scheduled-deadline"],
-        expectedStatus: 2,
-        closedReader: true)
     try testTerminationWithFullPipe(arguments: ["system", "nan", "fixture.caf"], expectedStatus: 1, closedReader: true)
     try testTerminationWithFullPipe(arguments: ["system", "1", "fixture.caf"], expectedStatus: 1)
     try testTerminationWithFullPipe(arguments: ["123", "1", "fixture.caf"], expectedStatus: 1, closedReader: true)
@@ -99,7 +92,7 @@ func testTerminationWithFullPipe(arguments: [String], expectedStatus: Int32, clo
     let writer = pipe.fileHandleForWriting.fileDescriptor
     let flags = fcntl(writer, F_GETFL)
     guard flags >= 0, fcntl(writer, F_SETFL, flags | O_NONBLOCK) == 0 else {
-        throw ProbeError.invalid("Cannot configure deadline fixture pipe")
+        throw ProbeError.invalid("Cannot configure diagnostic fixture pipe")
     }
     let bytes = [UInt8](repeating: 1, count: 4096)
     try bytes.withUnsafeBytes { buffer in
@@ -128,7 +121,7 @@ func testTerminationWithFullPipe(arguments: [String], expectedStatus: Int32, clo
     if child.isRunning {
         _ = kill(child.processIdentifier, SIGKILL)
         child.waitUntilExit()
-        throw ProbeError.invalid("Deadline blocked on a full stderr pipe")
+        throw ProbeError.invalid("Diagnostic exit blocked on a full stderr pipe")
     }
     child.waitUntilExit()
     guard child.terminationReason == .exit, child.terminationStatus == expectedStatus else {

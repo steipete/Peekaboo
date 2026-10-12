@@ -122,19 +122,6 @@ func terminateWithMessage(_ message: String, status: Int32) -> Never {
     _exit(status)
 }
 
-func terminateAtDeadline() -> Never {
-    terminateWithMessage(
-        "Core Audio exceeded the recording deadline; no live audio result was verified. "
-            + "A private .peekaboo-audio-* partial directory may remain beside the output.\n",
-        status: 2)
-}
-
-func makeDeadlineWorkItem() -> DispatchWorkItem {
-    DispatchWorkItem { @Sendable in
-        terminateAtDeadline()
-    }
-}
-
 /// No runtime flag or permission grant can enable the removed live capture path.
 func refuseLivePersistence(_: CaptureRequest) throws -> Never {
     throw ProbeError.livePersistenceUnavailable
@@ -142,18 +129,9 @@ func refuseLivePersistence(_: CaptureRequest) throws -> Never {
 
 @main
 struct SystemAudioProbe {
-    static func main() async {
+    static func main() {
         do {
             let arguments = Array(CommandLine.arguments.dropFirst())
-            if arguments == ["--self-test-deadline"] {
-                terminateAtDeadline()
-            }
-            if arguments == ["--self-test-scheduled-deadline"] {
-                let deadline = makeDeadlineWorkItem()
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05, execute: deadline)
-                try await Task.sleep(for: .seconds(2))
-                throw ProbeError.invalid("Scheduled deadline did not terminate the process")
-            }
             if arguments == ["--self-test"] {
                 try runSelfTests()
                 return

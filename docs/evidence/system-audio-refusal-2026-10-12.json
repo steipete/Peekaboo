@@ -3,8 +3,8 @@
   "test_date": "2026-10-12",
   "platform": "macOS 26.7 / Apple Silicon",
   "repair": "Removed live tap, aggregate, IOProc and tap-to-file path; every validated live request refuses persistence. No runtime enable switch.",
-  "source_sha256": "468517e4c8d67942d22f07b0c01188fe07f3a21cdb69554720a04c5a53d693d2",
-  "signed_executable_sha256": "41989f49029d61c91195ae30fc308359a7ce39b2a0df473bdc753a3b075914e3",
+  "source_sha256": "dc443670bd43714873cca7724408ce2b35a73a384967e8e60e5e29df2ec8d12d",
+  "signed_executable_sha256": "a8a999fd55e814e9e01843d79469aeba6d4a0a047b423354ededef7eeaea02be",
   "observer_source_sha256": "fdc45c92b13a43cb1f39910a33eafa2456c6772aa6c1695cde7e347e3b1c248f",
   "observed_settings_on_control": {
     "default_output_unchanged": true,
@@ -26,7 +26,7 @@
         "stdout_bytes": 0
       }
     ],
-    "synthetic_player_render_frames_advanced": 15360
+    "synthetic_player_render_frames_advanced": 14336
   },
   "observed_settings_off_control": {
     "default_output_unchanged": true,
@@ -88,5 +88,10 @@
     "Historical revocation failure remains valid evidence for the earlier recorder; removal does not repair macOS native revocation semantics.",
     "Human maintainer acceptance of the revised offline investigation scope remains pending.",
     "Full repository safe tests and supported capture/streaming integration are not claimed."
-  ]
+  ],
+  "retired_deadline_helpers_removed": true,
+  "repository_safe_suite": {
+    "attempted_revision": "362bfbdf21d52c2d6561898076b96f9ea138369e",
+    "result": "Blocked before tests: pinned submodule initialization could not reach GitHub on two attempts. No suite pass claimed."
+  }
 }
