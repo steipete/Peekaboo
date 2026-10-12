@@ -5,6 +5,10 @@ All notable changes to Peekaboo CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.9.2 - 2026-10-11
+
+- Update Swift Subprocess to 1.0.1 for close-on-exec pipe handling and single-owner output-descriptor cleanup in CLI child processes, preserving the Swift 6.2 and macOS baselines.
+
 ## 4.9.1 - 2026-10-10
 
 - Stop an idle `peekaboo mcp` (and other window-tracking hosts) from burning CPU whenever unrelated applications launch or quit: AXorcist now indexes workspace applications by identity and stops re-reading resolved PIDs, cutting the cost from ~0.68 s to ~0.02 s of CPU per launch and quit on a Mac with ~600 running applications. Thanks @coygeek for the detailed report! #1005.
