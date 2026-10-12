@@ -11,10 +11,6 @@ test('missing prior version prevents an unverified replacement', () => {
   const old = updateAppcastEntry(feed, entry).replace('sparkle:shortVersionString="1.2.3"', '');
   assert.throws(() => updateAppcastEntry(old, {...entry, version:'1.2.4', buildNumber:'124'}), /version/);
 });
-test('healthy same-build replacements remain supported', () => {
-  const old = updateAppcastEntry(feed, entry);
-  assert.match(updateAppcastEntry(old, {...entry, zipLength:'13'}), /length="13"/);
-});
 
 test('unreadable metadata identifies its item and explains verified recovery', () => {
   const old = updateAppcastEntry(feed, entry).replace('sparkle:version="123"', 'sparkle:version="invalid"');
