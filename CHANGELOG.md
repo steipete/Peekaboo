@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 4.9.2 - 2026-10-12
 
 **Highlights:** Create CLI child-process pipes close-on-exec with Swift Subprocess 1.0.1 so they no longer leak into other children, build signed and notarized releases on GitHub Actions behind an approval gate, and keep local notarization working on congested uplinks with a parallel Notary API upload fallback.
