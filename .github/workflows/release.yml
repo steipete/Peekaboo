@@ -28,8 +28,8 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # pin: openclaw/release-workflows#66 head for the first dry run; re-pin to the merged commit once #66 lands
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@3a9fb01ac5cd0f24a3a28fc9e9e4c998539c0722
+    # pin: openclaw/release-workflows#66 head (review fixes) for the first dry run; re-pin to the merged commit once #66 lands
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@10b7c3f37dcaa60a932bc4a2faabdb8009c51abd
     with:
       version: ${{ inputs.version }}
       dry-run: ${{ inputs.dry-run }}
