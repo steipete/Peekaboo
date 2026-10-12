@@ -30,8 +30,8 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # Includes the reviewed zippered-runtime fix; @v1 still predates it.
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@59b46b029dbc6e7d3a81a680ceff116cfb3eca67
+    # Immutable release tag; 1.11.4 includes zippered runtime validation and legacy appcast builds.
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@v1.11.4
     with:
       version: ${{ inputs.version || github.ref_name }}
       require-signed-tag: true
