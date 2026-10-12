@@ -24,10 +24,17 @@ func runSelfTests() throws {
     try require(request.pid == 123 && request.seconds == 0.5, "PID selection")
     let system = try CaptureRequest(arguments: ["system", "1", output.path])
     try require(system.pid == nil, "explicit system selection")
-    try validateOutputInputStreams(0)
-    var duplexRejected = false
-    do { try validateOutputInputStreams(4) } catch { duplexRejected = true }
-    try require(duplexRejected, "physical input streams must be rejected")
+    for selection in [request, system] {
+        var persistenceRejected = false
+        do {
+            try refuseLivePersistence(selection)
+        } catch ProbeError.livePersistenceUnavailable {
+            persistenceRejected = true
+        }
+        try require(persistenceRejected, "live recording must fail closed for either selection")
+    }
+    let refusedArtifacts = try FileManager.default.contentsOfDirectory(atPath: root.path)
+    try require(refusedArtifacts.isEmpty, "refused live recording must create neither staged nor final files")
     guard let format = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2),
           let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 64),
           let channels = buffer.floatChannelData
@@ -81,6 +88,8 @@ func runSelfTests() throws {
         expectedStatus: 2,
         closedReader: true)
     try testTerminationWithFullPipe(arguments: ["system", "nan", "fixture.caf"], expectedStatus: 1, closedReader: true)
+    try testTerminationWithFullPipe(arguments: ["system", "1", "fixture.caf"], expectedStatus: 1)
+    try testTerminationWithFullPipe(arguments: ["123", "1", "fixture.caf"], expectedStatus: 1, closedReader: true)
     print(
         "PASS: request/source checks, PCM round-trip/statistics, overwrite guard, silence, full/closed-pipe exits")
 }

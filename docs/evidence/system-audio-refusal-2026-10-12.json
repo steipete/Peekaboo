@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "test_date": "2026-10-12",
+  "platform": "macOS 26.7 / Apple Silicon",
+  "repair": "Removed live tap, aggregate, IOProc and tap-to-file path; every validated live request refuses persistence. No runtime enable switch.",
+  "source_sha256": "468517e4c8d67942d22f07b0c01188fe07f3a21cdb69554720a04c5a53d693d2",
+  "signed_executable_sha256": "41989f49029d61c91195ae30fc308359a7ce39b2a0df473bdc753a3b075914e3",
+  "observer_source_sha256": "fdc45c92b13a43cb1f39910a33eafa2456c6772aa6c1695cde7e347e3b1c248f",
+  "observed_settings_on_control": {
+    "default_output_unchanged": true,
+    "engine_running_after_requests": true,
+    "physical_audibility_verified": false,
+    "requests": [
+      {
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "exit_status": 1,
+        "output_directory_entries": 0,
+        "selection": "system",
+        "stdout_bytes": 0
+      },
+      {
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "exit_status": 1,
+        "output_directory_entries": 0,
+        "selection": "process",
+        "stdout_bytes": 0
+      }
+    ],
+    "synthetic_player_render_frames_advanced": 15360
+  },
+  "observed_settings_off_control": {
+    "default_output_unchanged": true,
+    "engine_running_after_requests": true,
+    "physical_audibility_verified": false,
+    "requests": [
+      {
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "exit_status": 1,
+        "output_directory_entries": 0,
+        "selection": "system",
+        "stdout_bytes": 0
+      },
+      {
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "exit_status": 1,
+        "output_directory_entries": 0,
+        "selection": "process",
+        "stdout_bytes": 0
+      }
+    ],
+    "synthetic_player_render_frames_advanced": 14848
+  },
+  "gui_launch_controls": {
+    "launchservices_off_controls": [
+      {
+        "selection": "system",
+        "launchservices_status_not_recorder_status": 0,
+        "stdout_bytes": 0,
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "caf_files": 0,
+        "staging_directories": 0
+      },
+      {
+        "selection": "process",
+        "launchservices_status_not_recorder_status": 0,
+        "stdout_bytes": 0,
+        "diagnostic": "Live audio persistence is disabled until continuing host authorization is verified. No tap or output was created.",
+        "caf_files": 0,
+        "staging_directories": 0
+      }
+    ]
+  },
+  "ui_observations": [
+    "The existing audio-only Settings switch was observed ON before the repaired controls.",
+    "A deferred-quit sheet said the separate test prototype could record audio from running applications until it quit. The sheet was dismissed with Later; no old capture process was running.",
+    "The prototype-only switch was changed to OFF and observed OFF before the repaired denial controls.",
+    "The original ON switch was restored and observed ON after testing; no sheet remained."
+  ],
+  "cleanup": {
+    "test_recorders_and_players_stopped": true,
+    "prototype_switch_restored": true,
+    "installed_peekaboo_signature_verified": true
+  },
+  "limits": [
+    "Settings UI state is not a supported continuing-authorization API.",
+    "No repaired mid-capture revocation interval exists: this executable never starts live capture.",
+    "Rendering progress and unchanged default output are independent playback-continuity observations for refused requests, not physical audibility proof for the old live recorder.",
+    "Historical revocation failure remains valid evidence for the earlier recorder; removal does not repair macOS native revocation semantics.",
+    "Human maintainer acceptance of the revised offline investigation scope remains pending.",
+    "Full repository safe tests and supported capture/streaming integration are not claimed."
+  ]
+}

@@ -1,18 +1,19 @@
 // Standalone feasibility probe. Compile with swiftc -swift-version 6 -parse-as-library.
 // This does not install or alter Peekaboo's production Bridge.
 import AVFoundation
-import CoreAudio
 import Darwin
 import Foundation
 
 enum ProbeError: LocalizedError {
     case invalid(String)
-    case coreAudio(String, OSStatus)
+    case livePersistenceUnavailable
 
     var errorDescription: String? {
         switch self {
         case let .invalid(message): message
-        case let .coreAudio(operation, status): "\(operation) failed: OSStatus \(status)"
+        case .livePersistenceUnavailable:
+            "Live audio persistence is disabled until continuing host authorization is verified. "
+                + "No tap or output was created."
         }
     }
 }
@@ -48,22 +49,7 @@ struct CaptureRequest {
     }
 }
 
-struct CaptureEvidence: Codable {
-    let pid: Int32?
-    let path: String
-    let frames: Int64
-    let samples: Int64
-    let sampleRate: Double
-    let channels: UInt32
-    let peak: Double
-    let rms: Double
-    let nonzeroSamples: Int64
-    let warning: String?
-    let nativeTeardown: [String: OSStatus]
-}
-
-/// All mutable state is confined to the IOProc's serial queue. Read/close only
-/// after AudioDeviceStop and queue.sync; Core Audio never receives this object elsewhere.
+/// Synthetic self-test sink only; no native tap or IOProc supplies this object.
 final class PCMSink: @unchecked Sendable {
     private var file: AVAudioFile?
     private let format: AVAudioFormat
@@ -123,17 +109,6 @@ final class PCMSink: @unchecked Sendable {
     }
 }
 
-func check(_ status: OSStatus, _ operation: String) throws {
-    guard status == noErr else { throw ProbeError.coreAudio(operation, status) }
-}
-
-func validateOutputInputStreams(_ bytes: UInt32) throws {
-    guard bytes == 0 else {
-        throw ProbeError
-            .invalid("The output device has physical input streams; this probe supports output-only devices.")
-    }
-}
-
 func terminateWithMessage(_ message: String, status: Int32) -> Never {
     // A disconnected reader must not replace our exit status with SIGPIPE.
     _ = signal(SIGPIPE, SIG_IGN)
@@ -160,161 +135,9 @@ func makeDeadlineWorkItem() -> DispatchWorkItem {
     }
 }
 
-@available(macOS 14.2, *)
-func record(_ request: CaptureRequest) async throws -> CaptureEvidence {
-    var address = AudioObjectPropertyAddress(
-        mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject,
-        mScope: kAudioObjectPropertyScopeGlobal,
-        mElement: kAudioObjectPropertyElementMain)
-    let description: CATapDescription
-    if var pid = request.pid {
-        var process: AudioObjectID = 0
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        try check(AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject),
-            &address,
-            UInt32(MemoryLayout<Int32>.size),
-            &pid,
-            &size,
-            &process), "resolve PID")
-        guard process != kAudioObjectUnknown else {
-            throw ProbeError.invalid("No Core Audio process exists for PID \(pid).")
-        }
-        description = CATapDescription(stereoMixdownOfProcesses: [process])
-    } else {
-        description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
-    }
-    description.name = "Peekaboo system audio prototype"
-    description.muteBehavior = .unmuted
-    description.isPrivate = true
-    var tap: AudioObjectID = 0
-    try check(AudioHardwareCreateProcessTap(description, &tap), "create tap")
-    defer {
-        if tap != kAudioObjectUnknown {
-            AudioHardwareDestroyProcessTap(tap)
-        }
-    }
-    address.mSelector = kAudioTapPropertyFormat
-    var asbd = AudioStreamBasicDescription()
-    var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-    try check(AudioObjectGetPropertyData(tap, &address, 0, nil, &size, &asbd), "read tap format")
-    guard asbd.mFormatID == kAudioFormatLinearPCM,
-          asbd.mBitsPerChannel == 32,
-          asbd.mFormatFlags & kAudioFormatFlagIsFloat != 0,
-          asbd.mFormatFlags & kAudioFormatFlagIsBigEndian == 0,
-          asbd.mChannelsPerFrame > 0,
-          asbd.mChannelsPerFrame <= 2,
-          let format = AVAudioFormat(streamDescription: &asbd)
-    else { throw ProbeError.invalid("Tap did not provide supported float32 mono/stereo PCM.") }
-
-    // Clock the private aggregate from the current output. Never make it default.
-    address.mSelector = kAudioHardwarePropertyDefaultOutputDevice
-    var clock: AudioObjectID = 0
-    size = UInt32(MemoryLayout<AudioObjectID>.size)
-    try check(AudioObjectGetPropertyData(
-        AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &clock), "read output clock")
-    address.mSelector = kAudioDevicePropertyDeviceUID
-    var rawUID: Unmanaged<CFString>?
-    size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-    try check(AudioObjectGetPropertyData(clock, &address, 0, nil, &size, &rawUID), "read output UID")
-    guard let rawUID else { throw ProbeError.invalid("No default output clock.") }
-    let clockUID = rawUID.takeRetainedValue()
-    // Aggregates include every input stream of their real subdevices. A duplex
-    // headset/interface would add microphone/line input before the tap buffers.
-    // Refuse it rather than interpreting hardware input as selected-process audio.
-    address.mSelector = kAudioDevicePropertyStreams
-    address.mScope = kAudioDevicePropertyScopeInput
-    var inputStreamBytes: UInt32 = 0
-    try check(AudioObjectGetPropertyDataSize(clock, &address, 0, nil, &inputStreamBytes), "inspect output inputs")
-    try validateOutputInputStreams(inputStreamBytes)
-    let settings: [String: Any] = [
-        kAudioAggregateDeviceNameKey: "Peekaboo audio prototype",
-        kAudioAggregateDeviceUIDKey: UUID().uuidString,
-        kAudioAggregateDeviceIsPrivateKey: true,
-        kAudioAggregateDeviceMainSubDeviceKey: clockUID,
-        kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: clockUID]],
-        kAudioAggregateDeviceTapAutoStartKey: true,
-        kAudioAggregateDeviceTapListKey: [[
-            kAudioSubTapUIDKey: description.uuid.uuidString,
-            kAudioSubTapDriftCompensationKey: true,
-        ]],
-    ]
-    var device: AudioObjectID = 0
-    try check(AudioHardwareCreateAggregateDevice(settings as CFDictionary, &device), "create aggregate")
-    defer {
-        if device != kAudioObjectUnknown {
-            AudioHardwareDestroyAggregateDevice(device)
-        }
-    }
-
-    let staging = request.output.deletingLastPathComponent().appendingPathComponent(
-        ".peekaboo-audio-\(UUID().uuidString)", isDirectory: true)
-    try FileManager.default.createDirectory(
-        at: staging,
-        withIntermediateDirectories: false,
-        attributes: [.posixPermissions: 0o700])
-    defer { try? FileManager.default.removeItem(at: staging) }
-    let temporary = staging.appendingPathComponent("capture.caf")
-    let sink = try PCMSink(url: temporary, format: format)
-    let queue = DispatchQueue(label: "boo.peekaboo.audio-prototype")
-    var callback: AudioDeviceIOProcID?
-    try check(AudioDeviceCreateIOProcIDWithBlock(&callback, device, queue) { _, input, _, _, _ in
-        sink.consume(input)
-    }, "create IOProc")
-    defer {
-        if let callback {
-            AudioDeviceDestroyIOProcID(device, callback)
-        }
-        queue.sync { sink.close() }
-    }
-    try check(AudioDeviceStart(device, callback), "start recording")
-    var stopped = false
-    defer {
-        if !stopped {
-            AudioDeviceStop(device, callback)
-        }
-    }
-    try await Task.sleep(for: .seconds(request.seconds))
-    try check(AudioDeviceStop(device, callback), "stop recording")
-    stopped = true
-    guard let ownedCallback = callback else { throw ProbeError.invalid("Missing owned IOProc.") }
-    try check(AudioDeviceDestroyIOProcID(device, ownedCallback), "destroy IOProc")
-    callback = nil
-    queue.sync { sink.close() }
-    try check(AudioHardwareDestroyAggregateDevice(device), "destroy aggregate")
-    device = kAudioObjectUnknown
-    try check(AudioHardwareDestroyProcessTap(tap), "destroy tap")
-    tap = kAudioObjectUnknown
-    return try queue.sync {
-        sink.close()
-        if let error = sink.error {
-            throw error
-        }
-        guard sink.frames > 0 else {
-            throw ProbeError.invalid("No audio frames; check system-audio permission and the selected output.")
-        }
-        // moveItem refuses a concurrent existing destination too.
-        try FileManager.default.moveItem(at: temporary, to: request.output)
-        return CaptureEvidence(
-            pid: request.pid,
-            path: request.output.path,
-            frames: sink.frames,
-            samples: sink.samples,
-            sampleRate: asbd.mSampleRate,
-            channels: asbd.mChannelsPerFrame,
-            peak: sink.peak,
-            rms: sink.rms,
-            nonzeroSamples: sink.nonzeroSamples,
-            warning: sink.nonzeroSamples == 0
-                ? "All samples are zero: silence or denied capture; permission and audible playback are unverified."
-                : nil,
-            nativeTeardown: [
-                "stop": noErr,
-                "destroyIOProc": noErr,
-                "destroyAggregate": noErr,
-                "destroyTap": noErr,
-            ])
-    }
+/// No runtime flag or permission grant can enable the removed live capture path.
+func refuseLivePersistence(_: CaptureRequest) throws -> Never {
+    throw ProbeError.livePersistenceUnavailable
 }
 
 @main
@@ -336,21 +159,7 @@ struct SystemAudioProbe {
                 return
             }
             let request = try CaptureRequest(arguments: arguments)
-            guard #available(macOS 14.2, *) else {
-                throw ProbeError.invalid("Core Audio taps require macOS 14.2 or later.")
-            }
-            // Native HAL calls can block even after a successful start. The probe
-            // is an isolated process; never use process exit as a GUI-host timeout.
-            let deadline = makeDeadlineWorkItem()
-            DispatchQueue.global().asyncAfter(deadline: .now() + request.seconds + 10, execute: deadline)
-            defer { deadline.cancel() }
-            let evidence = try await record(request)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            guard let json = try String(data: encoder.encode(evidence), encoding: .utf8) else {
-                throw ProbeError.invalid("Cannot encode capture evidence as UTF-8")
-            }
-            print(json)
+            try refuseLivePersistence(request)
         } catch {
             terminateWithMessage("\(error.localizedDescription)\n", status: 1)
         }
