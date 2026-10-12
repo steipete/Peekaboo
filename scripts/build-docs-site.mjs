@@ -479,9 +479,11 @@ function inline(text, currentRel) {
     stash.push(`<code>${escapeHtml(code)}</code>`);
     return `\u0000${stash.length - 1}\u0000`;
   });
-  out = out.replace(/ {2,}\n|\\\n/g, () => {
+  out = out.replace(/ {2,}\n|(\\+)\n/g, (_, slashes) => {
+    const literal = slashes ? "\\".repeat(Math.floor(slashes.length / 2)) : "";
+    if (slashes && slashes.length % 2 === 0) return `${literal} `;
     stash.push("<br>");
-    return `\u0000${stash.length - 1}\u0000`;
+    return `${literal}\u0000${stash.length - 1}\u0000`;
   }).replace(/\n/g, " ");
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
