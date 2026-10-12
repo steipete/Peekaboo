@@ -237,25 +237,26 @@ function parseFrontmatter(raw) {
   return { frontmatter: fm, body: raw.slice(match[0].length) };
 }
 
+function codeFenceMarker(line) {
+  return line.match(/^\s{0,3}```([\w+-]+)?\s*$/);
+}
+
 function stripStrayDirectives(body) {
-  let fence = null;
+  let fenced = false;
   const lines = [];
   for (const line of body.replace(/\r\n/g, "\n").split("\n")) {
-    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
-    if (fence) {
-      lines.push(line);
-      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) {
-        fence = null;
-      }
+    const normalized = line.replace(/\s*\{:\s*[^}]*\}\s*$/, "");
+    if (codeFenceMarker(normalized)) {
+      fenced = !fenced;
+      lines.push(normalized);
       continue;
     }
-    if (marker && !(marker[1][0] === "`" && marker[2].includes("`"))) {
-      fence = marker[1];
-      lines.push(line.replace(/\s*\{:\s*[^}]*\}\s*$/, ""));
+    if (fenced) {
+      lines.push(line);
       continue;
     }
     if (/^\s*\{:\s*[^}]*\}\s*$/.test(line)) continue;
-    lines.push(line.replace(/\s*\{:\s*[^}]*\}\s*$/, ""));
+    lines.push(normalized);
   }
   return lines.join("\n");
 }
@@ -353,7 +354,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = line.match(/^\s{0,3}```([\w+-]+)?\s*$/);
+    const fenceMatch = codeFenceMarker(line);
     if (fenceMatch) {
       flushParagraph();
       closeList();

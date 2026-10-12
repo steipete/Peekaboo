@@ -17,3 +17,19 @@ test('opening fence attributes are normalized while code content and following p
   assert.match(article, /<p>Following prose<\/p>/);
   assert.equal((article.match(/<pre>/g) || []).length, 1);
 });
+
+test('closing fence attributes are normalized so following prose stays outside code', t => {
+  const page = buildDocsFixture(t, {'index.md': '# Fixture\n\n```text\nvalue\n``` {: .example }\n\nFollowing prose {: .cleanup }\n'});
+  const article = articleFromHTML(page.readPage());
+  assert.match(article, /<pre><code class="language-text">value<\/code><\/pre>/);
+  assert.match(article, /<p>Following prose<\/p>/);
+  assert.doesNotMatch(article, /example|cleanup/);
+});
+
+test('a longer fence retained by the renderer cannot end directive preservation', t => {
+  const page = buildDocsFixture(t, {'index.md': '# Fixture\n\n```text\n````\n{: .literal }\nvalue {: .suffix }\n```\n\nFollowing prose {: .cleanup }\n'});
+  const article = articleFromHTML(page.readPage());
+  const code = article.match(/<pre><code[^>]*>([\s\S]*?)<\/code>/)[1];
+  assert.equal(code, '````\n{: .literal }\nvalue {: .suffix }');
+  assert.match(article, /<p>Following prose<\/p>/);
+});
