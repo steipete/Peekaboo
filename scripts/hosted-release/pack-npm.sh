@@ -24,8 +24,18 @@ for library in "$SIGNED_CLI"/libswiftCompatibility*.dylib; do
   [[ -e "$library" ]] || continue
   cp "$library" "$ROOT/"
 done
+# Hosted runner images ship Node but not pnpm; Corepack runs the packageManager-pinned, integrity-checked pnpm.
+if command -v pnpm >/dev/null 2>&1; then
+  PNPM=(pnpm)
+elif command -v corepack >/dev/null 2>&1; then
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  PNPM=(corepack pnpm)
+else
+  echo 'pnpm or corepack is required to pack the npm package' >&2
+  exit 1
+fi
 mkdir -p "$OUTPUT"
-pnpm pack --pack-destination "$OUTPUT"
+"${PNPM[@]}" pack --pack-destination "$OUTPUT"
 
 shopt -s nullglob
 TARBALLS=("$OUTPUT"/*.tgz)

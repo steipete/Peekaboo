@@ -30,8 +30,8 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # Reviewed immutable Sparkle archetype; finalized to the merge commit before landing.
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@fccbec3727d1f8b838e561d8729aa6531097e82f
+    # Reviewed, merged Sparkle archetype; no mutable version ref.
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@4330190386f28f99d10f95085f7380a271a90809
     with:
       version: ${{ inputs.version || github.ref_name }}
       require-signed-tag: true
