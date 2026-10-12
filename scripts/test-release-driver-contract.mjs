@@ -296,6 +296,75 @@ assert.equal(extractReleaseNotes(
   '~~~md\n## 1.2.3 - fake\n~~~\n\n## 1.2.3 - 2026-10-11\nActual change.\n', '1.2.3'),
 '## 1.2.3 - 2026-10-11\nActual change.\n');
 
+// Fence indentation is zero to three ASCII spaces, on both openers and closers.
+const indentationFenceCases = [];
+for (const marker of ['```', '~~~']) {
+  for (const newline of ['\n', '\r\n']) {
+    for (const prefix of ['\t', ' \t', '    ']) {
+      const selected = '## 1.2.3 - 2026-10-11\nActual change.\n';
+      indentationFenceCases.push({
+        name: `literal opener ${JSON.stringify(prefix)} ${marker} ${JSON.stringify(newline)}`,
+        changelog: `${prefix}${marker}\n\n${selected}`.replaceAll('\n', newline),
+        notes: selected,
+      });
+      const fenced = `## 1.2.3 - 2026-10-11\n${marker}md\n${prefix}${marker}\n`
+        + `## Example heading\n${marker}\nRetained change.\n`;
+      indentationFenceCases.push({
+        name: `literal closer ${JSON.stringify(prefix)} ${marker} ${JSON.stringify(newline)}`,
+        changelog: `${fenced}## 1.2.2 - 2026-10-10\nOlder change.\n`.replaceAll('\n', newline),
+        notes: fenced,
+      });
+    }
+    for (const prefix of ['', ' ', '  ', '   ']) {
+      const selected = `## 1.2.3 - 2026-10-11\n${prefix}${marker}md\n`
+        + `## Example heading\n${prefix}${marker}\nRetained change.\n`;
+      indentationFenceCases.push({
+        name: `valid indentation ${JSON.stringify(prefix)} ${marker} ${JSON.stringify(newline)}`,
+        changelog: `${selected}## 1.2.2 - 2026-10-10\nOlder change.\n`.replaceAll('\n', newline),
+        notes: selected,
+      });
+    }
+  }
+}
+for (const marker of ['```', '~~~']) {
+  for (const newline of ['\n', '\r\n']) {
+    for (const suffix of ['\v', '\f', '\u00a0', '\u2003']) {
+      const selected = `## 1.2.3 - 2026-10-11\n${marker}md\n${marker}${suffix}\n`
+        + `## Example heading\n${marker}\nRetained change.\n`;
+      indentationFenceCases.push({
+        name: `literal closer suffix ${JSON.stringify(suffix)} ${marker} ${JSON.stringify(newline)}`,
+        changelog: `${selected}## 1.2.2 - 2026-10-10\nOlder change.\n`.replaceAll('\n', newline),
+        notes: selected,
+      });
+    }
+    const selected = `## 1.2.3 - 2026-10-11\n${marker}md\n`
+      + `## Example heading\n${marker} \t\nRetained change.\n`;
+    indentationFenceCases.push({
+      name: `valid closer suffix ${marker} ${JSON.stringify(newline)}`,
+      changelog: `${selected}## 1.2.2 - 2026-10-10\nOlder change.\n`.replaceAll('\n', newline),
+      notes: selected,
+    });
+  }
+}
+const indentationFenceFailures = [];
+for (const { name, changelog: inputChangelog, notes: inputNotes } of indentationFenceCases) {
+  const result = spawnSync(process.execPath, [
+    fileURLToPath(new URL('./release-driver-contract.mjs', import.meta.url)), 'tracked-notes',
+  ], { encoding: 'utf8', input: JSON.stringify({ changelog: inputChangelog,
+    notes: inputNotes, version: '1.2.3' }) });
+  try {
+    assert.equal(result.error, undefined, name);
+    assert.equal(result.signal, null, name);
+    assert.equal(result.status, 0, `${name}: ${result.stderr}`);
+    assert.equal(result.stdout, inputNotes, name);
+  } catch (error) {
+    indentationFenceFailures.push({ name, message: error.message });
+  }
+}
+console.log(`release-note fence controls: ${indentationFenceCases.length - indentationFenceFailures.length}`
+  + ` passed, ${indentationFenceFailures.length} failed`);
+assert.deepEqual(indentationFenceFailures, []);
+
 const packageBytes = Buffer.from('deterministic npm package');
 const localIntegrity = npmIntegrity(packageBytes);
 const npmMetadata = {

@@ -170,9 +170,9 @@ export function extractReleaseNotes(changelog, version) {
   const headings = [];
   let fence = null;
   for (const [index, line] of lines.entries()) {
-    const marker = line.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
+    const marker = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
     if (fence) {
-      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2].trim()) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && /^[ \t]*$/.test(marker[2])) {
         fence = null;
       }
       continue;
