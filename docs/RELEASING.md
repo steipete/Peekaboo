@@ -31,8 +31,8 @@ npm tarball are verified before publication. Failed handoffs can be retried by
 the corresponding hosted workflow after checking published integrity; do not
 rebuild or overwrite an existing version.
 
-The shared Sparkle workflow is pinned to an immutable reviewed commit until the
-next separately authorized shared-workflow release updates the compatibility tag.
+The shared Sparkle workflow uses the fleet `@v1` compatibility tag, which
+includes the reviewed hosted Sparkle archetype.
 `npm-publish.yml` must keep its filename: the trusted publisher for
 `@steipete/peekaboo` names it. No npm token is needed.
 
