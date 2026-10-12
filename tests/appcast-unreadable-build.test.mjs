@@ -15,3 +15,8 @@ test('healthy same-build replacements remain supported', () => {
   const old = updateAppcastEntry(feed, entry);
   assert.match(updateAppcastEntry(old, {...entry, zipLength:'13'}), /length="13"/);
 });
+
+test('unreadable metadata identifies its item and explains verified recovery', () => {
+  const old = updateAppcastEntry(feed, entry).replace('sparkle:version="123"', 'sparkle:version="invalid"');
+  assert.throws(() => updateAppcastEntry(old, {...entry, zipLength:'13'}), /item "Peekaboo 1\.2\.3".*unreadable.*Restore.*verified prior feed before retrying/);
+});

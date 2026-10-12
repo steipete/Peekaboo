@@ -47,7 +47,10 @@ function validateCandidate(existingItems, entry) {
   for (const existing of existingItems) {
     const version = itemVersion(existing[0]);
     const build = itemBuild(existing[0]);
-    if (version === null || build === null) throw new Error('Published appcast version or build number is missing');
+    if (version === null || build === null) {
+      const title = element(existing[0], 'title') ?? '(untitled item)';
+      throw new Error(`Published appcast item "${title}" has missing or unreadable version/build number metadata. Restore its version and build number from a verified prior feed before retrying.`);
+    }
     if (version === entry.version) {
       if (build !== candidateBuild) throw new Error('Appcast replacement changed the existing build number');
     } else if (build >= candidateBuild) {
