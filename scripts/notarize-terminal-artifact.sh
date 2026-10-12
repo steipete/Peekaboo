@@ -426,7 +426,7 @@ else
     submission_transport=api
     result_json="$(/usr/bin/env -i /usr/bin/python3 -I "$ROOT_DIR/scripts/notary-api-submit.py" \
       --artifact "$retained_submission" --submission-name "$(basename "$submission")" \
-      --key-id "$key_id" --issuer "$issuer_id" --key-file "$KEY_FILE" "${fixture_api_args[@]}")" || \
+      --key-id "$key_id" --issuer "$issuer_id" --key-file "$KEY_FILE" ${fixture_api_args[@]+"${fixture_api_args[@]}"})" || \
       fail 'Notary REST submission failed'
   elif [[ "$submit_exit" != 0 && "$verdict" != Invalid && "$verdict" != Rejected ]]; then
     fail 'notarytool submission failed'

@@ -40,6 +40,14 @@ for secret_name in \
     fail "notary entrypoint does not de-export $secret_name before its environment scan"
 done
 
+# Production leaves fixture_api_args empty; /bin/bash 3.2 with nounset rejects an unguarded empty-array expansion.
+if grep -n '"${fixture_api_args\[@\]}"' "$ROOT_DIR/scripts/notarize-terminal-artifact.sh" | \
+  grep -v '${fixture_api_args\[@\]+' >/dev/null; then
+  fail 'fixture_api_args expansion must be guarded for Bash 3.2 nounset'
+fi
+/bin/bash -c 'set -u; fixture_api_args=(); printf "%s" ${fixture_api_args[@]+"${fixture_api_args[@]}"}' || \
+  fail 'guarded empty fixture_api_args expansion fails under /bin/bash nounset'
+
 mkdir -p "$CLI_TREE"
 printf 'int main(void) { return 0; }\n' > "$TEST_DIR/main.c"
 /usr/bin/clang -arch arm64 "$TEST_DIR/main.c" -o "$TEST_DIR/cli-arm64"
