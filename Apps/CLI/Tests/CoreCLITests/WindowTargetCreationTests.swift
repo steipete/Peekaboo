@@ -1,3 +1,4 @@
+import Commander
 import CoreGraphics
 import PeekabooCore
 import PeekabooFoundation
@@ -5,6 +6,28 @@ import Testing
 @testable import PeekabooCLI
 
 struct WindowTargetCreationTests {
+    @Test(arguments: [Int32(0), -1])
+    @MainActor
+    func `window CLI invalid PID becomes a recoverable validation error`(pid: Int32) {
+        var options = WindowIdentificationOptions()
+        options.pid = pid
+        let error = #expect(throws: Commander.ValidationError.self) {
+            try options.validate()
+        }
+        #expect(error?.localizedDescription == "--pid must be greater than 0")
+    }
+
+    @Test(arguments: [0, -1, Int(UInt32.max) + 1])
+    @MainActor
+    func `window CLI invalid window ID reports both range bounds`(windowID: Int) {
+        var options = WindowIdentificationOptions()
+        options.windowId = windowID
+        let error = #expect(throws: Commander.ValidationError.self) {
+            try options.validate()
+        }
+        #expect(error?.localizedDescription == "--window-id must be between 1 and \(UInt32.max)")
+    }
+
     @Test
     @MainActor
     func `window list preflight accepts matching normalized PID aliases`() throws {

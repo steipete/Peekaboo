@@ -59,7 +59,9 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
         } catch let error as InteractionTargetSelector.ValidationError {
             switch error {
             case .invalidWindowID:
-                throw ValidationError("--window-id must be greater than 0")
+                throw ValidationError("--window-id must be between 1 and \(UInt32.max)")
+            case .invalidProcessIdentifier:
+                throw ValidationError("--pid must be greater than 0")
             case .missingTarget:
                 throw ValidationError("Either --app, --pid, or --window-id must be specified")
             case .invalidWindowIndex:
@@ -74,7 +76,6 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
                 throw InteractionTargetOptions.validationError(for: error)
             case .multipleWindowSelectors,
                  .windowSelectorRequiresApplication,
-                 .invalidProcessIdentifier,
                  .emptyApplication,
                  .emptyWindowTitle:
                 preconditionFailure("Window CLI policy does not emit \(error)")
