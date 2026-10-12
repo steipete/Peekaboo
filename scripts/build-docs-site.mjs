@@ -251,7 +251,7 @@ function stripStrayDirectives(body) {
     }
     if (marker && !(marker[1][0] === "`" && marker[2].includes("`"))) {
       fence = marker[1];
-      lines.push(line);
+      lines.push(line.replace(/\s*\{:\s*[^}]*\}\s*$/, ""));
       continue;
     }
     if (/^\s*\{:\s*[^}]*\}\s*$/.test(line)) continue;

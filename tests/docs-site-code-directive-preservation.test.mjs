@@ -9,3 +9,11 @@ test('code example lines survive legacy directive cleanup', t => {
   assert.match(article, /<p>Outside<\/p>/);
   assert.doesNotMatch(article, /removed|standalone/);
 });
+
+test('opening fence attributes are normalized while code content and following prose retain their roles', t => {
+  const page = buildDocsFixture(t, {'index.md': '# Fixture\n\n```text {: .example }\nvalue {: .suffix }\n```\n\nFollowing prose {: .cleanup }\n'});
+  const article = articleFromHTML(page.readPage());
+  assert.match(article, /<pre><code class="language-text">value \{: \.suffix \}<\/code><\/pre>/);
+  assert.match(article, /<p>Following prose<\/p>/);
+  assert.equal((article.match(/<pre>/g) || []).length, 1);
+});
