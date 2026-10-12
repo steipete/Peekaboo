@@ -250,7 +250,7 @@ pnpm run prepare-release
 # Deterministic metadata/docs/CLI contract only (no registry or artifact checks)
 pnpm run prepare-release -- --dry-run --bin Apps/CLI/.build/debug/peekaboo
 
-# Generate artifacts / publish
-./scripts/release-binaries.sh --create-github-release --publish-npm \
-  --proof-file /path/to/reviewed-release-proof.md
+# Build and verify without publication
+gh workflow run release.yml --repo openclaw/Peekaboo --ref main \
+  -f version=<prepared-version> -F dry_run=true
 ```

@@ -54,7 +54,7 @@ for flag in \
   -disableAutomaticPackageResolution \
   -onlyUsePackageVersionsFromResolvedFile \
   -skipPackageUpdates; do
-  grep -Fq -- "$flag" "$ROOT_DIR/scripts/release-macos-app.sh" || \
+  grep -Fq -- "$flag" "$ROOT_DIR/scripts/hosted-release/build-app.sh" || \
     fail "release build is missing $flag"
   grep -Fq -- "$flag" "$ROOT_DIR/.github/workflows/macos-ci.yml" || \
     fail "mac-app CI build is missing $flag"
@@ -66,14 +66,6 @@ grep -Fq 'test ! -e CLI/Package.resolved' "$ROOT_DIR/.github/workflows/macos-ci.
   fail 'mac-app CI does not reject an ignored CLI-owned workspace lock'
 grep -Fq 'SourcePackages/checkouts/Sparkle rev-parse HEAD' "$ROOT_DIR/.github/workflows/macos-ci.yml" || \
   fail 'mac-app CI does not verify the checked-out Sparkle revision'
-
-release_source="$ROOT_DIR/scripts/release-macos-app.sh"
-payload_line="$(grep -n '^verify_app_payload "\$APP_BUNDLE"$' "$release_source" | cut -d: -f1)"
-resolution_line="$(grep -n -F 'verify-release-package-resolution.sh' "$release_source" | cut -d: -f1)"
-signing_line="$(grep -n '^log "Developer ID signing"$' "$release_source" | cut -d: -f1)"
-[[ -n "$payload_line" && -n "$resolution_line" && -n "$signing_line" && \
-  "$payload_line" -lt "$resolution_line" && "$resolution_line" -lt "$signing_line" ]] || \
-  fail 'release package resolution must run after app provenance validation and before signing'
 
 fixture_root="$TEST_DIR/source"
 fixture_derived="$TEST_DIR/Derived Data"

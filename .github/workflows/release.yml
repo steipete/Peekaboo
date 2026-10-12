@@ -1,21 +1,23 @@
 name: Release Peekaboo
 
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
         description: 'Prepared release version (e.g., 4.10.0 or 4.10.0-beta.1)'
         required: true
         type: string
-      dry-run:
+      dry_run:
         description: 'Sign, notarize, and verify without publishing'
-        default: false
+        default: true
         type: boolean
 
 permissions: {}
 
 concurrency:
-  group: release
+  group: release-${{ inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -28,11 +30,12 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # pin: the merged openclaw/release-workflows#66 squash commit; move to a release tag once one contains it
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@4330190386f28f99d10f95085f7380a271a90809
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@v1
     with:
-      version: ${{ inputs.version }}
-      dry-run: ${{ inputs.dry-run }}
+      version: ${{ inputs.version || github.ref_name }}
+      require-signed-tag: true
+      ci-check-events: '["push"]'
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
       repository-type: openclaw
       signing-environment: release
       build-runner: xcode-27
