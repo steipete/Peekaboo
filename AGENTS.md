@@ -35,8 +35,8 @@
 - Batch git network ops in groups: commit related repo changes first, then push/pull repos together so submodule gitlinks stay coherent.
 - PRs should summarize intent, list test commands executed, mention doc updates, and include screenshots or terminal snippets when behavior changes.
 - Never release or publish without an explicit release command.
-- Peekaboo releases: follow `$release-peekaboo`; current Mac + existing 1Password credentials first. App Store Connect changes last resort, only after same-item `notarytool history` and non-S3 `submit` both fail.
-- Credentialed release wrappers: `bash -c`, never login shells; profile exports can override ASC IDs and mix credentials.
+- Peekaboo releases: follow `docs/RELEASING.md` and the hosted `.github/workflows/release.yml` pipeline. Rehearse on main with `dry_run=true`; publication requires a separately authorized signed tag. Local helpers verify artifacts and do not publish.
+- Local signing-verification wrappers: `bash -c`, never login shells; profile exports can override ASC IDs and mix credentials.
 - Published CLI proof: run `npm exec` from `/tmp`; repo cwd may shadow the downloaded package with a local binary.
 - During PR triage, keep moving autonomously: fix defects, add obvious scoped features, and rewrite or land what makes sense.
 - Before landing every PR, run autoreview until no actionable findings remain and fix or rerun CI until green.
