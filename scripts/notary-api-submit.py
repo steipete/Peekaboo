@@ -176,8 +176,15 @@ class Client:
                     return response.headers, data
             except urllib.error.HTTPError as error:
                 code = error.code
+                detail = ""
+                if label.startswith("S3"):
+                    try:
+                        match = re.search(rb"<Code>([A-Za-z]{1,64})</Code>", error.read(64 * 1024))
+                        detail = " (" + match.group(1).decode("ascii") + ")" if match else ""
+                    except Exception:
+                        detail = ""
                 error.close()
-                message = label + " HTTP " + str(code)
+                message = label + " HTTP " + str(code) + detail
                 if code != 429 and not 500 <= code <= 599:
                     raise Failure(message) from None
             except (OSError, urllib.error.URLError, http.client.HTTPException):
@@ -197,7 +204,7 @@ class Client:
                                None if payload is None else json.dumps(payload).encode(), "Notary API")
         return json.loads(body)
 
-    def s3(self, attrs, method, query=(), body=None, cleanup=False):
+    def s3(self, attrs, method, operation, query=(), body=None, cleanup=False):
         base = self.args.s3_endpoint or "https://" + attrs["bucket"] + ".s3.us-west-2.amazonaws.com"
         path = "/" + urllib.parse.quote(attrs["object"], safe="/-_.~")
         url = base + path
@@ -207,20 +214,25 @@ class Client:
 
         def headers():
             unsigned = {"x-amz-content-sha256": digest, "x-amz-security-token": attrs["awsSessionToken"]}
+            if body is not None:
+                # urllib otherwise adds application/x-www-form-urlencoded, and S3 then folds a POST body into
+                # the signed parameters: CompleteMultipartUpload fails with SignatureDoesNotMatch.
+                unsigned["content-type"] = ("application/xml" if operation == "CompleteMultipartUpload"
+                                            else "application/octet-stream")
             timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             return sigv4(method, url, unsigned, digest, attrs["awsAccessKeyId"],
                          attrs["awsSecretAccessKey"], timestamp)
 
         # A part can take several minutes on the congested links this path serves.
         # Parts have their own retry loop, and cleanup must work after the deadline.
-        return self.request(method, url, headers, body, "S3", cleanup,
+        return self.request(method, url, headers, body, "S3 " + operation, cleanup,
                             request_timeout=300 if method == "PUT" else 60,
                             attempts=1 if method == "PUT" or cleanup else 4)
 
     def upload(self, attrs, path):
         size = path.stat().st_size
         parts = plan_parts(size)
-        _, body = self.s3(attrs, "POST", [("uploads", "")], b"")
+        _, body = self.s3(attrs, "POST", "CreateMultipartUpload", [("uploads", "")], b"")
         root = ET.fromstring(body)
         upload_id = next((node.text for node in root.iter() if node.tag.split("}")[-1] == "UploadId"), None)
         if not upload_id:
@@ -237,7 +249,7 @@ class Client:
             expected = '"' + hashlib.md5(data).hexdigest() + '"'
             for attempt in range(4):
                 try:
-                    headers, _ = self.s3(attrs, "PUT", query + [("partNumber", str(number))], data)
+                    headers, _ = self.s3(attrs, "PUT", "UploadPart", query + [("partNumber", str(number))], data)
                     if headers.get("ETag", "").lower() != expected:
                         raise Failure("S3 part ETag mismatch")
                     return number, expected
@@ -249,6 +261,7 @@ class Client:
                     if self.stop.wait(min(2 ** attempt, self.remaining())):
                         raise Failure("upload cancelled") from None
 
+        completed = False
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.args.parallelism) as pool:
                 results = sorted(pool.map(upload_part, parts))
@@ -257,18 +270,25 @@ class Client:
                 part = ET.SubElement(complete, "Part")
                 ET.SubElement(part, "PartNumber").text = str(number)
                 ET.SubElement(part, "ETag").text = etag
-            _, body = self.s3(attrs, "POST", query, ET.tostring(complete))
-            if ET.fromstring(body).tag.split("}")[-1] != "CompleteMultipartUploadResult":
+            _, body = self.s3(attrs, "POST", "CompleteMultipartUpload", query, ET.tostring(complete))
+            result = ET.fromstring(body)
+            if result.tag.split("}")[-1] != "CompleteMultipartUploadResult":
                 raise Failure("S3 multipart completion failed")
-            headers, _ = self.s3(attrs, "HEAD")
-            if headers.get("Content-Length") != str(size):
-                raise Failure("S3 final object size mismatch")
+            completed = True
+            # Bind the stored object to the uploaded parts through the multipart ETag instead of reading it
+            # back with the narrowly scoped upload credentials; Apple re-checks the submission sha256.
+            final_etag = next((node.text for node in result.iter() if node.tag.split("}")[-1] == "ETag"), "")
+            expected = '"%s-%d"' % (hashlib.md5(b"".join(bytes.fromhex(etag.strip('"'))
+                                                       for _, etag in results)).hexdigest(), len(results))
+            if (final_etag or "").lower() != expected:
+                raise Failure("S3 multipart ETag mismatch")
         except BaseException:
             self.stop.set()
-            try:
-                self.s3(attrs, "DELETE", query, cleanup=True)
-            except Exception:
-                print("notary-api: multipart abort failed", file=sys.stderr)
+            if not completed:
+                try:
+                    self.s3(attrs, "DELETE", "AbortMultipartUpload", query, cleanup=True)
+                except Exception:
+                    print("notary-api: multipart abort failed", file=sys.stderr)
             raise
 
     def submit(self):

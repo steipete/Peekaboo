@@ -121,10 +121,10 @@ class NotaryTests(unittest.TestCase):
         self.assertEqual([headers["Authorization"] for headers in seen], ["Bearer first", "Bearer second"])
 
     def test_request_retries_and_auth_failures(self):
-        # Cover submission creation, polling, logs, multipart creation/completion and HEAD.
+        # Cover submission creation, polling, logs, and multipart creation/completion.
         for method, path in (("POST", "/submissions"), ("GET", "/submissions/id"),
                              ("GET", "/submissions/id/logs"), ("POST", "/s3?uploads="),
-                             ("POST", "/s3?uploadId=id"), ("HEAD", "/s3")):
+                             ("POST", "/s3?uploadId=id")):
             for code in (503, 429, 403, 422):
                 with self.subTest(method=method, path=path, code=code):
                     client = api.Client.__new__(api.Client)
@@ -197,13 +197,84 @@ class NotaryTests(unittest.TestCase):
         client.opener.open.side_effect = api.http.client.IncompleteRead(b"SECRET_RESPONSE")
         attrs = {"object": "file", "awsAccessKeyId": "fixture", "awsSecretAccessKey": "secret",
                  "awsSessionToken": "token"}
-        with self.assertRaisesRegex(api.Failure, "^S3 connection failed$"):
-            client.s3(attrs, "PUT", body=b"part")
+        with self.assertRaisesRegex(api.Failure, "^S3 UploadPart connection failed$"):
+            client.s3(attrs, "PUT", "UploadPart", body=b"part")
         self.assertEqual(client.opener.open.call_args.kwargs["timeout"], 300)
         client.deadline = api.time.monotonic() + 15
         with self.assertRaises(api.Failure):
-            client.s3(attrs, "PUT", body=b"part")
+            client.s3(attrs, "PUT", "UploadPart", body=b"part")
         self.assertLessEqual(client.opener.open.call_args.kwargs["timeout"], 15)
+
+    def test_s3_failures_name_operation_and_safe_error_code(self):
+        client = api.Client.__new__(api.Client)
+        client.stop = api.threading.Event()
+        client.deadline = api.time.monotonic() + 60
+        client.args = api.argparse.Namespace(s3_endpoint="http://127.0.0.1:1")
+        attrs = {"object": "file", "awsAccessKeyId": "fixture", "awsSecretAccessKey": "secret",
+                 "awsSessionToken": "token"}
+        for body, expected in ((b"<Error><Code>AccessDenied</Code><Message>SECRET</Message></Error>",
+                                "^S3 CompleteMultipartUpload HTTP 403 \\(AccessDenied\\)$"),
+                               (b"<Error><Code>Access Denied SECRET</Code></Error>",
+                                "^S3 CompleteMultipartUpload HTTP 403$")):
+            with self.subTest(body=body):
+                client.opener = MagicMock()
+                client.opener.open.side_effect = api.urllib.error.HTTPError(
+                    "https://fixture.invalid", 403, "SECRET", {}, io.BytesIO(body))
+                with self.assertRaisesRegex(api.Failure, expected):
+                    client.s3(attrs, "POST", "CompleteMultipartUpload", [("uploadId", "id")], b"<x/>")
+
+    def test_s3_bodies_carry_signed_explicit_content_type(self):
+        client = api.Client.__new__(api.Client)
+        client.args = api.argparse.Namespace(s3_endpoint="http://127.0.0.1:1")
+        attrs = {"object": "file", "awsAccessKeyId": "fixture", "awsSecretAccessKey": "secret",
+                 "awsSessionToken": "token"}
+        seen = {}
+        client.request = lambda method, url, headers, body, label, cleanup, **_: seen.update(
+            {label: headers()}) or ({}, b"")
+        client.s3(attrs, "POST", "CompleteMultipartUpload", [("uploadId", "id")], b"<x/>")
+        client.s3(attrs, "PUT", "UploadPart", [("uploadId", "id"), ("partNumber", "1")], b"part")
+        client.s3(attrs, "DELETE", "AbortMultipartUpload", [("uploadId", "id")], cleanup=True)
+        for label, expected in (("S3 CompleteMultipartUpload", "application/xml"),
+                                ("S3 UploadPart", "application/octet-stream")):
+            self.assertEqual(seen[label]["content-type"], expected)
+            self.assertIn("content-type;", seen[label]["authorization"].split("SignedHeaders=")[1])
+        self.assertNotIn("content-type", seen["S3 AbortMultipartUpload"])
+
+    def test_multipart_etag_binds_completed_object(self):
+        client = api.Client.__new__(api.Client)
+        client.stop = api.threading.Event()
+        client.deadline = api.time.monotonic() + 60
+        client.args = api.argparse.Namespace(parallelism=4)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "artifact.zip"
+            path.write_bytes(b"a" * (5 * api.MIB) + b"b")
+            parts = [b"a" * (5 * api.MIB), b"b"]
+            good = api.hashlib.md5(b"".join(api.hashlib.md5(part).digest() for part in parts)).hexdigest()
+            for final, error in (('"%s-2"' % good, None), ('"%s-2"' % ("0" * 32), "S3 multipart ETag mismatch")):
+                with self.subTest(final=final):
+                    calls = []
+
+                    def fake_s3(attrs, method, operation, query=(), body=None, cleanup=False):
+                        calls.append(operation)
+                        if operation == "CreateMultipartUpload":
+                            return {}, b"<InitiateMultipartUploadResult><UploadId>id</UploadId></InitiateMultipartUploadResult>"
+                        if operation == "UploadPart":
+                            return {"ETag": '"' + api.hashlib.md5(body).hexdigest() + '"'}, b""
+                        if operation == "CompleteMultipartUpload":
+                            return {}, ("<CompleteMultipartUploadResult><ETag>%s</ETag>"
+                                        "</CompleteMultipartUploadResult>" % final).encode()
+                        return {}, b""
+
+                    client.stop = api.threading.Event()
+                    client.s3 = fake_s3
+                    if error:
+                        with self.assertRaisesRegex(api.Failure, error):
+                            client.upload({}, path)
+                    else:
+                        client.upload({}, path)
+                    # Completed uploads are never aborted, and nothing reads the object back.
+                    self.assertNotIn("AbortMultipartUpload", calls)
+                    self.assertEqual(calls.count("UploadPart"), 2)
 
     def test_fixture_override_boundary(self):
         args = ["--artifact", "unused", "--submission-name", "fixture", "--key-id", "fixture",

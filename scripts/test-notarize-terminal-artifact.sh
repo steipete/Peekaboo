@@ -391,7 +391,7 @@ for refused_case in invalid-exit rejected transport-only accepted-exit; do
   fi
 done
 
-for api_case in transient invalid persistent bad-etag bad-size complete-error; do
+for api_case in transient invalid persistent bad-etag bad-final-etag complete-error; do
   transaction="$TEST_DIR/api-$api_case"
   if run_api_fixture "$api_case" --kind dmg --artifact "$TEST_DIR/upload.dmg" \
     --transaction "$transaction" --notary-transport api >"$TEST_DIR/api-$api_case.log" 2>&1; then
@@ -408,7 +408,10 @@ for api_case in transient invalid persistent bad-etag bad-size complete-error; d
 import json
 import sys
 rows = [json.loads(line) for line in open(sys.argv[1])]
-assert any(row['case'] == sys.argv[2] and row['method'] == 'DELETE' for row in rows), 'missing multipart abort'
+aborted = any(row['case'] == sys.argv[2] and row['method'] == 'DELETE' for row in rows)
+# A completed upload cannot be aborted; every earlier failure must abort it.
+assert aborted == (sys.argv[2] != 'bad-final-etag'), 'wrong multipart abort behavior'
+assert not any(row['method'] == 'HEAD' for row in rows), 'upload must not read the object back'
 if sys.argv[2] in ('persistent', 'bad-etag'):
     assert sum(row['case'] == sys.argv[2] and row['method'] == 'PUT' and
                row['query']['partNumber'] == ['1'] for row in rows) == 4, 'wrong retry bound'

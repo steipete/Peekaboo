@@ -158,11 +158,14 @@ receipts record `submission.transport` (`notarytool` or `api`) without changing 
 
 The isolated, stdlib-only Python helper signs short-lived ES256 JWTs with the already-materialized key, uploads to
 S3 with up to 24 concurrent multipart requests (5 MiB parts, increased to stay within 10,000 parts for large submissions),
-checks part ETags and final object size, and polls with fresh JWTs. A 40 MiB app ZIP uses eight upload streams.
-Parts, Notary API requests, and multipart creation/completion and HEAD requests have up to four attempts with
-backoff for connection failures, HTTP 429, and HTTP 5xx; authentication and validation errors fail immediately.
-Retries remain within the one-hour REST attempt deadline. Retrying a lost submission-creation response may create
-a second submission. Upload failures abort the multipart session. No dependencies are downloaded at release time.
+checks each part's ETag and the completed object's multipart ETag (no read-back), and polls with fresh JWTs. A 40
+MiB app ZIP uses eight upload streams. Every S3 request with a body sends a signed, explicit `Content-Type`; urllib's
+form-encoded default makes S3 fold a POST body into the signature, so completion fails with `SignatureDoesNotMatch`.
+Parts, Notary API requests, and multipart creation/completion have up to four attempts with backoff for connection
+failures, HTTP 429, and HTTP 5xx; authentication and validation errors fail immediately. Retries remain within the
+one-hour REST attempt deadline. Retrying a lost submission-creation response may create a second submission. Upload
+failures before completion abort the multipart session. S3 failures name the operation and the AWS error code only.
+No dependencies are downloaded at release time.
 HTTPS uses the system roots shipped on the release Mac. Rejected submissions print only the developer log URL's
 host and path, never its query or authentication material. Endpoint overrides are restricted to explicit loopback
 fixtures with throwaway keys.

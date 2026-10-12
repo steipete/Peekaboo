@@ -64,6 +64,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         assert self.headers["Authorization"].startswith("AWS4-HMAC-SHA256 ")
         assert self.headers["x-amz-security-token"] == "FIXTURESESSION"
         assert self.headers["x-amz-content-sha256"] == hashlib.sha256(body).hexdigest()
+        if self.command in ("POST", "PUT"):
+            # A form-encoded POST body is folded into the S3 signature; real S3 rejects the completion.
+            content_type = self.headers.get("Content-Type", "")
+            assert content_type in ("application/xml", "application/octet-stream"), content_type
+            assert "content-type" in self.headers["Authorization"].split("SignedHeaders=")[1].split(",")[0]
         if self.command == "POST" and "uploads" in query:
             self.reply(200, b'<InitiateMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
                        b'<UploadId>fixture+upload/id</UploadId></InitiateMultipartUploadResult>')
@@ -94,12 +99,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             (DIRECTORY / (case + ".uploaded")).write_bytes(uploaded)
             (DIRECTORY / (case + ".stats")).write_text(json.dumps({"peak": state["peak"], "tries": state["tries"]}))
             state["size"] = len(uploaded)
+            digests = b"".join(hashlib.md5(state["parts"][number]).digest() for number in sorted(state["parts"]))
+            final_etag = hashlib.md5(digests).hexdigest() if case != "bad-final-etag" else "0" * 32
             self.reply(200, b"<Error><Code>InternalError</Code></Error>" if case == "complete-error"
-                       else b"<CompleteMultipartUploadResult/>")
+                       else ('<CompleteMultipartUploadResult><ETag>"%s-%d"</ETag></CompleteMultipartUploadResult>'
+                             % (final_etag, len(state["parts"]))).encode())
         elif self.command == "HEAD":
-            self.send_response(200)
-            self.send_header("Content-Length", str(state["size"] + (1 if case == "bad-size" else 0)))
-            self.end_headers()
+            # The helper must not depend on reading the uploaded object back.
+            self.reply(403, b"<Error><Code>AccessDenied</Code></Error>")
         elif self.command == "DELETE":
             self.reply(204)
         else:
