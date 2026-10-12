@@ -116,6 +116,20 @@ extension AgentOutputDelegate {
         return ""
     }
 
+    func printJSONValueResult(formattedResult: String, durationString: String) {
+        if self.outputMode == .verbose {
+            print(" \(durationString)")
+            print("\(TerminalColor.gray)Result:\(TerminalColor.reset)")
+            print(formattedResult)
+        } else {
+            let summary = formattedResult
+                .split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .joined(separator: " ")
+            print(" \(summary.prefix(240))\(durationString)")
+        }
+    }
+
     func printInvalidResult(rawResult: String, durationString: String) {
         if self.outputMode == .verbose {
             let failureBadge = [

@@ -181,7 +181,12 @@ extension AgentOutputDelegate {
 
         guard self.outputMode != .quiet else { return }
         guard let json = parseResult(result) else {
-            self.printInvalidResult(rawResult: result, durationString: durationString)
+            if let formatted = formatJSON(result) {
+                self.printJSONValueResult(formattedResult: formatted, durationString: durationString)
+            } else {
+                self.printInvalidResult(rawResult: result, durationString: durationString)
+            }
+            fflush(stdout)
             return
         }
 
