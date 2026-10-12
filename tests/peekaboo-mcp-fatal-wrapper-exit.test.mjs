@@ -17,10 +17,22 @@ for (const kind of ['exception', 'rejection']) test(`fatal ${kind} stops its chi
   });
   const wrapper = join(root, 'peekaboo-mcp.mjs');
   copyFileSync(new URL('../peekaboo-mcp.js', import.meta.url), wrapper);
-  writeFileSync(join(root, 'peekaboo'), `#!/bin/sh\ntrap 'echo stopped > "${stopped}"; exit 0' TERM\necho $$ > "${ready}"\nwhile :; do sleep 0.05; done\n`, { mode: 0o755 });
-  const failure = kind === 'exception' ? 'throw new Error("fixture failure")' : 'Promise.reject(new Error("fixture failure"))';
-  const preload = `import {existsSync} from 'node:fs'; const poll = setInterval(() => {if (existsSync(${JSON.stringify(ready)})) {clearInterval(poll); ${failure}}}, 10); setTimeout(() => {console.error('fatal watchdog fired'); process.exitCode=99; process.kill(process.pid,'SIGTERM');}, 2000);`;
-  const result = spawnSync(process.execPath, ['--import', 'data:text/javascript,' + encodeURIComponent(preload), wrapper], { encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL' });
+  writeFileSync(join(root, 'peekaboo'), '#!/bin/sh\ntrap \'echo stopped > "$PEEKABOO_TEST_STOPPED"; exit 0\' TERM\necho $$ > "$PEEKABOO_TEST_READY"\nwhile :; do sleep 0.05; done\n', { mode: 0o755 });
+  const preload = join(root, 'fatal-preload.mjs');
+  writeFileSync(preload, `import {existsSync} from 'node:fs';
+const poll = setInterval(() => {
+  if (existsSync(process.env.PEEKABOO_TEST_READY)) {
+    clearInterval(poll);
+    if (process.env.PEEKABOO_TEST_FATAL_KIND === 'exception') throw new Error('fixture failure');
+    Promise.reject(new Error('fixture failure'));
+  }
+}, 10);
+setTimeout(() => {console.error('fatal watchdog fired'); process.exitCode=99; process.kill(process.pid,'SIGTERM');}, 2000);
+`);
+  const result = spawnSync(process.execPath, ['--import', preload, wrapper], {
+    encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL',
+    env: {...process.env, PEEKABOO_TEST_READY: ready, PEEKABOO_TEST_STOPPED: stopped, PEEKABOO_TEST_FATAL_KIND: kind},
+  });
   assert.equal(result.error, undefined);
   assert.equal(result.signal, null);
   assert.equal(result.status, 1, result.stderr);
@@ -35,10 +47,25 @@ for (const kind of ['exception', 'rejection']) test(`fatal ${kind} during restar
   const wrapper = join(root, 'peekaboo-mcp.mjs');
   copyFileSync(new URL('../peekaboo-mcp.js', import.meta.url), wrapper);
   writeFileSync(join(root, 'peekaboo'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
-  const failure = kind === 'exception' ? 'throw new Error("backoff failure")' : 'Promise.reject(new Error("backoff failure"))';
-  const preload = `setInterval(() => {}, 10000); const write = process.stderr.write.bind(process.stderr); let triggered = false; process.stderr.write = (...args) => { const result = write(...args); if (!triggered && String(args[0]).includes("Server crashed")) { triggered = true; setTimeout(() => { ${failure} }, 10); } return result; };`;
-  const result = spawnSync(process.execPath, ['--import', 'data:text/javascript,' + encodeURIComponent(preload), wrapper], {
+  const preload = join(root, 'fatal-preload.mjs');
+  writeFileSync(preload, `setInterval(() => {}, 10000);
+const write = process.stderr.write.bind(process.stderr);
+let triggered = false;
+process.stderr.write = (...args) => {
+  const result = write(...args);
+  if (!triggered && String(args[0]).includes('Server crashed')) {
+    triggered = true;
+    setTimeout(() => {
+      if (process.env.PEEKABOO_TEST_FATAL_KIND === 'exception') throw new Error('backoff failure');
+      Promise.reject(new Error('backoff failure'));
+    }, 10);
+  }
+  return result;
+};
+`);
+  const result = spawnSync(process.execPath, ['--import', preload, wrapper], {
     encoding: 'utf8', timeout: 1500, killSignal: 'SIGKILL',
+    env: {...process.env, PEEKABOO_TEST_FATAL_KIND: kind},
   });
   assert.match(result.stderr, /Server crashed/);
   assert.match(result.stderr, /backoff failure/);
