@@ -30,7 +30,7 @@ jobs:
       contents: write
       statuses: read
       pull-requests: write
-    # Reviewed, merged Sparkle archetype; no mutable version ref.
+    # pin: the merged openclaw/release-workflows#66 squash commit; move to a release tag once one contains it
     uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@4330190386f28f99d10f95085f7380a271a90809
     with:
       version: ${{ inputs.version || github.ref_name }}
