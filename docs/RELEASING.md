@@ -15,7 +15,7 @@ Every shipped macOS code object uses `Developer ID Application: OpenClaw Foundat
 
 Use `.github/workflows/release.yml` as the primary release path after the environment below is provisioned.
 For its first dry run, the caller pins `openclaw/release-workflows` PR #66 head
-`3a9fb01ac5cd0f24a3a28fc9e9e4c998539c0722`; re-pin it to the reviewed merged commit once #66 lands.
+`10b7c3f37dcaa60a932bc4a2faabdb8009c51abd`; re-pin it to the reviewed merged commit once #66 lands.
 The local driver remains the fallback while hosted rollout is completed.
 
 Prepare a release PR against `main`: update all version surfaces listed in [Prepare](#1-prepare), date the target
