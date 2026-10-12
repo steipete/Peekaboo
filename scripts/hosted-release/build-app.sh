@@ -40,7 +40,10 @@ python3 scripts/setup-swift-workspace.py run --release -- xcodebuild \
   build
 
 APP="$DERIVED_DATA/Build/Products/Release/Peekaboo.app"
-lipo -verify_arch arm64 x86_64 "$APP/Contents/MacOS/Peekaboo"
+case "$(lipo -archs "$APP/Contents/MacOS/Peekaboo")" in
+  "arm64 x86_64"|"x86_64 arm64") ;;
+  *) echo 'App must contain arm64 and x86_64 slices' >&2; exit 1 ;;
+esac
 scripts/verify-release-package-resolution.sh \
   --source-root "$ROOT" --derived-data "$DERIVED_DATA" --app "$APP"
 peekaboo_verify_source_commit "$ROOT" "$SOURCE_COMMIT"
