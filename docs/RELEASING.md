@@ -14,8 +14,10 @@ Every shipped macOS code object uses `Developer ID Application: OpenClaw Foundat
 ## Hosted release (GitHub Actions)
 
 Use `.github/workflows/release.yml` as the primary release path after the environment below is provisioned.
-For its first dry run, the caller pins `openclaw/release-workflows` PR #66 head
-`85d68401180d1d4450fefba21ce555bc1898700d`; re-pin it to the reviewed merged commit once #66 lands.
+The caller pins the merged `openclaw/release-workflows` #66 squash commit
+`4330190386f28f99d10f95085f7380a271a90809`. Pin by commit, never by a deleted PR branch head: a squash merge leaves
+PR-head commits unreachable, and GitHub then fails the dispatch with `startup_failure`. Move the pin to a
+release-workflows tag once one contains this commit.
 The local driver remains the fallback while hosted rollout is completed.
 
 Prepare a release PR against `main`: update all version surfaces listed in [Prepare](#1-prepare), date the target
@@ -61,8 +63,7 @@ release notes, npm version/tarball/integrity/dist-tag, and Homebrew update befor
 
 ### One-time hosted setup
 
-After PR #66 lands, replace its head SHA pin in `release.yml` with the merged reusable-workflow commit. Configure
-the caller repo's `release` environment with Peter as required reviewer and deployment restrictions for the default branch and `v*`
+Configure the caller repo's `release` environment with Peter as required reviewer and deployment restrictions for the default branch and `v*`
 tags. Enable Actions to create pull requests for closeout. The caller uses workflow-level `permissions: {}` and
 grants the calling job the archetype's exact job-level union: `actions: write`, `checks: read`, `contents: write`,
 `statuses: read`, and `pull-requests: write` (PR #1051). A reusable workflow cannot request more than its caller
