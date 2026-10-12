@@ -26,4 +26,5 @@ for library in "$ROOT"/libswiftCompatibility*.dylib; do
   [[ -e "$library" ]] || continue
   cp "$library" "$OUTPUT/"
 done
+bash "$ROOT/scripts/hosted-release/normalize-cli-runtime.sh" "$OUTPUT"
 printf 'Ad-hoc universal CLI: %s/peekaboo\n' "$OUTPUT"
