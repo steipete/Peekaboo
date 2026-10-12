@@ -10,7 +10,8 @@ The sole publication path is `.github/workflows/release.yml`. It builds the app,
 DMG, standalone CLI archives and npm package, signs with the OpenClaw Foundation
 Developer ID, notarizes, verifies on arm64 and Intel, publishes a checksummed
 GitHub Release, hands off the exact npm tarball through OIDC and updates Homebrew.
-The closeout PR publishes the signed Sparkle appcast to main. No laptop publisher
+The hosted app build explicitly targets arm64 and x86_64 and rejects a thin binary
+before signing. The closeout PR publishes the signed Sparkle appcast to main. No laptop publisher
 or upload fallback remains.
 
 Prepare all version surfaces using the existing release preflight, date the root
