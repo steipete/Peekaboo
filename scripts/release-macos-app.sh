@@ -12,6 +12,8 @@ ROOT="$(cd "$ROOT" && pwd)"
 source "$ROOT/scripts/source-provenance.sh"
 # shellcheck source=scripts/release-version.sh
 source "$ROOT/scripts/release-version.sh"
+# shellcheck source=scripts/notary-submit.sh
+source "$ROOT/scripts/notary-submit.sh"
 SOURCE_COMMIT=""
 MAC_RELEASE_MANIFEST="${MAC_RELEASE_MANIFEST:-$ROOT/.mac-release.env}"
 MAC_RELEASE_MANIFEST_LOADED=false
@@ -511,39 +513,10 @@ if [[ "$NOTARIZE" == true ]]; then
   NOTARY_ZIP="$NOTARY_DIR/$APP_NAME-notary.zip"
   "$ROOT/scripts/create-app-zip.sh" "$APP_BUNDLE" "$NOTARY_ZIP"
 
-  if [[ -n "${NOTARYTOOL_PROFILE:-}" ]]; then
-    xcrun notarytool submit "$NOTARY_ZIP" --keychain-profile "$NOTARYTOOL_PROFILE" --no-s3-acceleration --wait
-  else
-    [[ -n "${APP_STORE_CONNECT_KEY_ID:-}" ]] || fail "APP_STORE_CONNECT_KEY_ID missing"
-    [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]] || fail "APP_STORE_CONNECT_ISSUER_ID missing"
-    [[ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]] || fail "APP_STORE_CONNECT_API_KEY_P8 missing"
-
-    KEY_FILE="$NOTARY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-    APP_STORE_CONNECT_API_KEY_P8="$APP_STORE_CONNECT_API_KEY_P8" node > "$KEY_FILE" <<'EOF'
-const raw = process.env.APP_STORE_CONNECT_API_KEY_P8 ?? "";
-let pem = raw.replace(/\\n/g, "\n").trim();
-if (!pem.includes("\n")) {
-  const match = pem.match(/^(-----BEGIN [^-]+-----)\s*(.+?)\s*(-----END [^-]+-----)$/);
-  if (match) {
-    const body = match[2].replace(/\s+/g, "");
-    const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
-    pem = `${match[1]}\n${wrapped}\n${match[3]}`;
-  }
-}
-process.stdout.write(`${pem}\n`);
-EOF
-    chmod 600 "$KEY_FILE"
-    xcrun notarytool submit "$NOTARY_ZIP" \
-      --key "$KEY_FILE" \
-      --key-id "$APP_STORE_CONNECT_KEY_ID" \
-      --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-      --no-s3-acceleration \
-      --wait
-    rm -f "$KEY_FILE"
-  fi
+  peekaboo_notary_submit "$NOTARY_ZIP" "$NOTARY_DIR" "$APP_NAME"
 
   log "Stapling notarization ticket"
-  xcrun stapler staple "$APP_BUNDLE"
+  peekaboo_notary_staple "$APP_BUNDLE"
   xcrun stapler validate "$APP_BUNDLE"
   codesign --verify --deep --strict --check-notarization -R=notarized --verbose=2 "$APP_BUNDLE"
   assess_app_bundle "$APP_BUNDLE"

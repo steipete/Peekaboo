@@ -22,6 +22,8 @@ source "$SCRIPT_DIR/source-provenance.sh"
 source "$SCRIPT_DIR/release-version.sh"
 # shellcheck source=scripts/terminal-artifact-env.sh
 source "$SCRIPT_DIR/terminal-artifact-env.sh"
+# shellcheck source=scripts/notary-submit.sh
+source "$SCRIPT_DIR/notary-submit.sh"
 BUILD_DIR="$PROJECT_ROOT/build"
 RELEASE_DIR="${RELEASE_DIR:-$BUILD_DIR/release}"
 MAC_RELEASE_MANIFEST="${MAC_RELEASE_MANIFEST:-$PROJECT_ROOT/.mac-release.env}"
@@ -212,6 +214,8 @@ app_zip_tree_sha256() {
 }
 
 npm_package_integrity() {
+    # The template literal is JavaScript, not a shell expansion.
+    # shellcheck disable=SC2016
     node -e '
 const fs = require("fs");
 const crypto = require("crypto");
@@ -402,12 +406,7 @@ verify_binary_artifact() {
 notarize_cli_binary() {
     local binary_path="$1"
     local notary_dir
-    local key_file
     local submission_zip
-    local result_json
-    local result_status
-    local submission_id
-
     require_command ditto
     require_command xcrun
 
@@ -415,58 +414,11 @@ notarize_cli_binary() {
     submission_zip="$notary_dir/peekaboo-cli.zip"
     ditto -c -k --sequesterRsrc "$binary_path" "$submission_zip"
 
-    if [ -n "$NOTARYTOOL_PROFILE" ]; then
-        result_json=$(xcrun notarytool submit "$submission_zip" \
-            --keychain-profile "$NOTARYTOOL_PROFILE" \
-            --no-s3-acceleration \
-            --wait \
-            --output-format json) || {
-            rm -rf "$notary_dir"
-            fail "CLI notarization submission failed"
-        }
-    else
-        require_command node
-        [ -n "${APP_STORE_CONNECT_KEY_ID:-}" ] || fail "APP_STORE_CONNECT_KEY_ID missing"
-        [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ] || fail "APP_STORE_CONNECT_ISSUER_ID missing"
-        [ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ] || fail "APP_STORE_CONNECT_API_KEY_P8 missing"
-        key_file="$notary_dir/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-        APP_STORE_CONNECT_API_KEY_P8="$APP_STORE_CONNECT_API_KEY_P8" node > "$key_file" <<'EOF'
-const raw = process.env.APP_STORE_CONNECT_API_KEY_P8 ?? "";
-let pem = raw.replace(/\\n/g, "\n").trim();
-if (!pem.includes("\n")) {
-  const match = pem.match(/^(-----BEGIN [^-]+-----)\s*(.+?)\s*(-----END [^-]+-----)$/);
-  if (match) {
-    const body = match[2].replace(/\s+/g, "");
-    const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
-    pem = `${match[1]}\n${wrapped}\n${match[3]}`;
-  }
-}
-process.stdout.write(`${pem}\n`);
-EOF
-        chmod 600 "$key_file"
-        if ! result_json=$(xcrun notarytool submit "$submission_zip" \
-            --key "$key_file" \
-            --key-id "$APP_STORE_CONNECT_KEY_ID" \
-            --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --no-s3-acceleration \
-            --wait \
-            --output-format json); then
-            /bin/rm -P "$key_file" 2>/dev/null || rm -f "$key_file"
-            rm -rf "$notary_dir"
-            fail "CLI notarization submission failed"
-        fi
-        /bin/rm -P "$key_file" 2>/dev/null || rm -f "$key_file"
+    if ! peekaboo_notary_submit "$submission_zip" "$notary_dir" CLI; then
+        rm -rf "$notary_dir"
+        fail "CLI notarization submission failed"
     fi
-
-    result_status=$(NOTARY_RESULT_JSON="$result_json" node -e \
-        'const r=JSON.parse(process.env.NOTARY_RESULT_JSON); process.stdout.write(r.status ?? "")')
-    submission_id=$(NOTARY_RESULT_JSON="$result_json" node -e \
-        'const r=JSON.parse(process.env.NOTARY_RESULT_JSON); process.stdout.write(r.id ?? "")')
     rm -rf "$notary_dir"
-
-    [ "$result_status" = "Accepted" ] || fail "CLI notarization was not accepted: ${result_status:-missing status}"
-    [ -n "$submission_id" ] || fail "CLI notarization response did not include a submission ID"
-    echo -e "${GREEN}✅ CLI notarization accepted (${submission_id})${NC}"
     codesign --verify --strict --check-notarization -R=notarized --verbose=2 "$binary_path"
 }
 
@@ -517,6 +469,8 @@ verify_appcast_entry() {
         fail "Generated appcast differs from the retained release snapshot"
     (
       cd "$PROJECT_ROOT"
+      # VERSION expansions intentionally read the caller's frozen version.
+      # shellcheck disable=SC2097,SC2098
       APPCAST_PATH="$PROJECT_ROOT/appcast.xml" \
       APPCAST_RECEIPT="$RELEASE_DIR/appcast-entry.json" \
       APP_ZIP_LENGTH="$(stat -f%z "$MAC_APP_ZIP_PATH")" \
@@ -741,6 +695,8 @@ github_tag_commit() {
     refs=$(gh api --hostname "$GITHUB_HOST" \
       "repos/${GITHUB_API_REPOSITORY}/git/matching-refs/tags/v${VERSION}") ||
         fail "Could not inspect the GitHub release tag"
+    # The template literal is JavaScript, not a shell expansion.
+    # shellcheck disable=SC2016
     tuple=$(REFS_JSON="$refs" TAG_REF="refs/tags/v${VERSION}" node -e '
 const refs = JSON.parse(process.env.REFS_JSON);
 const matches = refs.filter((entry) => entry?.ref === process.env.TAG_REF);
@@ -1226,6 +1182,14 @@ while [[ $# -gt 0 ]]; do
             INCLUDE_MAC_APP=false
             shift
             ;;
+        --notary-transport)
+            PEEKABOO_NOTARY_TRANSPORT="${2:-}"
+            case "$PEEKABOO_NOTARY_TRANSPORT" in
+                auto|notarytool|api) ;;
+                *) fail "--notary-transport requires auto, notarytool, or api" ;;
+            esac
+            shift 2
+            ;;
         --no-notarize-mac-app)
             MAC_APP_NOTARIZE=false
             shift
@@ -1248,6 +1212,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --arm64-only           Build arm64-only binary"
             echo "  --universal            Build universal (arm64+x86_64) binary (default)"
             echo "  --skip-mac-app         Skip Peekaboo.app zip/DMG, Sparkle appcast, and app checksums"
+            echo "  --notary-transport auto|notarytool|api  Notary upload transport (default: auto; env: PEEKABOO_NOTARY_TRANSPORT)"
             echo "  --no-notarize-mac-app  Disable CLI/app/DMG notarization for local builds only"
             echo "  --no-appcast           Do not update appcast.xml"
             echo "  Public GitHub and npm actions must be requested together with --proof-file."
@@ -1261,6 +1226,13 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Transport is operational state, independent of frozen artifact and proof identity.
+export PEEKABOO_NOTARY_TRANSPORT="${PEEKABOO_NOTARY_TRANSPORT:-auto}"
+case "$PEEKABOO_NOTARY_TRANSPORT" in
+    auto|notarytool|api) ;;
+    *) fail "PEEKABOO_NOTARY_TRANSPORT must be auto, notarytool, or api" ;;
+esac
 
 RELEASE_PROOF_PROVIDED=false
 RELEASE_PROOF_SHA256=""

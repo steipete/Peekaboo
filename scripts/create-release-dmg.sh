@@ -4,6 +4,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/notary-submit.sh
+source "$ROOT_DIR/scripts/notary-submit.sh"
 MAC_RELEASE_MANIFEST="${MAC_RELEASE_MANIFEST:-$ROOT_DIR/.mac-release.env}"
 if [[ -f "$MAC_RELEASE_MANIFEST" ]]; then
   pushd "$ROOT_DIR" >/dev/null
@@ -247,43 +249,7 @@ verify_dmg() {
 }
 
 submit_for_notarization() {
-  local artifact="$1"
-
-  if [[ -n "${NOTARYTOOL_PROFILE:-}" ]]; then
-    xcrun notarytool submit "$artifact" \
-      --keychain-profile "$NOTARYTOOL_PROFILE" \
-      --no-s3-acceleration \
-      --wait
-    return
-  fi
-
-  [[ -n "${APP_STORE_CONNECT_KEY_ID:-}" ]] || fail "APP_STORE_CONNECT_KEY_ID missing"
-  [[ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ]] || fail "APP_STORE_CONNECT_ISSUER_ID missing"
-  [[ -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]] || fail "APP_STORE_CONNECT_API_KEY_P8 missing"
-  require_command node
-
-  local key_file="$NOTARY_DIR/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
-  APP_STORE_CONNECT_API_KEY_P8="$APP_STORE_CONNECT_API_KEY_P8" node > "$key_file" <<'EOF'
-const raw = process.env.APP_STORE_CONNECT_API_KEY_P8 ?? "";
-let pem = raw.replace(/\\n/g, "\n").trim();
-if (!pem.includes("\n")) {
-  const match = pem.match(/^(-----BEGIN [^-]+-----)\s*(.+?)\s*(-----END [^-]+-----)$/);
-  if (match) {
-    const body = match[2].replace(/\s+/g, "");
-    const wrapped = body.match(/.{1,64}/g)?.join("\n") ?? body;
-    pem = `${match[1]}\n${wrapped}\n${match[3]}`;
-  }
-}
-process.stdout.write(`${pem}\n`);
-EOF
-  chmod 600 "$key_file"
-  xcrun notarytool submit "$artifact" \
-    --key "$key_file" \
-    --key-id "$APP_STORE_CONNECT_KEY_ID" \
-    --issuer "$APP_STORE_CONNECT_ISSUER_ID" \
-    --no-s3-acceleration \
-    --wait
-  rm -f "$key_file"
+  peekaboo_notary_submit "$1" "$NOTARY_DIR" DMG
 }
 
 if [[ -n "$VERIFY_ONLY_DMG" ]]; then
@@ -355,7 +321,7 @@ if [[ "$NOTARIZE" == true ]]; then
   log "Submitting DMG to Apple notarization"
   submit_for_notarization "$DMG_PATH"
   log "Stapling DMG notarization ticket"
-  xcrun stapler staple "$DMG_PATH"
+  peekaboo_notary_staple "$DMG_PATH"
 fi
 
 log "Verifying DMG"

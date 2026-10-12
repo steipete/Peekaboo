@@ -535,3 +535,119 @@ for (const control of ['\u0000', '\t', '\n', '\r', '\u001f', '\u007f']) {
 }
 
 console.log('test-release-driver-contract: ok');
+
+// Exercise the real option parser and plan writer without release credentials or public actions.
+const notaryDriver = readFileSync(new URL('./release-binaries.sh', import.meta.url), 'utf8');
+const notaryApp = readFileSync(new URL('./release-macos-app.sh', import.meta.url), 'utf8');
+const notaryDMG = readFileSync(new URL('./create-release-dmg.sh', import.meta.url), 'utf8');
+const notaryFunction = (name) => {
+  const start = notaryDriver.indexOf(`${name}() {`);
+  assert.ok(start >= 0, `missing driver function ${name}`);
+  return notaryDriver.slice(start, notaryDriver.indexOf('\n}\n', start) + 3);
+};
+for (const source of [notaryDriver, notaryApp, notaryDMG]) {
+  assert.match(source, /source "\$[^\n]+\/notary-submit\.sh"/);
+  assert.match(source, /peekaboo_notary_submit /);
+  assert.doesNotMatch(source, /xcrun notarytool submit|const raw = process.env.APP_STORE_CONNECT_API_KEY_P8/);
+}
+for (const source of [notaryApp, notaryDMG]) assert.match(source, /peekaboo_notary_staple /);
+const notaryParserStart = notaryDriver.indexOf('# Parse command line arguments');
+const notaryParser = notaryDriver.slice(notaryParserStart,
+  notaryDriver.indexOf('RELEASE_PROOF_PROVIDED=false', notaryParserStart));
+for (const name of ['assert_release_plan', 'load_retained_release_state']) {
+  assert.doesNotMatch(notaryFunction(name), /NOTARY_TRANSPORT|notary.transport/i);
+}
+const transportTestDir = mkdtempSync(path.join(os.tmpdir(), 'peekaboo-transport-contract.'));
+try {
+  const proof = path.join(transportTestDir, 'proof.md');
+  writeFileSync(proof, 'offline fixture proof\n');
+  writeFileSync(path.join(transportTestDir, 'package.json'), '{"version":"9.8.7"}\n');
+  const proofHash = createHash('sha256').update(readFileSync(proof)).digest('hex');
+  const outputs = [];
+  for (const transport of ['auto', 'notarytool', 'api']) {
+    const dir = path.join(transportTestDir, transport);
+    mkdirSync(dir);
+    const result = spawnSync('/bin/bash', ['-c', `
+set -euo pipefail
+fail() { printf '%s\\n' "$*" >&2; exit 1; }
+sha256_file() { /usr/bin/shasum -a 256 "$1" | /usr/bin/awk '{print $1}'; }
+${notaryFunction('write_release_plan')}
+${notaryFunction('validate_publication_options')}
+${notaryFunction('assert_release_plan')}
+verify_release_source_state() { return 0; }
+release_helper_pin() { printf 'fixture-pin'; }
+RELEASE_HELPER_PIN=fixture-pin
+${notaryParser}
+[[ "$RESUME_PUBLICATION" == true ]]
+[[ "$PEEKABOO_NOTARY_TRANSPORT" == "$EXPECTED_TRANSPORT" ]]
+RELEASE_PROOF_PROVIDED=false
+RELEASE_PROOF_FILE="$PROOF"
+RELEASE_PROOF_SHA256="$PROOF_HASH"
+RELEASE_PREFLIGHT_COMPLETED=true
+RELEASE_PUBLICATION_ELIGIBLE=true
+validate_publication_options >/dev/null
+write_release_plan
+PEEKABOO_NOTARY_TRANSPORT=api
+assert_release_plan
+PEEKABOO_NOTARY_TRANSPORT=notarytool
+assert_release_plan
+node "$RELEASE_CONTRACT" release-plan-file < "$RELEASE_DIR/release-plan.json"
+`, 'fixture', '--resume-publication', '--notary-transport', transport], {
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH, EXPECTED_TRANSPORT: transport, PEEKABOO_NOTARY_TRANSPORT: 'notarytool',
+        RELEASE_CONTRACT: fileURLToPath(new URL('./release-driver-contract.mjs', import.meta.url)),
+        PROJECT_ROOT: transportTestDir, RELEASE_DIR: dir, RELEASE_SOURCE_COMMIT: sourceCommit, VERSION: '9.8.7',
+        RELEASE_HELPER_COMMIT: helperCommit, RELEASE_HELPER_EXECUTABLE_SHA256: helperExecutableSHA256,
+        RELEASE_HELPER_LIBRARY_SHA256: helperLibrarySHA256, PROOF: proof, PROOF_HASH: proofHash,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    outputs.push(result.stdout);
+    assert.equal(readFileSync(path.join(dir, 'release-proof.md'), 'utf8'), readFileSync(proof, 'utf8'));
+  }
+  assert.equal(outputs[0], outputs[1]);
+  assert.equal(outputs[1], outputs[2], 'transport must not enter the retained plan/proof identity');
+  for (const args of [['--notary-transport'], ['--notary-transport', 'bogus'], []]) {
+    const result = spawnSync('/bin/bash', ['-c', `
+set -euo pipefail
+fail() { printf '%s\\n' "$*" >&2; exit 1; }
+${notaryParser}
+`, 'fixture', ...args], {
+      encoding: 'utf8', env: { PATH: process.env.PATH, PEEKABOO_NOTARY_TRANSPORT: 'bogus' },
+    });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /requires auto, notarytool, or api|must be auto, notarytool, or api/);
+  }
+
+  const scripts = path.join(transportTestDir, 'scripts');
+  mkdirSync(scripts);
+  for (const name of ['release-macos-app.sh', 'create-release-dmg.sh']) {
+    const target = path.join(scripts, name);
+    writeFileSync(target, '#!/bin/bash\nprintf "%s\\n" "$PEEKABOO_NOTARY_TRANSPORT"\n');
+    chmodSync(target, 0o755);
+  }
+  const appInvocations = [...notaryDriver.matchAll(/if ! (RELEASE_DIR="\$RELEASE_DIR"[\s\S]*?"\$PROJECT_ROOT\/scripts\/release-macos-app\.sh"[^;]*); then/g)];
+  assert.equal(appInvocations.length, 2);
+  const dmgInvocation = notaryApp.match(/^  ("\$ROOT_DIR\/scripts\/create-release-dmg\.sh"[^\n]+)/m)?.[1];
+  assert.ok(dmgInvocation);
+  for (const invocation of [...appInvocations.map((match) => match[1]), dmgInvocation]) {
+    const result = spawnSync('/bin/bash', ['-c', `set -euo pipefail
+${notaryParser}
+MAC_APP_ARGS=(--fixture); DMG_ARGS=(--fixture)
+${invocation}
+`, 'fixture', '--notary-transport', 'api'], {
+      encoding: 'utf8', env: {
+        PATH: process.env.PATH, ROOT_DIR: transportTestDir, PROJECT_ROOT: transportTestDir,
+        RELEASE_DIR: transportTestDir, RELEASE_SOURCE_COMMIT: sourceCommit, VERSION: '9.8.7',
+        RELEASE_HELPER_COMMIT: helperCommit, RELEASE_HELPER_EXECUTABLE_SHA256: helperExecutableSHA256,
+        RELEASE_HELPER_LIBRARY_SHA256: helperLibrarySHA256,
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, 'api\n', 'public child invocations must inherit the selected transport');
+  }
+} finally {
+  rmSync(transportTestDir, { recursive: true, force: true });
+}
+console.log('test-release-driver-notary-contract: ok');

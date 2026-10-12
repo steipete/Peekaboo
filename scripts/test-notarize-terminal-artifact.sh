@@ -7,7 +7,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/terminal-artifact-env.sh"
 for secret_name in "${TERMINAL_ARTIFACT_SECRET_NAMES[@]}"; do unset "$secret_name"; done
 TEST_DIR="$(mktemp -d /tmp/peekaboo-terminal-notary-test.XXXXXX)"
-trap 'rm -rf "$TEST_DIR"' EXIT
+server_pid=""
+cleanup() {
+  if [[ -n "$server_pid" ]]; then
+    kill "$server_pid" 2>/dev/null || true
+    wait "$server_pid" 2>/dev/null || true
+  fi
+  rm -rf "$TEST_DIR"
+}
+trap cleanup EXIT
 LOG_FILE="$TEST_DIR/invocations"
 CLI_TREE="$TEST_DIR/cli"
 APP_ARTIFACT="$TEST_DIR/Playground.app"
@@ -31,6 +39,14 @@ for secret_name in \
   grep -Fwq "$secret_name" <<< "$notary_entry_prefix" || \
     fail "notary entrypoint does not de-export $secret_name before its environment scan"
 done
+
+# Production leaves fixture_api_args empty; /bin/bash 3.2 with nounset rejects an unguarded empty-array expansion.
+if grep -n '"${fixture_api_args\[@\]}"' "$ROOT_DIR/scripts/notarize-terminal-artifact.sh" | \
+  grep -v '${fixture_api_args\[@\]+' >/dev/null; then
+  fail 'fixture_api_args expansion must be guarded for Bash 3.2 nounset'
+fi
+/bin/bash -c 'set -u; fixture_api_args=(); printf "%s" ${fixture_api_args[@]+"${fixture_api_args[@]}"}' || \
+  fail 'guarded empty fixture_api_args expansion fails under /bin/bash nounset'
 
 mkdir -p "$CLI_TREE"
 printf 'int main(void) { return 0; }\n' > "$TEST_DIR/main.c"
@@ -75,16 +91,24 @@ cat > "$TEST_DIR/xcrun" <<'EOF'
 set -euo pipefail
 printf 'xcrun %s\n' "$*" >> "${LOG_FILE:?}"
 case "${1:-}:${2:-}" in
-  notarytool:history) printf '{}\n' ;;
+  notarytool:history) [[ -z "${TERMINAL_NOTARY_HISTORY_FAIL:-}" ]] || exit 92; printf '{}\n' ;;
   notarytool:submit)
     case "${TERMINAL_NOTARY_MODE:-accepted}" in
       accepted) printf '{"id":"00000000-0000-4000-8000-000000000001","status":"Accepted"}\n' ;;
       rejected) printf '{"id":"00000000-0000-4000-8000-000000000001","status":"Invalid"}\n' ;;
       malformed) printf 'not-json\n' ;;
+      invalid-exit) printf '{"id":"00000000-0000-4000-8000-000000000001","status":"Invalid"}\n'; exit 1 ;;
+      accepted-exit) printf '{"id":"00000000-0000-4000-8000-000000000001","status":"Accepted"}\n'; exit 1 ;;
       *) exit 91 ;;
     esac
     ;;
-  stapler:*) [[ "${TERMINAL_STAPLER_FAIL:-0}" != 1 ]] ;;
+  stapler:*)
+    if [[ "${2:-}" == staple && "${TERMINAL_STAPLER_FAIL:-0}" == once && ! -f "$LOG_FILE.stapled" ]]; then
+      touch "$LOG_FILE.stapled"
+      exit 1
+    fi
+    [[ "${TERMINAL_STAPLER_FAIL:-0}" != 1 ]]
+    ;;
 esac
 EOF
 cat > "$TEST_DIR/codesign" <<'EOF'
@@ -301,5 +325,134 @@ if TERMINAL_NOTARY_XCRUN_BIN="$TEST_DIR/xcrun" \
   --transaction "$TEST_DIR/override-transaction" --notary-profile __peekaboo_fixture__ >/dev/null 2>&1; then
   fail 'production accepted a test tool override'
 fi
+
+# API fixtures use only a freshly generated key; live credential variables remain forbidden.
+/usr/bin/openssl ecparam -name prime256v1 -genkey -noout -out "$TEST_DIR/throwaway.p8"
+/usr/bin/python3 -I "$ROOT_DIR/scripts/fixtures/notary-api-server.py" "$TEST_DIR/server" \
+  >"$TEST_DIR/server.log" 2>&1 &
+server_pid=$!
+for ((attempt = 1; attempt <= 100; attempt++)); do
+  [[ ! -f "$TEST_DIR/server/port" ]] || break
+  kill -0 "$server_pid" 2>/dev/null || fail 'fixture server stopped'
+  sleep 0.05
+done
+[[ -f "$TEST_DIR/server/port" ]] || fail 'fixture server did not start'
+server_base="http://127.0.0.1:$(cat "$TEST_DIR/server/port")"
+# Use several real S3-sized parts to prove parallel requests and exact retained bytes.
+/usr/bin/python3 -I - "$TEST_DIR/upload.dmg" <<'PYDATA'
+import os
+import sys
+with open(sys.argv[1], 'wb') as output:
+    output.write(os.urandom(17 * 1024 * 1024 + 7))
+PYDATA
+
+run_api_fixture() {
+  local fixture_case="$1"
+  shift
+  TERMINAL_NOTARY_API_KEY_FILE="$TEST_DIR/throwaway.p8" \
+    TERMINAL_NOTARY_API_BASE_URL="$server_base/$fixture_case/notary/v2" \
+    TERMINAL_NOTARY_S3_ENDPOINT="$server_base/$fixture_case/s3" \
+    run_notary "$@" --notary-profile __peekaboo_fixture__
+}
+
+TERMINAL_NOTARY_MODE=transport-failure run_api_fixture auto-fallback \
+  --kind dmg --artifact "$TEST_DIR/upload.dmg" --transaction "$TEST_DIR/auto-fallback" \
+  >"$TEST_DIR/auto-fallback.log" 2>&1 || { cat "$TEST_DIR/auto-fallback.log"; fail 'auto fallback failed'; }
+jq -e '.submission.transport == "api" and .status == "Accepted"' \
+  "$TEST_DIR/auto-fallback/receipt.json" >/dev/null
+cmp "$TEST_DIR/upload.dmg" "$TEST_DIR/auto-fallback/submission.bin"
+cmp "$TEST_DIR/server/auto-fallback.uploaded" "$TEST_DIR/auto-fallback/submission.bin"
+jq -e '.peak > 1' "$TEST_DIR/server/auto-fallback.stats" >/dev/null || fail 'upload was not parallel'
+grep -Fq 'stapler staple' "$LOG_FILE" || fail 'REST path did not staple'
+
+# A failed history preflight is a transport failure: auto falls back, notarytool mode refuses.
+cp "$LOG_FILE" "$TEST_DIR/before-history.log"
+TERMINAL_NOTARY_HISTORY_FAIL=1 run_api_fixture history-fallback \
+  --kind dmg --artifact "$TEST_DIR/upload.dmg" --transaction "$TEST_DIR/history-fallback" \
+  >"$TEST_DIR/history-fallback.log" 2>&1 || { cat "$TEST_DIR/history-fallback.log"; fail 'history fallback failed'; }
+jq -e '.submission.transport == "api"' "$TEST_DIR/history-fallback/receipt.json" >/dev/null
+[[ "$(grep -c 'notarytool submit' "$LOG_FILE")" == "$(grep -c 'notarytool submit' "$TEST_DIR/before-history.log")" ]] || \
+  fail 'submit ran after a failed history preflight'
+if TERMINAL_NOTARY_HISTORY_FAIL=1 run_api_fixture history-refused --kind dmg --artifact "$TEST_DIR/upload.dmg" \
+  --transaction "$TEST_DIR/history-refused" --notary-transport notarytool >"$TEST_DIR/history-refused.log" 2>&1; then
+  fail 'notarytool transport ignored a failed history preflight'
+fi
+! grep -Fq '"case": "history-refused"' "$TEST_DIR/server/events.jsonl" || fail 'notarytool transport contacted REST'
+
+# Explicit API must skip both history and submit, and tolerate ticket propagation lag.
+cp "$LOG_FILE" "$TEST_DIR/before-api.log"
+TERMINAL_NOTARY_MODE=transport-failure TERMINAL_STAPLER_FAIL=once \
+  TERMINAL_CODE_IDENTIFIER=boo.peekaboo.playground.debug run_api_fixture direct \
+  --kind app --artifact "$APP_ARTIFACT" --transaction "$TEST_DIR/direct" --notary-transport api \
+  >"$TEST_DIR/direct.log" 2>&1 || { cat "$TEST_DIR/direct.log"; fail 'direct API failed'; }
+[[ -f "$LOG_FILE.stapled" ]] || fail 'stapler retry was not exercised'
+[[ "$(grep -c 'notarytool' "$LOG_FILE")" == "$(grep -c 'notarytool' "$TEST_DIR/before-api.log")" ]] || \
+  fail 'explicit API invoked notarytool'
+jq -e '.submission.transport == "api"' "$TEST_DIR/direct/receipt.json" >/dev/null
+
+for refused_case in invalid-exit rejected transport-only accepted-exit; do
+  mode="$refused_case"
+  transport=auto
+  if [[ "$refused_case" == transport-only ]]; then mode='transport-failure'; transport=notarytool; fi
+  if TERMINAL_NOTARY_MODE="$mode" run_api_fixture "$refused_case" --kind dmg \
+    --artifact "$TEST_DIR/upload.dmg" --transaction "$TEST_DIR/$refused_case" \
+    --notary-transport "$transport" >"$TEST_DIR/$refused_case.log" 2>&1; then
+    fail "$refused_case unexpectedly succeeded"
+  fi
+  [[ ! -e "$TEST_DIR/$refused_case" ]] || fail "$refused_case published a receipt"
+  if grep -Fq "\"case\": \"$refused_case\"" "$TEST_DIR/server/events.jsonl"; then
+    fail "$refused_case unexpectedly contacted REST"
+  fi
+done
+
+for api_case in transient invalid persistent bad-etag bad-final-etag complete-error complete-error-persistent; do
+  transaction="$TEST_DIR/api-$api_case"
+  if run_api_fixture "$api_case" --kind dmg --artifact "$TEST_DIR/upload.dmg" \
+    --transaction "$transaction" --notary-transport api >"$TEST_DIR/api-$api_case.log" 2>&1; then
+    case "$api_case" in
+      transient) jq -e '.tries["1"] == 2 and .peak > 1' "$TEST_DIR/server/transient.stats" >/dev/null ;;
+      complete-error)
+        # The embedded InternalError is retried once instead of aborting the uploaded parts.
+        [[ "$(jq -sr '[.[] | select(.case == "complete-error" and .method == "POST" and (.query | has("uploadId")))] | length' \
+          "$TEST_DIR/server/events.jsonl")" == 2 ]] || fail 'completion was not retried exactly once'
+        ! jq -se 'any(.[]; .case == "complete-error" and .method == "DELETE")' "$TEST_DIR/server/events.jsonl" \
+          >/dev/null || fail 'retried completion aborted the upload' ;;
+      *) fail "$api_case unexpectedly succeeded" ;;
+    esac
+  else
+    [[ "$api_case" != transient && "$api_case" != complete-error ]] || \
+      { cat "$TEST_DIR/api-$api_case.log"; fail "$api_case retry failed"; }
+    [[ ! -e "$transaction" ]] || fail "$api_case published a receipt"
+    if [[ "$api_case" == invalid ]]; then
+      grep -Fq 'developer log logs.example.test/developer/log.json' "$TEST_DIR/api-invalid.log" || \
+        fail 'missing sanitized developer log URL'
+    else
+      /usr/bin/python3 -I - "$TEST_DIR/server/events.jsonl" "$api_case" <<'PYCHECK'
+import json
+import sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+aborted = any(row['case'] == sys.argv[2] and row['method'] == 'DELETE' for row in rows)
+# A completed upload cannot be aborted; every earlier failure must abort it.
+assert aborted == (sys.argv[2] != 'bad-final-etag'), 'wrong multipart abort behavior'
+assert not any(row['method'] == 'HEAD' for row in rows), 'upload must not read the object back'
+if sys.argv[2] in ('persistent', 'bad-etag'):
+    assert sum(row['case'] == sys.argv[2] and row['method'] == 'PUT' and
+               row['query']['partNumber'] == ['1'] for row in rows) == 4, 'wrong retry bound'
+PYCHECK
+    fi
+  fi
+  if grep -Eq 'DO_NOT_PRINT|FIXTURESECRET|FIXTURESESSION|Bearer |AWS4-HMAC' "$TEST_DIR/api-$api_case.log"; then
+    fail "$api_case leaked authentication or remote response material"
+  fi
+done
+
+for override_name in TERMINAL_NOTARY_API_KEY_FILE TERMINAL_NOTARY_API_BASE_URL TERMINAL_NOTARY_S3_ENDPOINT; do
+  if /usr/bin/env "$override_name=fixture" /bin/bash -p "$ROOT_DIR/scripts/notarize-terminal-artifact.sh" \
+    --kind dmg --artifact "$TEST_DIR/upload.dmg" --transaction "$TEST_DIR/forbidden-$override_name" \
+    >"$TEST_DIR/override.log" 2>&1; then
+    fail "production accepted $override_name"
+  fi
+  grep -Fq "$override_name is test-only" "$TEST_DIR/override.log" || fail 'override failed for wrong reason'
+done
 
 printf 'test-notarize-terminal-artifact: ok (fake signing/notary and metadata tools; no native zero-metadata proof)\n'

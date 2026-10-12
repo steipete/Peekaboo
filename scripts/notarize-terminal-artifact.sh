@@ -72,6 +72,8 @@ ARTIFACT=""
 TRANSACTION_DIR=""
 NOTARYTOOL_PROFILE="${NOTARYTOOL_PROFILE:-${NOTARYTOOL_KEYCHAIN_PROFILE:-}}"
 TEST_MODE="${PEEKABOO_TERMINAL_TEST_MODE:-0}"
+NOTARY_TRANSPORT=auto
+fixture_api_args=()
 
 fail() {
   printf 'notarize-terminal-artifact: %s\n' "$*" >&2
@@ -84,6 +86,7 @@ Usage: scripts/notarize-terminal-artifact.sh --kind cli-tree|app|controller-tree
 
 Options:
   --notary-profile NAME   Use an existing notarytool keychain profile.
+  --notary-transport auto|notarytool|api   API-key transport (default: auto).
 EOF
 }
 
@@ -93,10 +96,14 @@ while (($# > 0)); do
     --artifact) ARTIFACT="$2"; shift 2 ;;
     --transaction) TRANSACTION_DIR="$2"; shift 2 ;;
     --notary-profile) NOTARYTOOL_PROFILE="$2"; shift 2 ;;
+    --notary-transport) NOTARY_TRANSPORT="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; fail "unknown argument: $1" ;;
   esac
 done
+
+[[ "$NOTARY_TRANSPORT" == auto || "$NOTARY_TRANSPORT" == notarytool || "$NOTARY_TRANSPORT" == api ]] || \
+  fail 'invalid --notary-transport'
 
 [[ "$KIND" == cli-tree || "$KIND" == app || "$KIND" == controller-tree || "$KIND" == dmg ]] || fail 'invalid --kind'
 RECEIPT_KIND="$KIND"
@@ -124,7 +131,8 @@ case "$TEST_MODE" in
   0|false|no|off|'')
     for override_name in \
       TERMINAL_NOTARY_XCRUN_BIN TERMINAL_NOTARY_DITTO_BIN TERMINAL_NOTARY_CODESIGN_BIN \
-      TERMINAL_NOTARY_XATTR_BIN TERMINAL_NOTARY_UNZIP_BIN; do
+      TERMINAL_NOTARY_XATTR_BIN TERMINAL_NOTARY_UNZIP_BIN TERMINAL_NOTARY_API_KEY_FILE \
+      TERMINAL_NOTARY_API_BASE_URL TERMINAL_NOTARY_S3_ENDPOINT; do
       [[ -z "${!override_name+x}" ]] || fail "$override_name is test-only"
     done
     XCRUN_BIN=/usr/bin/xcrun
@@ -168,7 +176,21 @@ trap cleanup EXIT
 
 key_id=""
 issuer_id=""
-if [[ -z "$NOTARYTOOL_PROFILE" ]]; then
+if [[ -n "${TERMINAL_NOTARY_API_KEY_FILE:-}" ]]; then
+  # Only reachable after the literal fixture-profile and live-credential checks.
+  [[ -f "$TERMINAL_NOTARY_API_KEY_FILE" && ! -L "$TERMINAL_NOTARY_API_KEY_FILE" ]] || fail 'invalid fixture key'
+  KEY_FILE="$WORK_DIR/fixture.p8"
+  cp "$TERMINAL_NOTARY_API_KEY_FILE" "$KEY_FILE"
+  chmod 600 "$KEY_FILE"
+  key_id=FIXTURE
+  issuer_id=00000000-0000-4000-8000-000000000001
+  NOTARYTOOL_PROFILE=""
+  fixture_api_args=(--fixture-profile __peekaboo_fixture__
+    --api-base "${TERMINAL_NOTARY_API_BASE_URL:?fixture API URL required}"
+    --s3-endpoint "${TERMINAL_NOTARY_S3_ENDPOINT:?fixture S3 URL required}" --poll-interval 0.01)
+elif [[ -n "$NOTARYTOOL_PROFILE" && "$NOTARY_TRANSPORT" == api ]]; then
+  fail 'API transport requires API-key credentials, not a notary profile'
+elif [[ -z "$NOTARYTOOL_PROFILE" ]]; then
   key_id="${APP_STORE_CONNECT_KEY_ID:-}"
   issuer_id="${APP_STORE_CONNECT_ISSUER_ID:-}"
   [[ -n "$key_id" && -n "$issuer_id" && -n "${APP_STORE_CONNECT_API_KEY_P8:-}" ]] || \
@@ -380,6 +402,7 @@ retained_submission="$WORK_DIR/submission.bin"
 cp "$submission" "$retained_submission"
 chmod 444 "$retained_submission"
 
+submission_transport=notarytool
 if [[ -n "$NOTARYTOOL_PROFILE" ]]; then
   for api_name in APP_STORE_CONNECT_API_KEY_P8 APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_ISSUER_ID; do
     [[ -z "${!api_name+x}" ]] || fail "profile route contains API credential variable: $api_name"
@@ -388,10 +411,30 @@ if [[ -n "$NOTARYTOOL_PROFILE" ]]; then
   result_json="$($XCRUN_BIN notarytool submit "$submission" \
     --keychain-profile "$NOTARYTOOL_PROFILE" --no-s3-acceleration --wait --output-format json)"
 else
-  "$XCRUN_BIN" notarytool history --key "$KEY_FILE" --key-id "$key_id" --issuer "$issuer_id" \
-    --output-format json >/dev/null
-  result_json="$($XCRUN_BIN notarytool submit "$submission" --key "$KEY_FILE" --key-id "$key_id" \
-    --issuer "$issuer_id" --no-s3-acceleration --wait --output-format json)"
+  submit_exit=0
+  result_json=""
+  if [[ "$NOTARY_TRANSPORT" != api ]]; then
+    # A failed preflight is a transport failure too: auto must still reach the REST path.
+    if "$XCRUN_BIN" notarytool history --key "$KEY_FILE" --key-id "$key_id" --issuer "$issuer_id" \
+      --output-format json >/dev/null; then
+      result_json="$($XCRUN_BIN notarytool submit "$submission" --key "$KEY_FILE" --key-id "$key_id" \
+        --issuer "$issuer_id" --no-s3-acceleration --wait --output-format json)" || submit_exit=$?
+    else
+      submit_exit=1
+    fi
+  fi
+  verdict="$(printf '%s' "$result_json" | /usr/bin/plutil -extract status raw -o - - 2>/dev/null)" || verdict=""
+  if [[ "$NOTARY_TRANSPORT" == api ]] || { [[ "$NOTARY_TRANSPORT" == auto && "$submit_exit" != 0 ]] &&
+    [[ "$verdict" != Accepted && "$verdict" != Invalid && "$verdict" != Rejected ]]; }; then
+    printf 'Submitting retained bytes through Notary REST API.\n' >&2
+    submission_transport=api
+    result_json="$(/usr/bin/env -i /usr/bin/python3 -I "$ROOT_DIR/scripts/notary-api-submit.py" \
+      --artifact "$retained_submission" --submission-name "$(basename "$submission")" \
+      --key-id "$key_id" --issuer "$issuer_id" --key-file "$KEY_FILE" ${fixture_api_args[@]+"${fixture_api_args[@]}"})" || \
+      fail 'Notary REST submission failed'
+  elif [[ "$submit_exit" != 0 && "$verdict" != Invalid && "$verdict" != Rejected ]]; then
+    fail 'notarytool submission failed'
+  fi
   /bin/rm -P "$KEY_FILE" 2>/dev/null || /bin/rm -f "$KEY_FILE"
   KEY_FILE=""
 fi
@@ -405,7 +448,13 @@ submission_id="$(printf '%s' "$result_json" | /usr/bin/plutil -extract id raw -o
   fail 'notary submission was not accepted'
 
 if [[ "$KIND" == app || "$KIND" == dmg ]]; then
-  "$XCRUN_BIN" stapler staple "$working_artifact"
+  staple_attempt=1
+  until "$XCRUN_BIN" stapler staple "$working_artifact"; do
+    [[ "$staple_attempt" -lt 4 ]] || fail 'stapler failed after four attempts'
+    # Ticket propagation can lag an Accepted REST verdict by a few seconds.
+    sleep "$((staple_attempt * 2))"
+    staple_attempt=$((staple_attempt + 1))
+  done
   "$XCRUN_BIN" stapler validate "$working_artifact"
 fi
 if [[ "$KIND" == app ]]; then
@@ -441,6 +490,7 @@ receipt_tmp="$WORK_DIR/receipt.json"
 /usr/bin/plutil -insert id -string "$submission_id" "$receipt_tmp"
 /usr/bin/plutil -insert status -string "$result_status" "$receipt_tmp"
 /usr/bin/plutil -insert submission -dictionary "$receipt_tmp"
+/usr/bin/plutil -insert submission.transport -string "$submission_transport" "$receipt_tmp"
 /usr/bin/plutil -insert submission.path -string "notary/submissions/$submission_sha256" "$receipt_tmp"
 /usr/bin/plutil -insert submission.sha256 -string "$submission_sha256" "$receipt_tmp"
 /usr/bin/plutil -insert submission.size -integer "$submission_size" "$receipt_tmp"
