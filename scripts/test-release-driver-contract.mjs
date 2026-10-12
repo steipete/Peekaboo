@@ -277,6 +277,25 @@ assert.equal(validateTrackedReleaseNotes({
 assert.throws(() => validateTrackedReleaseNotes({ changelog, notes: `${notes}- drift\n`, version: '9.8.7' }),
   /differ/);
 
+// Keep fenced-heading regressions in the canonical test:safe contract gate.
+for (const [releaseNotes, remainder] of [
+  ['## 1.2.3 - 2026-10-11\n\nExample:\n```md\n## Example heading\n```\n\nRetained change.\n',
+    '\n## 1.2.2 - 2026-10-10\nOlder change.\n'],
+  ['## 1.2.3 - 2026-10-11\n```Use `x` here```\n\nRetained change.\n',
+    '## 1.2.2 - 2026-10-10\nOlder change.\n'],
+]) {
+  assert.equal(extractReleaseNotes(releaseNotes + remainder, '1.2.3'), releaseNotes);
+  const result = spawnSync(process.execPath, [
+    fileURLToPath(new URL('./release-driver-contract.mjs', import.meta.url)), 'tracked-notes',
+  ], { encoding: 'utf8', input: JSON.stringify({ changelog: releaseNotes + remainder,
+    notes: releaseNotes, version: '1.2.3' }) });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, releaseNotes);
+}
+assert.equal(extractReleaseNotes(
+  '~~~md\n## 1.2.3 - fake\n~~~\n\n## 1.2.3 - 2026-10-11\nActual change.\n', '1.2.3'),
+'## 1.2.3 - 2026-10-11\nActual change.\n');
+
 const packageBytes = Buffer.from('deterministic npm package');
 const localIntegrity = npmIntegrity(packageBytes);
 const npmMetadata = {

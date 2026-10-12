@@ -178,6 +178,7 @@ export function extractReleaseNotes(changelog, version) {
       continue;
     }
     if (marker) {
+      if (marker[1][0] === "`" && marker[2].includes("`")) continue;
       fence = marker[1];
       continue;
     }
