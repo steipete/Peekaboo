@@ -32,10 +32,9 @@ npm tarball are verified before publication. Failed handoffs can be retried by
 the corresponding hosted workflow after checking published integrity; do not
 rebuild or overwrite an existing version.
 
-The caller pins the immutable release-workflows `v1.11.4` tag, which includes zippered
-macOS runtime validation (`openclaw/release-workflows#75`) and legacy appcast build
-numbers (#76). Return to the fleet `@v1` compatibility tag once `v1` points at 1.11.4
-or newer.
+The caller pins the fleet release-workflows `@v1` compatibility tag, which points at
+1.11.4 or newer: zippered macOS runtime validation (`openclaw/release-workflows#75`)
+and legacy appcast build numbers (#76).
 `npm-publish.yml` must keep its filename: the trusted publisher for
 `@steipete/peekaboo` names it. No npm token is needed.
 
