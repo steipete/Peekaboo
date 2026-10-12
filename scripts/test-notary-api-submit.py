@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 SPEC = importlib.util.spec_from_file_location("notary_api", Path(__file__).with_name("notary-api-submit.py"))
 api = importlib.util.module_from_spec(SPEC)
@@ -72,6 +72,8 @@ class NotaryTests(unittest.TestCase):
             self.assertEqual(verify.returncode, 0)
 
     def test_parts(self):
+        self.assertEqual(api.plan_parts(40 * api.MIB),
+                         [(number + 1, number * 5 * api.MIB, 5 * api.MIB) for number in range(8)])
         for size in (1, 5 * api.MIB, 8 * api.MIB, 17 * api.MIB + 7, 5 * 1024 ** 4):
             parts = api.plan_parts(size)
             self.assertLessEqual(len(parts), 10000)
@@ -112,18 +114,86 @@ class NotaryTests(unittest.TestCase):
         client.args = api.argparse.Namespace(key_id="fixture", issuer="fixture", key_file="unused",
                                             api_base=api.API_BASE)
         seen = []
-        client.request = lambda method, url, headers, body, label: (seen.append(headers) or ({}, b"{}"))
+        client.request = lambda method, url, headers, body, label: (seen.append(headers()) or ({}, b"{}"))
         with patch.object(api, "make_jwt", side_effect=["first", "second"]):
             client.api("GET", "/submissions/fixture")
             client.api("GET", "/submissions/fixture")
         self.assertEqual([headers["Authorization"] for headers in seen], ["Bearer first", "Bearer second"])
+
+    def test_request_retries_and_auth_failures(self):
+        # Cover submission creation, polling, logs, multipart creation/completion and HEAD.
+        for method, path in (("POST", "/submissions"), ("GET", "/submissions/id"),
+                             ("GET", "/submissions/id/logs"), ("POST", "/s3?uploads="),
+                             ("POST", "/s3?uploadId=id"), ("HEAD", "/s3")):
+            for code in (503, 429, 403, 422):
+                with self.subTest(method=method, path=path, code=code):
+                    client = api.Client.__new__(api.Client)
+                    client.deadline = api.time.monotonic() + 60
+                    client.stop = Mock()
+                    client.stop.is_set.return_value = False
+                    client.stop.wait.return_value = False
+                    client.opener = MagicMock()
+                    response = client.opener.open.return_value.__enter__.return_value
+                    response.headers = {"fixture": "ok"}
+                    response.read.return_value = b"{}"
+                    error = api.urllib.error.HTTPError("https://fixture.invalid", code, "secret", {}, None)
+                    client.opener.open.side_effect = [error, client.opener.open.return_value]
+                    if code in (503, 429):
+                        self.assertEqual(client.request(method, "https://fixture.invalid" + path, {}),
+                                         ({"fixture": "ok"}, b"{}"))
+                        self.assertEqual(client.opener.open.call_count, 2)
+                        client.stop.wait.assert_called_once_with(1)
+                    else:
+                        with self.assertRaisesRegex(api.Failure, "HTTP " + str(code)):
+                            client.request(method, "https://fixture.invalid" + path, {})
+                        self.assertEqual(client.opener.open.call_count, 1)
+                        client.stop.wait.assert_not_called()
+
+    def test_connection_retries_are_bounded_and_deadline_limited(self):
+        client = api.Client.__new__(api.Client)
+        client.deadline = api.time.monotonic() + 60
+        client.stop = Mock()
+        client.stop.is_set.return_value = False
+        client.stop.wait.return_value = False
+        client.opener = MagicMock()
+        client.opener.open.side_effect = OSError("secret")
+        with self.assertRaisesRegex(api.TransientFailure, "^request connection failed$"):
+            client.request("POST", "https://fixture.invalid", {})
+        self.assertEqual(client.opener.open.call_count, 4)
+        self.assertEqual([call.args[0] for call in client.stop.wait.call_args_list], [1, 2, 4])
+        client.opener.reset_mock()
+        client.stop.wait.reset_mock()
+        with patch.object(api.time, "monotonic", side_effect=[client.deadline - 0.1,
+                                                              client.deadline - 0.05,
+                                                              client.deadline + 0.1]):
+            with self.assertRaisesRegex(api.Failure, "deadline"):
+                client.request("GET", "https://fixture.invalid", {})
+        self.assertEqual(client.opener.open.call_count, 1)
+        self.assertAlmostEqual(client.stop.wait.call_args.args[0], 0.05, places=5)
+
+    def test_retry_refreshes_jwt(self):
+        client = api.Client.__new__(api.Client)
+        client.deadline = api.time.monotonic() + 60
+        client.stop = Mock()
+        client.stop.is_set.return_value = False
+        client.stop.wait.return_value = False
+        client.args = api.argparse.Namespace(key_id="fixture", issuer="fixture", key_file="unused",
+                                            api_base=api.API_BASE)
+        client.opener = MagicMock()
+        response = client.opener.open.return_value.__enter__.return_value
+        response.read.return_value = b"{}"
+        client.opener.open.side_effect = [OSError(), client.opener.open.return_value]
+        with patch.object(api, "make_jwt", side_effect=["first", "second"]):
+            client.api("POST", "/submissions", {})
+        self.assertEqual([call.args[0].get_header("Authorization")
+                          for call in client.opener.open.call_args_list], ["Bearer first", "Bearer second"])
 
     def test_slow_part_timeout_and_error_redaction(self):
         client = api.Client.__new__(api.Client)
         client.stop = api.threading.Event()
         client.deadline = api.time.monotonic() + 1000
         client.args = api.argparse.Namespace(s3_endpoint="http://127.0.0.1:1")
-        client.opener = Mock()
+        client.opener = MagicMock()
         client.opener.open.side_effect = api.http.client.IncompleteRead(b"SECRET_RESPONSE")
         attrs = {"object": "file", "awsAccessKeyId": "fixture", "awsSecretAccessKey": "secret",
                  "awsSessionToken": "token"}

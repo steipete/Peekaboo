@@ -31,6 +31,10 @@ class Failure(Exception):
     """Only fixed, credential-free messages may cross the process boundary."""
 
 
+class TransientFailure(Failure):
+    """A connection failure or retryable HTTP status, without response content."""
+
+
 def der_to_raw(der):
     # P-256 signatures fit short-form DER lengths; reject other encodings.
     if len(der) < 8 or der[0] != 0x30 or der[1] != len(der) - 2:
@@ -105,7 +109,7 @@ def sigv4(method, url, headers, payload_hash, access_key, secret_key,
 def plan_parts(size):
     if size <= 0 or size > 5 * 1024 ** 4:
         raise Failure("submission size outside S3 limits")
-    part_size = max(8 * MIB, math.ceil(size / 10000 / MIB) * MIB)
+    part_size = max(5 * MIB, math.ceil(size / 10000 / MIB) * MIB)
     return [(number + 1, offset, min(part_size, size - offset))
             for number, offset in enumerate(range(0, size, part_size))]
 
@@ -158,26 +162,38 @@ class Client:
             raise Failure("submission attempt deadline exceeded or upload cancelled")
         return remaining
 
-    def request(self, method, url, headers, body=None, label="request", cleanup=False, request_timeout=60):
-        timeout = 30 if cleanup else min(request_timeout, self.remaining())
-        request = urllib.request.Request(url, data=body, headers=headers, method=method)
-        try:
-            with self.opener.open(request, timeout=timeout) as response:
-                data = response.read(4 * MIB + 1)
-                if len(data) > 4 * MIB:
-                    raise Failure(label + " response too large")
-                return response.headers, data
-        except urllib.error.HTTPError as error:
-            code = error.code
-            error.close()
-            raise Failure(label + " HTTP " + str(code)) from None
-        except (OSError, urllib.error.URLError, http.client.HTTPException):
-            raise Failure(label + " connection failed") from None
+    def request(self, method, url, headers, body=None, label="request", cleanup=False,
+                request_timeout=60, attempts=4):
+        for attempt in range(attempts):
+            request = urllib.request.Request(url, data=body,
+                                             headers=headers() if callable(headers) else headers, method=method)
+            timeout = 30 if cleanup else min(request_timeout, self.remaining())
+            try:
+                with self.opener.open(request, timeout=timeout) as response:
+                    data = response.read(4 * MIB + 1)
+                    if len(data) > 4 * MIB:
+                        raise Failure(label + " response too large")
+                    return response.headers, data
+            except urllib.error.HTTPError as error:
+                code = error.code
+                error.close()
+                message = label + " HTTP " + str(code)
+                if code != 429 and not 500 <= code <= 599:
+                    raise Failure(message) from None
+            except (OSError, urllib.error.URLError, http.client.HTTPException):
+                message = label + " connection failed"
+            if attempt == attempts - 1:
+                raise TransientFailure(message) from None
+            if self.stop.wait(min(2 ** attempt, self.remaining())):
+                raise Failure("upload cancelled") from None
 
     def api(self, method, suffix, payload=None):
-        token = make_jwt(self.args.key_id, self.args.issuer, self.args.key_file)
+        def headers():
+            token = make_jwt(self.args.key_id, self.args.issuer, self.args.key_file)
+            return {"Authorization": "Bearer " + token, "Content-Type": "application/json"}
+
         _, body = self.request(method, self.args.api_base + suffix,
-                               {"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+                               headers,
                                None if payload is None else json.dumps(payload).encode(), "Notary API")
         return json.loads(body)
 
@@ -188,13 +204,18 @@ class Client:
         if query:
             url += "?" + urllib.parse.urlencode(query)
         digest = hashlib.sha256(body or b"").hexdigest()
-        headers = {"x-amz-content-sha256": digest, "x-amz-security-token": attrs["awsSessionToken"]}
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        headers = sigv4(method, url, headers, digest, attrs["awsAccessKeyId"],
+
+        def headers():
+            unsigned = {"x-amz-content-sha256": digest, "x-amz-security-token": attrs["awsSessionToken"]}
+            timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            return sigv4(method, url, unsigned, digest, attrs["awsAccessKeyId"],
                          attrs["awsSecretAccessKey"], timestamp)
-        # An 8 MiB part can take several minutes on the congested links this path serves.
+
+        # A part can take several minutes on the congested links this path serves.
+        # Parts have their own retry loop, and cleanup must work after the deadline.
         return self.request(method, url, headers, body, "S3", cleanup,
-                            request_timeout=300 if method == "PUT" else 60)
+                            request_timeout=300 if method == "PUT" else 60,
+                            attempts=1 if method == "PUT" or cleanup else 4)
 
     def upload(self, attrs, path):
         size = path.stat().st_size
@@ -220,8 +241,9 @@ class Client:
                     if headers.get("ETag", "").lower() != expected:
                         raise Failure("S3 part ETag mismatch")
                     return number, expected
-                except Failure:
-                    if attempt == 3:
+                except Failure as error:
+                    if attempt == 3 or (not isinstance(error, TransientFailure)
+                                        and str(error) != "S3 part ETag mismatch"):
                         self.stop.set()
                         raise
                     if self.stop.wait(min(2 ** attempt, self.remaining())):
