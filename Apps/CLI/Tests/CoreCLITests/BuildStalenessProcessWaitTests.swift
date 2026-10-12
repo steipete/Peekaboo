@@ -6,6 +6,34 @@ import Testing
 @Suite(.tags(.safe), .serialized)
 struct BuildStalenessProcessWaitTests {
     @Test
+    func `Timeout cleanup preserves the existing termination observer`() throws {
+        let input = Pipe()
+        let process = Process()
+        let observed = DispatchSemaphore(value: 0)
+        process.executableURL = URL(fileURLWithPath: "/bin/cat")
+        process.standardInput = input
+        process.terminationHandler = { _ in observed.signal() }
+
+        try process.run()
+        defer {
+            try? input.fileHandleForWriting.close()
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+            }
+            process.waitUntilExit()
+        }
+
+        // The open, unwritten pipe keeps the child alive until the helper's cleanup.
+        // An early natural exit cannot make an overwritten observer appear preserved.
+        #expect(throws: ProcessWaitError.timedOut) {
+            try waitForProcessExit(process, timeoutSeconds: 0.05)
+        }
+        #expect(!process.isRunning)
+        #expect(observed.wait(timeout: .now() + 3) == .success)
+        #expect(observed.wait(timeout: .now()) == .timedOut)
+    }
+
+    @Test
     func `normally exiting child keeps its exit status`() throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
