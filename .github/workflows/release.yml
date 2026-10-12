@@ -29,7 +29,7 @@ jobs:
       statuses: read
       pull-requests: write
     # pin: openclaw/release-workflows#66 head (review fixes) for the first dry run; re-pin to the merged commit once #66 lands
-    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@10b7c3f37dcaa60a932bc4a2faabdb8009c51abd
+    uses: openclaw/release-workflows/.github/workflows/release-sparkle-app.yml@85d68401180d1d4450fefba21ce555bc1898700d
     with:
       version: ${{ inputs.version }}
       dry-run: ${{ inputs.dry-run }}
@@ -52,7 +52,7 @@ jobs:
       cli-binary-name: peekaboo
       cli-identifier: boo.peekaboo.peekaboo
       cli-archive-prefix: peekaboo-macos
-      cli-smoke-args: --help
+      cli-smoke-args: '["--help"]'
       npm-pack-script: scripts/hosted-release/pack-npm.sh
       npm-publish-workflow: npm-publish.yml
       homebrew-workflow: update-homebrew.yml
