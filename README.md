@@ -51,9 +51,9 @@ peekaboo see --app Finder --json
 
 That is the core loop: observe the current screen, choose an element from the result, and act on it.
 
-## What's new in 4.9.1
+## What's new in 4.9.2
 
-Peekaboo 4.9.1 is a fix release. An idle `peekaboo mcp` server no longer burns CPU whenever other applications launch or quit (about 30× less work per launch on a Mac with ~600 running processes), the CLI accepts renamed or symlinked executables such as `pb`, configuration changes refuse to overwrite a config file that cannot be read, and capture output cut at the retention limit keeps its valid text. 4.9.0 added exact app- and PID-scoped menu-bar extra clicks and parent-bound foreground file dialogs; see the changelog for both releases.
+Peekaboo 4.9.2 is a maintenance release. CLI child processes now use Swift Subprocess 1.0.1, which creates its pipes close-on-exec so they no longer leak into other child processes and cleans up output descriptors from a single owner. Releases can now be built, signed, notarized, and independently verified on GitHub Actions behind an approval gate, and local release notarization falls back to a parallel Notary API upload when notarytool's single upload stream aborts. 4.9.1 stopped idle `peekaboo mcp` servers from burning CPU on app churn; see the changelog for both releases.
 
 ## Automate an app
 
