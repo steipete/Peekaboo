@@ -26,3 +26,10 @@ test('protected link labels keep literal punctuation and entities', t => {
  assert.match(article, /<a href="https:\/\/example.invalid\/a_b\?q=\*x\*"><code>a_b \* c &amp; &lt;tag&gt;<\/code> <strong>API<\/strong><\/a>/);
  assert.doesNotMatch(article, /undefined|\u0000/);
 });
+
+test('link destinations restore literal backticks and escaped pipes without HTML', t => {
+  const page = buildDocsFixture(t, {'index.md': '# Fixture\n\n[API](https://example.invalid/`a_b`?q=x\\|y&literal=&amp;)\n'});
+  const article = articleFromHTML(page.readPage());
+  assert.match(article, /href="https:\/\/example.invalid\/`a_b`\?q=x\|y&amp;literal=&amp;amp;"/);
+  assert.doesNotMatch(article, /\u0000|href="[^"\n]*<code>/);
+});
