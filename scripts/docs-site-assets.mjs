@@ -156,6 +156,7 @@ main{min-width:0;padding:32px clamp(20px,4.5vw,56px) 80px;max-width:1180px;margi
 .doc-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:48px;margin-top:24px}
 @media(min-width:1180px){.doc-grid{grid-template-columns:minmax(0,72ch) 220px;justify-content:start}}
 .doc{min-width:0;max-width:72ch;overflow-wrap:break-word}
+.doc img{max-width:100%;height:auto}
 .doc h1{font-family:var(--serif);font-size:2.6rem;line-height:1.08;letter-spacing:0;margin:0 0 .4em;font-weight:600;color:var(--ink)}
 body:not(.home) .doc>h1:first-child{display:none}
 .doc h2{font-family:var(--serif);font-size:1.55rem;line-height:1.2;margin:2em 0 .5em;font-weight:600;letter-spacing:0;color:var(--ink);position:relative}
