@@ -11,9 +11,7 @@ DMG, standalone CLI archives and npm package, signs with the OpenClaw Foundation
 Developer ID, notarizes, verifies on arm64 and Intel, publishes a checksummed
 GitHub Release, hands off the exact npm tarball through OIDC and updates Homebrew.
 The hosted app build explicitly targets arm64 and x86_64 and rejects a thin binary
-before signing. The staged CLI runtime libraries contain the same arm64 and
-x86_64 slices and are re-signed after trimming unused toolchain slices. The
-closeout PR publishes the signed Sparkle appcast to main. No laptop publisher
+before signing. The closeout PR publishes the signed Sparkle appcast to main. No laptop publisher
 or upload fallback remains.
 
 Prepare all version surfaces using the existing release preflight, date the root
@@ -34,8 +32,10 @@ npm tarball are verified before publication. Failed handoffs can be retried by
 the corresponding hosted workflow after checking published integrity; do not
 rebuild or overwrite an existing version.
 
-The shared Sparkle workflow uses the fleet `@v1` compatibility tag, which
-includes the reviewed hosted Sparkle archetype.
+The shared Sparkle workflow pins the reviewed `59b46b0` commit, which includes
+zippered macOS runtime validation from `openclaw/release-workflows#75`. The fleet
+`@v1` tag still predates that fix; switch back after a separately authorized
+shared-workflow release includes it.
 `npm-publish.yml` must keep its filename: the trusted publisher for
 `@steipete/peekaboo` names it. No npm token is needed.
 

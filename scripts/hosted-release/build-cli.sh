@@ -24,7 +24,18 @@ mkdir -p "$OUTPUT"
 cp "$ROOT/peekaboo" "$OUTPUT/"
 for library in "$ROOT"/libswiftCompatibility*.dylib; do
   [[ -e "$library" ]] || continue
-  cp "$library" "$OUTPUT/"
+  # Toolchain compatibility dylibs also carry arm64e; the archetype requires exactly arm64+x86_64 payloads.
+  if lipo -archs "$library" | tr ' ' '\n' | grep -qx arm64e; then
+    lipo "$library" -remove arm64e -output "$OUTPUT/$(basename "$library")"
+    chmod 755 "$OUTPUT/$(basename "$library")"
+  else
+    cp "$library" "$OUTPUT/"
+  fi
 done
-bash "$ROOT/scripts/hosted-release/normalize-cli-runtime.sh" "$OUTPUT"
+for payload in "$OUTPUT"/*; do
+  [[ "$(lipo -archs "$payload" | tr ' ' '\n' | sort | xargs)" == 'arm64 x86_64' ]] || {
+    echo "CLI payload must be exactly arm64+x86_64: $payload" >&2
+    exit 1
+  }
+done
 printf 'Ad-hoc universal CLI: %s/peekaboo\n' "$OUTPUT"

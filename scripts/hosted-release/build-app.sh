@@ -44,6 +44,21 @@ case "$(lipo -archs "$APP/Contents/MacOS/Peekaboo")" in
   "arm64 x86_64"|"x86_64 arm64") ;;
   *) echo 'App must contain arm64 and x86_64 slices' >&2; exit 1 ;;
 esac
+# Toolchain compatibility dylibs also carry arm64e; the archetype's Swift runtime audit accepts only arm64+x86_64.
+while IFS= read -r -d '' library; do
+  if lipo -archs "$library" | tr ' ' '\n' | grep -qx arm64e; then
+    lipo "$library" -remove arm64e -output "$library.thin"
+    chmod 755 "$library.thin"
+    mv -f "$library.thin" "$library"
+  fi
+done < <(find "$APP/Contents/Frameworks" -maxdepth 1 -type f -name 'libswiftCompatibility*.dylib' -print0)
+while IFS= read -r -d '' candidate; do
+  file -b "$candidate" | grep -q 'Mach-O' || continue
+  [[ "$(lipo -archs "$candidate" | tr ' ' '\n' | sort | xargs)" == 'arm64 x86_64' ]] || {
+    echo "Peekaboo.app code must be exactly arm64+x86_64: $candidate" >&2
+    exit 1
+  }
+done < <(find "$APP/Contents" -type f -print0)
 scripts/verify-release-package-resolution.sh \
   --source-root "$ROOT" --derived-data "$DERIVED_DATA" --app "$APP"
 peekaboo_verify_source_commit "$ROOT" "$SOURCE_COMMIT"
