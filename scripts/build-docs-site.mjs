@@ -335,7 +335,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     cells.push(current.trim().replace(/\\\|/g, "|"));
     return cells;
   };
-  const isDivider = (line) => splitRow(line).every((cell) => /^:?-{2,}:?$/.test(cell));
+  const isDivider = (line) => line.includes("|") && splitRow(line).every((cell) => /^:?-{2,}:?$/.test(cell));
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -404,7 +404,10 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       });
       i += 1;
       const rows = [];
-      while (i + 1 < lines.length && lines[i + 1].includes("|") && lines[i + 1].trim()) {
+      const startsBlock = (row) => /^\s{0,3}(?:#{1,4}\s|>|[-*+]\s|\d+[.)]\s|`{3,}|~{3,}|(?:-\s*){3,}$|(?:\*\s*){3,}$|(?:_\s*){3,}$)/.test(row);
+      while (i + 1 < lines.length && lines[i + 1].trim() &&
+          !startsBlock(lines[i + 1]) &&
+          (header.length === 1 || lines[i + 1].includes("|"))) {
         i += 1;
         rows.push(splitRow(lines[i]));
       }
