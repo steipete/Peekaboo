@@ -162,7 +162,9 @@ checks each part's ETag and the completed object's multipart ETag (no read-back)
 MiB app ZIP uses eight upload streams. Every S3 request with a body sends a signed, explicit `Content-Type`; urllib's
 form-encoded default makes S3 fold a POST body into the signature, so completion fails with `SignatureDoesNotMatch`.
 Parts, Notary API requests, and multipart creation/completion have up to four attempts with backoff for connection
-failures, HTTP 429, and HTTP 5xx; authentication and validation errors fail immediately. Retries remain within the
+failures, HTTP 429, and HTTP 5xx, and completion also retries S3's transient errors embedded in an HTTP 200 body;
+authentication and validation errors fail immediately. In the terminal wrapper, a failed `notarytool history`
+preflight counts as a transport failure, so `auto` still reaches the REST path. Retries remain within the
 one-hour REST attempt deadline. Retrying a lost submission-creation response may create a second submission. Upload
 failures before completion abort the multipart session. S3 failures name the operation and the AWS error code only.
 No dependencies are downloaded at release time.

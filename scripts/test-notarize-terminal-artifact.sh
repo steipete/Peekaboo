@@ -91,7 +91,7 @@ cat > "$TEST_DIR/xcrun" <<'EOF'
 set -euo pipefail
 printf 'xcrun %s\n' "$*" >> "${LOG_FILE:?}"
 case "${1:-}:${2:-}" in
-  notarytool:history) printf '{}\n' ;;
+  notarytool:history) [[ -z "${TERMINAL_NOTARY_HISTORY_FAIL:-}" ]] || exit 92; printf '{}\n' ;;
   notarytool:submit)
     case "${TERMINAL_NOTARY_MODE:-accepted}" in
       accepted) printf '{"id":"00000000-0000-4000-8000-000000000001","status":"Accepted"}\n' ;;
@@ -365,6 +365,20 @@ cmp "$TEST_DIR/server/auto-fallback.uploaded" "$TEST_DIR/auto-fallback/submissio
 jq -e '.peak > 1' "$TEST_DIR/server/auto-fallback.stats" >/dev/null || fail 'upload was not parallel'
 grep -Fq 'stapler staple' "$LOG_FILE" || fail 'REST path did not staple'
 
+# A failed history preflight is a transport failure: auto falls back, notarytool mode refuses.
+cp "$LOG_FILE" "$TEST_DIR/before-history.log"
+TERMINAL_NOTARY_HISTORY_FAIL=1 run_api_fixture history-fallback \
+  --kind dmg --artifact "$TEST_DIR/upload.dmg" --transaction "$TEST_DIR/history-fallback" \
+  >"$TEST_DIR/history-fallback.log" 2>&1 || { cat "$TEST_DIR/history-fallback.log"; fail 'history fallback failed'; }
+jq -e '.submission.transport == "api"' "$TEST_DIR/history-fallback/receipt.json" >/dev/null
+[[ "$(grep -c 'notarytool submit' "$LOG_FILE")" == "$(grep -c 'notarytool submit' "$TEST_DIR/before-history.log")" ]] || \
+  fail 'submit ran after a failed history preflight'
+if TERMINAL_NOTARY_HISTORY_FAIL=1 run_api_fixture history-refused --kind dmg --artifact "$TEST_DIR/upload.dmg" \
+  --transaction "$TEST_DIR/history-refused" --notary-transport notarytool >"$TEST_DIR/history-refused.log" 2>&1; then
+  fail 'notarytool transport ignored a failed history preflight'
+fi
+! grep -Fq '"case": "history-refused"' "$TEST_DIR/server/events.jsonl" || fail 'notarytool transport contacted REST'
+
 # Explicit API must skip both history and submit, and tolerate ticket propagation lag.
 cp "$LOG_FILE" "$TEST_DIR/before-api.log"
 TERMINAL_NOTARY_MODE=transport-failure TERMINAL_STAPLER_FAIL=once \
@@ -391,14 +405,23 @@ for refused_case in invalid-exit rejected transport-only accepted-exit; do
   fi
 done
 
-for api_case in transient invalid persistent bad-etag bad-final-etag complete-error; do
+for api_case in transient invalid persistent bad-etag bad-final-etag complete-error complete-error-persistent; do
   transaction="$TEST_DIR/api-$api_case"
   if run_api_fixture "$api_case" --kind dmg --artifact "$TEST_DIR/upload.dmg" \
     --transaction "$transaction" --notary-transport api >"$TEST_DIR/api-$api_case.log" 2>&1; then
-    [[ "$api_case" == transient ]] || fail "$api_case unexpectedly succeeded"
-    jq -e '.tries["1"] == 2 and .peak > 1' "$TEST_DIR/server/transient.stats" >/dev/null
+    case "$api_case" in
+      transient) jq -e '.tries["1"] == 2 and .peak > 1' "$TEST_DIR/server/transient.stats" >/dev/null ;;
+      complete-error)
+        # The embedded InternalError is retried once instead of aborting the uploaded parts.
+        [[ "$(jq -sr '[.[] | select(.case == "complete-error" and .method == "POST" and (.query | has("uploadId")))] | length' \
+          "$TEST_DIR/server/events.jsonl")" == 2 ]] || fail 'completion was not retried exactly once'
+        ! jq -se 'any(.[]; .case == "complete-error" and .method == "DELETE")' "$TEST_DIR/server/events.jsonl" \
+          >/dev/null || fail 'retried completion aborted the upload' ;;
+      *) fail "$api_case unexpectedly succeeded" ;;
+    esac
   else
-    [[ "$api_case" != transient ]] || { cat "$TEST_DIR/api-$api_case.log"; fail 'transient retry failed'; }
+    [[ "$api_case" != transient && "$api_case" != complete-error ]] || \
+      { cat "$TEST_DIR/api-$api_case.log"; fail "$api_case retry failed"; }
     [[ ! -e "$transaction" ]] || fail "$api_case published a receipt"
     if [[ "$api_case" == invalid ]]; then
       grep -Fq 'developer log logs.example.test/developer/log.json' "$TEST_DIR/api-invalid.log" || \

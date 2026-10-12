@@ -101,7 +101,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             state["size"] = len(uploaded)
             digests = b"".join(hashlib.md5(state["parts"][number]).digest() for number in sorted(state["parts"]))
             final_etag = hashlib.md5(digests).hexdigest() if case != "bad-final-etag" else "0" * 32
-            self.reply(200, b"<Error><Code>InternalError</Code></Error>" if case == "complete-error"
+            with LOCK:
+                completes = state["completes"] = state.get("completes", 0) + 1
+            failing = case == "complete-error-persistent" or (case == "complete-error" and completes == 1)
+            self.reply(200, b"<Error><Code>InternalError</Code></Error>" if failing
                        else ('<CompleteMultipartUploadResult><ETag>"%s-%d"</ETag></CompleteMultipartUploadResult>'
                              % (final_etag, len(state["parts"]))).encode())
         elif self.command == "HEAD":

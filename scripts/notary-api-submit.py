@@ -270,10 +270,18 @@ class Client:
                 part = ET.SubElement(complete, "Part")
                 ET.SubElement(part, "PartNumber").text = str(number)
                 ET.SubElement(part, "ETag").text = etag
-            _, body = self.s3(attrs, "POST", "CompleteMultipartUpload", query, ET.tostring(complete))
-            result = ET.fromstring(body)
-            if result.tag.split("}")[-1] != "CompleteMultipartUploadResult":
-                raise Failure("S3 multipart completion failed")
+            for attempt in range(4):
+                _, body = self.s3(attrs, "POST", "CompleteMultipartUpload", query, ET.tostring(complete))
+                result = ET.fromstring(body)
+                tag = result.tag.split("}")[-1]
+                if tag == "CompleteMultipartUploadResult":
+                    break
+                code = next((node.text for node in result.iter() if node.tag.split("}")[-1] == "Code"), "") or ""
+                code = code if re.fullmatch(r"[A-Za-z]{1,64}", code) else ""
+                # S3 can report a failed completion inside HTTP 200; AWS documents retrying these errors.
+                if tag != "Error" or code not in ("InternalError", "ServiceUnavailable", "SlowDown") or attempt == 3:
+                    raise Failure("S3 multipart completion failed" + (" (" + code + ")" if code else ""))
+                time.sleep(min(2 ** attempt, self.remaining()))
             completed = True
             # Bind the stored object to the uploaded parts through the multipart ETag instead of reading it
             # back with the narrowly scoped upload credentials; Apple re-checks the submission sha256.

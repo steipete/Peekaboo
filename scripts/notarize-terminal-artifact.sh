@@ -414,10 +414,14 @@ else
   submit_exit=0
   result_json=""
   if [[ "$NOTARY_TRANSPORT" != api ]]; then
-    "$XCRUN_BIN" notarytool history --key "$KEY_FILE" --key-id "$key_id" --issuer "$issuer_id" \
-      --output-format json >/dev/null
-    result_json="$($XCRUN_BIN notarytool submit "$submission" --key "$KEY_FILE" --key-id "$key_id" \
-      --issuer "$issuer_id" --no-s3-acceleration --wait --output-format json)" || submit_exit=$?
+    # A failed preflight is a transport failure too: auto must still reach the REST path.
+    if "$XCRUN_BIN" notarytool history --key "$KEY_FILE" --key-id "$key_id" --issuer "$issuer_id" \
+      --output-format json >/dev/null; then
+      result_json="$($XCRUN_BIN notarytool submit "$submission" --key "$KEY_FILE" --key-id "$key_id" \
+        --issuer "$issuer_id" --no-s3-acceleration --wait --output-format json)" || submit_exit=$?
+    else
+      submit_exit=1
+    fi
   fi
   verdict="$(printf '%s' "$result_json" | /usr/bin/plutil -extract status raw -o - - 2>/dev/null)" || verdict=""
   if [[ "$NOTARY_TRANSPORT" == api ]] || { [[ "$NOTARY_TRANSPORT" == auto && "$submit_exit" != 0 ]] &&
