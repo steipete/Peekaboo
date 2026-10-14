@@ -35,8 +35,8 @@
 - Batch git network ops in groups: commit related repo changes first, then push/pull repos together so submodule gitlinks stay coherent.
 - PRs should summarize intent, list test commands executed, mention doc updates, and include screenshots or terminal snippets when behavior changes.
 - Never release or publish without an explicit release command.
-- Peekaboo releases: follow `docs/RELEASING.md` and the hosted `.github/workflows/release.yml` pipeline. Rehearse on main with `dry_run=true`; publication requires a separately authorized signed tag. Local helpers verify artifacts and do not publish.
-- Local signing-verification wrappers: `bash -c`, never login shells; profile exports can override ASC IDs and mix credentials.
+- Peekaboo releases: `docs/RELEASING.md` is the source of truth; `.github/workflows/release.yml` is the only publisher. Merge preparation, wait for green push CI on the exact commit, then rehearse on main with `dry_run=true` and approve the `release` environment. Publication requires a separately authorized annotated SSH-signed tag accepted by `.github/release-allowed-signers` and another environment approval.
+- Hosted Actions owns signing/notarization credentials, npm OIDC publication, Homebrew handoff and the appcast closeout PR. Verify the published assets and exact npm tarball integrity, tap formula and merged appcast PR before closeout. Local terminal/fleet helpers only build or verify qualification artifacts; they do not publish.
 - Published CLI proof: run `npm exec` from `/tmp`; repo cwd may shadow the downloaded package with a local binary.
 - During PR triage, keep moving autonomously: fix defects, add obvious scoped features, and rewrite or land what makes sense.
 - Before landing every PR, run autoreview until no actionable findings remain and fix or rerun CI until green.
