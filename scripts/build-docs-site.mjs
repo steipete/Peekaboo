@@ -339,22 +339,23 @@ function markdownToHtml(markdown, currentRel, nested = false) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = line.match(/^\s{0,3}```([\w+-]+)?\s*$/);
-    if (fenceMatch) {
-      flushParagraph();
-      closeList();
-      flushBlockquote();
-      if (fence) {
+    const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      if (fenceMatch && fenceMatch[1][0] === fence.marker[0] &&
+          fenceMatch[1].length >= fence.marker.length && !fenceMatch[2].trim()) {
         const body = highlightCode(fence.lines.join("\n"), fence.lang);
         html.push(`<pre><code class="language-${escapeAttr(fence.lang)}">${body}</code></pre>`);
         fence = null;
       } else {
-        fence = { lang: fenceMatch[1] || "text", lines: [] };
+        fence.lines.push(line);
       }
       continue;
     }
-    if (fence) {
-      fence.lines.push(line);
+    if (fenceMatch && !(fenceMatch[1][0] === "`" && fenceMatch[2].includes("`"))) {
+      flushParagraph();
+      closeList();
+      flushBlockquote();
+      fence = { marker: fenceMatch[1], lang: fenceMatch[2].trim().split(/\s+/)[0] || "text", lines: [] };
       continue;
     }
     if (/^>\s?/.test(line)) {
