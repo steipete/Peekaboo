@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 4.9.3 - 2026-10-14
 
 **Highlights:** Give manual `peekaboo daemon start` the same readiness budget as automatic startup and report the real authentication or probe failure instead of a generic timeout, keep agent tool results readable when they contain backslashes or newlines, and harden the MCP wrapper's fatal-error and restart handling.
