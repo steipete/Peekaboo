@@ -1,8 +1,8 @@
-"""Finder layout for the signed Peekaboo release disk image.
+"""Finder layout for the Peekaboo terminal-qualification disk image.
 
-The release driver supplies absolute artifact paths through dmgbuild's ``-D``
+The terminal artifact builder supplies absolute artifact paths through dmgbuild's ``-D``
 arguments. dmgbuild writes the volume and .DS_Store metadata directly, so
-creating a release image does not need a GUI session or an automation permission
+creating a qualification image does not need a GUI session or an automation permission
 prompt. Finder metadata must not be attached to the signed app bundle.
 """
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-policy_files=("$ROOT_DIR/.mac-release.env" "$ROOT_DIR/scripts/hosted-release/build-app.sh" "$ROOT_DIR/scripts/hosted-release/build-cli.sh" "$ROOT_DIR/scripts/create-release-dmg.sh")
+policy_files=("$ROOT_DIR/.mac-release.env" "$ROOT_DIR/scripts/hosted-release/build-app.sh" "$ROOT_DIR/scripts/hosted-release/build-cli.sh")
 if rg -n 'Y5PE65HELJ|Developer ID Application: Peter Steinberger' "${policy_files[@]}"; then
   echo 'Personal signing identity remains in an active release surface' >&2
   exit 1

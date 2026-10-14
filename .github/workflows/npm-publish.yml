@@ -1,6 +1,6 @@
 name: Publish npm release tarball
 
-# Publishes the exact npm tarball that the release driver built, verified, and uploaded
+# Publishes the exact npm tarball that the hosted release workflow built, verified, and uploaded
 # to the GitHub release, through npm trusted publishing. The workflow never packs or
 # builds: it only re-verifies and publishes the frozen asset. npm accepts this
 # workflow's OIDC identity for @steipete/peekaboo, so no token or one-time password is

@@ -342,17 +342,6 @@ rg -Fq 'qualification_monitor:' "$wrapper" || fail 'portable manifest omits the 
 rg -Fq 'materialize_committed_file' "$wrapper" || fail 'published source/tools still come from the mutable worktree'
 rg -Fq '20ab9a5e6bb1107788366726868f1a9b4c16d953' "$wrapper" || \
   fail 'terminal pipeline does not pin the package-run helper contract'
-rg -Fq 'scripts/build-terminal-artifacts.sh check-helper' "$ROOT_DIR/docs/RELEASING.md" || \
-  fail 'manual release flow does not preflight the credential runner'
-releasing_docs="$ROOT_DIR/docs/RELEASING.md"
-[[ "$(grep -Fc "/bin/bash --noprofile --norc -p -c 'exec \"\$@\"'" "$releasing_docs")" == 3 ]] || \
-  fail 'manual recovery phases do not use the required non-login bash -c wrappers'
-[[ "$(grep -Fc 'peekaboo-codesign-phase' "$releasing_docs")" == 2 ]] || \
-  fail 'manual codesign recovery wrappers are incomplete'
-[[ "$(grep -Fc 'peekaboo-notary-phase' "$releasing_docs")" == 1 ]] || \
-  fail 'manual notary recovery wrapper is incomplete'
-[[ "$(grep -Fc -- '-u MAC_RELEASE_TOOL' "$releasing_docs")" == 3 ]] || \
-  fail 'manual credentialed recovery permits a release helper override'
 [[ "$(grep -Fc "/bin/bash --noprofile --norc -p -c 'exec \"\$@\"'" "$wrapper")" == 2 ]] || \
   fail 'credentialed phase children do not use the required non-login bash -c wrapper'
 rg -Fq 'peekaboo-codesign-phase' "$wrapper" || fail 'codesign phase wrapper label is missing'

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { deflateRawSync, gunzipSync, gzipSync } from 'node:zlib';
 import {
   validateArchiveEntries,
@@ -494,6 +496,87 @@ try {
   }
 } finally {
   await rm(testDirectory, { recursive: true, force: true });
+}
+
+assert.doesNotThrow(() => validateArchiveEntries(['Peekaboo.app/', 'Peekaboo.app/Contents/', 'Peekaboo.app/Contents/Info.plist'],
+  'Peekaboo.app'));
+for (const members of [
+  ['Peekaboo.app/', 'README.txt'],
+  ['Peekaboo.app/Contents/../../outside'],
+  ['/Peekaboo.app/Contents/Info.plist'],
+  ['Peekaboo.app/Contents/Info.plist', 'Peekaboo.app/Contents/Info.plist'],
+  ['Peekaboo.app\\Contents\\Info.plist'],
+]) {
+  assert.throws(() => validateArchiveEntries(members, 'Peekaboo.app'));
+}
+
+// Exercise the shared app ZIP producer with native filesystem metadata.
+const zipTestDirectory = mkdtempSync(path.join(os.tmpdir(), 'peekaboo-app-zip-producer.'));
+try {
+  const appRoot = 'Archive Fixture.app';
+  const app = path.join(zipTestDirectory, appRoot);
+  const zip = path.join(zipTestDirectory, 'fixture.zip');
+  const extracted = path.join(zipTestDirectory, 'extracted');
+  const run = (command, args) => {
+    const result = spawnSync(command, args, { encoding: 'utf8' });
+    assert.equal(result.status, 0, `${command}: ${result.error ?? result.stderr}`);
+    return result.stdout;
+  };
+  const tree = (root) => JSON.parse(run('/usr/bin/ruby', [
+    fileURLToPath(new URL('./artifact-tree-manifest.rb', import.meta.url)), root,
+  ]));
+  const fixtureFiles = [
+    ['Contents/MacOS/fixture', Buffer.from([0, 1, 2, 127, 128, 255]), 0o751],
+    ['Contents/Resources/value', Buffer.from('known resource bytes\n'), 0o640],
+    // Opaque file preservation only: these are not genuine signatures or stapled tickets.
+    ['Contents/_CodeSignature/CodeResources', Buffer.from('synthetic signature bytes\n'), 0o644],
+    ['Contents/CodeResources', Buffer.from('synthetic ticket bytes\n'), 0o644],
+  ];
+  for (const [relative, bytes, mode] of fixtureFiles) {
+    const target = path.join(app, relative);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, bytes);
+    chmodSync(target, mode);
+  }
+  symlinkSync('Resources/value', path.join(app, 'Contents/current'));
+  const metadata = [
+    ['com.openclaw.peekaboo.fixture', 'harmless extended attribute', 'Contents/Resources/value'],
+    ['com.apple.ResourceFork', 'harmless resource fork', 'Contents/Resources/value'],
+    ['com.apple.quarantine', '0081;00000000;PeekabooZipFixture;', ''],
+  ];
+  const readAttribute = (name, target) => run('/usr/bin/xattr', ['-px', name, target]).replace(/\s/g, '').toLowerCase();
+  for (const [name, value, relative] of metadata) {
+    const hex = Buffer.from(value).toString('hex');
+    run('/usr/bin/xattr', ['-wx', name, hex, path.join(app, relative)]);
+    assert.equal(readAttribute(name, path.join(app, relative)), hex);
+  }
+  const before = tree(app);
+  run(fileURLToPath(new URL('./create-app-zip.sh', import.meta.url)), [app, zip]);
+  const members = run('/usr/bin/zipinfo', ['-1', zip]).trimEnd().split('\n');
+  const appleDouble = members.filter((member) => /(^|\/)(__MACOSX(?:\/|$)|\._[^/]+$)/.test(member));
+  console.log(`app-zip-producer counts: ${JSON.stringify({
+    members: members.length,
+    outsideRoot: members.filter((member) => member !== `${appRoot}/` && !member.startsWith(`${appRoot}/`)).length,
+    appleDouble: appleDouble.length,
+  })}`);
+  validateArchiveEntries(members, appRoot);
+  assert.equal(appleDouble.length, 0, 'producer must not archive AppleDouble metadata');
+  await validateZipArchive(zip, appRoot);
+  run('/usr/bin/ditto', ['-x', '-k', zip, extracted]);
+  const extractedApp = path.join(extracted, appRoot);
+  assert.deepEqual(tree(extractedApp), before, 'ZIP roundtrip must preserve every byte, mode, and symlink');
+  assert.deepEqual(tree(app), before, 'producer must not mutate its source app');
+  for (const [relative, bytes] of fixtureFiles) {
+    assert.deepEqual(readFileSync(path.join(extractedApp, relative)), bytes);
+  }
+  for (const [name, value, relative] of metadata) {
+    assert.equal(readAttribute(name, path.join(app, relative)), Buffer.from(value).toString('hex'));
+    assert.ok(!run('/usr/bin/xattr', [path.join(extractedApp, relative)]).trim().split('\n').includes(name),
+      `ZIP must omit ${name}`);
+  }
+  console.log('app-zip-producer: PASS strict roots, bytes/modes/symlink, metadata omission, unchanged source (unsigned fixture only)');
+} finally {
+  rmSync(zipTestDirectory, { recursive: true, force: true });
 }
 
 process.stdout.write('test-terminal-archive-policy: ok\n');

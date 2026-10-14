@@ -227,7 +227,6 @@ Apps/CLI/.generated/
 /Apps/CLI/peekaboo
 
 # Release artifacts
-/release/
 Commander/Commander.tar.gz
 
 # Test images and screenshots
