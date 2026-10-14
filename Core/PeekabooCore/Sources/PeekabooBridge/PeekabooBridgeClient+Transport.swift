@@ -233,30 +233,7 @@ extension PeekabooBridgeClient {
                 message: "This Bridge host cannot honor an explicit accessibility-value click policy.",
                 hint: "Update and relaunch Peekaboo before retrying the snapshot-backed click.")
         }
-        if case let .targetedScroll(payload) = request.unwrappedOperationRequest {
-            try payload.request.validatePointSelector()
-            if payload.request.point != nil, !self.backgroundCoordinateScrollEnabled {
-                throw DesktopActionFailure.preDispatchRefusal(
-                    route: .bridge,
-                    reason: .runtimeIncompatible,
-                    message: "This Bridge host does not support background coordinate scroll.",
-                    hint: "Update and relaunch Peekaboo before retrying coordinate scroll.")
-            }
-            guard payload.request.expectedWindow != nil else {
-                throw DesktopActionFailure.preDispatchRefusal(
-                    route: .bridge,
-                    reason: .targetUnavailable,
-                    message: "Background scroll has no complete capture-owned exact-window receipt.",
-                    hint: "Capture the exact window again and retry with its fresh snapshot.")
-            }
-            guard self.requestPinnedExactWindowScrollReceiptEnabled else {
-                throw DesktopActionFailure.preDispatchRefusal(
-                    route: .bridge,
-                    reason: .runtimeIncompatible,
-                    message: "This Bridge host cannot preserve an exact-window scroll receipt.",
-                    hint: "Update and relaunch Peekaboo before retrying background scroll.")
-            }
-        }
+        try self.requireScrollCapabilities(for: request)
         if request.requiresCompositeTypeDeliverySupport,
            !self.compositeTypeDeliveryEnabled
         {
@@ -340,6 +317,33 @@ extension PeekabooBridgeClient {
                 reason: .runtimeIncompatible,
                 message: "Bridge protocol 1.30 exact-window held-pointer cleanup is unavailable.",
                 hint: "Reconnect to the Bridge host that owns the active hold before retrying.")
+        }
+    }
+
+    private func requireScrollCapabilities(for request: PeekabooBridgeRequest) throws {
+        if case let .targetedScroll(payload) = request.unwrappedOperationRequest {
+            try payload.request.validatePointSelector()
+            if payload.request.point != nil, !self.backgroundCoordinateScrollEnabled {
+                throw DesktopActionFailure.preDispatchRefusal(
+                    route: .bridge,
+                    reason: .runtimeIncompatible,
+                    message: "This Bridge host does not support background coordinate scroll.",
+                    hint: "Update and relaunch Peekaboo before retrying coordinate scroll.")
+            }
+            guard payload.request.expectedWindow != nil else {
+                throw DesktopActionFailure.preDispatchRefusal(
+                    route: .bridge,
+                    reason: .targetUnavailable,
+                    message: "Background scroll has no complete capture-owned exact-window receipt.",
+                    hint: "Capture the exact window again and retry with its fresh snapshot.")
+            }
+            guard self.requestPinnedExactWindowScrollReceiptEnabled else {
+                throw DesktopActionFailure.preDispatchRefusal(
+                    route: .bridge,
+                    reason: .runtimeIncompatible,
+                    message: "This Bridge host cannot preserve an exact-window scroll receipt.",
+                    hint: "Update and relaunch Peekaboo before retrying background scroll.")
+            }
         }
     }
 
@@ -924,17 +928,22 @@ extension PeekabooBridgeClient {
             let connectedHost: PeekabooBridgeConnectedHostIdentity?
             if request.expectedHost != nil || request.authenticatesInitialListener {
                 let liveIdentity = try request.hostAuthentication.liveIdentity(fd)
-                let signingIdentity: PeekabooBridgeHost.PeerSigningIdentity? = if
+                var signingIdentity: PeekabooBridgeHost.PeerSigningIdentity?
+                var signingIdentityFailure: PeekabooBridgeCodeSignatureIdentity.SigningValidationFailure?
+                if
                     request.authenticatesInitialListener || request.expectedHost?.requiresSigningIdentity == true,
                     let auditIdentity = liveIdentity.auditIdentity
                 {
-                    request.hostAuthentication.signingIdentity(auditIdentity)
-                } else {
-                    nil
+                    do {
+                        signingIdentity = try request.hostAuthentication.signingIdentity(auditIdentity)
+                    } catch let failure as PeekabooBridgeCodeSignatureIdentity.SigningValidationFailure {
+                        signingIdentityFailure = failure
+                    }
                 }
                 connectedHost = .init(
                     liveIdentity: liveIdentity,
-                    signingIdentity: signingIdentity)
+                    signingIdentity: signingIdentity,
+                    signingIdentityFailure: signingIdentityFailure)
             } else {
                 connectedHost = nil
             }

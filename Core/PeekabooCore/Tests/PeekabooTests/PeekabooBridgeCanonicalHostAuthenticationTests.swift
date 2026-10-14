@@ -4,6 +4,34 @@ import Testing
 @testable import PeekabooBridge
 
 struct PeekabooBridgeCanonicalHostAuthenticationTests {
+    @Test
+    func `signing validation failure reaches the connected host authentication error`() async throws {
+        let peer = try ScriptedBridgePeer(responses: [.error(.init(code: .invalidRequest, message: "unused"))])
+        let failure = PeekabooBridgeCodeSignatureIdentity.SigningValidationFailure
+            .liveAnchoredRequirementNotSatisfied(-67050)
+        let client = PeekabooBridgeClient(
+            socketPath: peer.socketPath,
+            requestTimeoutSec: 1,
+            trustedHostTeamIDs: ["FWJYW4S8P8"],
+            hostAuthentication: .init(signingIdentity: { _ in throw failure }))
+        do {
+            try await client.handshake(client: .init(
+                bundleIdentifier: nil,
+                teamIdentifier: nil,
+                processIdentifier: ProcessInfo.processInfo.processIdentifier))
+            Issue.record("Expected authentication refusal")
+        } catch let error as PeekabooBridgeErrorEnvelope {
+            #expect(error.code == .unauthorizedClient)
+            #expect(error.isLocalHostAuthenticationFailure)
+            #expect(error.message.contains(failure.localizedDescription))
+        } catch {
+            await peer.stop()
+            throw error
+        }
+        #expect(await peer.acceptedConnectionCount == 1)
+        await peer.stop()
+    }
+
     @Test(arguments: ["Y5PE65HELJ", "FWJYW4S8P8", "OTHER-TEAM", "wrong-hash", nil] as [String?])
     func `canonical OpenClaw trust retains connected signer validation`(signer: String?) async throws {
         let canonicalPath = URL(fileURLWithPath: PeekabooBridgeConstants.peekabooSocketPath)

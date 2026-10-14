@@ -335,6 +335,14 @@ extension PeekabooBridgeHost {
         return self.signingIdentity(information: information)
     }
 
+    nonisolated static func validatedSigningIdentity(
+        auditIdentity: PeekabooBridgePeerAuditIdentity) throws -> PeerSigningIdentity
+    {
+        let information = try PeekabooBridgeCodeSignatureIdentity
+            .validatedSigningInformation(auditIdentity: auditIdentity)
+        return self.signingIdentity(information: information)
+    }
+
     nonisolated static func signingIdentity(
         auditIdentity: PeekabooBridgePeerAuditIdentity) -> PeerSigningIdentity?
     {

@@ -7,64 +7,6 @@ enum DaemonLaunchPolicy {
     static let defaultLaunchTimeoutSeconds =
         PeekabooBridgeServer.defaultScreenCaptureKitOwnershipPreparationTimeoutSeconds + 1
 
-    /// Retains the Foundation process until its termination source has reaped the child.
-    private final nonisolated class ProcessExitObserver: @unchecked Sendable {
-        private let lock = NSLock()
-        private var retainedProcess: Process?
-        private var didExit = false
-        private var nextWaiterID = 0
-        private var waiters: [Int: CheckedContinuation<Bool, Never>] = [:]
-
-        init(process: Process) {
-            self.retainedProcess = process
-        }
-
-        func processDidExit() {
-            self.lock.lock()
-            guard !self.didExit else {
-                self.lock.unlock()
-                return
-            }
-            self.didExit = true
-            self.retainedProcess = nil
-            let continuations = Array(self.waiters.values)
-            self.waiters.removeAll()
-            self.lock.unlock()
-
-            for continuation in continuations {
-                continuation.resume(returning: true)
-            }
-        }
-
-        func wait(timeout: TimeInterval) async -> Bool {
-            await withCheckedContinuation { continuation in
-                self.lock.lock()
-                guard !self.didExit else {
-                    self.lock.unlock()
-                    continuation.resume(returning: true)
-                    return
-                }
-                self.nextWaiterID += 1
-                let waiterID = self.nextWaiterID
-                self.waiters[waiterID] = continuation
-                self.lock.unlock()
-
-                DispatchQueue.global(qos: .utility).asyncAfter(
-                    deadline: .now() + max(0, timeout)
-                ) {
-                    self.timeout(waiterID: waiterID)
-                }
-            }
-        }
-
-        private func timeout(waiterID: Int) {
-            self.lock.lock()
-            let continuation = self.waiters.removeValue(forKey: waiterID)
-            self.lock.unlock()
-            continuation?.resume(returning: false)
-        }
-    }
-
     enum ImplicitRuntimeCandidateRole: Equatable {
         case reusableDaemon
         case defaultAppFallback
@@ -84,32 +26,6 @@ enum DaemonLaunchPolicy {
         _ arguments: [String],
         _ environment: [String: String]
     ) async throws -> LaunchResult
-
-    enum DaemonLaunchError: LocalizedError {
-        case executableNotFound(argument: String?)
-        case launchFailed(executableURL: URL, underlyingError: any Error)
-        case exited(executableURL: URL, status: Int32, logURL: URL)
-        case timedOut(timeout: TimeInterval, logURL: URL)
-
-        var errorDescription: String? {
-            switch self {
-            case let .executableNotFound(argument):
-                let executable = argument.map { "'\($0)'" } ?? "the current executable"
-                return "Could not resolve \(executable) to launch the Peekaboo daemon"
-            case let .launchFailed(executableURL, underlyingError):
-                return "Could not launch the Peekaboo daemon at \(executableURL.path): " +
-                    underlyingError.localizedDescription
-            case let .exited(executableURL, status, logURL):
-                return "Peekaboo daemon at \(executableURL.path) exited before becoming ready " +
-                    "(status \(status)); see \(logURL.path)"
-            case let .timedOut(timeout, logURL):
-                let seconds = timeout.rounded() == timeout
-                    ? String(Int(timeout))
-                    : String(format: "%.1f", timeout)
-                return "Peekaboo daemon did not become ready within \(seconds)s; see \(logURL.path)"
-            }
-        }
-    }
 
     enum SocketAvailability: Equatable {
         case available
@@ -131,11 +47,19 @@ enum DaemonLaunchPolicy {
     }
 
     static func daemonSocketPath(environment: [String: String]) -> String {
+        self.explicitDaemonSocketPath(bridgeSocket: nil, environment: environment)
+            ?? PeekabooBridgeConstants.daemonSocketPath
+    }
+
+    static func explicitDaemonSocketPath(bridgeSocket: String?, environment: [String: String]) -> String? {
+        if let bridgeSocket {
+            return bridgeSocket
+        }
         if let socket = environment["PEEKABOO_DAEMON_SOCKET"]?.trimmingCharacters(in: .whitespacesAndNewlines),
            !socket.isEmpty {
             return socket
         }
-        return PeekabooBridgeConstants.daemonSocketPath
+        return nil
     }
 
     static func onDemandDaemonEnvironment(_ environment: [String: String]) -> [String: String] {
@@ -747,104 +671,6 @@ enum DaemonLaunchPolicy {
             return false
         }
         return errno == EWOULDBLOCK || errno == EAGAIN
-    }
-
-    static func launchDaemon(
-        socketPath: String,
-        arguments: [String],
-        timeout: TimeInterval = Self.defaultLaunchTimeoutSeconds,
-        executableURL: URL? = nil,
-        logHandle: FileHandle? = nil,
-        environment: [String: String]? = nil
-    ) async throws -> LaunchResult {
-        try Task.checkCancellation()
-        guard let executableURL = executableURL ?? self.daemonExecutableURL() else {
-            throw DaemonLaunchError.executableNotFound(argument: CommandLine.arguments.first)
-        }
-
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = arguments
-        if let environment {
-            process.environment = environment
-        }
-        let daemonLogURL = DaemonPaths.daemonLogURL()
-        let outputHandle = logHandle ?? DaemonPaths.openDaemonLogForAppend() ?? FileHandle.nullDevice
-        process.standardOutput = outputHandle
-        process.standardError = outputHandle
-        process.standardInput = FileHandle.nullDevice
-
-        do {
-            try process.run()
-        } catch {
-            throw DaemonLaunchError.launchFailed(executableURL: executableURL, underlyingError: error)
-        }
-        let exitObserver = ProcessExitObserver(process: process)
-        process.terminationHandler = { _ in
-            exitObserver.processDidExit()
-        }
-
-        let deadline = Date().addingTimeInterval(timeout)
-        let client = DaemonControlClient(socketPath: socketPath)
-        while Date() < deadline {
-            // Readiness retries observe only this owned child; a failed probe cannot authorize another launch.
-            let status = try? await client.fetchReusableDaemonStatus()
-            if Task.isCancelled {
-                await self.terminateLaunchedProcess(process, exitObserver: exitObserver)
-                throw CancellationError()
-            }
-            if let status {
-                let processID = process.processIdentifier
-                if status.pid != processID {
-                    await self.terminateLaunchedProcess(process, exitObserver: exitObserver)
-                }
-                let result = LaunchResult(status: status, processID: processID)
-                if result.ownsObservedDaemon {
-                    ManagedAutoDaemonRegistry.store(status: status, socketPath: socketPath)
-                }
-                return result
-            }
-            if !process.isRunning {
-                throw DaemonLaunchError.exited(
-                    executableURL: executableURL,
-                    status: process.terminationStatus,
-                    logURL: daemonLogURL
-                )
-            }
-            do {
-                try await Task.sleep(nanoseconds: 100_000_000)
-            } catch {
-                await self.terminateLaunchedProcess(process, exitObserver: exitObserver)
-                throw error
-            }
-        }
-        if !process.isRunning {
-            throw DaemonLaunchError.exited(
-                executableURL: executableURL,
-                status: process.terminationStatus,
-                logURL: daemonLogURL
-            )
-        }
-        await self.terminateLaunchedProcess(process, exitObserver: exitObserver)
-        throw DaemonLaunchError.timedOut(timeout: timeout, logURL: daemonLogURL)
-    }
-
-    private static func terminateLaunchedProcess(
-        _ process: Process,
-        exitObserver: ProcessExitObserver
-    ) async {
-        guard process.isRunning else { return }
-
-        process.terminate()
-        let exitedAfterTermination = await exitObserver.wait(timeout: 0.5)
-        guard !exitedAfterTermination else { return }
-        guard process.isRunning else { return }
-
-        _ = kill(process.processIdentifier, SIGKILL)
-        // `Process.waitUntilExit()` can itself block indefinitely on a wedged Foundation
-        // process source. The termination handler retains and eventually reaps the child,
-        // while this caller waits for only a bounded SIGKILL grace period.
-        _ = await exitObserver.wait(timeout: 1)
     }
 
     static func stopReplacement(

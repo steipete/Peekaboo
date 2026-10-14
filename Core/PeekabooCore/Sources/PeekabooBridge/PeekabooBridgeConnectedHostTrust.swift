@@ -18,7 +18,8 @@ enum PeekabooBridgeConnectedHostTrust {
                         failedCheck = "signing Team ID is missing or not trusted"
                     }
                 } else {
-                    failedCheck = "Apple-anchored signing identity could not be bound to the live peer"
+                    let reason = host.signingIdentityFailure.map { ": " + $0.localizedDescription } ?? ""
+                    failedCheck = "Apple-anchored signing identity could not be bound to the live peer" + reason
                 }
             } else {
                 failedCheck = "live kernel CDHash is unavailable"

@@ -87,7 +87,8 @@ extension DaemonCommand {
             mode: String,
             bridgeSocket: String?,
             pollInterval: TimeInterval,
-            idleTimeoutSeconds: Double?
+            idleTimeoutSeconds: Double?,
+            environment: [String: String] = ProcessInfo.processInfo.environment
         ) throws -> PeekabooDaemon.Configuration {
             let normalizedMode = mode.lowercased()
             if normalizedMode == "mcp" {
@@ -96,15 +97,18 @@ extension DaemonCommand {
                         "owns its lifecycle."
                 )
             }
+            let socketPath = DaemonLaunchPolicy.explicitDaemonSocketPath(
+                bridgeSocket: bridgeSocket, environment: environment
+            ) ?? PeekabooBridgeConstants.daemonSocketPath
             return if normalizedMode == "auto" {
                 .auto(
-                    bridgeSocketPath: bridgeSocket ?? PeekabooBridgeConstants.daemonSocketPath,
+                    bridgeSocketPath: socketPath,
                     windowPollInterval: pollInterval,
                     idleTimeout: idleTimeoutSeconds ?? CommandRuntime.defaultDaemonIdleTimeoutSeconds
                 )
             } else {
                 .manual(
-                    bridgeSocketPath: bridgeSocket ?? PeekabooBridgeConstants.daemonSocketPath,
+                    bridgeSocketPath: socketPath,
                     windowPollInterval: pollInterval
                 )
             }

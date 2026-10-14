@@ -1,4 +1,5 @@
 import Commander
+import Foundation
 import PeekabooBridge
 
 extension DaemonCommand {
@@ -20,6 +21,10 @@ extension DaemonCommand {
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
+            self.bridgeSocket = DaemonLaunchPolicy.explicitDaemonSocketPath(
+                bridgeSocket: self.bridgeSocket,
+                environment: ProcessInfo.processInfo.environment
+            )
             let targets = try await DaemonControlResolver.targets(explicitSocket: self.bridgeSocket)
 
             if let target = DaemonControlPlanner.preferredStatusTarget(

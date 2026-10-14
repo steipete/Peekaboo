@@ -20,8 +20,12 @@ extension DaemonCommand {
         @Option(name: .customLong("poll-interval"), help: "Window tracker poll interval (bare values are milliseconds)")
         var pollInterval: CLIDuration?
 
-        @Option(name: .customLong("wait"), help: "Daemon startup wait (bare values are milliseconds; default 3s)")
-        var wait: CLIDuration = .seconds(3)
+        @Option(
+            name: .customLong("wait"),
+            help: "Daemon startup wait (bare values are milliseconds; default " +
+                "\(Int(DaemonLaunchPolicy.defaultLaunchTimeoutSeconds))s)"
+        )
+        var wait: CLIDuration = .seconds(DaemonLaunchPolicy.defaultLaunchTimeoutSeconds)
 
         var pollIntervalMs: Int? {
             self.pollInterval?.roundedMilliseconds
@@ -36,6 +40,10 @@ extension DaemonCommand {
 
         mutating func run(using runtime: CommandRuntime) async throws {
             self.runtime = runtime
+            self.bridgeSocket = DaemonLaunchPolicy.explicitDaemonSocketPath(
+                bridgeSocket: self.bridgeSocket,
+                environment: ProcessInfo.processInfo.environment
+            )
             try await DaemonStartupGate.withExclusiveStartup(
                 lockURL: DaemonPaths.daemonStartupLockURL(socketPath: self.bridgeSocket)
             ) { _ in
@@ -126,6 +134,8 @@ extension DaemonCommand {
                 )
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error as PeekabooBridgeErrorEnvelope {
+                throw error
             } catch {
                 throw PeekabooError.operationError(message: error.localizedDescription)
             }

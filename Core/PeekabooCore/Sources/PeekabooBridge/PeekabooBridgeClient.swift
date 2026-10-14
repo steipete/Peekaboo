@@ -7,7 +7,7 @@ import PeekabooFoundation
 struct PeekabooBridgeClientHostAuthentication: @unchecked Sendable {
     typealias LiveIdentityProvider = @Sendable (Int32) throws -> PeekabooBridgeLivePeerIdentity
     typealias SigningIdentityProvider = @Sendable (PeekabooBridgePeerAuditIdentity)
-        -> PeekabooBridgeHost.PeerSigningIdentity?
+        throws -> PeekabooBridgeHost.PeerSigningIdentity?
 
     let liveIdentity: LiveIdentityProvider
     let signingIdentity: SigningIdentityProvider
@@ -24,13 +24,14 @@ struct PeekabooBridgeClientHostAuthentication: @unchecked Sendable {
 
     static let live = Self(
         signingIdentity: { identity in
-            PeekabooBridgeHost.signingIdentity(auditIdentity: identity)
+            try PeekabooBridgeHost.validatedSigningIdentity(auditIdentity: identity)
         })
 }
 
 struct PeekabooBridgeConnectedHostIdentity: Equatable, Sendable {
     let liveIdentity: PeekabooBridgeLivePeerIdentity
     let signingIdentity: PeekabooBridgeHost.PeerSigningIdentity?
+    var signingIdentityFailure: PeekabooBridgeCodeSignatureIdentity.SigningValidationFailure?
 }
 
 // swiftlint:disable:next type_body_length
