@@ -141,14 +141,13 @@ const allPages = allMarkdown(docsDir).map((file) => {
   const rel = path.relative(docsDir, file).replaceAll(path.sep, "/");
   const raw = fs.readFileSync(file, "utf8");
   const { frontmatter, body } = parseFrontmatter(raw);
-  const cleaned = stripStrayDirectives(body);
-  const title = frontmatter.title || firstHeading(cleaned) || titleize(path.basename(rel, ".md"));
+  const title = frontmatter.title || firstHeading(body) || titleize(path.basename(rel, ".md"));
   return {
     file,
     rel,
     title,
     outRel: outPath(rel, frontmatter),
-    markdown: cleaned,
+    markdown: body,
     frontmatter,
   };
 });
@@ -235,15 +234,6 @@ function parseFrontmatter(raw) {
     fm[m[1]] = value;
   }
   return { frontmatter: fm, body: raw.slice(match[0].length) };
-}
-
-function stripStrayDirectives(body) {
-  return body
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .filter((line) => !/^\s*\{:\s*[^}]*\}\s*$/.test(line))
-    .map((line) => line.replace(/\s*\{:\s*[^}]*\}\s*$/, ""))
-    .join("\n");
 }
 
 function allMarkdown(dir) {
@@ -488,11 +478,17 @@ function inline(text, currentRel, inheritedStash = []) {
     stash.push({ html: `<a href="${escapeAttr(rewriteHref(destination, currentRel))}">${inline(label, currentRel, stash)}</a>`, raw });
     return `\u0000${stash.length - 1}\u0000`;
   });
+  out = out.replace(/<(https?:\/\/[^\s<>]+)>/g, (raw, href) => {
+    const destination = href
+      .replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].raw)
+      .replace(/\\\|/g, "|");
+    stash.push({ html: `<a href="${escapeAttr(destination)}">${escapeHtml(destination)}</a>`, raw });
+    return `\u0000${stash.length - 1}\u0000`;
+  });
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
-    .replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, "$1<em>$2</em>")
-    .replace(/&lt;(https?:\/\/[^\s<>]+)&gt;/g, '<a href="$1">$1</a>');
+    .replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, "$1<em>$2</em>");
   out = out.replace(/\\\|/g, "|");
   out = out.replace(/&lt;br&gt;/g, "<br>");
   return out.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].html);

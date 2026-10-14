@@ -33,6 +33,25 @@ test('follow uses stream with level and JSON arguments', (t) => {
   assert.deepEqual(f.args(), ['stream', '--predicate', subsystem, '--level', 'debug', '--style', 'json']);
 });
 
+test('error-only streams use a supported level and retain the error predicate', (t) => {
+  const f = fixture(t);
+  success(f.run(['--follow', '--errors']));
+  assert.deepEqual(f.args(), ['stream', '--predicate', `${subsystem} AND logType == "error"`, '--level', 'info']);
+});
+
+for (const options of [['--errors', '--debug'], ['--debug', '--errors']]) {
+  test(`error filtering survives verbosity options ${options.join(' ')}`, (t) => {
+    const f = fixture(t);
+    const errorLast = options.at(-1) === '--errors';
+    success(f.run(['--all', ...options]));
+    assert.deepEqual(f.args(), ['show', '--predicate', `${subsystem} AND logType == "error"`,
+      ...(errorLast ? ['--info', '--debug'] : ['--debug']), '--last', '5m']);
+    success(f.run(['--follow', ...options]));
+    assert.deepEqual(f.args(), ['stream', '--predicate', `${subsystem} AND logType == "error"`,
+      '--level', errorLast ? 'info' : 'debug']);
+  });
+}
+
 const valueOptions = ['-n', '--lines', '-l', '--last', '-c', '--category', '-s', '--search', '-o', '--output'];
 for (const option of valueOptions) {
   test(`missing value for ${option} refuses before reading logs`, (t) => {

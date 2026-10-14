@@ -147,6 +147,7 @@ Importing `PeekabooMCPWrapper` from `peekaboo-mcp.js` does not start a server. E
 The npm `peekaboo-mcp` launcher owns its Swift server child and restarts it after crashes. On SIGINT or SIGTERM,
 it cancels pending restart backoff, sends SIGTERM to that child, and allows five seconds for exit before sending
 SIGKILL to the same still-owned child. Repeated shutdown requests do not restart or extend this deadline.
+Fatal wrapper errors and unhandled promise rejections trigger shutdown and exit with status 1; normal SIGINT or SIGTERM shutdown exits with status 0.
 This is process cleanup, not confirmation that an in-flight desktop operation had no effect; observe before retrying.
 
 `pnpm run test:mcp-wrapper` covers wrapper imports, startup and bounded shutdown with disposable child fixtures,

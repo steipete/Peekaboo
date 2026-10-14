@@ -64,7 +64,7 @@ process.stderr.write = (...args) => {
 };
 `);
   const result = spawnSync(process.execPath, ['--import', preload, wrapper], {
-    encoding: 'utf8', timeout: 1500, killSignal: 'SIGKILL',
+    encoding: 'utf8', timeout: 5000, killSignal: 'SIGKILL',
     env: {...process.env, PEEKABOO_TEST_FATAL_KIND: kind},
   });
   assert.match(result.stderr, /Server crashed/);

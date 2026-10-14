@@ -70,7 +70,7 @@ throw PeekabooError.ambiguousAppIdentifier(
 
 ### Standardizing Other Errors
 
-`ErrorStandardizer.standardize(_:)` preserves errors that already conform to `StandardizedError`, converts missing-file Cocoa errors to `PeekabooError.fileIOError`, and wraps other errors as `PeekabooError.operationError`.
+`ErrorStandardizer.standardize(_:)` preserves errors that already conform to `StandardizedError`, maps cooperative `CancellationError` and `NSURLErrorDomain` errors with code `NSURLErrorCancelled` to `.cancelled` (`CANCELLED`), converts missing-file Cocoa errors to `PeekabooError.fileIOError`, and wraps other errors as `PeekabooError.operationError`.
 
 ```swift
 let standardized = ErrorStandardizer.standardize(error)

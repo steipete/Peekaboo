@@ -174,9 +174,15 @@ if [[ -n "$SEARCH" ]]; then
     PREDICATE="$PREDICATE AND eventMessage CONTAINS[c] \"$PREDICATE_LITERAL\""
 fi
 
+if [[ "$ERRORS_ONLY" == true ]]; then
+    PREDICATE="$PREDICATE AND logType == \"error\""
+fi
+
 # Build command
 if [[ "$FOLLOW" == true ]]; then
-    CMD=(log stream --predicate "$PREDICATE" --level "$LEVEL")
+    STREAM_LEVEL="$LEVEL"
+    if [[ "$STREAM_LEVEL" == error ]]; then STREAM_LEVEL=info; fi
+    CMD=(log stream --predicate "$PREDICATE" --level "$STREAM_LEVEL")
 else
     # log show uses different flags for log levels
     case $LEVEL in
@@ -184,7 +190,6 @@ else
             CMD=(log show --predicate "$PREDICATE" --debug --last "$TIME")
             ;;
         error)
-            PREDICATE="$PREDICATE AND logType == \"error\""
             CMD=(log show --predicate "$PREDICATE" --info --debug --last "$TIME")
             ;;
         *)
