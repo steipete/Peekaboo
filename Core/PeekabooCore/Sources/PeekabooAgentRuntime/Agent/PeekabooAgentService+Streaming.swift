@@ -1340,13 +1340,23 @@ extension PeekabooAgentService {
                 wrapped["summary_text"] = summaryText
             }
 
+            // Invalid numbers can raise an Objective-C exception instead of a Swift error.
+            guard JSONSerialization.isValidJSONObject(wrapped) else {
+                throw EncodingError.invalidValue(
+                    result,
+                    .init(codingPath: [], debugDescription: "Invalid tool result JSON"))
+            }
             let data = try JSONSerialization.data(withJSONObject: wrapped, options: [])
             return String(data: data, encoding: .utf8) ?? "{}"
         } catch {
             let fallback = result.stringValue ?? String(describing: result)
-            let escapedFallback = fallback.replacingOccurrences(of: "\"", with: "\\\"")
-            return "{\"result\": \"\(escapedFallback)\"}"
+            return Self.toolCompletionTextPayload(["result": fallback])
         }
+    }
+
+    static func toolCompletionTextPayload(_ payload: [String: String]) -> String {
+        guard let data = try? JSONEncoder().encode(payload) else { return "{}" }
+        return String(data: data, encoding: .utf8) ?? "{}"
     }
 
     private func summaryText(from payload: [String: Any], toolName: String) -> String? {
@@ -1361,13 +1371,7 @@ extension PeekabooAgentService {
     }
 
     private func toolErrorPayload(from error: any Error) -> String {
-        let errorDict = ["error": error.localizedDescription]
-        guard let data = try? JSONSerialization.data(withJSONObject: errorDict, options: []),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return "{\"error\": \"Unknown error\"}"
-        }
-        return json
+        Self.toolCompletionTextPayload(["error": error.localizedDescription])
     }
 }
 
