@@ -8,7 +8,7 @@ import test from 'node:test';
 import { PeekabooMCPWrapper } from '../peekaboo-mcp.js';
 
 for (const [ignoreTermination, mainEntrypoint] of [[false, false], [true, false], [true, true]]) {
-  test(`shutdown finishes when server ${ignoreTermination ? 'ignores' : 'accepts'} SIGTERM${mainEntrypoint ? ' through the default entrypoint' : ''}`, { timeout: 15_000 }, async () => {
+  test(`shutdown finishes when server ${ignoreTermination ? 'ignores' : 'accepts'} SIGTERM${mainEntrypoint ? ' through the default entrypoint' : ''}`, { timeout: 30_000 }, async () => {
     const root = await mkdtemp(join(tmpdir(), 'peekaboo-mcp-shutdown-'));
     const binaryPath = join(root, 'peekaboo');
     const readyPath = join(root, 'ready');
@@ -21,7 +21,7 @@ for (const [ignoreTermination, mainEntrypoint] of [[false, false], [true, false]
       ignoreTermination ? "process.on('SIGTERM', () => {});" : '',
       `writeFileSync(${JSON.stringify(pidPath)}, String(process.pid));`,
       `writeFileSync(${JSON.stringify(readyPath)}, 'ready');`,
-      'setTimeout(() => process.exit(86), 10_000);',
+      'setTimeout(() => process.exit(86), 20_000);',
       '',
     ].join('\n'), { mode: 0o755 });
     const wrapperPath = join(root, 'peekaboo-mcp.mjs');
@@ -45,8 +45,9 @@ for (const [ignoreTermination, mainEntrypoint] of [[false, false], [true, false]
     const closed = once(child, 'close');
     let timeout;
     try {
+      // Cold fixture startup has its own budget; only time shutdown after readiness.
+      await waitForReady(readyPath);
       if (mainEntrypoint) {
-        await waitForReady(readyPath);
         child.kill('SIGTERM');
       }
       const started = performance.now();
@@ -86,7 +87,7 @@ test('duplicate shutdown keeps one timer and cleanup cancels escalation', async 
 });
 
 async function waitForReady(path) {
-  const deadline = performance.now() + 3000;
+  const deadline = performance.now() + 10_000;
   while (performance.now() < deadline) {
     try {
       if (await readFile(path, 'utf8') === 'ready') return;

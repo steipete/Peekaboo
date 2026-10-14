@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Preserve ordered-list start numbers, honor code-fence delimiters and lengths, and keep emphasis punctuation literal in link destinations and autolinks on the documentation site. Thanks @rudycelekli! #1029, #1028, #1030.
+- Shut down the owned MCP server and exit with status 1 after fatal wrapper errors or unhandled rejections, while retaining successful signal-driven shutdown. Thanks @rudycelekli! #1039.
+- Keep repeated MCP wrapper starts from spawning duplicate servers and validate timing options before scheduling, preserving explicit zero delays. Thanks @rudycelekli! #1020, #1021.
+- Apply error-only log filtering consistently to historical queries and live streams, including with debug verbosity, in both log helpers. Thanks @rudycelekli! #1033.
+- Classify cooperative and URL cancellation as `CANCELLED` while preserving existing standardized errors. Thanks @rudycelekli! #1042.
+
 ## 4.9.2 - 2026-10-12
 
 **Highlights:** Create CLI child-process pipes close-on-exec with Swift Subprocess 1.0.1 so they no longer leak into other children, build signed and notarized releases on GitHub Actions behind an approval gate, and keep local notarization working on congested uplinks with a parallel Notary API upload fallback.
