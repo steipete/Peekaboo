@@ -19,9 +19,18 @@ const SHUTDOWN_TIMEOUT_MS = 5000;
 export class PeekabooMCPWrapper {
   constructor(options = {}) {
     this.binaryPath = options.binaryPath || defaultBinaryPath;
-    this.initialDelayMs = options.initialDelayMs || INITIAL_DELAY_MS;
-    this.maxDelayMs = options.maxDelayMs || MAX_DELAY_MS;
+    this.initialDelayMs = options.initialDelayMs ?? INITIAL_DELAY_MS;
+    this.maxDelayMs = options.maxDelayMs ?? MAX_DELAY_MS;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? SHUTDOWN_TIMEOUT_MS;
+    for (const [name, value] of Object.entries({
+      initialDelayMs: this.initialDelayMs,
+      maxDelayMs: this.maxDelayMs,
+      shutdownTimeoutMs: this.shutdownTimeoutMs
+    })) {
+      if (!Number.isFinite(value) || value < 0 || value > 2_147_483_647) {
+        throw new RangeError(`${name} must be a finite nonnegative timer duration`);
+      }
+    }
     this.restartTimestamps = [];
     this.delay = this.initialDelayMs;
     this.child = null;
