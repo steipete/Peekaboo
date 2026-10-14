@@ -49,20 +49,6 @@ extension Error {
     }
 }
 
-// MARK: - Async Operation Helpers
-
-/// Perform an async operation with consistent error handling
-public func performOperation<T>(
-    _ operation: @Sendable () async throws -> T,
-    errorContext: String) async throws -> T
-{
-    do {
-        return try await operation()
-    } catch {
-        throw error.asPeekabooError(context: errorContext)
-    }
-}
-
 // MARK: - Path Utilities
 
 extension String {
@@ -82,11 +68,6 @@ extension String {
 // MARK: - Time Utilities
 
 extension TimeInterval {
-    /// Convert to nanoseconds for Task.sleep
-    public var nanoseconds: UInt64 {
-        UInt64(self * 1_000_000_000)
-    }
-
     /// Common sleep durations
     public static let shortDelay: TimeInterval = 0.1
     public static let mediumDelay: TimeInterval = 0.5

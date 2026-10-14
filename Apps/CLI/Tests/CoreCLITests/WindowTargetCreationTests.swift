@@ -40,34 +40,34 @@ struct WindowTargetCreationTests {
         }
     }
 
-    @Test
-    func `window CLI syntax preserves matching redundant PID channels`() throws {
+    @Test(arguments: [Int32(12345), 54321])
+    func `window mutation syntax rejects matching and conflicting PID channels`(pid: Int32) {
         var options = WindowIdentificationOptions()
         options.app = "PID:12345"
-        options.pid = 12345
+        options.pid = pid
 
-        try options.validate()
-        #expect(try options.selector.normalizedApplicationTarget(policy: .windowCLI()) == "PID:12345")
+        do {
+            try options.validateMutation()
+            Issue.record("Expected duplicate owner channels to be rejected")
+        } catch {
+            #expect(error.localizedDescription.contains("Use either --app or --pid, not both."))
+        }
     }
 
     @Test
-    func `window CLI PID aliases reach the compatibility resolver and target`() throws {
+    func `window mutation PID aliases expose normalized selectors and preserve service input`() throws {
         for application in ["PID:12345", "pid:12345", "PiD:12345", " \tpid:12345\n"] {
             var options = WindowIdentificationOptions()
             options.app = application
-            options.pid = 12345
-
-            try options.validate()
+            try options.validateMutation()
             let normalizedApplication = application.trimmingCharacters(in: .whitespacesAndNewlines)
-            #expect(try options.resolveApplicationIdentifier() == normalizedApplication)
+            #expect(try options.selector.normalizedApplicationTarget(policy: .mutationSafe) == normalizedApplication)
+            #expect(try options.resolveApplicationIdentifier() == application)
             switch try options.toWindowTarget() {
             case let .application(identifier):
-                #expect(identifier == normalizedApplication)
+                #expect(identifier == application)
             default:
                 Issue.record("Expected the resolved PID application target")
-            }
-            #expect(throws: (any Error).self) {
-                try options.validateMutation()
             }
         }
     }
@@ -108,22 +108,6 @@ struct WindowTargetCreationTests {
             Issue.record("Expected named application and PID to remain exclusive")
         } catch {
             #expect(error.localizedDescription.contains("Provide the application either with --app or --pid, not both"))
-        }
-    }
-
-    @Test
-    func `window CLI syntax preserves conflicting PID error`() {
-        var options = WindowIdentificationOptions()
-        options.app = "PID:12345"
-        options.pid = 54321
-
-        do {
-            try options.validate()
-            Issue.record("Expected conflicting PID validation error")
-        } catch {
-            #expect(error.localizedDescription.contains("Conflicting PIDs"))
-            #expect(error.localizedDescription.contains("12345"))
-            #expect(error.localizedDescription.contains("54321"))
         }
     }
 
@@ -426,11 +410,11 @@ struct WindowTargetCreationTests {
     @Test
     func `validation can allow snapshot-only focus target`() throws {
         var options = WindowIdentificationOptions()
-        try options.validate(allowMissingTarget: true)
+        try options.validateMutation(allowMissingTarget: true)
 
         options.windowIndex = -1
         #expect(throws: (any Error).self) {
-            try options.validate(allowMissingTarget: true)
+            try options.validateMutation(allowMissingTarget: true)
         }
     }
 

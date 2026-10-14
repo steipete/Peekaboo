@@ -53,37 +53,7 @@ struct WindowIdentificationOptions: CommanderParsable, ApplicationResolvable {
         )
     }
 
-    func validate(allowMissingTarget: Bool = false) throws {
-        do {
-            try self.selector.validate(policy: .windowCLI(allowMissingTarget: allowMissingTarget))
-        } catch let error as InteractionTargetSelector.ValidationError {
-            switch error {
-            case .invalidWindowID:
-                throw ValidationError("--window-id must be greater than 0")
-            case .missingTarget:
-                throw ValidationError("Either --app, --pid, or --window-id must be specified")
-            case .invalidWindowIndex:
-                throw ValidationError("--window-index must be 0 or greater")
-            case let .conflictingProcessIdentifiers(applicationPID, explicitPID):
-                throw PeekabooError.invalidInput(
-                    "Conflicting PIDs: --app specifies PID \(applicationPID) but --pid is \(explicitPID)"
-                )
-            case .invalidApplicationProcessIdentifier:
-                throw PeekabooError.invalidInput("Invalid PID format in --app: '\(self.app ?? "")'")
-            case .applicationAndProcessIdentifier:
-                throw InteractionTargetOptions.validationError(for: error)
-            case .multipleWindowSelectors,
-                 .windowSelectorRequiresApplication,
-                 .invalidProcessIdentifier,
-                 .emptyApplication,
-                 .emptyWindowTitle:
-                preconditionFailure("Window CLI policy does not emit \(error)")
-            }
-        }
-    }
-
-    /// Validate selectors used to choose a window for mutation. Unlike the compatibility grammar,
-    /// this rejects redundant owner channels and selector precedence before inventory lookup.
+    /// Validate mutation selectors, rejecting redundant owner channels and selector precedence before inventory lookup.
     func validateMutation(allowMissingTarget: Bool = false) throws {
         _ = try validatedMutationSelector(self.selector, allowMissingTarget: allowMissingTarget)
     }
