@@ -33,10 +33,10 @@ enum PeekabooBridgeCodeSignatureIdentity {
         UnsafeMutablePointer<audit_token_t>?) -> Int32
 
     typealias StaticSigningInformationProvider =
-        (PeekabooBridgePeerAuditIdentity) -> [String: Any]?
+        (PeekabooBridgePeerAuditIdentity) throws -> [String: Any]?
 
     typealias AnchoredSignatureValidationProvider =
-        (PeekabooBridgePeerAuditIdentity) -> ValidatedSigningIdentity?
+        (PeekabooBridgePeerAuditIdentity) throws -> ValidatedSigningIdentity?
 
     private static let codeDirectoryHashOperation: UInt32 = 5
     private static let codeDirectoryHashByteCount = 20
@@ -207,39 +207,55 @@ enum PeekabooBridgeCodeSignatureIdentity {
         anchoredSignatureValidationProvider: AnchoredSignatureValidationProvider =
             PeekabooBridgeCodeSignatureIdentity.validatedAppleAnchoredSigningIdentity) -> [String: Any]?
     {
-        guard let liveHashBefore = self.liveCodeSignatureHash(
+        try? self.validatedSigningInformation(
             auditIdentity: auditIdentity,
-            systemCall: systemCall),
-            var information = staticSigningInformationProvider(auditIdentity),
-            let staticHash = information[kSecCodeInfoUnique as String] as? Data,
-            staticHash.count == self.codeDirectoryHashByteCount,
-            let staticIdentifier = information[kSecCodeInfoIdentifier as String] as? String,
-            let staticTeamIdentifier = information[kSecCodeInfoTeamIdentifier as String] as? String
-        else {
-            return nil
-        }
+            systemCall: systemCall,
+            staticSigningInformationProvider: staticSigningInformationProvider,
+            anchoredSignatureValidationProvider: anchoredSignatureValidationProvider)
+    }
 
-        // Do not invoke the comparatively expensive trust validator for metadata already known to name a different
-        // executable, but retain the second audit-token lookup so every usable static result is race checked.
-        let validatedIdentity: ValidatedSigningIdentity? = if staticHash == liveHashBefore {
-            anchoredSignatureValidationProvider(auditIdentity)
-        } else {
-            nil
-        }
-        guard let liveHashAfter = self.liveCodeSignatureHash(
-            auditIdentity: auditIdentity,
-            systemCall: systemCall),
-            liveHashBefore == liveHashAfter,
-            let validatedIdentity,
-            validatedIdentity.identifier == staticIdentifier,
-            validatedIdentity.teamIdentifier == staticTeamIdentifier,
-            validatedIdentity.codeDirectoryHash == staticHash,
-            validatedIdentity.codeDirectoryHash == liveHashAfter
+    static func validatedSigningInformation(
+        auditIdentity: PeekabooBridgePeerAuditIdentity,
+        systemCall: AuditTokenCDHashSystemCall = peekaboo_csops_audittoken,
+        staticSigningInformationProvider: StaticSigningInformationProvider =
+            PeekabooBridgeCodeSignatureIdentity.unvalidatedStaticSigningInformation,
+        anchoredSignatureValidationProvider: AnchoredSignatureValidationProvider =
+            PeekabooBridgeCodeSignatureIdentity.validatedAppleAnchoredSigningIdentity) throws -> [String: Any]
+    {
+        guard let liveHashBefore = self.liveCodeSignatureHash(auditIdentity: auditIdentity, systemCall: systemCall)
         else {
-            return nil
+            throw SigningValidationFailure.liveCDHashUnavailable
         }
+        guard var information = try staticSigningInformationProvider(auditIdentity) else {
+            throw SigningValidationFailure.signingInformationUnavailable
+        }
+        guard let staticHash = information[kSecCodeInfoUnique as String] as? Data,
+              staticHash.count == self.codeDirectoryHashByteCount
+        else { throw SigningValidationFailure.staticCDHashUnavailable }
+        guard let staticIdentifier = information[kSecCodeInfoIdentifier as String] as? String,
+              let staticTeamIdentifier = information[kSecCodeInfoTeamIdentifier as String] as? String
+        else { throw SigningValidationFailure.staticIdentifierOrTeamUnavailable }
 
-        // Downstream identity construction consumes only the values independently bound to the live peer.
+        // Keep the second audit-token lookup even when static metadata names a different executable.
+        let validatedIdentity = staticHash == liveHashBefore
+            ? try anchoredSignatureValidationProvider(auditIdentity) : nil
+        guard let liveHashAfter = self.liveCodeSignatureHash(auditIdentity: auditIdentity, systemCall: systemCall)
+        else {
+            throw SigningValidationFailure.liveCDHashUnavailable
+        }
+        guard liveHashBefore == liveHashAfter else { throw SigningValidationFailure.liveCDHashChanged }
+        guard staticHash == liveHashBefore else { throw SigningValidationFailure.staticCDHashMismatch }
+        guard let validatedIdentity else { throw SigningValidationFailure.anchoredValidationUnavailable }
+        guard validatedIdentity.identifier == staticIdentifier else {
+            throw SigningValidationFailure.staticIdentifierMismatch
+        }
+        guard validatedIdentity.teamIdentifier == staticTeamIdentifier else {
+            throw SigningValidationFailure.staticTeamMismatch
+        }
+        guard validatedIdentity.codeDirectoryHash == staticHash,
+              validatedIdentity.codeDirectoryHash == liveHashAfter
+        else { throw SigningValidationFailure.staticCDHashMismatch }
+
         information[kSecCodeInfoIdentifier as String] = validatedIdentity.identifier
         information[kSecCodeInfoTeamIdentifier as String] = validatedIdentity.teamIdentifier
         information[kSecCodeInfoUnique as String] = liveHashBefore
@@ -275,47 +291,53 @@ enum PeekabooBridgeCodeSignatureIdentity {
     }
 
     private static func unvalidatedStaticSigningInformation(
-        auditIdentity: PeekabooBridgePeerAuditIdentity) -> [String: Any]?
+        auditIdentity: PeekabooBridgePeerAuditIdentity) throws -> [String: Any]?
     {
-        guard let (_, staticCode) = self.codePair(auditIdentity: auditIdentity),
-              let values = self.signingInformation(staticCode)
-        else {
-            return nil
+        let (_, staticCode) = try self.checkedCodePair(attributes: [kSecGuestAttributeAudit: auditIdentity.tokenData])
+        guard let values = self.signingInformation(staticCode) else {
+            throw SigningValidationFailure.signingInformationUnavailable
         }
         return values
     }
 
-    /// Validates the exact live peer and its on-disk code against a certificate-backed Apple requirement.
-    ///
-    /// `anchor apple generic` admits Apple-issued Developer ID and Apple Development chains. Requiring the signed
-    /// identifier and leaf certificate OU makes the Team ID an authenticated certificate claim rather than trusting
-    /// the independently readable CodeDirectory metadata. The deliberately narrow character sets keep untrusted
-    /// metadata from changing the requirement grammar.
+    /// Validate both live and on-disk code against the same certificate-backed Apple requirement.
     private static func validatedAppleAnchoredSigningIdentity(
-        auditIdentity: PeekabooBridgePeerAuditIdentity) -> ValidatedSigningIdentity?
+        auditIdentity: PeekabooBridgePeerAuditIdentity) throws -> ValidatedSigningIdentity?
     {
-        guard let (code, staticCode) = self.codePair(auditIdentity: auditIdentity),
-              let initialInformation = self.signingInformation(staticCode),
-              let identifier = initialInformation[kSecCodeInfoIdentifier as String] as? String,
-              let teamIdentifier = initialInformation[kSecCodeInfoTeamIdentifier as String] as? String,
-              let requirement = self.appleAnchoredRequirement(
-                  identifier: identifier,
-                  teamIdentifier: teamIdentifier),
-              SecCodeCheckValidity(code, SecCSFlags(), requirement) == errSecSuccess,
-              // Peer authorization needs the signed executable identity, not a per-request bundle resource scan.
-              SecStaticCodeCheckValidity(
-                  staticCode,
-                  SecCSFlags(rawValue: UInt32(kSecCSDoNotValidateResources)),
-                  requirement) == errSecSuccess,
-              let staticInformation = self.signingInformation(staticCode),
-              staticInformation[kSecCodeInfoIdentifier as String] as? String == identifier,
-              staticInformation[kSecCodeInfoTeamIdentifier as String] as? String == teamIdentifier,
-              let staticHash = staticInformation[kSecCodeInfoUnique as String] as? Data,
-              staticHash.count == self.codeDirectoryHashByteCount
-        else {
-            return nil
+        let (code, staticCode) = try self
+            .checkedCodePair(attributes: [kSecGuestAttributeAudit: auditIdentity.tokenData])
+        guard let initialInformation = self.signingInformation(staticCode) else {
+            throw SigningValidationFailure.signingInformationUnavailable
         }
-
+        guard let identifier = initialInformation[kSecCodeInfoIdentifier as String] as? String,
+              let teamIdentifier = initialInformation[kSecCodeInfoTeamIdentifier as String] as? String
+        else { throw SigningValidationFailure.staticIdentifierOrTeamUnavailable }
+        guard let requirement = self.appleAnchoredRequirement(identifier: identifier, teamIdentifier: teamIdentifier)
+        else {
+            throw SigningValidationFailure.invalidAnchoredRequirement
+        }
+        let liveStatus = SecCodeCheckValidity(code, SecCSFlags(), requirement)
+        guard liveStatus == errSecSuccess else {
+            throw SigningValidationFailure.liveAnchoredRequirementNotSatisfied(liveStatus)
+        }
+        // Peer authorization needs executable identity, not a per-request bundle resource scan.
+        let staticStatus = SecStaticCodeCheckValidity(
+            staticCode, SecCSFlags(rawValue: UInt32(kSecCSDoNotValidateResources)), requirement)
+        guard staticStatus == errSecSuccess else {
+            throw SigningValidationFailure.staticAnchoredRequirementNotSatisfied(staticStatus)
+        }
+        guard let information = self.signingInformation(staticCode) else {
+            throw SigningValidationFailure.signingInformationUnavailable
+        }
+        guard information[kSecCodeInfoIdentifier as String] as? String == identifier else {
+            throw SigningValidationFailure.staticIdentifierMismatch
+        }
+        guard information[kSecCodeInfoTeamIdentifier as String] as? String == teamIdentifier else {
+            throw SigningValidationFailure.staticTeamMismatch
+        }
+        guard let staticHash = information[kSecCodeInfoUnique as String] as? Data,
+              staticHash.count == self.codeDirectoryHashByteCount
+        else { throw SigningValidationFailure.staticCDHashUnavailable }
         return ValidatedSigningIdentity(
             identifier: identifier,
             teamIdentifier: teamIdentifier,
@@ -329,20 +351,20 @@ enum PeekabooBridgeCodeSignatureIdentity {
     }
 
     private static func codePair(attributes: NSDictionary) -> (SecCode, SecStaticCode)? {
+        try? self.checkedCodePair(attributes: attributes)
+    }
+
+    private static func checkedCodePair(attributes: NSDictionary) throws -> (SecCode, SecStaticCode) {
         var code: SecCode?
-        guard SecCodeCopyGuestWithAttributes(nil, attributes, SecCSFlags(), &code) == errSecSuccess,
-              let code
-        else {
-            return nil
+        let guestStatus = SecCodeCopyGuestWithAttributes(nil, attributes, SecCSFlags(), &code)
+        guard guestStatus == errSecSuccess, let code else {
+            throw SigningValidationFailure.guestCodeLookupFailed(guestStatus)
         }
-
         var staticCode: SecStaticCode?
-        guard SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode) == errSecSuccess,
-              let staticCode
-        else {
-            return nil
+        let staticStatus = SecCodeCopyStaticCode(code, SecCSFlags(), &staticCode)
+        guard staticStatus == errSecSuccess, let staticCode else {
+            throw SigningValidationFailure.staticCodeLookupFailed(staticStatus)
         }
-
         return (code, staticCode)
     }
 
@@ -351,9 +373,7 @@ enum PeekabooBridgeCodeSignatureIdentity {
         let flags = SecCSFlags(rawValue: UInt32(kSecCSSigningInformation))
         guard SecCodeCopySigningInformation(staticCode, flags, &information) == errSecSuccess,
               let values = information as? [String: Any]
-        else {
-            return nil
-        }
+        else { return nil }
         return values
     }
 

@@ -45,7 +45,15 @@ peekaboo daemon start
 Options:
 - `--bridge-socket <path>` override the default daemon socket path.
 - `--poll-interval <duration>` window tracker poll interval (default `1s`; bare values are milliseconds).
-- `--wait <duration>` how long to wait for startup (default `3s`).
+- `--wait <duration>` how long to wait for startup (default `10s`, shared with automatic startup and including Bridge preparation).
+
+All daemon subcommands, including `daemon run`, honor `PEEKABOO_DAEMON_SOCKET` when `--bridge-socket` is absent.
+An explicit `--bridge-socket` takes precedence; blank environment values use the default socket.
+
+Startup authentication and other non-retryable probe failures report the underlying error and terminate the child
+launched by that start attempt. Genuine readiness timeouts include elapsed time and the last probe error (or the
+absence of a reusable response). Signing failures identify the failed live/static identity or Apple-anchor check;
+trust requirements are unchanged.
 
 ### Status
 ```

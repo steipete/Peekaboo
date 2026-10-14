@@ -6,6 +6,7 @@
 - Shut down the owned MCP server and exit with status 1 after fatal wrapper errors or unhandled rejections, while retaining successful signal-driven shutdown. Thanks @rudycelekli! #1039.
 - Keep repeated MCP wrapper starts from spawning duplicate servers and validate timing options before scheduling, preserving explicit zero delays. Thanks @rudycelekli! #1020, #1021.
 - Apply error-only log filtering consistently to historical queries and live streams, including with debug verbosity, in both log helpers. Thanks @rudycelekli! #1033.
+- Use the shared 10-second readiness budget for manual daemon startup, preserve authentication and probe failure diagnostics, and honor `PEEKABOO_DAEMON_SOCKET` consistently across daemon commands without relaxing host trust. Thanks @fry69! #1064.
 - Classify cooperative and URL cancellation as `CANCELLED` while preserving existing standardized errors. Thanks @rudycelekli! #1042.
 - Remove unused local release helpers, appcast and tracked release-notes tooling; document hosted publication while preserving terminal/fleet archive and notarization checks.
 

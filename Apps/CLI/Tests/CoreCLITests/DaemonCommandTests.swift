@@ -20,13 +20,43 @@ struct DaemonCommandTests {
         let command = try DaemonCommand.Start.parse([])
         #expect(command.bridgeSocket == nil)
         #expect(command.pollIntervalMs == nil)
-        #expect(command.waitSeconds == 3)
+        #expect(command.wait.seconds == DaemonLaunchPolicy.defaultLaunchTimeoutSeconds)
+        #expect(command.waitSeconds == 10)
     }
 
     @Test
     func `Daemon start accepts an immediate readiness deadline`() throws {
         let command = try DaemonCommand.Start.parse(["--wait", "0"])
         #expect(command.waitSeconds == 0)
+    }
+
+    @Test(arguments: ["manual", "auto"])
+    func `daemon run shares socket override and precedence with control commands`(mode: String) throws {
+        for (explicit, environmentValue, expected) in [
+            (nil, " /tmp/custom-daemon.sock ", "/tmp/custom-daemon.sock"),
+            ("/tmp/explicit.sock", "/tmp/custom-daemon.sock", "/tmp/explicit.sock"),
+            (nil, "  ", PeekabooBridgeConstants.daemonSocketPath),
+        ] as [(String?, String, String)] {
+            let environment = ["PEEKABOO_DAEMON_SOCKET": environmentValue]
+            let configuration = try DaemonCommand.Run.configuration(
+                mode: mode,
+                bridgeSocket: explicit,
+                pollInterval: 1,
+                idleTimeoutSeconds: nil,
+                environment: environment
+            )
+            #expect(configuration.bridgeSocketPath == expected)
+            #expect(configuration.bridgeSocketPath == (
+                DaemonLaunchPolicy.explicitDaemonSocketPath(bridgeSocket: explicit, environment: environment)
+                    ?? PeekabooBridgeConstants.daemonSocketPath
+            ))
+        }
+    }
+
+    @Test
+    func `daemon start retains an explicit readiness budget`() throws {
+        let command = try DaemonCommand.Start.parse(["--wait", "30s"])
+        #expect(command.waitSeconds == 30)
     }
 
     @Test
