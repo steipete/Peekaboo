@@ -18,8 +18,6 @@ public struct InteractionTargetSelector: Equatable, Sendable {
         case dialogOwnerRequired
         /// MCP Window compatibility grammar, where a title may be global and legacy selector precedence remains.
         case windowGlobalTitleAllowed
-        /// CLI Window compatibility grammar, including redundant `--app PID:n --pid n` support.
-        case windowCLI(allowMissingTarget: Bool = false)
         /// Strict syntax for mutation planners. Selection and dispatch are deliberately outside this value.
         case mutationSafe
     }
@@ -117,25 +115,8 @@ public struct InteractionTargetSelector: Equatable, Sendable {
                 throw ValidationError.invalidProcessIdentifier
             }
             return "PID:\(pid)"
-        case let (application?, processIdentifier?):
-            guard case .windowCLI = policy else {
-                throw ValidationError.applicationAndProcessIdentifier
-            }
-            guard let explicitPID = Int32(exactly: processIdentifier), explicitPID > 0 else {
-                throw ValidationError.invalidProcessIdentifier
-            }
-            guard let applicationPID = Self.pid(fromApplicationIdentifier: application) else {
-                if Self.looksLikePIDIdentifier(application) {
-                    throw ValidationError.invalidApplicationProcessIdentifier
-                }
-                throw ValidationError.applicationAndProcessIdentifier
-            }
-            guard applicationPID == explicitPID else {
-                throw ValidationError.conflictingProcessIdentifiers(
-                    application: applicationPID,
-                    explicit: explicitPID)
-            }
-            return self.normalizedApplicationIdentifier
+        case (_?, _?):
+            throw ValidationError.applicationAndProcessIdentifier
         }
     }
 
@@ -153,24 +134,6 @@ public struct InteractionTargetSelector: Equatable, Sendable {
             // Preserve the shipped MCP Window selector precedence in slice 1. Strict mutation syntax
             // is admitted only by `.mutationSafe` in the follow-up planning slice.
             break
-
-        case let .windowCLI(allowMissingTarget):
-            if !allowMissingTarget,
-               self.applicationIdentifier == nil,
-               self.rawProcessIdentifier == nil,
-               self.windowID == nil
-            {
-                throw ValidationError.missingTarget
-            }
-            if let windowID = self.windowID, windowID <= 0 {
-                throw ValidationError.invalidWindowID
-            }
-            if let windowIndex = self.windowIndex, windowIndex < 0 {
-                throw ValidationError.invalidWindowIndex
-            }
-            if self.applicationIdentifier != nil, self.rawProcessIdentifier != nil {
-                _ = try self.normalizedApplicationTargetForWindowCLI()
-            }
 
         case .mutationSafe:
             try self.validateInteractionGrammar(
@@ -236,50 +199,10 @@ public struct InteractionTargetSelector: Equatable, Sendable {
         }
     }
 
-    private func normalizedApplicationTargetForWindowCLI() throws -> String? {
-        switch (self.applicationIdentifier, self.rawProcessIdentifier) {
-        case (nil, nil):
-            return nil
-        case (let application?, nil):
-            return application
-        case (nil, let processIdentifier?):
-            if let pid = Int32(exactly: processIdentifier) {
-                return "PID:\(pid)"
-            } else {
-                throw ValidationError.invalidProcessIdentifier
-            }
-        case let (application?, processIdentifier?):
-            guard let explicitPID = Int32(exactly: processIdentifier) else {
-                throw ValidationError.invalidProcessIdentifier
-            }
-            guard let applicationPID = Self.pid(fromApplicationIdentifier: application) else {
-                if Self.looksLikePIDIdentifier(application) {
-                    throw ValidationError.invalidApplicationProcessIdentifier
-                }
-                throw ValidationError.applicationAndProcessIdentifier
-            }
-            guard applicationPID == explicitPID else {
-                throw ValidationError.conflictingProcessIdentifiers(
-                    application: applicationPID,
-                    explicit: explicitPID)
-            }
-            return application
-        }
-    }
-
     private static func normalized(_ value: String?) -> String? {
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
             return nil
         }
         return value
-    }
-
-    private static func looksLikePIDIdentifier(_ value: String) -> Bool {
-        self.normalized(value)?.uppercased().hasPrefix("PID:") == true
-    }
-
-    private static func pid(fromApplicationIdentifier value: String) -> Int32? {
-        guard let value = normalized(value), value.uppercased().hasPrefix("PID:") else { return nil }
-        return Int32(value.dropFirst("PID:".count))
     }
 }

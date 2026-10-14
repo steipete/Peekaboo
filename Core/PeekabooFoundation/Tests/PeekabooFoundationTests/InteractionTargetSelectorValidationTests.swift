@@ -99,28 +99,12 @@ struct InteractionTargetSelectorValidationTests {
     @Test
     func `window policies preserve their distinct shipped grammars`() throws {
         let globalTitle = InteractionTargetSelector(windowTitle: "Document")
-        #expect(throws: InteractionTargetSelector.ValidationError.windowSelectorRequiresApplication) {
-            try globalTitle.validate(policy: .interaction)
+        for policy in [InteractionTargetSelector.Policy.interaction, .mutationSafe] {
+            #expect(throws: InteractionTargetSelector.ValidationError.windowSelectorRequiresApplication) {
+                try globalTitle.validate(policy: policy)
+            }
         }
         #expect(try globalTitle.normalizedWindowSelector(policy: .windowGlobalTitleAllowed) == .title("Document"))
-
-        let redundantPID = InteractionTargetSelector(
-            applicationIdentifier: "PID:42",
-            processIdentifier: 42)
-        #expect(try redundantPID.normalizedApplicationTarget(policy: .windowCLI()) == "PID:42")
-        #expect(throws: InteractionTargetSelector.ValidationError.applicationAndProcessIdentifier) {
-            try redundantPID.validate(policy: .interaction)
-        }
-
-        let conflictingPID = InteractionTargetSelector(
-            applicationIdentifier: "PID:41",
-            processIdentifier: 42)
-        #expect(throws: InteractionTargetSelector.ValidationError.conflictingProcessIdentifiers(
-            application: 41,
-            explicit: 42))
-        {
-            try conflictingPID.validate(policy: .windowCLI())
-        }
     }
 
     @Test

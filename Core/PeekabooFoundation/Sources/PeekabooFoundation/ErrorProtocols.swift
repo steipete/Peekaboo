@@ -67,23 +67,6 @@ extension PeekabooErrorProtocol {
     }
 }
 
-// MARK: - Error Recovery Protocol
-
-/// Protocol for errors that support recovery attempts
-public protocol RecoverableError: PeekabooErrorProtocol {
-    /// Attempt to recover from this error
-    func attemptRecovery() async throws
-
-    /// Maximum number of recovery attempts
-    nonisolated var maxRecoveryAttempts: Int { get }
-}
-
-extension RecoverableError {
-    public nonisolated var maxRecoveryAttempts: Int {
-        3
-    }
-}
-
 // MARK: - Network Error Protocol
 
 /// Specialized protocol for network-related errors
@@ -163,86 +146,5 @@ public struct ErrorContextBuilder {
 
     public func build() -> [String: String] {
         self.context
-    }
-}
-
-// MARK: - Error Recovery Manager
-
-/// Manages error recovery attempts
-public actor ErrorRecoveryManager {
-    private var recoveryAttempts: [String: Int] = [:]
-
-    public init() {}
-
-    /// Attempt to recover from an error
-    public func attemptRecovery(for error: some RecoverableError) async throws {
-        let errorKey = "\(type(of: error))_\(error.errorCode)"
-        let attempts = self.recoveryAttempts[errorKey] ?? 0
-
-        guard attempts < error.maxRecoveryAttempts else {
-            throw ErrorRecoveryFailure(
-                originalError: error,
-                attempts: attempts,
-                reason: "Maximum recovery attempts exceeded")
-        }
-
-        self.recoveryAttempts[errorKey] = attempts + 1
-
-        do {
-            try await error.attemptRecovery()
-            // Reset attempts on success
-            self.recoveryAttempts[errorKey] = 0
-        } catch {
-            // Preserve attempt count for next try
-            throw error
-        }
-    }
-
-    /// Reset recovery attempts for a specific error
-    public func resetAttempts(for error: some PeekabooErrorProtocol) {
-        let errorKey = "\(type(of: error))_\(error.errorCode)"
-        self.recoveryAttempts.removeValue(forKey: errorKey)
-    }
-
-    /// Reset all recovery attempts
-    public func resetAllAttempts() {
-        self.recoveryAttempts.removeAll()
-    }
-}
-
-// MARK: - Error Recovery Failure
-
-/// Error thrown when recovery attempts fail
-public nonisolated struct ErrorRecoveryFailure: PeekabooErrorProtocol {
-    public let originalError: any RecoverableError
-    public let attempts: Int
-    public let reason: String
-
-    public var errorDescription: String? {
-        "Failed to recover from \(self.originalError.localizedDescription) after " +
-            "\(self.attempts) attempts: \(self.reason)"
-    }
-
-    public var category: ErrorCategory {
-        self.originalError.category
-    }
-
-    public var isRecoverable: Bool {
-        false
-    }
-
-    public var suggestedAction: String? {
-        self.originalError.suggestedAction
-    }
-
-    public var context: [String: String] {
-        var ctx = self.originalError.context
-        ctx["recovery_attempts"] = String(self.attempts)
-        ctx["recovery_failure_reason"] = self.reason
-        return ctx
-    }
-
-    public var errorCode: String {
-        "recovery_failed_\(self.originalError.errorCode)"
     }
 }

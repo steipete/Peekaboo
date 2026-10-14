@@ -62,7 +62,7 @@ extension ApplicationResolvable {
 
     /// Validates when both app and pid parameters are provided
     private func validateAndResolveBothParameters(app: String, pid: Int32) throws -> String {
-        // Match the normalization used by the shared window CLI selector grammar.
+        // Normalize PID aliases before comparing the application and PID channels.
         let normalizedApp = app.trimmingCharacters(in: .whitespacesAndNewlines)
         if normalizedApp.uppercased().hasPrefix("PID:") {
             let appPidString = String(normalizedApp.dropFirst("PID:".count))
