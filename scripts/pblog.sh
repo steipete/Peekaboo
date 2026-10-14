@@ -144,6 +144,10 @@ if [[ -n "$SEARCH" ]]; then
     PREDICATE="$PREDICATE AND eventMessage CONTAINS[c] \"$PREDICATE_LITERAL\""
 fi
 
+if [[ "$ERRORS_ONLY" == true ]]; then
+    PREDICATE="$PREDICATE AND logType == \"error\""
+fi
+
 # Keep arguments as data throughout command construction and execution.
 CMD=(log)
 if [[ "$PRIVATE" == true ]]; then
@@ -151,14 +155,15 @@ if [[ "$PRIVATE" == true ]]; then
 fi
 
 if [[ "$FOLLOW" == true ]]; then
-    CMD+=(stream --predicate "$PREDICATE" --level "$LEVEL")
+    STREAM_LEVEL="$LEVEL"
+    if [[ "$STREAM_LEVEL" == error ]]; then STREAM_LEVEL=info; fi
+    CMD+=(stream --predicate "$PREDICATE" --level "$STREAM_LEVEL")
 else
     case $LEVEL in
         debug)
             CMD+=(show --predicate "$PREDICATE" --debug --last "$TIME")
             ;;
         error)
-            PREDICATE="$PREDICATE AND logType == \"error\""
             CMD+=(show --predicate "$PREDICATE" --info --debug --last "$TIME")
             ;;
         *)
