@@ -475,24 +475,27 @@ function uniqueHeadingIDs(html) {
   });
 }
 
-function inline(text, currentRel) {
-  const stash = [];
-  let out = text.replace(/`([^`]+)`/g, (_, code) => {
-    stash.push(`<code>${escapeHtml(code)}</code>`);
+function inline(text, currentRel, inheritedStash = []) {
+  const stash = [...inheritedStash];
+  let out = text.replace(/`([^`]+)`/g, (raw, code) => {
+    stash.push({ html: `<code>${escapeHtml(code)}</code>`, raw });
+    return `\u0000${stash.length - 1}\u0000`;
+  });
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (raw, label, href) => {
+    const destination = href
+      .replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].raw)
+      .replace(/\\\|/g, "|");
+    stash.push({ html: `<a href="${escapeAttr(rewriteHref(destination, currentRel))}">${inline(label, currentRel, stash)}</a>`, raw });
     return `\u0000${stash.length - 1}\u0000`;
   });
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
     .replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, "$1<em>$2</em>")
-    .replace(
-      /\[([^\]]+)\]\(([^)]+)\)/g,
-      (_, label, href) => `<a href="${escapeAttr(rewriteHref(decodeRenderedEntities(href), currentRel))}">${label}</a>`,
-    )
     .replace(/&lt;(https?:\/\/[^\s<>]+)&gt;/g, '<a href="$1">$1</a>');
   out = out.replace(/\\\|/g, "|");
   out = out.replace(/&lt;br&gt;/g, "<br>");
-  return out.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)]);
+  return out.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].html);
 }
 
 function rewriteHref(href, currentRel) {
