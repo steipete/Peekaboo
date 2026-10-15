@@ -68,6 +68,12 @@ extension DaemonLaunchPolicy {
         case timedOut(timeout: TimeInterval, elapsed: TimeInterval, lastProbeError: String?, logURL: URL)
 
         var errorDescription: String? {
+            self.description()
+        }
+
+        func description(
+            currentProcessIsReleaseSigned: () -> Bool = PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned
+        ) -> String {
             switch self {
             case let .executableNotFound(argument):
                 let executable = argument.map { "'\($0)'" } ?? "the current executable"
@@ -83,8 +89,11 @@ extension DaemonLaunchPolicy {
                     ? String(Int(timeout))
                     : String(format: "%.1f", timeout)
                 let probe = lastProbeError ?? "no reusable daemon responded"
-                return "Peekaboo daemon did not become ready within \(seconds)s " +
+                let message = "Peekaboo daemon did not become ready within \(seconds)s " +
                     "(elapsed \(String(format: "%.2f", elapsed))s); last probe: \(probe); see \(logURL.path)"
+                return PeekabooBridgeSigningDiagnostics.appendingUnsignedBuildHint(
+                    to: message, currentProcessIsReleaseSigned: currentProcessIsReleaseSigned()
+                )
             }
         }
     }

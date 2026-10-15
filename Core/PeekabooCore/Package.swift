@@ -115,6 +115,7 @@ let package = Package(
             name: "PeekabooBridgeTests",
             dependencies: [
                 "PeekabooBridge",
+                "PeekabooBridgeTestSupport",
                 .product(name: "PeekabooAutomationKit", package: "PeekabooAutomationKit"),
                 .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
             ],
