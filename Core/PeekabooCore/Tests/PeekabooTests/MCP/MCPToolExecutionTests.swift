@@ -91,7 +91,7 @@ struct MCPToolExecutionTests {
         }
 
         #expect(output.contains("Screen Recording permission is required"))
-        #expect(output.contains("System Settings > Privacy & Security > Screen Recording"))
+        #expect(output.contains(PermissionSettingsGuidance.path(for: .screenRecording)))
     }
 
     @Test

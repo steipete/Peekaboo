@@ -2,6 +2,7 @@ import Commander
 import Foundation
 import PeekabooBridge
 import PeekabooCore
+import PeekabooFoundation
 
 /// Shared permission checking and formatting utilities
 enum PermissionHelpers {
@@ -92,25 +93,25 @@ enum PermissionHelpers {
         return PermissionSourcesResponse(selectedSource: selectedSource, sources: sources)
     }
 
-    private static func permissionList(from status: PermissionsStatus) -> [PermissionInfo] {
+    static func permissionList(from status: PermissionsStatus) -> [PermissionInfo] {
         [
             PermissionInfo(
                 name: "Screen Recording",
                 isRequired: true,
                 isGranted: status.screenRecording,
-                grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                grantInstructions: PermissionSettingsGuidance.path(for: .screenRecording)
             ),
             PermissionInfo(
                 name: "Accessibility",
                 isRequired: true,
                 isGranted: status.accessibility,
-                grantInstructions: "System Settings > Privacy & Security > Accessibility"
+                grantInstructions: PermissionSettingsGuidance.path(for: .accessibility)
             ),
             PermissionInfo(
                 name: "Event Synthesizing",
                 isRequired: false,
                 isGranted: status.postEvent,
-                grantInstructions: "System Settings > Privacy & Security > Accessibility"
+                grantInstructions: PermissionSettingsGuidance.path(for: .eventSynthesizing)
             )
         ]
     }

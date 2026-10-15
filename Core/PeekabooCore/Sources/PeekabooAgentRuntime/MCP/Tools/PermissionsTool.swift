@@ -2,6 +2,7 @@ import Foundation
 import MCP
 import PeekabooAutomation
 import PeekabooAutomationKit
+import PeekabooFoundation
 import TachikomaMCP
 
 /// MCP tool for checking macOS system permissions
@@ -71,14 +72,14 @@ public struct PermissionsTool: MCPTool {
             let warning = "\(AgentDisplayTokens.Status.warning) Screen Recording permission is REQUIRED " +
                 "for capturing screenshots."
             lines.append(warning)
-            lines.append("Grant via: System Settings > Privacy & Security > Screen Recording")
+            lines.append("Grant via: \(PermissionSettingsGuidance.path(for: .screenRecording))")
         }
 
         if !status.accessibility {
             lines.append("")
             lines.append("\(AgentDisplayTokens.Status.warning) Accessibility permission is REQUIRED " +
                 "for UI automation.")
-            lines.append("Grant via: System Settings > Privacy & Security > Accessibility")
+            lines.append("Grant via: \(PermissionSettingsGuidance.path(for: .accessibility))")
         }
 
         let eventSynthesizingLimits: [String] = status.postEvent

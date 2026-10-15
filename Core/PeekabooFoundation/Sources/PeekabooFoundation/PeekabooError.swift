@@ -360,11 +360,11 @@ public nonisolated enum PeekabooError: LocalizedError, StandardizedError, Peekab
     public var suggestedAction: String? {
         switch self {
         case .permissionDeniedScreenRecording:
-            "Grant Screen Recording permission in System Settings → Privacy & Security → Screen Recording"
+            "Grant Screen Recording permission in \(PermissionSettingsGuidance.path(for: .screenRecording))"
         case .permissionDeniedAccessibility:
-            "Grant Accessibility permission in System Settings → Privacy & Security → Accessibility"
+            "Grant Accessibility permission in \(PermissionSettingsGuidance.path(for: .accessibility))"
         case .permissionDeniedEventSynthesizing:
-            "Grant event-synthesizing access in System Settings → Privacy & Security → Accessibility"
+            "Grant event-synthesizing access in \(PermissionSettingsGuidance.path(for: .eventSynthesizing))"
         case let .ambiguousAppIdentifier(_, suggestions):
             "Try one of: \(suggestions.joined(separator: ", "))"
         case .snapshotNotAvailable:
