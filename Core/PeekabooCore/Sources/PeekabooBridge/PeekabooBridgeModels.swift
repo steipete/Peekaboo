@@ -650,7 +650,7 @@ public struct PeekabooBridgeErrorEnvelope: Codable, Sendable, LocalizedError {
     public internal(set) var isLocalHostAuthenticationFailure = false
     public static let standardizedErrorContextPrefix = "standard_error:"
     public let code: PeekabooBridgeErrorCode
-    public let message: String
+    public internal(set) var message: String
     public let details: String?
     public let permission: PeekabooBridgePermissionKind?
     public let kind: PeekabooBridgeErrorKind?

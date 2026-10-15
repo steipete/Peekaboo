@@ -11,15 +11,19 @@ struct PeekabooBridgeClientHostAuthentication: @unchecked Sendable {
 
     let liveIdentity: LiveIdentityProvider
     let signingIdentity: SigningIdentityProvider
+    let currentProcessIsReleaseSigned: @Sendable () -> Bool
 
     init(
         liveIdentity: @escaping LiveIdentityProvider = {
             try PeekabooBridgeSocketIO.livePeerIdentity(fd: $0)
         },
-        signingIdentity: @escaping SigningIdentityProvider)
+        signingIdentity: @escaping SigningIdentityProvider,
+        currentProcessIsReleaseSigned: @escaping @Sendable () -> Bool =
+            PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned)
     {
         self.liveIdentity = liveIdentity
         self.signingIdentity = signingIdentity
+        self.currentProcessIsReleaseSigned = currentProcessIsReleaseSigned
     }
 
     static let live = Self(
@@ -846,7 +850,10 @@ public actor PeekabooBridgeClient {
     private func validateTrustedConnectedHost(_ connectedHost: PeekabooBridgeConnectedHostIdentity?) throws {
         guard let trustedHostTeamIDs = self.trustedHostTeamIDs else { return }
         try PeekabooBridgeConnectedHostTrust.validate(
-            connectedHost, socketPath: self.socketPath, trustedTeamIDs: trustedHostTeamIDs)
+            connectedHost,
+            socketPath: self.socketPath,
+            trustedTeamIDs: trustedHostTeamIDs,
+            currentProcessIsReleaseSigned: self.hostAuthentication.currentProcessIsReleaseSigned)
     }
 
     private func handshakeCandidate(

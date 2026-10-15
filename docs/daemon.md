@@ -110,5 +110,8 @@ response loss after handshake fails the command with `success: false` and a nonz
 Explicit start/stop use the same strict probes before choosing a target. Shutdown retains its existing wait and PID
 checks, retries read-only observations, and reports an unresolved probe failure rather than claiming successful stop.
 
+Bridge and daemon features require a release-signed CLI; if using an unsigned source build (including Homebrew core's
+`peekaboo` formula), install the [notarized tap or npm CLI](install.md#homebrew-recommended).
+
 See [`peekaboo daemon`](commands/daemon.md) for command flags and [Bridge host](bridge-host.md) for transport and
 security details.

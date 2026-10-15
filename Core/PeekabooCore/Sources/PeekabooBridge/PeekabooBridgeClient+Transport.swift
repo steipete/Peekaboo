@@ -99,15 +99,22 @@ extension PeekabooBridgeClient {
                     expectsProjectedResponse: expectsProjectedResponse,
                     hasVerifiedOperationReceipt: bundle != nil,
                     plan: plan)
+                var response = unwrappedReply.response
+                if case var .error(envelope) = response, envelope.code == .unauthorizedClient {
+                    // Add local guidance only after validating the host response and any signed receipt.
+                    envelope.message = PeekabooBridgeSigningDiagnostics.appendingUnsignedBuildHint(
+                        to: envelope.message,
+                        currentProcessIsReleaseSigned: self.hostAuthentication.currentProcessIsReleaseSigned())
+                    response = .error(envelope)
+                }
                 let reply = PeekabooBridgeTransportReply(
-                    response: unwrappedReply.response,
+                    response: response,
                     outcome: unwrappedReply.outcome,
                     targetIdentity: verifiedTargetIdentity,
                     selectedLeafEvidence: bundle?.receipt.payload.selectedLeafEvidence,
                     connectedHost: connectedHost,
                     hasVerifiedOperationReceipt: bundle != nil,
                     operationReceiptBundle: bundle)
-                let response = reply.response
                 if case let .error(envelope) = response,
                    mayMutateDesktop,
                    throwsActionFailures

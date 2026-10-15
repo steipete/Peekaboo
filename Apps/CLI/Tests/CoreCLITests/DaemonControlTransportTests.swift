@@ -131,7 +131,11 @@ struct DaemonControlTransportTests {
         let envelope = try #require(JSONSerialization.jsonObject(with: Data(output.utf8)) as? [String: Any])
         #expect(envelope["success"] as? Bool == false)
         #expect(envelope["data"] is NSNull)
-        #expect((envelope["error"] as? [String: Any])?["message"] as? String == "Fixture probe failure")
+        let expectedMessage = code == .unauthorizedClient
+            ? PeekabooBridgeSigningDiagnostics.appendingUnsignedBuildHint(to: "Fixture probe failure")
+            : "Fixture probe failure"
+        #expect(failure.message == expectedMessage)
+        #expect((envelope["error"] as? [String: Any])?["message"] as? String == expectedMessage)
     }
 
     @Test(arguments: [false, true])
@@ -247,7 +251,7 @@ struct DaemonControlTransportTests {
     @Test(arguments: [false, true])
     func `accepted conditional stop requires confirmed process termination`(terminated: Bool) async throws {
         let peer = try ScriptedBridgePeer(responses: [.handshake(Self.handshake), .bool(true)])
-        let client = DaemonControlClient(socketPath: peer.socketPath, requestTimeoutSec: 0.1)
+        let client = DaemonControlClient(socketPath: peer.socketPath, requestTimeoutSec: 1)
         let operation = {
             try await client.stopAndWait(
                 waitSeconds: 1,
@@ -321,7 +325,9 @@ struct DaemonControlTransportTests {
         }
         await peer.stop()
         #expect(error?.code == .unauthorizedClient)
-        #expect(error?.message == "Fixture request failure")
+        #expect(error?.message == PeekabooBridgeSigningDiagnostics.appendingUnsignedBuildHint(
+            to: "Fixture request failure"
+        ))
     }
 
     @Test

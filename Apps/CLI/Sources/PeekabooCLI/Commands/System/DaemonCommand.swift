@@ -40,6 +40,10 @@ struct DaemonControlClient {
 
     func fetchStatus() async throws -> PeekabooDaemonStatus? {
         let client = PeekabooBridgeClient(socketPath: socketPath, requestTimeoutSec: self.requestTimeoutSec)
+        return try await self.fetchStatus(using: client)
+    }
+
+    func fetchStatus(using client: PeekabooBridgeClient) async throws -> PeekabooDaemonStatus? {
         let handshake: PeekabooBridgeHandshakeResponse
         do {
             handshake = try await self.handshake(client: client)

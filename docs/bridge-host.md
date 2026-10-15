@@ -564,6 +564,9 @@ Peekaboo BridgeHost validates callers before processing any request:
 - Rejects any process not signed by an allowlisted TeamID (default: `FWJYW4S8P8`, plus `Y5PE65HELJ` for transition-era CLI compatibility).
 - Peekaboo.app additionally admits only the exact signing identifiers of its CLI, GUI, and source-bound certification controller (`boo.peekaboo.peekaboo-certification-controller`). The controller retains its own matched-build checks; this admission does not grant CLI-only certification, browser-handoff, or Agent operations to other clients.
 
+Unsigned source builds, including Homebrew core's `peekaboo` formula, cannot use trusted Bridge or daemon hosts;
+see the [notarized tap or npm CLI installs](install.md#homebrew-recommended).
+
 Debug-only escape hatch:
 
 - Set `PEEKABOO_ALLOW_UNSIGNED_SOCKET_CLIENTS=1` to allow same-UID unsigned clients (local dev only).

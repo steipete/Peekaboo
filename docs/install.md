@@ -22,6 +22,10 @@ peekaboo --version
 
 Update with `brew upgrade openclaw/tap/peekaboo`.
 
+`brew install peekaboo` installs Homebrew core's source-built formula without release signing.
+Local in-process commands still work, but Peekaboo Bridge and daemon hosts require the notarized CLI:
+install it with `brew install openclaw/tap/peekaboo` or `npm i -g @steipete/peekaboo`.
+
 ## npm (for MCP clients)
 
 The npm package wraps the same CLI plus an MCP shim, so you can launch the server with `npx`:

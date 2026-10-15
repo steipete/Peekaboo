@@ -143,7 +143,10 @@ struct DaemonLaunchPolicyTests {
             }
             #expect(timeout == 0.05)
             #expect(elapsed >= timeout)
-            #expect(lastProbeError == nil)
+            // The shared budget can expire while a missing-socket probe waits for the executor.
+            if let lastProbeError {
+                #expect(lastProbeError == "Daemon readiness probe exceeded the remaining startup budget")
+            }
             #expect(error.localizedDescription.contains("last probe:"))
             #expect(error.localizedDescription.contains(logURL.path))
         } catch {
@@ -187,14 +190,18 @@ struct DaemonLaunchPolicyTests {
 
     @Test
     func `readiness timeout includes the last transient probe failure`() async throws {
+        var observedTransientFailure = false
         do {
             _ = try await DaemonLaunchPolicy.launchDaemon(
                 socketPath: "/tmp/peekaboo-readiness-\(UUID().uuidString).sock",
                 arguments: ["30"],
-                timeout: 0.05,
+                timeout: 2,
                 executableURL: URL(fileURLWithPath: "/bin/sleep"),
                 logHandle: .nullDevice,
-                probe: { _ in throw POSIXError(.ECONNRESET) }
+                probe: { _ in
+                    observedTransientFailure = true
+                    throw POSIXError(.ECONNRESET)
+                }
             )
             Issue.record("Expected a readiness timeout")
         } catch let error as DaemonLaunchPolicy.DaemonLaunchError {
@@ -203,7 +210,10 @@ struct DaemonLaunchPolicyTests {
                 return
             }
             #expect(elapsed >= timeout)
-            #expect(lastProbeError == POSIXError(.ECONNRESET).localizedDescription)
+            #expect(observedTransientFailure)
+            // A later shared-budget expiry is itself the last observed probe failure.
+            #expect(lastProbeError == POSIXError(.ECONNRESET).localizedDescription ||
+                lastProbeError == "Daemon readiness probe exceeded the remaining startup budget")
             #expect(error.localizedDescription.contains("elapsed"))
         }
     }
