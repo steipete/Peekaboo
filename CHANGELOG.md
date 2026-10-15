@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased
+## 4.9.4 - 2026-10-15
 
-- Update SwiftNIO to 2.104.0 and Service Lifecycle to 2.12.1, including its Unix signal dispatch-source leak fix, while preserving the Swift 6.2 and macOS baselines.
-- Reject `nan` and infinite coordinates and regions in `click`, `move`, `capture live`, `capture action`, `see --region` and the MCP `click` tool instead of dispatching a non-finite point or capture rect, and ignore non-finite agent verification target points. Thanks @rudycelekli! #1074, #1075, #1076.
-- Show macOS 27's renamed "Device Control and Data Access" Settings row for Accessibility and Event Synthesizing, and consistently name "Screen & System Audio Recording", in `peekaboo permissions`, MCP permission tools, and permission errors. Thanks @fry69! #1071.
+**Highlights:** Keep Peekaboo.app's granted bridge host selected after a command auto-starts an ungranted on-demand daemon, name macOS 27's renamed "Device Control and Data Access" Settings row in permission guidance, explain unsigned source builds such as Homebrew core's `peekaboo` formula in Bridge and daemon trust failures, and reject non-finite coordinates and regions.
+
 - Keep a granted Peekaboo.app bridge host selected when an on-demand daemon started from an ungranted terminal reports missing Accessibility, Event Synthesizing or Screen Recording, instead of downgrading every caller's permissions until the daemon idles out. Thanks @joshua-koehler! #1073.
+- Show macOS 27's renamed "Device Control and Data Access" Settings row for Accessibility and Event Synthesizing, and consistently name "Screen & System Audio Recording", in `peekaboo permissions`, MCP permission tools, and permission errors. Thanks @fry69! #1071.
 - Explain in Bridge and daemon trust failures when the running `peekaboo` is an unsigned source build (such as Homebrew core's `peekaboo` formula) and point to the notarized `openclaw/tap` or npm install. Thanks @fry69! #1064.
+- Reject `nan` and infinite coordinates and regions in `click`, `move`, `capture live`, `capture action`, `see --region` and the MCP `click` tool instead of dispatching a non-finite point or capture rect, and ignore non-finite agent verification target points. Thanks @rudycelekli! #1074, #1075, #1076.
+- Update SwiftNIO to 2.104.0 and Service Lifecycle to 2.12.1, including its Unix signal dispatch-source leak fix, while preserving the Swift 6.2 and macOS baselines.
 
 ## 4.9.3 - 2026-10-14
 

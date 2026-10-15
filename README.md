@@ -51,9 +51,9 @@ peekaboo see --app Finder --json
 
 That is the core loop: observe the current screen, choose an element from the result, and act on it.
 
-## What's new in 4.9.3
+## What's new in 4.9.4
 
-Peekaboo 4.9.3 is a fix release. Manual `peekaboo daemon start` now waits as long as automatic startup and reports the real authentication or probe failure instead of a generic "did not become ready" timeout, agent tool results stay readable when they contain backslashes or newlines, and the `peekaboo-mcp` wrapper exits with an error after fatal failures instead of looking healthy. 4.9.2 shipped Peekaboo.app as a universal app for Intel Macs; see the changelog for both releases.
+Peekaboo 4.9.4 is a fix release. While a granted Peekaboo.app is running, commands no longer drop to the permissions of an on-demand daemon started from an ungranted terminal, permission guidance names macOS 27's renamed "Device Control and Data Access" Settings row, and an unsigned source build such as Homebrew core's `peekaboo` formula now explains why Bridge and daemon hosts reject it and points to the notarized install. See the changelog for details.
 
 ## Automate an app
 
