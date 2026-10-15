@@ -122,7 +122,7 @@ extension PeekabooAgentService {
 
         // Build action descriptor
         let targetElement = arguments["element"]?.stringValue ?? arguments["target"]?.stringValue
-        let targetPoint = self.extractTargetPoint(from: arguments)
+        let targetPoint = Self.extractTargetPoint(from: arguments)
 
         let action = ActionDescriptor(
             toolName: tool.name,
@@ -219,10 +219,12 @@ extension PeekabooAgentService {
 
     // MARK: - Private Helpers
 
-    private func extractTargetPoint(from arguments: AgentToolArguments) -> CGPoint? {
+    static func extractTargetPoint(from arguments: AgentToolArguments) -> CGPoint? {
         // Try common argument patterns for position
         if let x = arguments["x"]?.doubleValue,
-           let y = arguments["y"]?.doubleValue
+           let y = arguments["y"]?.doubleValue,
+           x.isFinite,
+           y.isFinite
         {
             return CGPoint(x: x, y: y)
         }
@@ -244,7 +246,9 @@ extension PeekabooAgentService {
         let parts = value.split(separator: ",")
         guard parts.count == 2,
               let x = Double(parts[0].trimmingCharacters(in: .whitespaces)),
-              let y = Double(parts[1].trimmingCharacters(in: .whitespaces))
+              let y = Double(parts[1].trimmingCharacters(in: .whitespaces)),
+              x.isFinite,
+              y.isFinite
         else {
             return nil
         }
