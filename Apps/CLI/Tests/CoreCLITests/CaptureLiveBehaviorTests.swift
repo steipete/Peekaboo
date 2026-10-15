@@ -79,6 +79,23 @@ struct CaptureLiveBehaviorTests {
     }
 
     @Test
+    func `parseRegion rejects non-finite values`() {
+        for region in ["nan,2,3,4", "1,inf,3,4", "1,2,inf,4", "1,2,3,-inf"] {
+            var live = CaptureLiveCommand()
+            live.region = region
+            #expect(throws: PeekabooError.self, "live \(region)") {
+                _ = try live.parseRegion()
+            }
+
+            var action = CaptureActionCommand()
+            action.region = region
+            #expect(throws: PeekabooError.self, "action \(region)") {
+                _ = try action.parseRegion()
+            }
+        }
+    }
+
+    @Test
     @MainActor
     func `capture live and action reject simultaneous title and index selectors`() throws {
         for surface in SelectorSurface.allCases {
