@@ -123,7 +123,9 @@ extension ClickCommand: PreRuntimeValidatingCommand {
         let parts = coords.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let x = Double(parts[0]),
-              let y = Double(parts[1]) else {
+              let y = Double(parts[1]),
+              x.isFinite,
+              y.isFinite else {
             return nil
         }
         return CGPoint(x: x, y: y)
