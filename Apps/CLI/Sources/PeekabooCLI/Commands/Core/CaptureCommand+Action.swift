@@ -1306,7 +1306,8 @@ extension CaptureActionCommand {
               let x = Double(parts[0]),
               let y = Double(parts[1]),
               let width = Double(parts[2]),
-              let height = Double(parts[3])
+              let height = Double(parts[3]),
+              [x, y, width, height].allSatisfy(\.isFinite)
         else {
             throw PeekabooError.invalidInput("Region must be x,y,width,height")
         }
