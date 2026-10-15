@@ -160,6 +160,10 @@ macOS runtime baseline. Release runtime verification rejects that strong import 
 reused binaries and extracted archives. Weak imports remain distinct; this does not weak-link the Swift runtime or
 replace system libraries. Successful execution on the build host alone does not prove older-macOS compatibility.
 
+Keep Swift Async Algorithms at 1.1.5 while this constraint remains: 1.1.7 requires Swift Collections 1.7.0.
+The shared consumer locks use SwiftNIO 2.104.0 and Service Lifecycle 2.12.1, including the latter's Unix signal
+dispatch-source leak fix, without raising the Swift 6.2 baseline.
+
 Runtime verification also audits every strong `libswift*` import per architecture by parsing the
 installed SDK's Swift `.tbd` files at verification time, following re-exports transitively. Weak imports
 and bundled `libswiftCompatibility*` libraries are excluded; undefined symbols without a two-level
