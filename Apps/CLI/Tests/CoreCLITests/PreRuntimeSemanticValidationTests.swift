@@ -43,6 +43,14 @@ struct PreRuntimeSemanticValidationTests {
             expectedMessage: "Invalid coordinates format. Use: x,y"
         ),
         Case(
+            arguments: ["peekaboo", "move", "--at", "nan,200", "--foreground", "--no-remote", "--json"],
+            expectedMessage: "Invalid coordinates format. Use: x,y"
+        ),
+        Case(
+            arguments: ["peekaboo", "move", "--at", "100,inf", "--foreground", "--no-remote", "--json"],
+            expectedMessage: "Invalid coordinates format. Use: x,y"
+        ),
+        Case(
             arguments: ["peekaboo", "type", "--profile", "human", "--no-remote", "--json"],
             expectedMessage: "No input specified. Provide text or use --clear."
         ),
