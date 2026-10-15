@@ -828,31 +828,49 @@ extension RuntimeHostResolver {
         },
         handshake: ScreenCaptureKitHandshake? = nil,
         handshakeCache: RemoteHandshakeCache? = nil,
+        guiPermissionCandidate: ImplicitRemoteCandidate? = nil,
         recordRejection: (RemoteCandidateEvaluation) -> Void = { _ in }
     )
         async throws -> Resolution? {
-        for candidate in candidates {
+        let cache = handshakeCache ?? RemoteHandshakeCache(identity: identity, handshakeProvider: handshake)
+        var pendingCandidates = candidates
+        var deferredPaths = Set<String>()
+        var candidateIndex = 0
+        while candidateIndex < pendingCandidates.count {
+            let candidate = pendingCandidates[candidateIndex]
+            candidateIndex += 1
             try Task.checkCancellation()
             let socketPath = candidate.socketPath
             do {
                 let client: PeekabooBridgeClient
                 let handshakeResponse: PeekabooBridgeHandshakeResponse
-                if let handshake {
-                    client = PeekabooBridgeClient(socketPath: socketPath)
-                    handshakeResponse = try await handshake(candidate, identity)
-                } else if let handshakeCache {
-                    let cached = try await handshakeCache.handshake(candidate, identity: identity)
-                    client = cached.client
-                    handshakeResponse = cached.response
-                } else {
-                    client = PeekabooBridgeClient(socketPath: socketPath)
-                    handshakeResponse = try await client.handshake(client: identity, requestedHost: nil)
-                }
+                let cached = try await cache.handshake(candidate, identity: identity)
+                client = cached.client
+                handshakeResponse = cached.response
                 try Task.checkCancellation()
                 if let requiredOwner,
                    !self.screenCaptureKitHostMatchesOwner(handshake: handshakeResponse, owner: requiredOwner) {
                     continue
                 }
+                if let guiPermissionCandidate,
+                   !deferredPaths.contains(socketPath),
+                   !candidates.contains(guiPermissionCandidate) ||
+                   pendingCandidates[candidateIndex...].contains(guiPermissionCandidate),
+                   handshakeResponse.hostKind == .onDemand,
+                   let permissions = handshakeResponse.permissions,
+                   !permissions.screenRecording || !permissions.accessibility ||
+                   (permissions.reportsPostEvent && !permissions.postEvent),
+                   let gui = try? await cache.handshake(guiPermissionCandidate, identity: identity),
+                   self.daemonIsProvablyWeaker(handshakeResponse, than: gui.response) {
+                    // The exact-build-only pass defers to the full candidate pass. In that
+                    // pass keep weaker daemons as fallbacks after the GUI, never discard them.
+                    if candidates.contains(guiPermissionCandidate) {
+                        deferredPaths.insert(socketPath)
+                        pendingCandidates.append(candidate)
+                    }
+                    continue
+                }
+                try Task.checkCancellation()
                 if options.requiresScreenCaptureKitOwnerCapability,
                    !options.usesPerToolSnapshotInvalidation,
                    ObservationCommandSupport.captureEnginePreference(

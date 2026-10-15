@@ -23,6 +23,11 @@ and host capabilities on the same executable generation. An explicit Bridge sock
 Operations that permit process-local fallback can use it when no compatible host is available. Application inventory
 and launch prefer the GUI host, while relaunch and quit require a reusable daemon that survives the caller.
 
+During implicit routing, an on-demand daemon that reports missing Screen Recording, Accessibility, or Event
+Synthesizing grants held by the running Peekaboo.app host ranks after that app, unless the daemon also holds a grant
+the app reports missing; unreported permissions keep the existing order. Snapshot-owned actions and lifecycle
+commands requiring a surviving daemon retain their existing routing.
+
 Commands carrying a concrete snapshot reference do not use this preference order. They resolve the unique producer as
 described in [Snapshot authority](#snapshot-authority) before selecting an execution host.
 
