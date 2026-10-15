@@ -55,6 +55,26 @@ struct BridgeDiagnostics {
             runtimeCandidateSocketPaths: runtimeCandidates.map(\.socketPath),
             hasExplicitSocket: candidatePlan.explicitSocket != nil
         )
+        let probedCandidates = try await Self.probeCandidates(
+            socketPaths: candidates,
+            identity: identity
+        )
+        return try await self.report(
+            runtimeOptions: effectiveOptions,
+            candidatePlan: candidatePlan,
+            probedCandidates: probedCandidates,
+            identity: identity
+        )
+    }
+
+    @MainActor
+    func report(
+        runtimeOptions effectiveOptions: CommandRuntimeOptions,
+        candidatePlan: RuntimeHostResolver.RemoteCandidatePlan,
+        probedCandidates: [BridgeDiagnosticProbeResult],
+        identity: PeekabooBridgeClientIdentity
+    ) async throws -> BridgeStatusReport {
+        let runtimeCandidates = candidatePlan.candidates
         var runtimeCandidateByPath: [String: RuntimeHostResolver.ImplicitRemoteCandidate] = [:]
         for candidate in runtimeCandidates {
             let path = NSString(string: candidate.socketPath).standardizingPath
@@ -63,9 +83,9 @@ struct BridgeDiagnostics {
             }
         }
 
-        let probeResults = try await Self.probeCandidates(
-            socketPaths: candidates,
-            identity: identity
+        let probeResults = Self.permissionRankedProbeResults(
+            probedCandidates,
+            runtimeCandidates: runtimeCandidates
         )
 
         var results: [BridgeCandidateReport] = []
@@ -145,6 +165,32 @@ struct BridgeDiagnostics {
             candidates: results,
             client: .init(identity: identity)
         )
+    }
+
+    static func permissionRankedProbeResults(
+        _ results: [BridgeDiagnosticProbeResult],
+        runtimeCandidates: [RuntimeHostResolver.ImplicitRemoteCandidate]
+    ) -> [BridgeDiagnosticProbeResult] {
+        guard let guiCandidate = runtimeCandidates.first(where: { $0.requiredHostKind == .gui }),
+              let guiResult = results.first(where: { $0.socketPath == guiCandidate.socketPath }),
+              case let .success(guiHandshake) = guiResult.outcome
+        else { return results }
+        var retained: [BridgeDiagnosticProbeResult] = []
+        var deferred: [BridgeDiagnosticProbeResult] = []
+        for result in results {
+            if runtimeCandidates.contains(where: { $0.socketPath == result.socketPath }),
+               case let .success(handshake) = result.outcome,
+               RuntimeHostResolver.daemonIsProvablyWeaker(handshake, than: guiHandshake) {
+                deferred.append(result)
+            } else {
+                retained.append(result)
+            }
+        }
+        // Keep diagnostic-only sockets after all eligible hosts, as before.
+        if let guiIndex = retained.firstIndex(where: { $0.socketPath == guiCandidate.socketPath }) {
+            retained.insert(contentsOf: deferred, at: guiIndex + 1)
+        }
+        return retained
     }
 
     nonisolated static func probeCandidates(

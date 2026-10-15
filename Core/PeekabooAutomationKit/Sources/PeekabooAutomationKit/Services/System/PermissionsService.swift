@@ -326,6 +326,8 @@ public struct PermissionsStatus: Sendable, Codable {
     /// Retained for decoding older Bridge hosts. Current hosts always report false and never probe Apple Events.
     public let appleScript: Bool
     public let postEvent: Bool
+    /// Older payloads omit Event Synthesizing status; the legacy false default is not an explicit denial.
+    public let reportsPostEvent: Bool
 
     public init(
         screenRecording: Bool,
@@ -337,6 +339,7 @@ public struct PermissionsStatus: Sendable, Codable {
         self.accessibility = accessibility
         self.appleScript = appleScript
         self.postEvent = postEvent
+        self.reportsPostEvent = true
     }
 
     public func withPostEvent(_ postEvent: Bool) -> PermissionsStatus {
@@ -382,6 +385,8 @@ public struct PermissionsStatus: Sendable, Codable {
         self.screenRecording = try container.decode(Bool.self, forKey: .screenRecording)
         self.accessibility = try container.decode(Bool.self, forKey: .accessibility)
         self.appleScript = try container.decodeIfPresent(Bool.self, forKey: .appleScript) ?? false
-        self.postEvent = try container.decodeIfPresent(Bool.self, forKey: .postEvent) ?? false
+        let postEvent = try container.decodeIfPresent(Bool.self, forKey: .postEvent)
+        self.postEvent = postEvent ?? false
+        self.reportsPostEvent = postEvent != nil
     }
 }

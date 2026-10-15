@@ -202,6 +202,9 @@ extension RuntimeHostResolver {
                 permissionRejections: &permissionRejections,
                 makeRemoteServices: self.makeRemoteServices,
                 handshakeCache: self.handshakeCache,
+                guiPermissionCandidate: self.candidatePlan.explicitSocket == nil &&
+                    self.options.explicitSnapshotID == nil && requiredOwner == nil
+                    ? self.candidatePlan.candidates.first { $0.requiredHostKind == .gui } : nil,
                 recordRejection: recordRejection
             )
         }

@@ -41,6 +41,11 @@ daemon before considering an otherwise healthy Peekaboo.app host, because protoc
 build-sensitive in-memory state interchangeable. This preference does not apply to explicit Bridge paths, custom
 daemon paths, application inventory or launch, or local-only execution.
 
+An on-demand daemon reporting missing Screen Recording, Accessibility, or Event Synthesizing grants held by the
+running Peekaboo.app host ranks after that app during implicit routing, unless the daemon also holds a grant the app
+reports missing; unreported permissions keep the existing order. Snapshot-owned actions and lifecycle commands
+requiring a surviving daemon are unaffected, and daemon auto-start and idle exit remain unchanged.
+
 The same build-scoped socket is the compatibility fallback when another build owns `daemon.sock` but lacks a required
 capability. Native and Rosetta invocations of the same universal binary share it. Daemon status prefers the compatible
 host and warns when another daemon also exists; explicit daemon start safely promotes a compatible auto fallback to
