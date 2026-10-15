@@ -99,6 +99,8 @@ extension RuntimeHostResolver {
         PeekabooBridgeClientIdentity
     ) async throws -> PeekabooBridgeHandshakeResponse
     typealias RemoteHandshakeCacheFactory = @MainActor () -> RemoteHandshakeCache
+    typealias CallerPermissionPreflight = @MainActor () -> PermissionsStatus?
+    typealias OnDemandDaemonStarter = @MainActor (String, [String: String]) async throws -> String?
 
     struct Dependencies {
         let makeLocalServices: LocalServiceFactory
@@ -110,6 +112,8 @@ extension RuntimeHostResolver {
         let snapshotAffinityProbe: SnapshotAffinityProbe
         let makeRemoteHandshakeCache: RemoteHandshakeCacheFactory
         let makeRemoteServices: RemoteServiceFactory
+        let callerPermissionPreflight: CallerPermissionPreflight
+        let startOnDemandDaemon: OnDemandDaemonStarter
 
         init(
             makeLocalServices: @escaping LocalServiceFactory,
@@ -122,6 +126,12 @@ extension RuntimeHostResolver {
             makeRemoteHandshakeCache: @escaping RemoteHandshakeCacheFactory = { RemoteHandshakeCache() },
             makeRemoteServices: @escaping RemoteServiceFactory = {
                 RuntimeHostResolver.remoteServices(client: $0, handshake: $1, options: $2)
+            },
+            callerPermissionPreflight: @escaping CallerPermissionPreflight = {
+                PermissionsService().checkAllPermissions()
+            },
+            startOnDemandDaemon: @escaping OnDemandDaemonStarter = {
+                try await DaemonLaunchPolicy.startOnDemandDaemon(socketPath: $0, environment: $1)
             }
         ) {
             self.makeLocalServices = makeLocalServices
@@ -133,6 +143,8 @@ extension RuntimeHostResolver {
             self.snapshotAffinityProbe = snapshotAffinityProbe
             self.makeRemoteHandshakeCache = makeRemoteHandshakeCache
             self.makeRemoteServices = makeRemoteServices
+            self.callerPermissionPreflight = callerPermissionPreflight
+            self.startOnDemandDaemon = startOnDemandDaemon
         }
 
         static let live = Dependencies(
@@ -183,6 +195,11 @@ extension RuntimeHostResolver {
         let recordScreenCaptureKitSafetyBlocker: ScreenCaptureKitSafetyRecorder
         var makeRemoteServices: RemoteServiceFactory = {
             RuntimeHostResolver.remoteServices(client: $0, handshake: $1, options: $2)
+        }
+
+        var callerPermissionPreflight: CallerPermissionPreflight = { PermissionsService().checkAllPermissions() }
+        var startOnDemandDaemon: OnDemandDaemonStarter = {
+            try await DaemonLaunchPolicy.startOnDemandDaemon(socketPath: $0, environment: $1)
         }
 
         func resolveRemoteServices(

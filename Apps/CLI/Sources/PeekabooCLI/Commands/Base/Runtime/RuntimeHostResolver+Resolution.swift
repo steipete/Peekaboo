@@ -20,6 +20,7 @@ extension RuntimeHostResolver {
         let clientFactory: (@MainActor (String) -> PeekabooBridgeClient)?
         let handshakeProvider: ScreenCaptureKitHandshake?
         private var entriesBySocketPath: [String: Entry] = [:]
+        private var failuresBySocketPath: [String: any Error] = [:]
 
         convenience init() {
             self.init(identity: PeekabooBridgeClientIdentity(
@@ -53,15 +54,28 @@ extension RuntimeHostResolver {
             if let entry = self.entriesBySocketPath[socketPath] {
                 return entry
             }
+            if let failure = self.failuresBySocketPath[socketPath] {
+                throw failure
+            }
 
             let client = self.clientFactory?(candidate.socketPath) ?? PeekabooBridgeClient(
                 socketPath: candidate.socketPath,
                 trustedHostTeamIDs: self.trustedHostTeamIDs
             )
-            let response = if let handshakeProvider {
-                try await handshakeProvider(candidate, self.identity)
-            } else {
-                try await client.handshake(client: self.identity, requestedHost: nil)
+            let response: PeekabooBridgeHandshakeResponse
+            do {
+                response = if let handshakeProvider {
+                    try await handshakeProvider(candidate, self.identity)
+                } else {
+                    try await client.handshake(client: self.identity, requestedHost: nil)
+                }
+            } catch {
+                try Task.checkCancellation()
+                // A missing daemon can appear after auto-start; only cache GUI failures.
+                if candidate.requiredHostKind == .gui {
+                    self.failuresBySocketPath[socketPath] = error
+                }
+                throw error
             }
             let entry = Entry(client: client, response: response)
             self.entriesBySocketPath[socketPath] = entry
@@ -158,13 +172,53 @@ extension RuntimeHostResolver {
 }
 
 extension RuntimeHostResolver {
+    static func shouldSkipOnDemandDaemon(context: RemoteResolutionContext) async throws -> Bool {
+        guard context.candidatePlan.explicitSocket == nil,
+              context.options.explicitSnapshotID == nil,
+              context.preferredScreenCaptureKitOwner == nil,
+              !context.options.requiresSurvivingApplicationHost,
+              !context.options.requiresApplicationRelaunch,
+              let gui = context.candidatePlan.candidates.first(where: { $0.requiredHostKind == .gui }),
+              let callerPermissions = context.callerPermissionPreflight()
+        else { return false }
+        guard !callerPermissions.screenRecording || !callerPermissions.accessibility ||
+            (callerPermissions.reportsPostEvent && !callerPermissions.postEvent)
+        else { return false }
+
+        do {
+            let handshake = try await context.handshakeCache.handshake(gui, identity: context.identity).response
+            // A child daemon inherits this caller's responsible-app TCC grants. Only skip
+            // startup if the existing GUI both dominates those grants and can serve this command.
+            guard handshake.hostKind == .gui,
+                  self.permissionsAreProvablyWeaker(callerPermissions, than: handshake.permissions)
+            else { return false }
+            var permissionRejections: [String] = []
+            return try await context.resolveRemoteServices(
+                candidates: [gui],
+                permissionRejections: &permissionRejections
+            ) != nil
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return false
+        }
+    }
+
     /// Unknown grants and opposing grants preserve daemon-first ordering.
     static func daemonIsProvablyWeaker(
         _ daemon: PeekabooBridgeHandshakeResponse,
         than gui: PeekabooBridgeHandshakeResponse
     ) -> Bool {
-        guard daemon.hostKind == .onDemand, gui.hostKind == .gui,
-              let daemonPermissions = daemon.permissions, let guiPermissions = gui.permissions
+        guard daemon.hostKind == .onDemand, gui.hostKind == .gui else { return false }
+        return self.permissionsAreProvablyWeaker(daemon.permissions, than: gui.permissions)
+    }
+
+    static func permissionsAreProvablyWeaker(
+        _ permissions: PermissionsStatus?,
+        than other: PermissionsStatus?
+    ) -> Bool {
+        guard let daemonPermissions = permissions, let guiPermissions = other
         else { return false }
         var grants = [
             (daemonPermissions.screenRecording, guiPermissions.screenRecording),

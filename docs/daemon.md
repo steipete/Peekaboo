@@ -44,7 +44,11 @@ daemon paths, application inventory or launch, or local-only execution.
 An on-demand daemon reporting missing Screen Recording, Accessibility, or Event Synthesizing grants held by the
 running Peekaboo.app host ranks after that app during implicit routing, unless the daemon also holds a grant the app
 reports missing; unreported permissions keep the existing order. Snapshot-owned actions and lifecycle commands
-requiring a surviving daemon are unaffected, and daemon auto-start and idle exit remain unchanged.
+requiring a surviving daemon are unaffected. Before auto-start, the same comparison uses the caller's non-interactive permission preflights to skip launching a weaker daemon when a capable Peekaboo.app host would win; unknown permissions retain the existing launch policy.
+
+Exact-build preference keeps snapshot producers and invalidators on the same binary generation when possible, but is
+not an affinity requirement: when the GUI is selected, its snapshot watermark is caught up before execution and the
+normal mutation barrier invalidates the selected host and known sibling hosts, just as with daemon auto-start disabled.
 
 The same build-scoped socket is the compatibility fallback when another build owns `daemon.sock` but lacks a required
 capability. Native and Rosetta invocations of the same universal binary share it. Daemon status prefers the compatible
