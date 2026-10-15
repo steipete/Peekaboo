@@ -584,7 +584,9 @@ public struct ClickTool: MCPTool {
         let parts = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         guard parts.count == 2,
               let x = Double(parts[0]),
-              let y = Double(parts[1])
+              let y = Double(parts[1]),
+              x.isFinite,
+              y.isFinite
         else {
             throw ClickToolError("Invalid coordinates format. Use 'x,y' (e.g., '100,200').")
         }
