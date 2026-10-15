@@ -341,7 +341,8 @@ extension SeeCommand {
               let x = Double(values[0]),
               let y = Double(values[1]),
               let width = Double(values[2]),
-              let height = Double(values[3])
+              let height = Double(values[3]),
+              [x, y, width, height].allSatisfy(\.isFinite)
         else {
             throw ValidationError("Region must be x,y,width,height")
         }

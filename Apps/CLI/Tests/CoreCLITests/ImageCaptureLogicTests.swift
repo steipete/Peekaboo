@@ -249,6 +249,14 @@ struct ImageCaptureLogicTests {
         #expect(throws: ValidationError.self) {
             _ = try empty.areaCaptureRect()
         }
+
+        // Double() accepts nan/inf spellings; `inf` would otherwise pass the positive-size check.
+        for region in ["nan,2,3,4", "1,inf,3,4", "1,2,inf,4", "1,2,3,-inf"] {
+            let nonFinite = try SeeCommand.parse(["--mode", "area", "--region", region])
+            #expect(throws: ValidationError.self, "\(region) should be rejected") {
+                _ = try nonFinite.areaCaptureRect()
+            }
+        }
     }
 
     @Test(
