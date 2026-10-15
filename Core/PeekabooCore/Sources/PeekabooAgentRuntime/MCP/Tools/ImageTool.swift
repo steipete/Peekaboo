@@ -133,7 +133,7 @@ public struct ImageTool: MCPTool {
 
     private func screenRecordingPermissionError() -> ToolResponse {
         let responseText = "Screen Recording permission is required. " +
-            "Grant via: System Settings > Privacy & Security > Screen Recording"
+            "Grant via: \(PermissionSettingsGuidance.path(for: .screenRecording))"
         let summary = ToolEventSummary(actionDescription: "Image Capture", notes: "Screen Recording missing")
         return ToolResponse.error(responseText, meta: ToolEventSummary.merge(summary: summary, into: nil))
     }

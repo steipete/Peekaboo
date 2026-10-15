@@ -1,6 +1,7 @@
 import Commander
 import Foundation
 import PeekabooCore
+import PeekabooFoundation
 
 /// Check Peekaboo permissions.
 @MainActor
@@ -157,8 +158,7 @@ extension PermissionsCommand {
             } else {
                 print("Screen Recording permission was not granted.")
                 print(
-                    "If no prompt appeared, open System Settings > Privacy & Security > " +
-                        "Screen & System Audio Recording."
+                    "If no prompt appeared, open \(PermissionSettingsGuidance.path(for: .screenRecording))."
                 )
                 print("Add or enable the current Peekaboo binary, then restart Peekaboo.")
             }
@@ -223,7 +223,7 @@ extension PermissionsCommand {
                 print("Accessibility permission granted.")
             } else {
                 print("Accessibility permission was not granted.")
-                print("Grant it manually in System Settings > Privacy & Security > Accessibility.")
+                print("Grant it manually in \(PermissionSettingsGuidance.path(for: .accessibility)).")
             }
         }
     }
@@ -262,7 +262,7 @@ extension PermissionsCommand {
                 print("Event Synthesizing permission granted.")
             } else {
                 print("Event Synthesizing permission was not granted.")
-                print("Grant it manually in System Settings > Privacy & Security > Accessibility.")
+                print("Grant it manually in \(PermissionSettingsGuidance.path(for: .eventSynthesizing)).")
             }
         }
     }

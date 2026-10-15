@@ -1,9 +1,28 @@
 import PeekabooBridge
 import PeekabooCore
+import PeekabooFoundation
 import Testing
 @testable import PeekabooCLI
 
 struct PermissionHelpersTests {
+    @Test
+    func `permission list keeps separate statuses with current Settings guidance`() {
+        let permissions = PermissionHelpers.permissionList(from: .init(
+            screenRecording: false,
+            accessibility: true,
+            postEvent: false
+        ))
+
+        #expect(permissions.map(\.name) == ["Screen Recording", "Accessibility", "Event Synthesizing"])
+        #expect(permissions.map(\.isGranted) == [false, true, false])
+        #expect(permissions.map(\.isRequired) == [true, true, false])
+        #expect(permissions.map(\.grantInstructions) == [
+            PermissionSettingsGuidance.path(for: .screenRecording),
+            PermissionSettingsGuidance.path(for: .accessibility),
+            PermissionSettingsGuidance.path(for: .eventSynthesizing),
+        ])
+    }
+
     @Test
     @MainActor
     func `interactive permission request marks mutation before execution and invalidates latest`() async throws {
@@ -48,13 +67,13 @@ struct PermissionHelpersTests {
                     name: "Screen Recording",
                     isRequired: true,
                     isGranted: false,
-                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .screenRecording)
                 ),
                 PermissionHelpers.PermissionInfo(
                     name: "Accessibility",
                     isRequired: true,
                     isGranted: true,
-                    grantInstructions: "System Settings > Privacy & Security > Accessibility"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .accessibility)
                 ),
             ]
         )
@@ -74,13 +93,13 @@ struct PermissionHelpersTests {
                     name: "Screen Recording",
                     isRequired: true,
                     isGranted: true,
-                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .screenRecording)
                 ),
                 PermissionHelpers.PermissionInfo(
                     name: "Event Synthesizing",
                     isRequired: false,
                     isGranted: false,
-                    grantInstructions: "System Settings > Privacy & Security > Accessibility"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .eventSynthesizing)
                 ),
             ]
         )
@@ -105,7 +124,7 @@ struct PermissionHelpersTests {
                     name: "Screen Recording",
                     isRequired: true,
                     isGranted: true,
-                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .screenRecording)
                 ),
             ]
         )
@@ -122,7 +141,7 @@ struct PermissionHelpersTests {
                     name: "Screen Recording",
                     isRequired: true,
                     isGranted: false,
-                    grantInstructions: "System Settings > Privacy & Security > Screen Recording"
+                    grantInstructions: PermissionSettingsGuidance.path(for: .screenRecording)
                 ),
             ]
         )

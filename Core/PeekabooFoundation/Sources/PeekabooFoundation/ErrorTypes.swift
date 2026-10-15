@@ -43,10 +43,10 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return "No displays found on the system."
         case .screenRecordingPermissionDenied:
             return "Screen recording permission is required. " +
-                "Please grant it in System Settings > Privacy & Security > Screen Recording."
+                "Please grant it in \(PermissionSettingsGuidance.path(for: .screenRecording))."
         case .accessibilityPermissionDenied:
             return "Accessibility permission is required for some operations. " +
-                "Please grant it in System Settings > Privacy & Security > Accessibility."
+                "Please grant it in \(PermissionSettingsGuidance.path(for: .accessibility))."
         case .appleScriptPermissionDenied:
             return "An older Peekaboo component requested AppleScript Automation permission. " +
                 "Use a current native Peekaboo CLI and Bridge host; do not grant Automation access."
@@ -110,7 +110,7 @@ public enum CaptureError: Error, LocalizedError, Sendable {
             return "Capture failed: \(message)"
         case .permissionDeniedScreenRecording:
             return "Screen recording permission is required. Please grant it in " +
-                "System Settings > Privacy & Security > Screen Recording."
+                "\(PermissionSettingsGuidance.path(for: .screenRecording))."
         case .noFrontmostApplication:
             return "No frontmost application found."
         case .invalidCaptureArea:

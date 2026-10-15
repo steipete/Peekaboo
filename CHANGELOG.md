@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Reject `nan` and infinite coordinates and regions in `click`, `move`, `capture live`, `capture action`, `see --region` and the MCP `click` tool instead of dispatching a non-finite point or capture rect, and ignore non-finite agent verification target points. Thanks @rudycelekli! #1074, #1075, #1076.
+- Show macOS 27's renamed "Device Control and Data Access" Settings row for Accessibility and Event Synthesizing, and consistently name "Screen & System Audio Recording", in `peekaboo permissions`, MCP permission tools, and permission errors. Thanks @fry69! #1071.
 
 ## 4.9.3 - 2026-10-14
 

@@ -34,20 +34,20 @@ Clipboard reads have a separate caller-local policy on macOS 15.4+. Use `peekabo
 ## Granting Permissions
 
 1. **Screen Recording**
-   - System Settings → Privacy & Security → Screen & System Audio Recording.
+   - System Settings → Privacy & Security → Screen & System Audio Recording (macOS 15+).
    - Run `peekaboo permissions request screen-recording` to trigger the prompt when macOS allows one.
    - Enable Terminal, your editor, or whatever shell runs `peekaboo`.
    - If you installed with Homebrew, make sure the enabled entry points at the current Peekaboo binary; upgrades can move it to a new Cellar version path.
    - Benefit: fast CGWindow enumeration and background captures.
 
 2. **Accessibility**
-   - System Settings → Privacy & Security → Accessibility.
+   - System Settings → Privacy & Security → Device Control and Data Access on macOS 27+, or Accessibility on macOS 15/26. The row is still inside Privacy & Security.
    - Enable the same terminals/IDEs so Peekaboo can send clicks/keystrokes reliably.
 
 3. **Event Synthesizing**
    - Run `peekaboo permissions request event-synthesizing`.
    - By default this requests access for the selected Peekaboo Bridge host, which is the process that sends background input. Add `--no-remote` to request access for the local CLI process instead.
-   - If needed, enable Peekaboo in System Settings → Privacy & Security → Accessibility.
+   - If needed, enable Peekaboo in the same list as Accessibility: System Settings → Privacy & Security → Device Control and Data Access on macOS 27+, or Accessibility on macOS 15/26. Event Synthesizing has no separate Settings row; its request dialog on macOS 27 is titled "Device Control and Data Access (Events)".
    - Benefit: process-targeted typing, hotkeys, key presses, and paste, plus explicitly foreground synthetic pointer operations.
    - If you prefer focused/global input, pass `--foreground` to the interaction command; foreground mode still benefits from Accessibility for focusing windows.
 

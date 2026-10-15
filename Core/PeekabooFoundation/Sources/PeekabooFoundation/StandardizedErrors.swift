@@ -142,11 +142,11 @@ extension StandardizedError {
     public nonisolated var recoverySuggestion: String? {
         switch code {
         case .screenRecordingPermissionDenied:
-            "Grant Screen Recording permission in System Settings"
+            "Grant Screen Recording permission in \(PermissionSettingsGuidance.path(for: .screenRecording))"
         case .accessibilityPermissionDenied:
-            "Grant Accessibility permission in System Settings"
+            "Grant Accessibility permission in \(PermissionSettingsGuidance.path(for: .accessibility))"
         case .eventSynthesizingPermissionDenied:
-            "Grant event-synthesizing access in System Settings > Privacy & Security > Accessibility"
+            "Grant event-synthesizing access in \(PermissionSettingsGuidance.path(for: .eventSynthesizing))"
         case .applicationNotFound:
             "Ensure the application is installed and running"
         case .windowNotFound:
