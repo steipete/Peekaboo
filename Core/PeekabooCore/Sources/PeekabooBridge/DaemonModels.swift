@@ -98,6 +98,8 @@ public struct PeekabooDaemonWindowTrackerStatus: Codable, Sendable {
 }
 
 public struct PeekabooDaemonStatus: Codable, Sendable {
+    /// Set by CLI status observation after authentication, never used as host authority.
+    public var trustMode: PeekabooBridgeTrustMode?
     public let running: Bool
     public let pid: pid_t?
     public let startedAt: Date?

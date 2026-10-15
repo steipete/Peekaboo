@@ -14,6 +14,7 @@ public struct PeekabooBridgePeer: Sendable {
     public let bundleIdentifier: String?
     public let teamIdentifier: String?
     let liveIdentity: PeekabooBridgeLivePeerIdentity?
+    let trustMode: PeekabooBridgeTrustMode?
 
     public init(
         processIdentifier: pid_t,
@@ -32,13 +33,16 @@ public struct PeekabooBridgePeer: Sendable {
         self.bundleIdentifier = bundleIdentifier
         self.teamIdentifier = teamIdentifier
         self.liveIdentity = nil
+        self.trustMode = nil
     }
 
     init(
         liveIdentity: PeekabooBridgeLivePeerIdentity,
         bundleIdentifier: String?,
-        teamIdentifier: String?)
+        teamIdentifier: String?,
+        trustMode: PeekabooBridgeTrustMode? = nil)
     {
+        self.trustMode = trustMode
         self.processIdentifier = liveIdentity.processIdentifier
         self.auditTokenProcessIdentifierVersion = liveIdentity.processIdentifierVersion
         self.processStartIdentity = liveIdentity.processStartIdentity
@@ -787,39 +791,6 @@ public final class PeekabooBridgeServer {
             details: "\(error)",
             kind: kind,
             context: context)
-    }
-
-    func validatePeerAuthorization(_ peer: PeekabooBridgePeer?) throws {
-        guard !self.allowlistedTeams.isEmpty || !self.allowlistedBundles.isEmpty else { return }
-        guard let peer else {
-            throw PeekabooBridgeErrorEnvelope(
-                code: .unauthorizedClient,
-                message: "Unsigned bridge clients are not allowed for this listener")
-        }
-
-        if !self.allowlistedTeams.isEmpty {
-            guard let team = peer.teamIdentifier, self.allowlistedTeams.contains(team) else {
-                let team = peer.teamIdentifier ?? "<unknown>"
-                throw PeekabooBridgeErrorEnvelope(
-                    code: .unauthorizedClient,
-                    message: "Team \(team) is not authorized")
-            }
-        }
-
-        if !self.allowlistedBundles.isEmpty {
-            guard let bundle = peer.bundleIdentifier, self.allowlistedBundles.contains(bundle) else {
-                let bundle = peer.bundleIdentifier ?? "<unknown>"
-                throw PeekabooBridgeErrorEnvelope(
-                    code: .unauthorizedClient,
-                    message: "Bundle \(bundle) is not authorized")
-            }
-        }
-
-        if let uid = peer.userIdentifier, uid != getuid() {
-            throw PeekabooBridgeErrorEnvelope(
-                code: .unauthorizedClient,
-                message: "UID \(uid) is not authorized for this listener")
-        }
     }
 
     func handleAuthorizedWithDesktopMutationBarrier(

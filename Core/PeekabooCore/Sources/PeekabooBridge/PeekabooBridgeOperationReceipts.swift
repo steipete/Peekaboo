@@ -1188,12 +1188,14 @@ extension PeekabooBridgeOperationReceiptAuthority {
         let liveIdentity: PeekabooBridgeLivePeerIdentity
         let bundleIdentifier: String?
         let teamIdentifier: String?
+        let trustMode: PeekabooBridgeTrustMode?
 
         var peer: PeekabooBridgePeer {
             PeekabooBridgePeer(
                 liveIdentity: self.liveIdentity,
                 bundleIdentifier: self.bundleIdentifier,
-                teamIdentifier: self.teamIdentifier)
+                teamIdentifier: self.teamIdentifier,
+                trustMode: self.trustMode)
         }
 
         init(peer: PeekabooBridgePeer) throws {
@@ -1217,6 +1219,7 @@ extension PeekabooBridgeOperationReceiptAuthority {
             self.liveIdentity = liveIdentity
             self.bundleIdentifier = peer.bundleIdentifier
             self.teamIdentifier = peer.teamIdentifier
+            self.trustMode = peer.trustMode
         }
     }
 

@@ -241,7 +241,9 @@ extension PeekabooBridgeHost {
         signingIdentityProvider: (PeekabooBridgePeerAuditIdentity) -> PeerSigningIdentity? = {
             PeekabooBridgeHost.signingIdentity(auditIdentity: $0)
         },
-        allowUnsignedSocketClients: Bool = PeekabooBridgeHost.allowUnsignedSocketClients) -> PeekabooBridgePeer?
+        allowUnsignedSocketClients: Bool = PeekabooBridgeHost.allowUnsignedSocketClients,
+        hostKind: PeekabooBridgeHostKind = .gui,
+        unsignedDaemonPolicy: PeekabooBridgeUnsignedDaemonPolicy = .init()) -> PeekabooBridgePeer?
     {
         guard let auditIdentity = liveIdentity.auditIdentity else { return nil }
         guard SystemIdentityResolver.processStartIdentity(auditIdentity.processIdentifier) ==
@@ -269,19 +271,34 @@ extension PeekabooBridgeHost {
         let pid = liveIdentity.processIdentifier
         let callerUID = liveIdentity.effectiveUserIdentifier
 
-        if allowedTeamIDs.isEmpty, callerUID == getuid() {
-            return self.peer(
-                liveIdentity: liveIdentity,
-                signingIdentity: signingIdentity,
-                teamIdentifier: signingIdentity?.teamIdentifier)
-        }
-
         let teamID = signingIdentity?.teamIdentifier
         if let teamID, allowedTeamIDs.contains(teamID) {
             return self.peer(
                 liveIdentity: liveIdentity,
                 signingIdentity: signingIdentity,
                 teamIdentifier: teamID)
+        }
+
+        if unsignedDaemonPolicy.allows(liveIdentity, hostKind: hostKind) {
+            self.logger.warning(
+                "allowing bridge client pid=\(pid, privacy: .public) (unsigned same-binary developer opt-in)")
+            return PeekabooBridgePeer(
+                liveIdentity: liveIdentity,
+                bundleIdentifier: nil,
+                teamIdentifier: nil,
+                trustMode: .unsignedSameBinaryDeveloperOptIn)
+        }
+
+        // An opted-in daemon must not fall through to legacy same-UID admission for a different binary.
+        if unsignedDaemonPolicy.enabled, hostKind == .onDemand {
+            return nil
+        }
+
+        if allowedTeamIDs.isEmpty, callerUID == getuid() {
+            return self.peer(
+                liveIdentity: liveIdentity,
+                signingIdentity: signingIdentity,
+                teamIdentifier: signingIdentity?.teamIdentifier)
         }
 
         #if DEBUG

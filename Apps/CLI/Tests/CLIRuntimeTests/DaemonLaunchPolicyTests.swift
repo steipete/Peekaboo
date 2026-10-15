@@ -338,3 +338,37 @@ struct DaemonLaunchPolicyTests {
         childPID = nil
     }
 }
+
+extension DaemonLaunchPolicyTests {
+    @Test(arguments: [nil, "1", "0"] as [String?])
+    func `daemon launch propagates unsigned developer opt in`(optIn: String?) async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pd-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("environment")
+        var environment = ["PATH": "/usr/bin:/bin"]
+        environment["PEEKABOO_ALLOW_UNSIGNED_DAEMON"] = optIn
+        let sanitized = DaemonLaunchPolicy.onDemandDaemonEnvironment(environment)
+        #expect(sanitized["PEEKABOO_ALLOW_UNSIGNED_DAEMON"] == optIn)
+        do {
+            _ = try await DaemonLaunchPolicy.launchDaemon(
+                socketPath: directory.appendingPathComponent("d.sock").path,
+                arguments: [
+                    "-c",
+                    "printf '%s' \"${PEEKABOO_ALLOW_UNSIGNED_DAEMON-unset}\" > \"$1\"",
+                    "sh",
+                    output.path
+                ],
+                executableURL: URL(fileURLWithPath: "/bin/sh"),
+                logHandle: .nullDevice,
+                environment: sanitized
+            )
+            Issue.record("Expected the fixture process to exit")
+        } catch let error as DaemonLaunchPolicy.DaemonLaunchError {
+            guard case let .exited(_, code, _) = error else { throw error }
+            #expect(code == 0)
+        }
+        #expect(try String(contentsOf: output, encoding: .utf8) == (optIn ?? "unset"))
+    }
+}

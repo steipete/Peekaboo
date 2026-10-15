@@ -1,6 +1,6 @@
 import Security
 
-/// Installation guidance only; this classification never grants Bridge admission.
+/// Release-signing classification and installation guidance shared by Bridge trust policy.
 public enum PeekabooBridgeSigningDiagnostics {
     public static func isReleaseSigned(
         teamIdentifier: String?,
