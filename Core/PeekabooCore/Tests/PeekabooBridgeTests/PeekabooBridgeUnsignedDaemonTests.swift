@@ -106,6 +106,25 @@ struct PeekabooBridgeUnsignedDaemonTests {
         #expect(!policy.enabled)
     }
 
+    @Test(arguments: [false, true])
+    func `opted in daemon rejects release team clients running another binary`(optedIn: Bool) throws {
+        let live = try self.liveIdentity(codeSignatureHash: "release-client-hash")
+        let peer = PeekabooBridgeHost.peerInfoIfAllowed(
+            liveIdentity: live,
+            allowedTeamIDs: ["RELEASE"],
+            signingIdentityProvider: { _ in
+                PeekabooBridgeHost.PeerSigningIdentity(
+                    bundleIdentifier: "boo.peekaboo.peekaboo",
+                    teamIdentifier: "RELEASE",
+                    codeSignatureHash: "release-client-hash")
+            },
+            allowUnsignedSocketClients: false,
+            hostKind: .onDemand,
+            unsignedDaemonPolicy: self.policy(optedIn ? "same" : "missing"))
+        // Without the opt-in the team allowlist admits the release client as before.
+        #expect((peer != nil) == !optedIn)
+    }
+
     @Test
     func `host still rejects a changed process generation`() throws {
         let live = try self.liveIdentity(stale: true)
@@ -135,7 +154,10 @@ struct PeekabooBridgeUnsignedDaemonTests {
             from: encoded).trustMode == nil)
     }
 
-    private func liveIdentity(stale: Bool = false) throws -> PeekabooBridgeLivePeerIdentity {
+    private func liveIdentity(
+        stale: Bool = false,
+        codeSignatureHash: String = "own-live-hash") throws -> PeekabooBridgeLivePeerIdentity
+    {
         var sockets: [Int32] = [0, 0]
         guard socketpair(AF_UNIX, SOCK_STREAM, 0, &sockets) == 0 else { throw POSIXError(.EIO) }
         defer {
@@ -149,6 +171,6 @@ struct PeekabooBridgeUnsignedDaemonTests {
             processIdentifierVersion: live.processIdentifierVersion,
             effectiveUserIdentifier: live.effectiveUserIdentifier,
             processStartIdentity: live.processStartIdentity + (stale ? 1 : 0),
-            codeSignatureHash: "own-live-hash")
+            codeSignatureHash: codeSignatureHash)
     }
 }

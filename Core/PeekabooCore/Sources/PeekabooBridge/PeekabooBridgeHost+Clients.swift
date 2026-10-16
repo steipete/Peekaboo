@@ -271,15 +271,10 @@ extension PeekabooBridgeHost {
         let pid = liveIdentity.processIdentifier
         let callerUID = liveIdentity.effectiveUserIdentifier
 
-        let teamID = signingIdentity?.teamIdentifier
-        if let teamID, allowedTeamIDs.contains(teamID) {
-            return self.peer(
-                liveIdentity: liveIdentity,
-                signingIdentity: signingIdentity,
-                teamIdentifier: teamID)
-        }
-
-        if unsignedDaemonPolicy.allows(liveIdentity, hostKind: hostKind) {
+        // An opted-in unsigned daemon admits only same-UID clients running its exact binary: no team,
+        // legacy same-UID or debug admission may widen that.
+        if unsignedDaemonPolicy.enabled, hostKind == .onDemand {
+            guard unsignedDaemonPolicy.allows(liveIdentity, hostKind: hostKind) else { return nil }
             self.logger.warning(
                 "allowing bridge client pid=\(pid, privacy: .public) (unsigned same-binary developer opt-in)")
             return PeekabooBridgePeer(
@@ -289,16 +284,19 @@ extension PeekabooBridgeHost {
                 trustMode: .unsignedSameBinaryDeveloperOptIn)
         }
 
-        // An opted-in daemon must not fall through to legacy same-UID admission for a different binary.
-        if unsignedDaemonPolicy.enabled, hostKind == .onDemand {
-            return nil
-        }
-
         if allowedTeamIDs.isEmpty, callerUID == getuid() {
             return self.peer(
                 liveIdentity: liveIdentity,
                 signingIdentity: signingIdentity,
                 teamIdentifier: signingIdentity?.teamIdentifier)
+        }
+
+        let teamID = signingIdentity?.teamIdentifier
+        if let teamID, allowedTeamIDs.contains(teamID) {
+            return self.peer(
+                liveIdentity: liveIdentity,
+                signingIdentity: signingIdentity,
+                teamIdentifier: teamID)
         }
 
         #if DEBUG
