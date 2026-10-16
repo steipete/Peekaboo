@@ -878,6 +878,65 @@ struct ActionOutcomeCommandTests {
         #expect(error["retry_safe"] as? Bool == true)
         #expect(error["mutation_dispatched"] as? Bool == false)
     }
+
+    @Test
+    func `quit batch cancellation between targets keeps a suspected no-op`() async throws {
+        let applications = [
+            AutomationTestFixtures.application(
+                processIdentifier: 42,
+                processStartIdentity: 7,
+                bundleIdentifier: "com.example.first",
+                name: "First Fixture",
+                isHiddenKnown: true,
+                activationPolicy: .regular
+            ),
+            AutomationTestFixtures.application(
+                processIdentifier: 43,
+                processStartIdentity: 8,
+                bundleIdentifier: "com.example.second",
+                name: "Second Fixture",
+                isHiddenKnown: true,
+                activationPolicy: .regular
+            ),
+        ]
+        let service = OutcomeStubApplicationService(applications: applications)
+        service.quitActionSteps = [
+            .resultAndCancel(
+                payload: false,
+                outcome: .suspectedNoop(
+                    delivery: .init(mechanism: .nativeFramework, mode: .background),
+                    unitCount: .one
+                )
+            ),
+        ]
+        let services = TestServicesFactory.makePeekabooServices(applications: service)
+
+        let result = try await Task {
+            try await InProcessCommandRunner.run(
+                ["app", "quit", "--all", "--json", "--no-remote"],
+                services: services
+            )
+        }.value
+        let object = try Self.jsonObject(result.stdout)
+        let data = try #require(object["data"] as? [String: Any])
+        let results = try #require(data["results"] as? [[String: Any]])
+        let outcome = try #require(object["outcome"] as? [String: Any])
+        let error = try #require(object["error"] as? [String: Any])
+
+        #expect(result.exitStatus == 1)
+        #expect(service.quitActionResultCallCount == 1)
+        #expect(results.count == 1)
+        #expect(results.first?["success"] as? Bool == false)
+        #expect(object["effect"] as? String == "suspected_noop")
+        #expect(outcome["state"] as? String == "suspected_noop")
+        #expect(outcome["evidence"] as? String == "observed_no_change")
+        #expect(outcome["escalation"] as? String == "refresh_target")
+        #expect(outcome["retry_safe"] as? Bool == true)
+        #expect(error["mutation_dispatched"] as? Bool == true)
+        #expect(error["hint"] as? String ==
+            "The quit batch was cancelled; inspect completed targets before retrying.")
+        #expect((error["message"] as? String)?.contains("cancelled after 1 of 2") == true)
+    }
 }
 
 // MARK: - Snapshot leases and press outcomes

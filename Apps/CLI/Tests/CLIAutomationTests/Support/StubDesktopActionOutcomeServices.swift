@@ -7,6 +7,7 @@ import PeekabooFoundation
 final class OutcomeStubApplicationService: StubApplicationService, ApplicationServiceActionResultProviding {
     enum QuitActionStep {
         case result(payload: Bool, outcome: DesktopActionOutcome?)
+        case resultAndCancel(payload: Bool, outcome: DesktopActionOutcome?)
         case failure(any Error)
         case failureAndCancel(any Error)
     }
@@ -46,6 +47,10 @@ final class OutcomeStubApplicationService: StubApplicationService, ApplicationSe
             switch self.quitActionSteps.removeFirst() {
             case let .result(payload, outcome):
                 _ = try await self.quitApplication(request: request)
+                return DesktopActionResult(payload: payload, outcome: outcome)
+            case let .resultAndCancel(payload, outcome):
+                _ = try await self.quitApplication(request: request)
+                withUnsafeCurrentTask { $0?.cancel() }
                 return DesktopActionResult(payload: payload, outcome: outcome)
             case let .failure(error):
                 throw error
