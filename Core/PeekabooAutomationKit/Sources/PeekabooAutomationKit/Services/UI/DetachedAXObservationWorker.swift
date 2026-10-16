@@ -151,13 +151,10 @@ enum DetachedAXObservationWorker {
     static func descriptorReadDisposition(error: AXError, values: [Any]?)
         -> DetachedAXMultiAttributeReadDisposition
     {
-        if error == .success {
-            guard let values, values.count == self.descriptorAttributeNames.count else { return .incomplete }
-            return AXAttributeReadCompletenessPolicy.hasNodeInvalidatingErrorValue(
-                names: self.descriptorAttributeNames,
-                values: values) ? .incomplete : .values
-        }
-        return self.isUnsupported(error) ? .fallback : .incomplete
+        self.multiAttributeReadDisposition(
+            error: error,
+            values: values,
+            attributeNames: self.descriptorAttributeNames)
     }
 
     static func childrenReadDisposition(error: AXError, values: [Any]?)
@@ -166,7 +163,18 @@ enum DetachedAXObservationWorker {
         self.multiAttributeReadDisposition(
             error: error,
             values: values,
-            expectedValueCount: self.childAttributeNames.count)
+            attributeNames: self.childAttributeNames)
+    }
+
+    static func childElements(from values: [Any]) -> [AXUIElement] {
+        var result: [AXUIElement] = []
+        for value in values {
+            guard let elements = value as? [AXUIElement] else { continue }
+            for child in elements where !result.contains(where: { CFEqual($0, child) }) {
+                result.append(child)
+            }
+        }
+        return result
     }
 
     static func nodeTraversalDisposition(
@@ -788,14 +796,7 @@ extension DetachedAXObservationWorker {
         }
         guard let values else { return ChildrenReadResult(elements: [], isIncomplete: true) }
 
-        var result: [AXUIElement] = []
-        for value in values {
-            guard let elements = value as? [AXUIElement] else { continue }
-            for child in elements where !result.contains(where: { CFEqual($0, child) }) {
-                result.append(child)
-            }
-        }
-        return ChildrenReadResult(elements: result, isIncomplete: false)
+        return ChildrenReadResult(elements: self.childElements(from: values), isIncomplete: false)
     }
 
     private static func fallbackChildren(
@@ -806,7 +807,7 @@ extension DetachedAXObservationWorker {
         let read = self.rawAttributeRead(kAXChildrenAttribute, of: element, node: node)
         return ChildrenReadResult(
             elements: read.value as? [AXUIElement] ?? [],
-            isIncomplete: alreadyIncomplete || read.isIncomplete)
+            isIncomplete: alreadyIncomplete || read.invalidatesNode(attribute: kAXChildrenAttribute))
     }
 
     private static func actions(of element: AXUIElement, node: Int) -> [String] {
@@ -983,11 +984,13 @@ extension DetachedAXObservationWorker {
     private static func multiAttributeReadDisposition(
         error: AXError,
         values: [Any]?,
-        expectedValueCount: Int) -> DetachedAXMultiAttributeReadDisposition
+        attributeNames: [String]) -> DetachedAXMultiAttributeReadDisposition
     {
         if error == .success {
-            guard let values, values.count == expectedValueCount else { return .incomplete }
-            return AXAttributeReadCompletenessPolicy.hasIncompleteErrorValue(in: values) ? .incomplete : .values
+            guard let values, values.count == attributeNames.count else { return .incomplete }
+            return AXAttributeReadCompletenessPolicy.hasNodeInvalidatingErrorValue(
+                names: attributeNames,
+                values: values) ? .incomplete : .values
         }
         if self.isUnsupported(error) {
             return .fallback
@@ -1129,10 +1132,6 @@ private struct ChildrenReadResult {
 private struct AXAttributeReadResult {
     let error: AXError
     let value: CFTypeRef?
-
-    var isIncomplete: Bool {
-        AXAttributeReadCompletenessPolicy.isIncomplete(error: self.error)
-    }
 
     func invalidatesNode(attribute: String) -> Bool {
         AXAttributeReadCompletenessPolicy.attributeErrorInvalidatesNode(self.error, attribute: attribute)
