@@ -530,6 +530,7 @@ build_phase() {
     "$ROOT_DIR/Apps/CLI" x86_64 release peekaboo-certification-controller)"
   /usr/bin/lipo -create -output "$UNSIGNED_CONTROLLER" "$controller_arm" "$controller_x64"
   /usr/bin/strip -Sxu "$UNSIGNED_CONTROLLER"
+  "$ROOT_DIR/scripts/strip-toolchain-rpaths.sh" "$UNSIGNED_CONTROLLER"
   [[ " $(/usr/bin/lipo -archs "$UNSIGNED_CONTROLLER") " == *' arm64 '* && \
     " $(/usr/bin/lipo -archs "$UNSIGNED_CONTROLLER") " == *' x86_64 '* ]] || fail 'controller is not universal'
 
@@ -835,6 +836,7 @@ sign_code_phase() {
   while IFS= read -r -d '' candidate; do
     file_description="$(/usr/bin/file -b "$candidate")" || fail "could not classify signed payload: $candidate"
     [[ "$file_description" == *Mach-O* ]] || continue
+    "$ROOT_DIR/scripts/verify-swift-runtime-libraries.sh" --rpaths-only "$candidate"
     candidate_architectures="$(/usr/bin/lipo -archs "$candidate")" || \
       fail "could not inspect signed Mach-O architectures: $candidate"
     [[ -n "$candidate_architectures" ]] || fail "signed Mach-O has no architectures: $candidate"
