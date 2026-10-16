@@ -268,7 +268,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const html = [];
   let paragraph = [];
-  let list = null;
+  const lists = []; // open lists, outermost first: { tag, indent, itemOpen, itemAt, itemText }
   let fence = null;
   let blockquote = [];
 
@@ -277,10 +277,23 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     html.push(`<p>${inline(paragraph.join(" "), currentRel)}</p>`);
     paragraph = [];
   };
+  // an item with no nested content closes on its own line: <li>text</li>
+  const closeItem = (list) => {
+    if (html.length - 1 === list.itemAt) html[list.itemAt] += "</li>";
+    else html.push("</li>");
+  };
+  const closeInnermostList = () => {
+    const list = lists.pop();
+    if (list.itemOpen) closeItem(list);
+    html.push(`</${list.tag}>`);
+  };
   const closeList = () => {
-    if (!list) return;
-    html.push(`</${list}>`);
-    list = null;
+    while (lists.length) closeInnermostList();
+  };
+  const nextNonBlank = (from) => {
+    let at = from;
+    while (at < lines.length && !lines[at].trim()) at += 1;
+    return lines[at];
   };
   const flushBlockquote = () => {
     if (!blockquote.length) return;
@@ -357,7 +370,9 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     flushBlockquote();
     if (!line.trim()) {
       flushParagraph();
-      closeList();
+      // a blank line inside a list (between items, or before an indented continuation) keeps it open
+      const following = nextNonBlank(i + 1);
+      if (!/^\s*(-|\d+\.)\s+\S/.test(following ?? "") && !/^ {2,}\S/.test(following ?? "")) closeList();
       continue;
     }
     if (/^\s*---+\s*$/.test(line)) {
@@ -420,13 +435,29 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     if (bullet || numbered) {
       flushParagraph();
       const tag = bullet ? "ul" : "ol";
-      if (list && list !== tag) closeList();
-      if (!list) {
-        list = tag;
+      const indent = line.match(/^\s*/)[0].replaceAll("\t", "    ").length;
+      while (lists.length && indent < lists.at(-1).indent) closeInnermostList();
+      const current = lists.at(-1);
+      if (current && indent === current.indent && current.tag !== tag) closeInnermostList();
+      const sibling = lists.at(-1);
+      if (sibling && indent === sibling.indent) {
+        if (sibling.itemOpen) closeItem(sibling);
+      } else {
+        // a deeper marker opens a nested list inside the still-open parent item
         const start = numbered && numbered[1] !== "1" ? ` start="${numbered[1]}"` : "";
         html.push(`<${tag}${start}>`);
+        lists.push({ tag, indent, itemOpen: false, itemAt: -1, itemText: "" });
       }
-      html.push(`<li>${inline(bullet ? bullet[1] : numbered[2], currentRel)}</li>`);
+      const itemText = bullet ? bullet[1] : numbered[2];
+      html.push(`<li>${inline(itemText, currentRel)}`);
+      Object.assign(lists.at(-1), { itemOpen: true, itemAt: html.length - 1, itemText });
+      continue;
+    }
+    const owner = lists.at(-1);
+    if (owner?.itemOpen && !paragraph.length && html.length - 1 === owner.itemAt) {
+      // the next line of an item's own text, not a new paragraph
+      owner.itemText += ` ${line.trim()}`;
+      html[owner.itemAt] = `<li>${inline(owner.itemText, currentRel)}`;
       continue;
     }
     paragraph.push(line.trim());
