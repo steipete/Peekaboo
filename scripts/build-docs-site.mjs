@@ -329,23 +329,29 @@ function markdownToHtml(markdown, currentRel, nested = false) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})(.*)$/);
+    const fenceMatch = line.match(/^(\s{0,3})(`{3,}|~{3,})(.*)$/);
     if (fence) {
-      if (fenceMatch && fenceMatch[1][0] === fence.marker[0] &&
-          fenceMatch[1].length >= fence.marker.length && !fenceMatch[2].trim()) {
+      if (fenceMatch && fenceMatch[2][0] === fence.marker[0] &&
+          fenceMatch[2].length >= fence.marker.length && !fenceMatch[3].trim()) {
         const body = highlightCode(fence.lines.join("\n"), fence.lang);
         html.push(`<pre><code class="language-${escapeAttr(fence.lang)}">${body}</code></pre>`);
         fence = null;
       } else {
-        fence.lines.push(line);
+        // an indented fence strips up to its own indentation from the content lines
+        fence.lines.push(line.replace(new RegExp(`^ {0,${fence.indent}}`), ""));
       }
       continue;
     }
-    if (fenceMatch && !(fenceMatch[1][0] === "`" && fenceMatch[2].includes("`"))) {
+    if (fenceMatch && !(fenceMatch[2][0] === "`" && fenceMatch[3].includes("`"))) {
       flushParagraph();
       closeList();
       flushBlockquote();
-      fence = { marker: fenceMatch[1], lang: fenceMatch[2].trim().split(/\s+/)[0] || "text", lines: [] };
+      fence = {
+        marker: fenceMatch[2],
+        indent: fenceMatch[1].length,
+        lang: fenceMatch[3].trim().split(/\s+/)[0] || "text",
+        lines: [],
+      };
       continue;
     }
     if (/^>\s?/.test(line)) {
