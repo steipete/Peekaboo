@@ -125,12 +125,13 @@ struct DaemonLaunchPolicyTests {
 
     @Test
     func `daemon launch reports a readiness timeout`() async {
-        let executable = URL(fileURLWithPath: "/bin/sleep")
+        // Stay alive until cleanup even if the parent is descheduled beyond its readiness budget.
+        let executable = URL(fileURLWithPath: "/usr/bin/tail")
 
         do {
             _ = try await DaemonLaunchPolicy.launchDaemon(
                 socketPath: "/tmp/peekaboo-daemon-timeout-\(UUID().uuidString).sock",
-                arguments: ["2"],
+                arguments: ["-f", "/dev/null"],
                 timeout: 0.05,
                 executableURL: executable,
                 logHandle: .nullDevice
@@ -160,20 +161,22 @@ struct DaemonLaunchPolicyTests {
     ) async throws {
         var expected = PeekabooBridgeErrorEnvelope(code: code, message: "synthetic trust or protocol failure")
         expected.isLocalHostAuthenticationFailure = code == .unauthorizedClient
+        var probeCallCount = 0
         let pidURL = FileManager.default.temporaryDirectory.appendingPathComponent("pb-probe-\(UUID()).pid")
         defer {
             try? FileManager.default.removeItem(at: pidURL)
             try? FileManager.default.removeItem(atPath: pidURL.path + ".tmp")
         }
+        // Use the normal startup budget for PID publication; the contract here is one permanent probe failure.
         do {
             _ = try await DaemonLaunchPolicy.launchDaemon(
                 socketPath: "/tmp/peekaboo-readiness-\(UUID().uuidString).sock",
-                arguments: ["-c", "\(Self.writePIDCommand(to: pidURL)); exec /bin/sleep 30"],
-                timeout: 2,
+                arguments: ["-c", "\(Self.writePIDCommand(to: pidURL)); exec /usr/bin/tail -f /dev/null"],
                 executableURL: URL(fileURLWithPath: "/bin/sh"),
                 logHandle: .nullDevice,
                 probe: { _ in
-                    _ = try await Self.waitForPID(at: pidURL)
+                    probeCallCount += 1
+                    _ = try #require(try await Self.waitForPID(at: pidURL))
                     throw expected
                 }
             )
@@ -183,6 +186,7 @@ struct DaemonLaunchPolicyTests {
             #expect(error.message == expected.message)
             #expect(error.isLocalHostAuthenticationFailure == expected.isLocalHostAuthenticationFailure)
         }
+        #expect(probeCallCount == 1)
         let stoppedPID = try #require(try await Self.waitForPID(at: pidURL))
         #expect(kill(stoppedPID, 0) == -1)
         #expect(errno == ESRCH)
@@ -194,9 +198,9 @@ struct DaemonLaunchPolicyTests {
         do {
             _ = try await DaemonLaunchPolicy.launchDaemon(
                 socketPath: "/tmp/peekaboo-readiness-\(UUID().uuidString).sock",
-                arguments: ["30"],
+                arguments: ["-f", "/dev/null"],
                 timeout: 2,
-                executableURL: URL(fileURLWithPath: "/bin/sleep"),
+                executableURL: URL(fileURLWithPath: "/usr/bin/tail"),
                 logHandle: .nullDevice,
                 probe: { _ in
                     observedTransientFailure = true

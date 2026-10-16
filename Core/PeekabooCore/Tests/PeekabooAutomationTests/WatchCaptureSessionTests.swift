@@ -673,12 +673,13 @@ extension WatchCaptureSessionTests {
         #expect(Date().timeIntervalSince(stopStarted) < 1)
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     @MainActor
     func `Stop request returns while an in-flight frame source ignores cancellation`() async throws {
         let image = try #require(WatchCaptureArtifactWriter.makeCGImage(from: Self.makePNG(
             size: CGSize(width: 20, height: 20))))
         let source = NoncooperativeCaptureFrameSource(image: image)
+        defer { source.release() }
         let output = FileManager.default.temporaryDirectory
             .appendingPathComponent("watch-noncooperative-stop-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: output) }
@@ -713,19 +714,22 @@ extension WatchCaptureSessionTests {
 
         let task = Task { @MainActor in try await session.run() }
         await source.waitUntilBlocked()
-        let releaseTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(300))
+        let watchdog = Task { @MainActor in
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            Issue.record("Stop did not return while the frame source was held")
             source.release()
         }
-        let started = ContinuousClock.now
+        defer { watchdog.cancel() }
         session.requestStop()
         let result = try await task.value
-        let elapsed = started.duration(to: .now)
 
         #expect(result.frames.count == 1)
-        #expect(elapsed < .milliseconds(150))
+        #expect(source.isHeld)
+        #expect(!source.didFinishHeldFrame)
         #expect(session.retiringCaptureTaskCount == 1)
-        await releaseTask.value
+        watchdog.cancel()
+        source.release()
+        await watchdog.value
         await Self.waitForCaptureTaskRetirement(session)
         #expect(session.retiringCaptureTaskCount == 0)
     }

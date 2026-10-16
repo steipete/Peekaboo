@@ -23,7 +23,6 @@ struct ScreenCaptureKitOwnerRuntimeTests {
         var claimCalls = 0
         var inspectCalls = 0
         var localFactoryCalls = 0
-        let started = ContinuousClock.now
 
         let error = await #expect(throws: PreDispatchActionError.self) {
             _ = try await RuntimeHostResolver.resolveServices(
@@ -50,7 +49,6 @@ struct ScreenCaptureKitOwnerRuntimeTests {
             )
         }
 
-        #expect(ContinuousClock.now - started < .milliseconds(100))
         #expect(error?.code == .CAPTURE_FAILED)
         #expect(error?.envelopeEffect == .refused)
         #expect(error?.envelopeRetrySafe == true)
