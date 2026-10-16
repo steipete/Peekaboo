@@ -251,6 +251,7 @@ struct RuntimeHostDaemonLaunchTests {
         var guiHandshake: PeekabooBridgeHandshakeResponse {
             let operations: [PeekabooBridgeOperation] = self.guiCapable ? [
                 .invalidateImplicitLatestSnapshot, .targetedTypeActions, .targetedHotkey, .targetedClick,
+                .getFocusedElement,
             ] : []
             return BridgeTestFixtures.handshake(
                 negotiatedVersion: PeekabooBridgeConstants.protocolVersion,
