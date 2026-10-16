@@ -2,11 +2,11 @@ import CoreGraphics
 import Foundation
 import PeekabooAutomationKit
 import PeekabooAutomationKitTestSupport
-@testable import PeekabooCLI
 import PeekabooCore
 import PeekabooFoundation
 import PeekabooFoundationTestSupport
 import Testing
+@testable import PeekabooCLI
 
 @MainActor
 @Suite(.serialized)
@@ -1429,8 +1429,8 @@ extension ActionOutcomeCommandTests {
     }
 }
 
-private extension ActionOutcomeCommandTests {
-    static func storeElementSnapshot(in snapshots: StubSnapshotManager) async throws -> String {
+extension ActionOutcomeCommandTests {
+    fileprivate static func storeElementSnapshot(in snapshots: StubSnapshotManager) async throws -> String {
         let snapshotID = try await snapshots.createSnapshot()
         let element = DetectedElement(
             id: "B1",
@@ -1480,14 +1480,14 @@ private final class ReceiptlessBatchQuitApplicationService: StubApplicationServi
     }
 
     override func quitApplication(request _: ApplicationQuitRequest) async throws -> Bool {
-        quitCallCount += 1
-        if quitCallCount <= successfulCallsBeforeErrors {
+        self.quitCallCount += 1
+        if self.quitCallCount <= self.successfulCallsBeforeErrors {
             return true
         }
-        guard !errors.isEmpty else {
+        guard !self.errors.isEmpty else {
             Issue.record("Received more quit attempts than scripted errors")
             return false
         }
-        throw errors.removeFirst()
+        throw self.errors.removeFirst()
     }
 }
