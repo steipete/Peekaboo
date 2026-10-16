@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PeekabooAutomationKitTestSupport
 import PeekabooFoundation
 import Testing
 @testable import PeekabooAutomationKit
@@ -14,12 +15,19 @@ struct ApplicationServiceOperationLaneTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-application-lane-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let quitQueued = AsyncStream<Void>.makeStream()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                quitQueued.continuation.yield()
+                try await Task.sleep(for: .milliseconds(10))
+            })
         let expectedIdentity = ApplicationProcessIdentity(
             processIdentifier: runningApplication.processIdentifier,
             processStartIdentity: 70)
-        let ownerStarted = ApplicationOperationLatch()
-        let ownerRelease = ApplicationOperationLatch()
+        let ownerStarted = AsyncStream<Void>.makeStream()
+        let ownerRelease = AsyncStream<Void>.makeStream()
+        defer { ownerRelease.continuation.finish() }
         let unrelatedStarted = ApplicationOperationLatch()
         let currentGeneration = ApplicationOperationGenerationBox(70)
         var terminationCalls = 0
@@ -32,40 +40,50 @@ struct ApplicationServiceOperationLaneTests {
                 return true
             })
 
-        let owner = Task { @MainActor in
-            try await coordinator.run(scope: .process(expectedIdentity), access: .write) {
-                await ownerStarted.open()
-                await ownerRelease.wait()
-            }
-        }
-        await ownerStarted.wait()
-        let quit = Task { @MainActor in
-            try await service.quitApplication(request: ApplicationQuitRequest(
-                identifier: "PID:\(runningApplication.processIdentifier)",
-                expectedIdentity: expectedIdentity))
-        }
-        try await Task.sleep(for: .milliseconds(50))
-        #expect(terminationCalls == 0)
-        let unrelated = Task {
-            try await coordinator.run(
-                scope: .process(ApplicationProcessIdentity(
-                    processIdentifier: runningApplication.processIdentifier + 1,
-                    processStartIdentity: 700)),
-                access: .write)
-            {
-                await unrelatedStarted.open()
-            }
-        }
-        #expect(await unrelatedStarted.opensWithin(.milliseconds(100)))
-        currentGeneration.value = 71
-        await ownerRelease.open()
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for quit lane isolation or revalidation; releasing the owner",
+            release: {
+                ownerRelease.continuation.finish()
+            }, operation: {
+                let owner = Task { @MainActor in
+                    defer { ownerStarted.continuation.finish() }
+                    try await coordinator.run(scope: .process(expectedIdentity), access: .write) {
+                        ownerStarted.continuation.yield()
+                        for await _ in ownerRelease.stream {}
+                    }
+                }
+                var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+                try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
+                let quit = Task { @MainActor in
+                    defer { quitQueued.continuation.finish() }
+                    return try await service.quitApplication(request: ApplicationQuitRequest(
+                        identifier: "PID:\(runningApplication.processIdentifier)",
+                        expectedIdentity: expectedIdentity))
+                }
+                var retries = quitQueued.stream.makeAsyncIterator()
+                #expect(await retries.next() != nil, "Quit completed before reporting contention")
+                #expect(terminationCalls == 0)
+                let unrelated = Task {
+                    try await coordinator.run(
+                        scope: .process(ApplicationProcessIdentity(
+                            processIdentifier: runningApplication.processIdentifier + 1,
+                            processStartIdentity: 700)),
+                        access: .write)
+                    {
+                        await unrelatedStarted.open()
+                    }
+                }
+                try await unrelated.value
+                #expect(await unrelatedStarted.isOpen)
+                currentGeneration.value = 71
+                ownerRelease.continuation.finish()
 
-        try await owner.value
-        try await unrelated.value
-        await #expect(throws: PeekabooError.self) {
-            try await quit.value
-        }
-        #expect(terminationCalls == 0)
+                try await owner.value
+                await #expect(throws: PeekabooError.self) {
+                    try await quit.value
+                }
+                #expect(terminationCalls == 0)
+            })
     }
 
     @Test

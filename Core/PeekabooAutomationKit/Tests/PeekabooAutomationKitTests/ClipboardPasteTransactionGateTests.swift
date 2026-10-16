@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import PeekabooAutomationKitTestSupport
 import PeekabooFoundation
 import Testing
 @testable import PeekabooAutomationKit
@@ -27,21 +28,44 @@ struct ClipboardPasteTransactionGateTests {
         }
 
         var operationRan = false
-        let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-                return 42
-            }
+        let waiting = AsyncStream<Void>.makeStream()
+        let retry = AsyncStream<Void>.makeStream()
+        defer {
+            waiting.continuation.finish()
+            retry.continuation.finish()
         }
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for clipboard contention; releasing the file lock and retry",
+            release: {
+                flock(heldFD, LOCK_UN)
+                retry.continuation.finish()
+            }, operation: { () async throws in
+                let transaction = Task { @MainActor in
+                    defer { waiting.continuation.finish() }
+                    return try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                        lockPath: fixture.path,
+                        retrySleep: {
+                            waiting.continuation.yield()
+                            for await _ in retry.stream {}
+                            try Task.checkCancellation()
+                        },
+                        operation: {
+                            operationRan = true
+                            return 42
+                        })
+                }
 
-        try await Task.sleep(for: .milliseconds(75))
-        #expect(operationRan == false)
+                var retries = waiting.stream.makeAsyncIterator()
+                #expect(await retries.next() != nil)
+                #expect(operationRan == false)
 
-        #expect(flock(heldFD, LOCK_UN) == 0)
-        lockHeld = false
+                #expect(flock(heldFD, LOCK_UN) == 0)
+                lockHeld = false
+                retry.continuation.finish()
 
-        #expect(try await transaction.value == 42)
-        #expect(operationRan)
+                #expect(try await transaction.value == 42)
+                #expect(operationRan)
+            })
     }
 
     @Test
@@ -72,32 +96,56 @@ struct ClipboardPasteTransactionGateTests {
         let childOutput = Pipe()
         child.standardInput = childInput
         child.standardOutput = childOutput
-        try child.run()
-        defer {
-            try? childInput.fileHandleForWriting.close()
-            if child.isRunning {
-                child.terminate()
-            }
-            child.waitUntilExit()
-        }
-        let readiness = try #require(try childOutput.fileHandleForReading.read(upToCount: 7))
-        #expect(readiness == Data("locked\n".utf8))
-
         var operationRan = false
-        let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-                return 42
-            }
+        let waiting = AsyncStream<Void>.makeStream()
+        let retry = AsyncStream<Void>.makeStream()
+        defer {
+            waiting.continuation.finish()
+            retry.continuation.finish()
         }
-        try await Task.sleep(for: .milliseconds(75))
-        #expect(operationRan == false)
+        let childWriteHandle = childInput.fileHandleForWriting
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for cross-process clipboard contention; releasing the child and retry",
+            release: {
+                try? childWriteHandle.close()
+                retry.continuation.finish()
+            }, operation: {
+                try child.run()
+                defer {
+                    try? childInput.fileHandleForWriting.close()
+                    if child.isRunning {
+                        child.terminate()
+                    }
+                    child.waitUntilExit()
+                }
+                let readiness = try #require(try childOutput.fileHandleForReading.read(upToCount: 7))
+                #expect(readiness == Data("locked\n".utf8))
 
-        try childInput.fileHandleForWriting.close()
-        child.waitUntilExit()
-        #expect(child.terminationStatus == 0)
-        #expect(try await transaction.value == 42)
-        #expect(operationRan)
+                let transaction = Task { @MainActor in
+                    defer { waiting.continuation.finish() }
+                    return try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                        lockPath: fixture.path,
+                        retrySleep: {
+                            waiting.continuation.yield()
+                            for await _ in retry.stream {}
+                            try Task.checkCancellation()
+                        },
+                        operation: {
+                            operationRan = true
+                            return 42
+                        })
+                }
+                var retries = waiting.stream.makeAsyncIterator()
+                #expect(await retries.next() != nil)
+                #expect(operationRan == false)
+
+                try childInput.fileHandleForWriting.close()
+                child.waitUntilExit()
+                #expect(child.terminationStatus == 0)
+                retry.continuation.finish()
+                #expect(try await transaction.value == 42)
+                #expect(operationRan)
+            })
     }
 
     @Test
@@ -323,18 +371,38 @@ struct ClipboardPasteTransactionGateTests {
         }
 
         var operationRan = false
-        let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-            }
-        }
+        let retryRelease = AsyncStream<Void>.makeStream()
+        defer { retryRelease.continuation.finish() }
+        let waiting = AsyncStream<Void>.makeStream()
+        defer { waiting.continuation.finish() }
+        await withTestReleaseWatchdog(
+            "Timed out waiting for clipboard cancellation; releasing the file lock and retry",
+            release: {
+                flock(heldFD, LOCK_UN)
+                retryRelease.continuation.finish()
+            }, operation: {
+                let transaction = Task { @MainActor in
+                    defer { waiting.continuation.finish() }
+                    try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                        lockPath: fixture.path,
+                        retrySleep: {
+                            waiting.continuation.yield()
+                            for await _ in retryRelease.stream {}
+                            try Task.checkCancellation()
+                        },
+                        operation: {
+                            operationRan = true
+                        })
+                }
 
-        try await Task.sleep(for: .milliseconds(50))
-        transaction.cancel()
-        await #expect(throws: CancellationError.self) {
-            try await transaction.value
-        }
-        #expect(operationRan == false)
+                var retries = waiting.stream.makeAsyncIterator()
+                #expect(await retries.next() != nil)
+                transaction.cancel()
+                await #expect(throws: CancellationError.self) {
+                    try await transaction.value
+                }
+                #expect(operationRan == false)
+            })
     }
 
     @Test

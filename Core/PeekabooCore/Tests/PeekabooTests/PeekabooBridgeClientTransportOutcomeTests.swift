@@ -17,7 +17,7 @@ struct PeekabooBridgeClientTransportOutcomeTests {
             [.respond(.handshake(Self.receiptlessHandshake))],
             [.idle(seconds: 1)],
         ])
-        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 0.1)
+        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 1)
         try await Self.negotiateReceiptless(client)
         let bounds = CGRect(x: 0, y: 0, width: 100, height: 100)
         let identity = WindowMutationIdentity(
@@ -52,11 +52,11 @@ struct PeekabooBridgeClientTransportOutcomeTests {
     @Test
     func `mutation response timeout is indeterminate and retry unsafe`() async throws {
         let peer = try Self.receiptlessPeer(steps: [.idle(seconds: 0.15)])
-        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 0.05)
+        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 1)
         try await Self.negotiateReceiptless(client)
 
         do {
-            try await client.sendExpectOK(Self.clickRequest)
+            try await client.sendExpectOK(Self.clickRequest, timeoutSec: 0.05)
             Issue.record("Expected the response read to time out")
         } catch let failure as DesktopActionFailure {
             Self.expectResponseLostFailure(failure)
@@ -67,11 +67,11 @@ struct PeekabooBridgeClientTransportOutcomeTests {
     @Test
     func `read-only response timeout remains an ordinary transport failure`() async throws {
         let peer = try Self.receiptlessPeer(steps: [.idle(seconds: 0.15)])
-        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 0.05)
+        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 1)
         try await Self.negotiateReceiptless(client)
 
         do {
-            _ = try await client.send(.permissionsStatus)
+            _ = try await client.send(.permissionsStatus, timeoutSec: 0.05)
             Issue.record("Expected the response read to time out")
         } catch let error as POSIXError {
             #expect(error.code == .ETIMEDOUT)
@@ -176,7 +176,7 @@ struct PeekabooBridgeClientTransportOutcomeTests {
     @Test
     func `mutation connect failure remains retry safe`() async throws {
         let peer = try ScriptedBridgePeer(responses: [.handshake(Self.receiptlessHandshake)])
-        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 0.05)
+        let client = PeekabooBridgeClient(socketPath: peer.socketPath, requestTimeoutSec: 1)
         try await Self.negotiateReceiptless(client)
         await peer.waitUntilFinished()
 

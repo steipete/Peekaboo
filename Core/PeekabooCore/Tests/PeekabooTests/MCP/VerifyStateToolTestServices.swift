@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import PeekabooAutomationKit
+import PeekabooAutomationKitTestSupport
 import PeekabooFoundation
 import Testing
 
@@ -221,5 +222,99 @@ func verifyStateNonCooperativeDelay(_ duration: Duration) async {
             try? await Task.sleep(for: duration)
             continuation.resume()
         }
+    }
+}
+
+extension VerifyStateToolTests {
+    func withPendingVerificationWork<T>(
+        _ operation: (NoncooperativeWorkGate) async throws -> T) async throws -> T
+    {
+        let gate = NoncooperativeWorkGate()
+        return try await withTestReleaseWatchdog(
+            "Verification waited for held noncooperative work; releasing the worker",
+            release: { await gate.release() },
+            operation: {
+                let result = try await operation(gate)
+                #expect(await gate.hasEntered)
+                #expect(await !gate.isReleased, "The deadline must return without joining held work")
+                #expect(await !gate.hasFinished)
+                await gate.release()
+                if await gate.hasEntered {
+                    await gate.waitUntilFinished()
+                }
+                return result
+            })
+    }
+
+    func withPendingSynchronousWork<T: Sendable>(
+        _ operation: @escaping @MainActor @Sendable (VerifyStateSynchronousGate) async throws -> T) async throws -> T
+    {
+        let gate = VerifyStateSynchronousGate()
+        return try await withTestReleaseWatchdog(
+            "Verification waited for held synchronous work; releasing the worker",
+            release: { gate.release() },
+            operation: {
+                let task = Task { @MainActor in try await operation(gate) }
+                #expect(await gate.waitUntilEntered())
+                let heartbeat = Task { @MainActor in gate.isHeld }
+                #expect(await heartbeat.value, "MainActor must run while the synchronous worker is held")
+                let result = try await task.value
+                #expect(gate.isHeld, "The deadline must return without joining the synchronous worker")
+                gate.release()
+                if gate.hasEntered {
+                    await gate.waitUntilFinished()
+                }
+                return result
+            })
+    }
+}
+
+final class VerifyStateSynchronousGate: @unchecked Sendable {
+    private let condition = NSCondition()
+    private let entered = AsyncStream<Void>.makeStream()
+    private let finished = AsyncStream<Void>.makeStream()
+    private var didEnter = false
+    private var released = false
+
+    var hasEntered: Bool {
+        self.condition.lock()
+        defer { self.condition.unlock() }
+        return self.didEnter
+    }
+
+    var isHeld: Bool {
+        self.condition.lock()
+        defer { self.condition.unlock() }
+        return self.didEnter && !self.released
+    }
+
+    func block() {
+        self.condition.lock()
+        self.didEnter = true
+        self.entered.continuation.yield()
+        while !self.released {
+            self.condition.wait()
+        }
+        self.condition.unlock()
+        self.finished.continuation.yield()
+        self.finished.continuation.finish()
+    }
+
+    func waitUntilEntered() async -> Bool {
+        var entries = self.entered.stream.makeAsyncIterator()
+        return await entries.next() != nil
+    }
+
+    func waitUntilFinished() async {
+        var completions = self.finished.stream.makeAsyncIterator()
+        _ = await completions.next()
+    }
+
+    func release() {
+        self.condition.lock()
+        self.released = true
+        self.condition.broadcast()
+        self.condition.unlock()
+        self.entered.continuation.finish()
     }
 }

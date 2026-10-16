@@ -1034,24 +1034,25 @@ extension VerifyStateToolTests {
     @Test
     func `Hard deadline returns while noncooperative window enumeration is still pending`() async throws {
         let fixture = VerifyStateFixture()
-        let slowApplications = VerifyStateApplicationService(
-            applications: [fixture.application],
-            windows: [fixture.window],
-            delay: .seconds(1))
-        let context = await MCPToolTestHelpers.makeContext(
-            automation: fixture.automation,
-            applications: slowApplications)
-        let clock = ContinuousClock()
-        let start = clock.now
+        let response = try await self.withPendingVerificationWork { gate in
+            let slowApplications = VerifyStateApplicationService(
+                applications: [fixture.application],
+                windows: [fixture.window],
+                onListWindows: {
+                    await gate.wait()
+                    await gate.finish()
+                })
+            let context = await MCPToolTestHelpers.makeContext(
+                automation: fixture.automation,
+                applications: slowApplications)
+            return try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
+                "pid": Int(fixture.application.processIdentifier),
+                "predicates": [["kind": "window_exists", "expected": true]],
+                "timeout_ms": 100,
+                "stable_samples": 1,
+            ]))
+        }
 
-        let response = try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
-            "pid": Int(fixture.application.processIdentifier),
-            "predicates": [["kind": "window_exists", "expected": true]],
-            "timeout_ms": 100,
-            "stable_samples": 1,
-        ]))
-
-        #expect(start.duration(to: clock.now) < .milliseconds(500))
         #expect(Self.stringMeta("status", response) == "unknown")
         #expect(Self.stringMeta("reason", response)?.contains("deadline") == true)
     }
@@ -1059,23 +1060,24 @@ extension VerifyStateToolTests {
     @Test
     func `Slow optional screenshot is omitted without losing a satisfied state result`() async throws {
         let fixture = VerifyStateFixture()
-        let capture = VerifyStateScreenCaptureService(
-            applicationInfo: fixture.application,
-            windowInfo: fixture.window,
-            delay: .seconds(1))
-        let context = await fixture.context(results: [], screenCapture: capture)
-        let clock = ContinuousClock()
-        let start = clock.now
+        let response = try await self.withPendingVerificationWork { gate in
+            let capture = VerifyStateScreenCaptureService(
+                applicationInfo: fixture.application,
+                windowInfo: fixture.window,
+                onCapture: {
+                    await gate.wait()
+                    await gate.finish()
+                })
+            let context = await fixture.context(results: [], screenCapture: capture)
+            return try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
+                "pid": Int(fixture.application.processIdentifier),
+                "predicates": [["kind": "window_exists", "expected": true]],
+                "timeout_ms": 1000,
+                "stable_samples": 1,
+                "final_screenshot": true,
+            ]))
+        }
 
-        let response = try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
-            "pid": Int(fixture.application.processIdentifier),
-            "predicates": [["kind": "window_exists", "expected": true]],
-            "timeout_ms": 100,
-            "stable_samples": 1,
-            "final_screenshot": true,
-        ]))
-
-        #expect(start.duration(to: clock.now) < .milliseconds(500))
         #expect(Self.stringMeta("status", response) == "satisfied")
         #expect(Self.boolMeta("screenshot_attached", response) == false)
         #expect(Self.stringMeta("screenshot_error", response)?.contains("deadline") == true)
@@ -1090,54 +1092,38 @@ extension VerifyStateToolTests {
     @Test
     func `Hard deadline returns while noncooperative AX inspection is still pending`() async throws {
         let fixture = VerifyStateFixture()
-        fixture.automation.delay = .seconds(1)
-        let context = await fixture.context(results: [fixture.satisfiedResult])
-        let clock = ContinuousClock()
-        let start = clock.now
+        let response = try await self.withPendingVerificationWork { gate in
+            fixture.automation.onInspect = {
+                await gate.wait()
+                await gate.finish()
+            }
+            let context = await fixture.context(results: [fixture.satisfiedResult])
+            return try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
+                "pid": Int(fixture.application.processIdentifier),
+                "predicates": [[
+                    "kind": "element_exists",
+                    "selector": ["identifier": "document-content"],
+                    "expected": true,
+                ]],
+                "timeout_ms": 100,
+                "stable_samples": 1,
+            ]))
+        }
 
-        let response = try await fixture.tool(context: context).execute(arguments: ToolArguments(raw: [
-            "pid": Int(fixture.application.processIdentifier),
-            "predicates": [[
-                "kind": "element_exists",
-                "selector": ["identifier": "document-content"],
-                "expected": true,
-            ]],
-            "timeout_ms": 100,
-            "stable_samples": 1,
-        ]))
-
-        #expect(start.duration(to: clock.now) < .milliseconds(500))
         #expect(Self.stringMeta("status", response) == "unknown")
         #expect(Self.stringMeta("reason", response)?.contains("deadline") == true)
     }
 
     @Test
     func `Deadline runner keeps MainActor heartbeat responsive during a synchronous block`() async throws {
-        let heartbeat = VerifyStateHeartbeatProbe()
-        let heartbeatTask = Task { @MainActor in
-            while !Task.isCancelled {
-                heartbeat.count += 1
-                try? await Task.sleep(for: .milliseconds(1))
+        try await self.withPendingSynchronousWork { gate in
+            await #expect(throws: VerifyStateDeadlineError.self) {
+                _ = try await VerifyStateDeadlineRunner.run(seconds: 0.05) {
+                    gate.block()
+                    return true
+                }
             }
         }
-        defer { heartbeatTask.cancel() }
-        try await Task.sleep(for: .milliseconds(10))
-        let heartbeatBefore = heartbeat.count
-        let clock = ContinuousClock()
-        let startedAt = clock.now
-
-        do {
-            _ = try await VerifyStateDeadlineRunner.run(seconds: 0.05) {
-                blockCurrentThread(seconds: 0.2)
-                return true
-            }
-            Issue.record("Expected the detached deadline to win")
-        } catch VerifyStateDeadlineError.timedOut {
-            // Expected.
-        }
-
-        #expect(startedAt.duration(to: clock.now) < .milliseconds(150))
-        #expect(heartbeat.count > heartbeatBefore)
     }
 
     @Test
@@ -1145,12 +1131,6 @@ extension VerifyStateToolTests {
         let fixture = VerifyStateFixture()
         let context = await fixture.context(results: [])
         let targetProcessIdentifier = fixture.application.processIdentifier
-        let tool = fixture.tool(
-            context: context,
-            windowOwnerProcessIdentifierProvider: { _ in
-                blockCurrentThread(seconds: 0.2)
-                return pid_t(targetProcessIdentifier)
-            })
         let request = VerifyStateRequest(
             target: .pid(targetProcessIdentifier),
             windowID: CGWindowID(fixture.window.windowID),
@@ -1158,23 +1138,16 @@ extension VerifyStateToolTests {
             timeoutMilliseconds: 50,
             stableSamples: 1,
             finalScreenshot: false)
-        let heartbeat = VerifyStateHeartbeatProbe()
-        let heartbeatTask = Task { @MainActor in
-            while !Task.isCancelled {
-                heartbeat.count += 1
-                try? await Task.sleep(for: .milliseconds(1))
-            }
+        let response = try await self.withPendingSynchronousWork { gate in
+            let tool = fixture.tool(
+                context: context,
+                windowOwnerProcessIdentifierProvider: { _ in
+                    gate.block()
+                    return pid_t(targetProcessIdentifier)
+                })
+            return try await tool.verify(request)
         }
-        defer { heartbeatTask.cancel() }
-        try await Task.sleep(for: .milliseconds(10))
-        let heartbeatBefore = heartbeat.count
-        let clock = ContinuousClock()
-        let startedAt = clock.now
 
-        let response = try await tool.verify(request)
-
-        #expect(startedAt.duration(to: clock.now) < .milliseconds(150))
-        #expect(heartbeat.count > heartbeatBefore)
         #expect(Self.stringMeta("status", response) == "unknown")
         #expect(Self.intMeta("sample_count", response) == 0)
         #expect(Self.intMeta("stable_samples", response) == 0)
@@ -1518,11 +1491,6 @@ final class VerifyStateFixture {
     }
 }
 
-@MainActor
-private final class VerifyStateHeartbeatProbe {
-    var count = 0
-}
-
 private final class LockedIdentitySequence: @unchecked Sendable {
     private let lock = NSLock()
     private let values: [UInt64]
@@ -1609,7 +1577,7 @@ private func blockCurrentThread(seconds: TimeInterval) {
 @MainActor
 private final class VerifyStateAutomationService: MockAutomationService {
     var results: [ElementDetectionResult] = []
-    var delay: Duration?
+    var onInspect: (@MainActor () async -> Void)?
     var blockingDelaySeconds: TimeInterval?
     private(set) var contexts: [WindowContext] = []
     private var index = 0
@@ -1622,9 +1590,7 @@ private final class VerifyStateAutomationService: MockAutomationService {
         if let windowContext {
             self.contexts.append(windowContext)
         }
-        if let delay {
-            await verifyStateNonCooperativeDelay(delay)
-        }
+        await self.onInspect?()
         if let blockingDelaySeconds {
             blockCurrentThread(seconds: blockingDelaySeconds)
         }
