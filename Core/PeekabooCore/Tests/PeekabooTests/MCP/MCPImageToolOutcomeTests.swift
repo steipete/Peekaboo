@@ -628,7 +628,7 @@ struct MCPImageToolOutcomeTests {
             permissionsStatusProvider: base.permissionsStatusProvider,
             snapshotMutationCoordinator: base.snapshotMutationCoordinator,
             snapshotExecutionGate: base.snapshotExecutionGate,
-            snapshotOwner: .legacyProcess,
+            snapshotOwner: base.uiSnapshots.owner,
             executionPolicy: .backgroundOnly)
         return try await ImageTool(context: context).execute(arguments: ToolArguments(raw: arguments))
     }

@@ -91,7 +91,7 @@ struct MCPGlobalPointerActionResultTests {
     @Test
     func `drag and move publish canonical global pointer results`() async throws {
         let automation = PointerOutcomeAutomationService(outcome: Self.pointerOutcome)
-        let context = await MCPToolTestHelpers.makeLegacyContext(automation: automation)
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
 
         let drag = try await DragTool(context: context).execute(arguments: ToolArguments(raw: [
             "from_coords": "10,20",
@@ -117,7 +117,7 @@ struct MCPGlobalPointerActionResultTests {
     @Test
     func `legacy pointer provider receives conservative canonical success metadata`() async throws {
         let automation = MockAutomationService(accessibilityGranted: true)
-        let context = await MCPToolTestHelpers.makeLegacyContext(automation: automation)
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
 
         let response = try await MoveTool(context: context).execute(arguments: ToolArguments(raw: [
             "to": "50,60",
@@ -135,7 +135,7 @@ struct MCPGlobalPointerActionResultTests {
             delivery: Self.pointerDelivery,
             unitCount: .one)
         let automation = PointerOutcomeAutomationService(outcome: partial)
-        let context = await MCPToolTestHelpers.makeLegacyContext(automation: automation)
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
 
         let response = try await DragTool(context: context).execute(arguments: ToolArguments(raw: [
             "from_coords": "10,20",
@@ -153,7 +153,7 @@ struct MCPGlobalPointerActionResultTests {
         let automation = PointerOutcomeAutomationService(
             outcome: Self.pointerOutcome,
             error: CancellationError())
-        let context = await MCPToolTestHelpers.makeLegacyContext(automation: automation)
+        let context = await MCPToolTestHelpers.makeContext(automation: automation)
 
         let response = try await DragTool(context: context).execute(arguments: ToolArguments(raw: [
             "from_coords": "10,20",
@@ -175,13 +175,12 @@ struct MCPGlobalPointerActionResultTests {
 
     @Test
     func `exact setup focus composes with drag without claiming an exact mutation target`() async throws {
-        await UISnapshotManager.shared.removeAllSnapshots()
         let windows = MCPFocusResultWindowService()
         let automation = PointerOutcomeAutomationService(outcome: Self.pointerOutcome)
-        let context = await MCPToolTestHelpers.makeLegacyContext(
+        let context = await MCPToolTestHelpers.makeContext(
             automation: automation,
             windows: windows)
-        let snapshot = await UISnapshotManager.shared.createSnapshot()
+        let snapshot = await context.uiSnapshots.createSnapshot()
         let snapshotID = await snapshot.id
         let bounds = try #require(windows.identity.capturedBounds)
         let window = ServiceWindowInfo(
