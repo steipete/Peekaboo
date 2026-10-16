@@ -64,7 +64,6 @@ enum RuntimeHostResolver {
             }
         }
 
-        let concreteSnapshotID = options.explicitSnapshotID
         guard self.shouldResolveKnownRemoteEndpoints(
             options: options,
             environment: environment,
@@ -94,7 +93,7 @@ enum RuntimeHostResolver {
             historicalBuildScopedDaemonSocketPaths: historicalBuildScopedDaemonSocketPaths
         )
 
-        if let concreteSnapshotID {
+        if let concreteSnapshotID = options.explicitSnapshotID {
             let resolvedHandshakeCache = handshakeCache ?? dependencies.makeRemoteHandshakeCache()
             let context = RemoteResolutionContext(
                 options: options,
@@ -179,7 +178,9 @@ enum RuntimeHostResolver {
             makeLocalServices: dependencies.makeLocalServices,
             inspectScreenCaptureKitSafety: dependencies.inspectScreenCaptureKitSafety,
             recordScreenCaptureKitSafetyBlocker: dependencies.recordScreenCaptureKitSafetyBlocker,
-            makeRemoteServices: dependencies.makeRemoteServices
+            makeRemoteServices: dependencies.makeRemoteServices,
+            callerPermissionPreflight: dependencies.callerPermissionPreflight,
+            startOnDemandDaemon: dependencies.startOnDemandDaemon
         ))
         resolution.captureEngineSafetyOverride = captureSafety.engineOverride ?? resolution.captureEngineSafetyOverride
         resolution.toolCapturePreflightRefusal = captureSafety.toolPreflightRefusal
@@ -304,6 +305,52 @@ enum RuntimeHostResolver {
         }
     }
 
+    private static func resolveExactBuildRemoteServices(
+        context: RemoteResolutionContext,
+        buildScopedDaemonSocketPath: String,
+        permissionRejections: inout [String],
+        recordRejection: (RemoteCandidateEvaluation) -> Void
+    ) async throws -> Resolution? {
+        let exactCandidate = ImplicitRemoteCandidate(
+            socketPath: buildScopedDaemonSocketPath,
+            requireReusableDaemon: true,
+            requiredHostKind: .onDemand,
+            requiresValidatedHistoricalDaemon: false
+        )
+        if let resolved = try await context.resolveRemoteServices(
+            candidates: [exactCandidate],
+            requiredProtocolVersion: PeekabooBridgeConstants.protocolVersion,
+            permissionRejections: &permissionRejections,
+            recordRejection: recordRejection
+        ) {
+            return resolved
+        }
+
+        let exactHostExists = try await DaemonControlClient(socketPath: buildScopedDaemonSocketPath)
+            .fetchStatus() != nil
+        if !exactHostExists,
+           DaemonLaunchPolicy.shouldAutoStartDaemon(options: context.options, environment: context.environment),
+           try await !(self.shouldSkipOnDemandDaemon(context: context)),
+           let resolvedDaemonSocket = try await context.startOnDemandDaemon(
+               buildScopedDaemonSocketPath,
+               context.environment
+           ),
+           let resolved = try await context.resolveRemoteServices(
+               candidates: [ImplicitRemoteCandidate(
+                   socketPath: resolvedDaemonSocket,
+                   requireReusableDaemon: true,
+                   requiredHostKind: .onDemand,
+                   requiresValidatedHistoricalDaemon: false
+               )],
+               requiredProtocolVersion: PeekabooBridgeConstants.protocolVersion,
+               permissionRejections: &permissionRejections,
+               recordRejection: recordRejection
+           ) {
+            return resolved
+        }
+        return nil
+    }
+
     private static func resolveRemoteRouting(
         context: RemoteResolutionContext
     ) async throws -> Resolution {
@@ -315,7 +362,8 @@ enum RuntimeHostResolver {
 
         // Stateful implicit commands share in-memory snapshots across invocations. Establish
         // the exact daemon generation for this executable before considering compatible older
-        // hosts; protocol equality alone cannot distinguish two builds that both speak 1.11.
+        // hosts; protocol equality alone cannot distinguish builds with different state semantics.
+        // GUI fallback still catches up and invalidates snapshots through the normal mutation barrier.
         let prefersExactBuildScopedHost = self.prefersExactBuildScopedHost(
             options: options,
             explicitSocket: explicitSocket,
@@ -380,43 +428,14 @@ enum RuntimeHostResolver {
             )
         }
 
-        if prefersExactBuildScopedHost, let buildScopedDaemonSocketPath {
-            let exactCandidate = ImplicitRemoteCandidate(
-                socketPath: buildScopedDaemonSocketPath,
-                requireReusableDaemon: true,
-                requiredHostKind: .onDemand,
-                requiresValidatedHistoricalDaemon: false
-            )
-            if let resolved = try await context.resolveRemoteServices(
-                candidates: [exactCandidate],
-                requiredProtocolVersion: PeekabooBridgeConstants.protocolVersion,
-                permissionRejections: &permissionRejections,
-                recordRejection: recordRejection
-            ) {
-                return resolved
-            }
-
-            let exactHostExists = try await DaemonControlClient(socketPath: buildScopedDaemonSocketPath)
-                .fetchStatus() != nil
-            if !exactHostExists,
-               DaemonLaunchPolicy.shouldAutoStartDaemon(options: options, environment: context.environment),
-               let resolvedDaemonSocket = try await DaemonLaunchPolicy.startOnDemandDaemon(
-                   socketPath: buildScopedDaemonSocketPath,
-                   environment: context.environment
-               ),
-               let resolved = try await context.resolveRemoteServices(
-                   candidates: [ImplicitRemoteCandidate(
-                       socketPath: resolvedDaemonSocket,
-                       requireReusableDaemon: true,
-                       requiredHostKind: .onDemand,
-                       requiresValidatedHistoricalDaemon: false
-                   )],
-                   requiredProtocolVersion: PeekabooBridgeConstants.protocolVersion,
-                   permissionRejections: &permissionRejections,
-                   recordRejection: recordRejection
-               ) {
-                return resolved
-            }
+        if prefersExactBuildScopedHost, let buildScopedDaemonSocketPath,
+           let resolved = try await self.resolveExactBuildRemoteServices(
+               context: context,
+               buildScopedDaemonSocketPath: buildScopedDaemonSocketPath,
+               permissionRejections: &permissionRejections,
+               recordRejection: recordRejection
+           ) {
+            return resolved
         }
 
         if let resolved = try await context.resolveRemoteServices(
@@ -439,7 +458,8 @@ enum RuntimeHostResolver {
         }
 
         if !prefersExactBuildScopedHost,
-           DaemonLaunchPolicy.shouldAutoStartDaemon(options: options, environment: context.environment) {
+           DaemonLaunchPolicy.shouldAutoStartDaemon(options: options, environment: context.environment),
+           try await !(self.shouldSkipOnDemandDaemon(context: context)) {
             let rejectedDefaultSocketOccupant =
                 try await DaemonControlClient(socketPath: daemonSocketPath).fetchStatus() != nil
             let autoStartSocketPath = DaemonLaunchPolicy.autoStartSocketPath(
@@ -447,9 +467,9 @@ enum RuntimeHostResolver {
                 defaultSocketWasOccupiedAndRejected: rejectedDefaultSocketOccupant,
                 runtimeBuildIdentity: candidatePlan.runtimeBuildIdentity
             )
-            if let resolvedDaemonSocket = try await DaemonLaunchPolicy.startOnDemandDaemon(
-                socketPath: autoStartSocketPath,
-                environment: context.environment
+            if let resolvedDaemonSocket = try await context.startOnDemandDaemon(
+                autoStartSocketPath,
+                context.environment
             ),
                 let resolved = try await context.resolveRemoteServices(
                     candidates: [ImplicitRemoteCandidate(

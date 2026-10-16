@@ -605,6 +605,7 @@ response bytes. Protocol 1.5 desktop observation provides the raster metadata, w
   screen-capture observation, AX-tree inspection, browser, and snapshot-state work first prefers—and may auto-start—the
   current CLI build's build-scoped daemon so an older compatible host does not become the owner of build-sensitive
   in-memory state.
+- Implicit auto-start skips a daemon predicted by the caller's non-interactive permission preflights to be weaker than a capable Peekaboo.app host; concrete snapshot ownership and commands requiring a surviving lifecycle host keep their existing routing.
 - Use `--no-remote` to force local execution.
 - Use `--bridge-socket <path>` or `PEEKABOO_BRIDGE_SOCKET` to override host discovery.
 - Use `PEEKABOO_DAEMON_SOCKET` only to change the auto-start daemon socket without treating it as an explicit Bridge override.
