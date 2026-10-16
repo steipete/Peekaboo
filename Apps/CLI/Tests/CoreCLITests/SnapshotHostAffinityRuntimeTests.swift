@@ -394,10 +394,12 @@ struct SnapshotHostAffinityRuntimeTests {
         }
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `unavailable affinity probes complete concurrently`() async {
         let hosts = (0..<4).map { self.candidate("/tmp/slow-\($0).sock") }
-        let startedAt = ContinuousClock.now
+        var probedSockets: Set<String> = []
+        var probeWaiters: [AsyncStream<Void>.Continuation] = []
+        defer { probeWaiters.forEach { $0.finish() } }
 
         await #expect(throws: PreDispatchActionError.self) {
             _ = try await RuntimeHostResolver.resolveSnapshotAffinity(
@@ -405,13 +407,22 @@ struct SnapshotHostAffinityRuntimeTests {
                 candidates: hosts,
                 identity: self.identity,
                 handshakeCache: RuntimeHostResolver.RemoteHandshakeCache(identity: self.identity),
-                probe: { _, _, _, _ in
-                    try await Task.sleep(for: .milliseconds(120))
+                probe: { candidate, _, _, _ in
+                    let (gate, continuation) = AsyncStream<Void>.makeStream()
+                    probeWaiters.append(continuation)
+                    probedSockets.insert(candidate.socketPath)
+                    // No probe can finish until every candidate has entered; serial dispatch cannot pass.
+                    if probedSockets.count == hosts.count {
+                        probeWaiters.forEach { $0.finish() }
+                    }
+                    var release = gate.makeAsyncIterator()
+                    _ = await release.next()
+                    try Task.checkCancellation()
                     return .unavailable
                 }
             )
         }
-        #expect(startedAt.duration(to: .now) < .milliseconds(350))
+        #expect(probedSockets == Set(hosts.map(\.socketPath)))
     }
 
     @Test

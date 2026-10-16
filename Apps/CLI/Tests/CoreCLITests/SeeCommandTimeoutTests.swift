@@ -222,16 +222,19 @@ struct SeeCommandTimeoutTests {
         #expect(result == "ok")
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `throws detectionTimedOut when operation exceeds deadline`() async {
-        let startedAt = Date()
+        let gate = IgnoredCancellationWorkGate()
+        let watchdog = Task {
+            do { try await Task.sleep(for: .seconds(30)) } catch { return }
+            Issue.record("Detection timeout did not return while the operation was held")
+            await gate.release()
+        }
+        defer { watchdog.cancel() }
         let error = await #expect(throws: CaptureError.self) {
             try await SeeCommand.withWallClockTimeout(seconds: 0.05) {
-                await withCheckedContinuation { continuation in
-                    DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
-                        continuation.resume(returning: "late")
-                    }
-                }
+                await gate.waitUntilReleased()
+                return "late"
             }
         }
 
@@ -241,7 +244,10 @@ struct SeeCommandTimeoutTests {
         default:
             Issue.record("Unexpected capture error: \(error)")
         }
-        #expect(Date().timeIntervalSince(startedAt) < 0.25)
+        #expect(await !gate.isReleased)
+        await gate.release()
+        watchdog.cancel()
+        await watchdog.value
     }
 
     @Test
@@ -401,6 +407,10 @@ private actor IgnoredCancellationWorkGate {
     private var started = false
     private var finished = false
     private var finishedContinuations: [CheckedContinuation<Void, Never>] = []
+
+    var isReleased: Bool {
+        self.released
+    }
 
     func waitUntilReleased() async {
         self.started = true

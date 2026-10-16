@@ -1166,35 +1166,54 @@ extension PeekabooBridgeOperationReceiptTests {
         claims.forEach(authority.complete)
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(1)))
     func `abandoned client reclamation keeps registry and archives bounded`() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(
             "peekaboo-operation-receipt-client-churn-\(UUID().uuidString)",
             isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let maximumSessionCount = 8
+        let maximumActiveSessionCountPerPeer = 4
+        let retainedRetiredSessionCount = 1
+        let (archiveRemovals, removedArchiveContinuation) = AsyncStream<URL>.makeStream()
+        defer { removedArchiveContinuation.finish() }
+        let fileSystem = PeekabooBridgeOperationReceiptArchiveFileSystem.live
         let authority = try PeekabooBridgeOperationReceiptAuthority(
             socketPath: root.appendingPathComponent("bridge.sock").path,
             maximumClaimCount: 4,
             maximumSessionCount: maximumSessionCount,
-            maximumActiveSessionCountPerPeer: 4,
-            retainedRetiredSessionCount: 1)
+            maximumActiveSessionCountPerPeer: maximumActiveSessionCountPerPeer,
+            retainedRetiredSessionCount: retainedRetiredSessionCount,
+            archiveFileSystem: .init(
+                fileExists: fileSystem.fileExists,
+                moveItem: fileSystem.moveItem,
+                removeItem: { url in
+                    try fileSystem.removeItem(url)
+                    removedArchiveContinuation.yield(url)
+                }))
         let peer = try OperationReceiptSessionFixture.currentPeer()
         let archive = URL(fileURLWithPath: authority.attestation.receiptArchiveDirectory)
         let sessionArchive = archive.appendingPathComponent("sessions", isDirectory: true)
         let retiredArchive = archive.appendingPathComponent("retired-sessions", isDirectory: true)
+        var removals = archiveRemovals.makeAsyncIterator()
         var latest: OperationReceiptSessionFixture?
 
-        for _ in 0..<24 {
+        for createdSessionCount in 1...24 {
             latest = try await OperationReceiptSessionFixture.make(
                 authority: authority,
                 peer: peer)
+            if createdSessionCount > maximumActiveSessionCountPerPeer + retainedRetiredSessionCount {
+                // Deletion is asynchronous; wait for its filesystem completion before enumerating both directories.
+                let removedArchive = try #require(await removals.next())
+                #expect(removedArchive.deletingLastPathComponent() == retiredArchive)
+            }
             let sessionArchiveCount = try FileManager.default.contentsOfDirectory(
                 at: sessionArchive,
                 includingPropertiesForKeys: nil).count
             let retiredArchiveCount = try FileManager.default.contentsOfDirectory(
                 at: retiredArchive,
                 includingPropertiesForKeys: nil).count
+            #expect(retiredArchiveCount == 0)
             #expect(sessionArchiveCount + retiredArchiveCount <= maximumSessionCount)
         }
 
