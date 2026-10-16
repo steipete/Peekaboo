@@ -133,7 +133,15 @@ require release signing. Release-signed CLIs, daemons, and Peekaboo.app ignore t
 
 `bridge status` and `daemon status` label accepted connections `unsigned same-binary developer opt-in`; JSON includes
 `trustMode: "unsignedSameBinaryDeveloperOptIn"`. This is developer trust, not release-signature or source-provenance
-attestation. Without the variable, signing requirements and unsigned-build installation hints are unchanged.
+attestation. Without the variable, an unsigned CLI skips implicit daemon auto-start and evaluates existing hosts
+before falling back to local services where the command permits it. Its fallback description reports skipped
+startup and untrusted hosts. A failed local host-authentication check makes that candidate unavailable during
+implicit routing; it never authorizes replacing its socket or relaunching onto it. Other occupancy-probe errors
+still fail the command. Release-signed clients retain their existing routing and error behavior.
+
+Explicit `daemon start` and `daemon run` still start daemons without the variable; unsuccessful authenticated
+readiness checks retain the unsigned-build installation hint. Explicit `daemon status`, `daemon stop`,
+`--bridge-socket`, and `PEEKABOO_BRIDGE_SOCKET` retain authentication failures instead of silently falling back.
 
 Ad-hoc source builds lack the hardened runtime: injected code can run inside the same binary and therefore share its
 CDHash. Enable this only on machines you control. Prefer the notarized install for normal use.
