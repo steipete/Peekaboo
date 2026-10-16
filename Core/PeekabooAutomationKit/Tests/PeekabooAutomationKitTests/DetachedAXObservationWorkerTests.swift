@@ -232,6 +232,60 @@ struct DetachedAXObservationWorkerTests {
     }
 
     @Test
+    func `declined child attributes remain a complete sparse batch`() throws {
+        var values = [Any](
+            repeating: NSNull(),
+            count: DetachedAXObservationWorker.childAttributeCount)
+        // Calculator's Help search field declines both child lists after a menu opens.
+        values[0] = try Self.errorValue(.failure)
+        values[10] = try Self.errorValue(.failure)
+
+        #expect(DetachedAXObservationWorker.childrenReadDisposition(
+            error: .success,
+            values: values) == .values)
+        #expect(DetachedAXObservationWorker.childElements(from: values).isEmpty)
+    }
+
+    @Test
+    func `declined child attributes preserve children from other lists`() throws {
+        let child = AXUIElementCreateApplication(910_050)
+        var values = [Any](
+            repeating: NSNull(),
+            count: DetachedAXObservationWorker.childAttributeCount)
+        values[0] = try Self.errorValue(.failure)
+        values[1] = [child]
+        values[2] = [child]
+        values[10] = try Self.errorValue(.failure)
+
+        #expect(DetachedAXObservationWorker.childrenReadDisposition(
+            error: .success,
+            values: values) == .values)
+        let children = DetachedAXObservationWorker.childElements(from: values)
+        #expect(children.count == 1)
+        #expect(children.first.map { CFEqual($0, child) } == true)
+    }
+
+    @Test(arguments: [AXError.cannotComplete, .invalidUIElement, .apiDisabled, .failure])
+    func `failed child batch call remains incomplete`(error: AXError) {
+        #expect(DetachedAXObservationWorker.childrenReadDisposition(
+            error: error,
+            values: nil) == .incomplete)
+    }
+
+    @Test(arguments: [AXError.cannotComplete, .invalidUIElement, .apiDisabled])
+    func `hard child attribute errors remain incomplete alongside declined lists`(error: AXError) throws {
+        var values = [Any](
+            repeating: NSNull(),
+            count: DetachedAXObservationWorker.childAttributeCount)
+        values[0] = try Self.errorValue(.failure)
+        values[10] = try Self.errorValue(error)
+
+        #expect(DetachedAXObservationWorker.childrenReadDisposition(
+            error: .success,
+            values: values) == .incomplete)
+    }
+
+    @Test
     func `embedded unsupported attribute remains a complete sparse batch`() throws {
         var descriptorValues = [Any](
             repeating: NSNull(),

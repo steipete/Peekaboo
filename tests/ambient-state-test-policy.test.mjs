@@ -32,6 +32,7 @@ test("hosted dialog metadata proof runs owner and output contracts without live 
   const suites = [
     "DialogMetadataReaderTests", "DialogMetadataContractTests", "DialogHierarchyReaderTests",
     "DialogHierarchyAttributeTests", "DialogOperationDeadlineTests", "ElementDetectionDetachedRunnerTests",
+    "DetachedAXObservationWorkerTests", "AXDescriptorReaderPolicyTests",
   ];
   assert.match(step, /working-directory: Core\/PeekabooAutomationKit/);
   assert.match(step, /PEEKABOO_INCLUDE_AUTOMATION_TESTS: "false"/);
@@ -48,6 +49,9 @@ test("hosted dialog metadata proof runs owner and output contracts without live 
   assert.match(step, /set -o pipefail/);
   assert.ok(step.includes(`grep -Fq "Test Suite 'DialogMetadataReaderTests' passed" "$test_log"`));
   assert.ok(step.includes(`grep -Fq 'Suite DialogMetadataContractTests passed after ' "$test_log"`));
+  for (const suite of ["DetachedAXObservationWorkerTests", "AXDescriptorReaderPolicyTests"]) {
+    assert.ok(step.includes(`grep -Fq 'Suite ${suite} passed after ' "$test_log"`));
+  }
   assert.ok(step.includes("grep -Eq 'Test run with [1-9][0-9]* tests?( in [0-9]+ suites?)? passed after '"));
 });
 

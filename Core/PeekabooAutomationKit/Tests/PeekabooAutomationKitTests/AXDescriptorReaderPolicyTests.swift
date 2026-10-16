@@ -216,10 +216,12 @@ struct AXDescriptorReaderPolicyTests {
     /// identity attribute must, because the element can no longer be placed or targeted.
     @Test
     func `A declined attribute is sparse unless the node depends on it`() {
-        #expect(AXDescriptorReader.singleAttributeReadDisposition(
-            error: .failure,
-            value: nil,
-            attribute: kAXDescriptionAttribute) == .sparse)
+        for attribute in [kAXDescriptionAttribute, kAXChildrenAttribute, "AXChildrenInNavigationOrder"] {
+            #expect(AXDescriptorReader.singleAttributeReadDisposition(
+                error: .failure,
+                value: nil,
+                attribute: attribute) == .sparse)
+        }
         for attribute in AXAttributeReadCompletenessPolicy.nodeIdentityAttributeNames {
             #expect(AXDescriptorReader.singleAttributeReadDisposition(
                 error: .failure,

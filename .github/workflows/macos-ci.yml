@@ -458,11 +458,13 @@ jobs:
           set -o pipefail
           test_log="$RUNNER_TEMP/dialog-metadata-contracts.log"
           swift test --no-parallel \
-            --filter 'DialogMetadataReaderTests|DialogMetadataContractTests|DialogHierarchyReaderTests|DialogHierarchyAttributeTests|DialogOperationDeadlineTests|ElementDetectionDetachedRunnerTests' \
+            --filter 'DialogMetadataReaderTests|DialogMetadataContractTests|DialogHierarchyReaderTests|DialogHierarchyAttributeTests|DialogOperationDeadlineTests|ElementDetectionDetachedRunnerTests|DetachedAXObservationWorkerTests|AXDescriptorReaderPolicyTests' \
             2>&1 | tee "$test_log"
           grep -Fq "Test Suite 'DialogMetadataReaderTests' passed" "$test_log"
           grep -Fq 'Suite DialogMetadataContractTests passed after ' "$test_log"
           grep -Fq 'Suite DialogOperationDeadlineTests passed after ' "$test_log"
+          grep -Fq 'Suite DetachedAXObservationWorkerTests passed after ' "$test_log"
+          grep -Fq 'Suite AXDescriptorReaderPolicyTests passed after ' "$test_log"
           grep -Eq 'Test run with [1-9][0-9]* tests?( in [0-9]+ suites?)? passed after ' "$test_log"
 
       - name: Run agent-surface contract tests
