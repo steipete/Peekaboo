@@ -182,37 +182,42 @@ struct DesktopOperationLaneCoordinatorTests {
         let root = Self.temporaryDirectory(named: "queued-cancel")
         defer { try? FileManager.default.removeItem(at: root) }
         let firstCoordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
-        let waiterQueued = AsyncTestLatch()
+        let waiterQueued = AsyncStream<Void>.makeStream()
         let secondCoordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await waiterQueued.open()
+                waiterQueued.continuation.yield()
                 try await Task.sleep(for: .seconds(60))
             })
         let target = Self.window(windowID: 81)
-        let release = AsyncTestLatch()
-        let ownerStarted = AsyncTestLatch()
+        let release = AsyncStream<Void>.makeStream()
+        defer { release.continuation.finish() }
+        let ownerStarted = AsyncStream<Void>.makeStream()
         let waiterDispatched = AsyncTestLatch()
 
         let owner = Task {
+            defer { ownerStarted.continuation.finish() }
             try await firstCoordinator.run(scope: .window(target), access: .write) {
-                await ownerStarted.open()
-                await release.wait()
+                ownerStarted.continuation.yield()
+                for await _ in release.stream {}
             }
         }
-        await ownerStarted.wait()
+        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
         let waiter = Task {
+            defer { waiterQueued.continuation.finish() }
             try await secondCoordinator.run(scope: .window(target), access: .write) {
                 await waiterDispatched.open()
             }
         }
-        await waiterQueued.wait()
+        var waiterRetries = waiterQueued.stream.makeAsyncIterator()
+        #expect(await waiterRetries.next() != nil, "Waiter completed before reporting contention")
         waiter.cancel()
         await #expect(throws: CancellationError.self) {
             try await waiter.value
         }
         #expect(await !(waiterDispatched.isOpen))
-        await release.open()
+        release.continuation.finish()
         try await owner.value
         try await secondCoordinator.run(scope: .global, access: .write) {}
     }
@@ -221,38 +226,49 @@ struct DesktopOperationLaneCoordinatorTests {
     func `Active body that ignores cancellation retains its lease`() async throws {
         let root = Self.temporaryDirectory(named: "active-cancel")
         defer { try? FileManager.default.removeItem(at: root) }
-        let activeRelease = AsyncTestLatch()
-        let contenderQueued = AsyncTestLatch()
+        let activeRelease = AsyncStream<Void>.makeStream()
+        defer { activeRelease.continuation.finish() }
+        // Awaiting an unstructured task keeps this gate independent of the active body's cancellation.
+        let activeReleased = Task { for await _ in activeRelease.stream {} }
+        let activeCompleted = AsyncStream<Void>.makeStream()
+        let contenderQueued = AsyncStream<Void>.makeStream()
         let coordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await contenderQueued.open()
-                await activeRelease.wait()
+                contenderQueued.continuation.yield()
+                for await _ in activeCompleted.stream {}
             })
         let target = Self.window(windowID: 91)
-        let activeStarted = AsyncTestLatch()
+        let activeStarted = AsyncStream<Void>.makeStream()
         let activeFinished = AsyncTestLatch()
         let contenderStarted = AsyncTestLatch()
 
         let active = Task {
+            defer {
+                activeStarted.continuation.finish()
+                activeCompleted.continuation.finish()
+            }
             try await coordinator.run(scope: .window(target), access: .write) {
-                await activeStarted.open()
-                await activeRelease.wait()
+                activeStarted.continuation.yield()
+                await activeReleased.value
                 await activeFinished.open()
             }
         }
-        await activeStarted.wait()
+        var activeStarts = activeStarted.stream.makeAsyncIterator()
+        try #require(await activeStarts.next() != nil, "Active operation completed before acquiring its lane")
         active.cancel()
         let contender = Task {
+            defer { contenderQueued.continuation.finish() }
             try await coordinator.run(scope: .window(target), access: .write) {
                 await contenderStarted.open()
             }
         }
 
-        await contenderQueued.wait()
+        var contenderRetries = contenderQueued.stream.makeAsyncIterator()
+        #expect(await contenderRetries.next() != nil, "Contender completed before reporting contention")
         #expect(await !contenderStarted.isOpen)
         #expect(await !activeFinished.isOpen)
-        await activeRelease.open()
+        activeRelease.continuation.finish()
         _ = try? await active.value
         #expect(await activeFinished.isOpen)
         try await contender.value
@@ -394,53 +410,75 @@ struct DesktopOperationLaneCoordinatorTests {
     func `Queued global writer closes the turnstile to later scoped readers`() async throws {
         let root = Self.temporaryDirectory(named: "writer-turnstile")
         defer { try? FileManager.default.removeItem(at: root) }
-        let ownerStarted = AsyncTestLatch()
-        let ownerRelease = AsyncTestLatch()
-        let writerStarted = AsyncTestLatch()
-        let writerRelease = AsyncTestLatch()
+        let ownerStarted = AsyncStream<Void>.makeStream()
+        let ownerRelease = AsyncStream<Void>.makeStream()
+        let writerStarted = AsyncStream<Void>.makeStream()
+        let writerRelease = AsyncStream<Void>.makeStream()
+        defer {
+            ownerRelease.continuation.finish()
+            writerRelease.continuation.finish()
+        }
         let laterReaderStarted = AsyncTestLatch()
-        let writerQueued = AsyncTestLatch()
-        let readerQueued = AsyncTestLatch()
+        let ownerCompleted = AsyncStream<Void>.makeStream()
+        let writerCompleted = AsyncStream<Void>.makeStream()
+        let writerQueued = AsyncStream<Void>.makeStream()
+        let readerQueued = AsyncStream<Void>.makeStream()
         let coordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await writerQueued.open()
-                await ownerRelease.wait()
+                writerQueued.continuation.yield()
+                for await _ in ownerCompleted.stream {}
             })
         let readerCoordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await readerQueued.open()
-                await writerRelease.wait()
+                readerQueued.continuation.yield()
+                for await _ in writerCompleted.stream {}
             })
 
         let owner = Task {
+            defer {
+                ownerStarted.continuation.finish()
+                ownerCompleted.continuation.finish()
+            }
             try await coordinator.run(scope: .global, access: .read) {
-                await ownerStarted.open()
-                await ownerRelease.wait()
+                ownerStarted.continuation.yield()
+                for await _ in ownerRelease.stream {}
             }
         }
-        await ownerStarted.wait()
+        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
         let writer = Task {
+            defer {
+                writerQueued.continuation.finish()
+                writerStarted.continuation.finish()
+                writerCompleted.continuation.finish()
+            }
             try await coordinator.run(scope: .global, access: .write) {
-                await writerStarted.open()
-                await writerRelease.wait()
+                writerQueued.continuation.finish()
+                writerStarted.continuation.yield()
+                for await _ in writerRelease.stream {}
             }
         }
-        await writerQueued.wait()
+        var writerRetries = writerQueued.stream.makeAsyncIterator()
+        #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
         let reader = Task {
+            defer { readerQueued.continuation.finish() }
             let process = ApplicationProcessIdentity(processIdentifier: 910, processStartIdentity: 1)
             try await readerCoordinator.run(scope: .process(process), access: .read) {
                 await laterReaderStarted.open()
             }
         }
 
-        await readerQueued.wait()
+        // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
+        var readerRetries = readerQueued.stream.makeAsyncIterator()
+        #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
         #expect(await !laterReaderStarted.isOpen)
-        await ownerRelease.open()
-        await writerStarted.wait()
+        ownerRelease.continuation.finish()
+        var writerStarts = writerStarted.stream.makeAsyncIterator()
+        #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
         #expect(await !laterReaderStarted.isOpen)
-        await writerRelease.open()
+        writerRelease.continuation.finish()
 
         try await owner.value
         try await writer.value
@@ -455,52 +493,74 @@ struct DesktopOperationLaneCoordinatorTests {
         let process = ApplicationProcessIdentity(processIdentifier: 920, processStartIdentity: 2)
         let firstWindow = Self.window(windowID: 111, process: process)
         let secondWindow = Self.window(windowID: 112, process: process)
-        let ownerStarted = AsyncTestLatch()
-        let ownerRelease = AsyncTestLatch()
-        let writerStarted = AsyncTestLatch()
-        let writerRelease = AsyncTestLatch()
+        let ownerStarted = AsyncStream<Void>.makeStream()
+        let ownerRelease = AsyncStream<Void>.makeStream()
+        let writerStarted = AsyncStream<Void>.makeStream()
+        let writerRelease = AsyncStream<Void>.makeStream()
+        defer {
+            ownerRelease.continuation.finish()
+            writerRelease.continuation.finish()
+        }
         let laterReaderStarted = AsyncTestLatch()
-        let writerQueued = AsyncTestLatch()
-        let readerQueued = AsyncTestLatch()
+        let ownerCompleted = AsyncStream<Void>.makeStream()
+        let writerCompleted = AsyncStream<Void>.makeStream()
+        let writerQueued = AsyncStream<Void>.makeStream()
+        let readerQueued = AsyncStream<Void>.makeStream()
         let coordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await writerQueued.open()
-                await ownerRelease.wait()
+                writerQueued.continuation.yield()
+                for await _ in ownerCompleted.stream {}
             })
         let readerCoordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await readerQueued.open()
-                await writerRelease.wait()
+                readerQueued.continuation.yield()
+                for await _ in writerCompleted.stream {}
             })
 
         let owner = Task {
+            defer {
+                ownerStarted.continuation.finish()
+                ownerCompleted.continuation.finish()
+            }
             try await coordinator.run(scope: .window(firstWindow), access: .read) {
-                await ownerStarted.open()
-                await ownerRelease.wait()
+                ownerStarted.continuation.yield()
+                for await _ in ownerRelease.stream {}
             }
         }
-        await ownerStarted.wait()
+        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
         let writer = Task {
+            defer {
+                writerQueued.continuation.finish()
+                writerStarted.continuation.finish()
+                writerCompleted.continuation.finish()
+            }
             try await coordinator.run(scope: .process(process), access: .write) {
-                await writerStarted.open()
-                await writerRelease.wait()
+                writerQueued.continuation.finish()
+                writerStarted.continuation.yield()
+                for await _ in writerRelease.stream {}
             }
         }
-        await writerQueued.wait()
+        var writerRetries = writerQueued.stream.makeAsyncIterator()
+        #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
         let reader = Task {
+            defer { readerQueued.continuation.finish() }
             try await readerCoordinator.run(scope: .window(secondWindow), access: .read) {
                 await laterReaderStarted.open()
             }
         }
 
-        await readerQueued.wait()
+        // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
+        var readerRetries = readerQueued.stream.makeAsyncIterator()
+        #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
         #expect(await !laterReaderStarted.isOpen)
-        await ownerRelease.open()
-        await writerStarted.wait()
+        ownerRelease.continuation.finish()
+        var writerStarts = writerStarted.stream.makeAsyncIterator()
+        #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
         #expect(await !laterReaderStarted.isOpen)
-        await writerRelease.open()
+        writerRelease.continuation.finish()
 
         try await owner.value
         try await writer.value

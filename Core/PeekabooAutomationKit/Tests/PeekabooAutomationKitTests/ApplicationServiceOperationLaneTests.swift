@@ -14,18 +14,19 @@ struct ApplicationServiceOperationLaneTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-application-lane-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let quitQueued = ApplicationOperationLatch()
+        let quitQueued = AsyncStream<Void>.makeStream()
         let coordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
-                await quitQueued.open()
+                quitQueued.continuation.yield()
                 try await Task.sleep(for: .milliseconds(10))
             })
         let expectedIdentity = ApplicationProcessIdentity(
             processIdentifier: runningApplication.processIdentifier,
             processStartIdentity: 70)
-        let ownerStarted = ApplicationOperationLatch()
-        let ownerRelease = ApplicationOperationLatch()
+        let ownerStarted = AsyncStream<Void>.makeStream()
+        let ownerRelease = AsyncStream<Void>.makeStream()
+        defer { ownerRelease.continuation.finish() }
         let unrelatedStarted = ApplicationOperationLatch()
         let currentGeneration = ApplicationOperationGenerationBox(70)
         var terminationCalls = 0
@@ -39,18 +40,22 @@ struct ApplicationServiceOperationLaneTests {
             })
 
         let owner = Task { @MainActor in
+            defer { ownerStarted.continuation.finish() }
             try await coordinator.run(scope: .process(expectedIdentity), access: .write) {
-                await ownerStarted.open()
-                await ownerRelease.wait()
+                ownerStarted.continuation.yield()
+                for await _ in ownerRelease.stream {}
             }
         }
-        await ownerStarted.wait()
+        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
         let quit = Task { @MainActor in
-            try await service.quitApplication(request: ApplicationQuitRequest(
+            defer { quitQueued.continuation.finish() }
+            return try await service.quitApplication(request: ApplicationQuitRequest(
                 identifier: "PID:\(runningApplication.processIdentifier)",
                 expectedIdentity: expectedIdentity))
         }
-        await quitQueued.wait()
+        var retries = quitQueued.stream.makeAsyncIterator()
+        #expect(await retries.next() != nil, "Quit completed before reporting contention")
         #expect(terminationCalls == 0)
         let unrelated = Task {
             try await coordinator.run(
@@ -65,7 +70,7 @@ struct ApplicationServiceOperationLaneTests {
         try await unrelated.value
         #expect(await unrelatedStarted.isOpen)
         currentGeneration.value = 71
-        await ownerRelease.open()
+        ownerRelease.continuation.finish()
 
         try await owner.value
         await #expect(throws: PeekabooError.self) {
