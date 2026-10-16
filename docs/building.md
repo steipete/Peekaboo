@@ -161,8 +161,9 @@ reused binaries and extracted archives. Weak imports remain distinct; this does 
 replace system libraries. Successful execution on the build host alone does not prove older-macOS compatibility.
 
 Keep Swift Async Algorithms at 1.1.5 while this constraint remains: 1.1.7 requires Swift Collections 1.7.0.
-The shared consumer locks use SwiftNIO 2.104.0 and Service Lifecycle 2.12.1, including the latter's Unix signal
-dispatch-source leak fix, without raising the Swift 6.2 baseline.
+The shared consumer locks use SwiftNIO 2.104.0 and Service Lifecycle 2.13.0. The latter retains the Unix signal
+dispatch-source leak fix and now declares the same Swift 6.2 minimum as Peekaboo. Its older-compiler compatibility
+cleanup preserves the locking code selected on supported Swift toolchains.
 
 Runtime verification also audits every strong `libswift*` import per architecture by parsing the
 installed SDK's Swift `.tbd` files at verification time, following re-exports transitively. Weak imports
