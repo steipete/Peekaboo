@@ -18,6 +18,8 @@ final class SessionStore {
     private let titleGenerator = SessionTitleGenerator()
 
     private let storageURL: URL
+    /// Set when a failed load could not move the unreadable file aside.
+    private var unreadableStoreBlocksSaves = false
 
     init(storageURL: URL? = nil) {
         if let storageURL {
@@ -113,16 +115,43 @@ final class SessionStore {
         guard FileManager.default.fileExists(atPath: self.storageURL.path) else { return }
 
         do {
-            let data = try Data(contentsOf: storageURL)
+            let data = try Data(contentsOf: self.storageURL)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             self.sessions = try decoder.decode([ConversationSession].self, from: data)
+        } catch let error as DecodingError {
+            // Keep the bytes the decoder rejected. A later save must not replace them.
+            if !self.moveUnreadableStoreAside() {
+                self.unreadableStoreBlocksSaves = true
+            }
+            print("Failed to load sessions: \(error)")
         } catch {
+            self.unreadableStoreBlocksSaves = true
             print("Failed to load sessions: \(error)")
         }
     }
 
+    private func moveUnreadableStoreAside() -> Bool {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        for attempt in 0..<100 {
+            let suffix = attempt == 0 ? stamp : "\(stamp)-\(attempt)"
+            let destination = self.storageURL.appendingPathExtension("unreadable-\(suffix)")
+            guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
+            do {
+                try FileManager.default.moveItem(at: self.storageURL, to: destination)
+                return true
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+
     func saveSessions() {
+        if self.unreadableStoreBlocksSaves {
+            return
+        }
         do {
             try FileManager.default.createDirectory(
                 at: self.storageURL.deletingLastPathComponent(),
@@ -131,7 +160,7 @@ final class SessionStore {
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(self.sessions)
-            try data.write(to: self.storageURL)
+            try data.write(to: self.storageURL, options: .atomic)
         } catch {
             print("Failed to save sessions: \(error)")
         }

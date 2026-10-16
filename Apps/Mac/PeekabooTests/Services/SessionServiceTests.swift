@@ -150,4 +150,37 @@ struct SessionStorePersistenceTests {
         // Clean up
         try? FileManager.default.removeItem(at: directory)
     }
+
+    @Test
+    func `failed load keeps the unreadable session file`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storageURL = directory.appendingPathComponent("sessions.json")
+        let original = Data("{ invalid json }".utf8)
+        try original.write(to: storageURL)
+
+        let store = SessionStore(storageURL: storageURL)
+        store.saveSessions()
+        store.saveSessions()
+
+        let preserved = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil)
+            .filter { url in
+                (try? Data(contentsOf: url)) == original
+            }
+        let preservedURL = try #require(preserved.first)
+        #expect(preserved.count == 1)
+        #expect(preservedURL.lastPathComponent != "sessions.json")
+        #expect(store.sessions.isEmpty)
+        let created = store.createSession(title: "Recovered", modelName: "test")
+        store.saveSessions()
+        let reloaded = SessionStore(storageURL: storageURL)
+        #expect(reloaded.sessions.count == 1)
+        #expect(reloaded.sessions.first?.id == created.id)
+        #expect(reloaded.sessions.first?.title == "Recovered")
+        let reread = try Data(contentsOf: preservedURL)
+        #expect(reread == original)
+    }
 }
