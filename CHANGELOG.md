@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Skip auto-starting an on-demand daemon when a granted Peekaboo.app bridge host would be selected anyway, avoiding the daemon's startup wait and an idle permission-less daemon; lifecycle commands, snapshot-owned actions and explicit sockets still start it. #1082, follow-up to #1073.
+- Declare route-specific Accessibility and Event Synthesizing needs for `type`, `paste`, `press`/`hotkey`, `window`, `menu` and `menubar`, so hosts that explicitly lack them are skipped while grant-free routes and unknown host reports keep working. #1088.
+- Fall back to in-process execution immediately when an unsigned source build (such as Homebrew core's `peekaboo` formula) meets a daemon it cannot trust, instead of waiting out daemon startup or aborting, and add an explicit `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` opt-in that lets such a build trust only its own exact-binary daemon; release-signed builds ignore it. Thanks @fry69! #1089, #1064.
+- Show macOS 27's renamed "Device Control and Data Access" Settings row in `axorc permissions` guidance by updating AXorcist. openclaw/AXorcist#102.
+- Render indented code fences, nested and wrapped list items, and parentheses inside link URLs correctly on the documentation site. Thanks @rudycelekli! #1084, #1085, #1086.
+
 ## 4.9.4 - 2026-10-15
 
 **Highlights:** Keep Peekaboo.app's granted bridge host selected after a command auto-starts an ungranted on-demand daemon, name macOS 27's renamed "Device Control and Data Access" Settings row in permission guidance, explain unsigned source builds such as Homebrew core's `peekaboo` formula in Bridge and daemon trust failures, and reject non-finite coordinates and regions.
