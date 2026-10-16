@@ -14,6 +14,12 @@ The hosted app build explicitly targets arm64 and x86_64 and rejects a thin bina
 before signing. The closeout PR publishes the signed Sparkle appcast to main. No laptop publisher
 or upload fallback remains.
 
+SwiftPM adds absolute toolchain search paths for its back-deployed Swift libraries.
+CLI builders remove those `LC_RPATH` entries per architecture before signing,
+retaining `/usr/lib/swift` and `@loader_path` for the bundled compatibility libraries.
+The runtime verifier rejects absolute rpaths outside `/usr/lib`, including in slices
+without compatibility imports; hosted app and terminal bundle checks audit every Mach-O too.
+
 Prepare all version surfaces using the existing release preflight and date the
 root and CLI changelog sections. The hosted workflow extracts release notes
 directly from the matching version in `CHANGELOG.md`, skipping fenced code; no

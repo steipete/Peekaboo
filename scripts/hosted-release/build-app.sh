@@ -54,6 +54,7 @@ while IFS= read -r -d '' library; do
 done < <(find "$APP/Contents/Frameworks" -maxdepth 1 -type f -name 'libswiftCompatibility*.dylib' -print0)
 while IFS= read -r -d '' candidate; do
   file -b "$candidate" | grep -q 'Mach-O' || continue
+  scripts/verify-swift-runtime-libraries.sh --rpaths-only "$candidate"
   [[ "$(lipo -archs "$candidate" | tr ' ' '\n' | sort | xargs)" == 'arm64 x86_64' ]] || {
     echo "Peekaboo.app code must be exactly arm64+x86_64: $candidate" >&2
     exit 1

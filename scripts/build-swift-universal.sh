@@ -200,6 +200,9 @@ echo "🤏 Stripping symbols for further size reduction..."
 # Note: LC_UUID is preserved by not using -no_uuid during linking
 strip -Sxu "$FINAL_BINARY_PATH.tmp"
 
+# SwiftPM explicitly adds back-deployment rpaths; swiftc's -no-toolchain-stdlib-rpath cannot suppress them.
+"$PROJECT_ROOT/scripts/strip-toolchain-rpaths.sh" "$FINAL_BINARY_PATH.tmp"
+
 echo "🔏 Code signing the universal binary..."
 resolve_signing_identity
 resolve_timestamp_arg

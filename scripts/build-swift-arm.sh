@@ -172,6 +172,7 @@ echo "🤏 Stripping symbols for further size reduction..."
 # -u: Save symbols of undefined references
 # Note: LC_UUID is preserved by not using -no_uuid during linking
 strip -Sxu "$FINAL_BINARY_PATH.tmp"
+"$PROJECT_ROOT/scripts/strip-toolchain-rpaths.sh" "$FINAL_BINARY_PATH.tmp"
 
 echo "🔏 Code signing the binary..."
 resolve_signing_identity

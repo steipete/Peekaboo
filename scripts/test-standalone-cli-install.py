@@ -30,6 +30,7 @@ with tempfile.TemporaryDirectory(prefix="peekaboo-standalone-install.") as direc
     tools = fixture / "tools"
     tools.mkdir()
     shutil.copy2(ROOT / "scripts/build-cli-standalone.sh", scripts / "build-cli-standalone.sh")
+    shutil.copy2(ROOT / "scripts/strip-toolchain-rpaths.sh", scripts / "strip-toolchain-rpaths.sh")
     # Compilation is controlled here; no Swift workspace or installed host app is changed.
     (scripts / "setup-swift-workspace.py").write_text("# Fixture build already completed.\n")
     library_source = fixture / "library.c"

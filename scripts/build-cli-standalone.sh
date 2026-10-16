@@ -38,6 +38,8 @@ python3 ../../scripts/setup-swift-workspace.py run -- swift build -c release 2>&
 BUILD_PATH=".build/release/peekaboo"
 
 if [ -f "$BUILD_PATH" ]; then
+    ../../scripts/strip-toolchain-rpaths.sh "$BUILD_PATH"
+    codesign --force --sign - --timestamp=none "$BUILD_PATH"
     echo -e "${GREEN}✅ Build successful!${NC}"
     echo -e "${BLUE}Binary location: $(pwd)/$BUILD_PATH${NC}"
     
