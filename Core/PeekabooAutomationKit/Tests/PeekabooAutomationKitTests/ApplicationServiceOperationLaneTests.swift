@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import PeekabooAutomationKitTestSupport
 import PeekabooFoundation
 import Testing
 @testable import PeekabooAutomationKit
@@ -39,44 +40,50 @@ struct ApplicationServiceOperationLaneTests {
                 return true
             })
 
-        let owner = Task { @MainActor in
-            defer { ownerStarted.continuation.finish() }
-            try await coordinator.run(scope: .process(expectedIdentity), access: .write) {
-                ownerStarted.continuation.yield()
-                for await _ in ownerRelease.stream {}
-            }
-        }
-        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
-        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
-        let quit = Task { @MainActor in
-            defer { quitQueued.continuation.finish() }
-            return try await service.quitApplication(request: ApplicationQuitRequest(
-                identifier: "PID:\(runningApplication.processIdentifier)",
-                expectedIdentity: expectedIdentity))
-        }
-        var retries = quitQueued.stream.makeAsyncIterator()
-        #expect(await retries.next() != nil, "Quit completed before reporting contention")
-        #expect(terminationCalls == 0)
-        let unrelated = Task {
-            try await coordinator.run(
-                scope: .process(ApplicationProcessIdentity(
-                    processIdentifier: runningApplication.processIdentifier + 1,
-                    processStartIdentity: 700)),
-                access: .write)
-            {
-                await unrelatedStarted.open()
-            }
-        }
-        try await unrelated.value
-        #expect(await unrelatedStarted.isOpen)
-        currentGeneration.value = 71
-        ownerRelease.continuation.finish()
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for quit lane isolation or revalidation; releasing the owner",
+            release: {
+                ownerRelease.continuation.finish()
+            }, operation: {
+                let owner = Task { @MainActor in
+                    defer { ownerStarted.continuation.finish() }
+                    try await coordinator.run(scope: .process(expectedIdentity), access: .write) {
+                        ownerStarted.continuation.yield()
+                        for await _ in ownerRelease.stream {}
+                    }
+                }
+                var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+                try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
+                let quit = Task { @MainActor in
+                    defer { quitQueued.continuation.finish() }
+                    return try await service.quitApplication(request: ApplicationQuitRequest(
+                        identifier: "PID:\(runningApplication.processIdentifier)",
+                        expectedIdentity: expectedIdentity))
+                }
+                var retries = quitQueued.stream.makeAsyncIterator()
+                #expect(await retries.next() != nil, "Quit completed before reporting contention")
+                #expect(terminationCalls == 0)
+                let unrelated = Task {
+                    try await coordinator.run(
+                        scope: .process(ApplicationProcessIdentity(
+                            processIdentifier: runningApplication.processIdentifier + 1,
+                            processStartIdentity: 700)),
+                        access: .write)
+                    {
+                        await unrelatedStarted.open()
+                    }
+                }
+                try await unrelated.value
+                #expect(await unrelatedStarted.isOpen)
+                currentGeneration.value = 71
+                ownerRelease.continuation.finish()
 
-        try await owner.value
-        await #expect(throws: PeekabooError.self) {
-            try await quit.value
-        }
-        #expect(terminationCalls == 0)
+                try await owner.value
+                await #expect(throws: PeekabooError.self) {
+                    try await quit.value
+                }
+                #expect(terminationCalls == 0)
+            })
     }
 
     @Test

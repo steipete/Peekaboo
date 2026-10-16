@@ -568,26 +568,32 @@ struct ApplicationInventoryTimeoutTests {
     func `repeated inventory does not enqueue behind a still-blocked process lane`() async throws {
         let (gate, pool, completed) = try await Self.timedOutBlockedMetadata(processIdentifier: 43003)
         defer { gate.release() }
-        let repeatedStarted = ApplicationInventoryFlag()
-        await #expect(throws: CaptureError.self) {
-            _ = try await DetachedApplicationMetadataCoordinator.run(
-                processIdentifier: 43003,
-                processStartIdentity: nil,
-                timeoutSeconds: 0.05,
-                pool: pool)
-            { _ in
-                repeatedStarted.set()
-                return Self.metadata(name: "Duplicate")
-            }
-        }
-        #expect(!repeatedStarted.value)
-        #expect(!gate.wasReleased)
-        #expect(pool.retainedOperationCount == 1)
-        gate.release()
-        var completions = completed.makeAsyncIterator()
-        #expect(await completions.next() != nil)
-        #expect(pool.retainedOperationCount == 0)
-        #expect(!repeatedStarted.value)
+        await withTestReleaseWatchdog(
+            "Timed out waiting for repeated inventory; releasing the retained native worker",
+            release: {
+                gate.release()
+            }, operation: {
+                let repeatedStarted = ApplicationInventoryFlag()
+                await #expect(throws: CaptureError.self) {
+                    _ = try await DetachedApplicationMetadataCoordinator.run(
+                        processIdentifier: 43003,
+                        processStartIdentity: nil,
+                        timeoutSeconds: 0.05,
+                        pool: pool)
+                    { _ in
+                        repeatedStarted.set()
+                        return Self.metadata(name: "Duplicate")
+                    }
+                }
+                #expect(!repeatedStarted.value)
+                #expect(!gate.wasReleased)
+                #expect(pool.retainedOperationCount == 1)
+                gate.release()
+                var completions = completed.makeAsyncIterator()
+                #expect(await completions.next() != nil)
+                #expect(pool.retainedOperationCount == 0)
+                #expect(!repeatedStarted.value)
+            })
     }
 
     private static func timedOutBlockedMetadata(processIdentifier: Int32) async throws
@@ -604,27 +610,33 @@ struct ApplicationInventoryTimeoutTests {
                 completed.continuation.yield()
                 completed.continuation.finish()
             })
-            do {
-                _ = try await DetachedApplicationMetadataCoordinator.run(
-                    processIdentifier: processIdentifier,
-                    processStartIdentity: nil,
-                    timeoutSeconds: 0.05,
-                    pool: pool)
-                { _ in
-                    admission.continuation.yield(true)
-                    gate.wait()
-                    return Self.metadata(name: "Late")
-                }
-                gate.release()
-                throw ApplicationInventoryFixtureError.unexpectedSetupSuccess
-            } catch is CaptureError {
-                // The caller must time out while the admitted worker remains blocked.
-            } catch {
-                gate.release()
-                throw error
-            }
-            var entries = admission.stream.makeAsyncIterator()
-            if await entries.next() == true {
+            let admitted = try await withTestReleaseWatchdog(
+                "Timed out waiting for metadata admission or timeout; releasing native work",
+                release: { gate.release() },
+                operation: {
+                    do {
+                        _ = try await DetachedApplicationMetadataCoordinator.run(
+                            processIdentifier: processIdentifier,
+                            processStartIdentity: nil,
+                            timeoutSeconds: 0.05,
+                            pool: pool)
+                        { _ in
+                            admission.continuation.yield(true)
+                            gate.wait()
+                            return Self.metadata(name: "Late")
+                        }
+                        gate.release()
+                        throw ApplicationInventoryFixtureError.unexpectedSetupSuccess
+                    } catch is CaptureError {
+                        // The caller must time out while the admitted worker remains blocked.
+                    } catch {
+                        gate.release()
+                        throw error
+                    }
+                    var entries = admission.stream.makeAsyncIterator()
+                    return await entries.next() == true
+                })
+            if admitted {
                 return (gate, pool, completed.stream)
             }
             gate.release()

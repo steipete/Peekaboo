@@ -182,12 +182,15 @@ struct DesktopOperationLaneCoordinatorTests {
         let root = Self.temporaryDirectory(named: "queued-cancel")
         defer { try? FileManager.default.removeItem(at: root) }
         let firstCoordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let retryRelease = AsyncStream<Void>.makeStream()
+        defer { retryRelease.continuation.finish() }
         let waiterQueued = AsyncStream<Void>.makeStream()
         let secondCoordinator = DesktopOperationLaneCoordinator(
             coordinationRootURL: root,
             retrySleep: {
                 waiterQueued.continuation.yield()
-                try await Task.sleep(for: .seconds(60))
+                for await _ in retryRelease.stream {}
+                try Task.checkCancellation()
             })
         let target = Self.window(windowID: 81)
         let release = AsyncStream<Void>.makeStream()
@@ -195,31 +198,38 @@ struct DesktopOperationLaneCoordinatorTests {
         let ownerStarted = AsyncStream<Void>.makeStream()
         let waiterDispatched = AsyncTestLatch()
 
-        let owner = Task {
-            defer { ownerStarted.continuation.finish() }
-            try await firstCoordinator.run(scope: .window(target), access: .write) {
-                ownerStarted.continuation.yield()
-                for await _ in release.stream {}
-            }
-        }
-        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
-        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
-        let waiter = Task {
-            defer { waiterQueued.continuation.finish() }
-            try await secondCoordinator.run(scope: .window(target), access: .write) {
-                await waiterDispatched.open()
-            }
-        }
-        var waiterRetries = waiterQueued.stream.makeAsyncIterator()
-        #expect(await waiterRetries.next() != nil, "Waiter completed before reporting contention")
-        waiter.cancel()
-        await #expect(throws: CancellationError.self) {
-            try await waiter.value
-        }
-        #expect(await !(waiterDispatched.isOpen))
-        release.continuation.finish()
-        try await owner.value
-        try await secondCoordinator.run(scope: .global, access: .write) {}
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for queued lane cancellation; releasing the owner",
+            release: {
+                release.continuation.finish()
+                retryRelease.continuation.finish()
+            }, operation: {
+                let owner = Task {
+                    defer { ownerStarted.continuation.finish() }
+                    try await firstCoordinator.run(scope: .window(target), access: .write) {
+                        ownerStarted.continuation.yield()
+                        for await _ in release.stream {}
+                    }
+                }
+                var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+                try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
+                let waiter = Task {
+                    defer { waiterQueued.continuation.finish() }
+                    try await secondCoordinator.run(scope: .window(target), access: .write) {
+                        await waiterDispatched.open()
+                    }
+                }
+                var waiterRetries = waiterQueued.stream.makeAsyncIterator()
+                #expect(await waiterRetries.next() != nil, "Waiter completed before reporting contention")
+                waiter.cancel()
+                await #expect(throws: CancellationError.self) {
+                    try await waiter.value
+                }
+                #expect(await !(waiterDispatched.isOpen))
+                release.continuation.finish()
+                try await owner.value
+                try await secondCoordinator.run(scope: .global, access: .write) {}
+            })
     }
 
     @Test
@@ -243,36 +253,42 @@ struct DesktopOperationLaneCoordinatorTests {
         let activeFinished = AsyncTestLatch()
         let contenderStarted = AsyncTestLatch()
 
-        let active = Task {
-            defer {
-                activeStarted.continuation.finish()
-                activeCompleted.continuation.finish()
-            }
-            try await coordinator.run(scope: .window(target), access: .write) {
-                activeStarted.continuation.yield()
-                await activeReleased.value
-                await activeFinished.open()
-            }
-        }
-        var activeStarts = activeStarted.stream.makeAsyncIterator()
-        try #require(await activeStarts.next() != nil, "Active operation completed before acquiring its lane")
-        active.cancel()
-        let contender = Task {
-            defer { contenderQueued.continuation.finish() }
-            try await coordinator.run(scope: .window(target), access: .write) {
-                await contenderStarted.open()
-            }
-        }
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for active lane retention; releasing the active body",
+            release: {
+                activeRelease.continuation.finish()
+            }, operation: {
+                let active = Task {
+                    defer {
+                        activeStarted.continuation.finish()
+                        activeCompleted.continuation.finish()
+                    }
+                    try await coordinator.run(scope: .window(target), access: .write) {
+                        activeStarted.continuation.yield()
+                        await activeReleased.value
+                        await activeFinished.open()
+                    }
+                }
+                var activeStarts = activeStarted.stream.makeAsyncIterator()
+                try #require(await activeStarts.next() != nil, "Active operation completed before acquiring its lane")
+                active.cancel()
+                let contender = Task {
+                    defer { contenderQueued.continuation.finish() }
+                    try await coordinator.run(scope: .window(target), access: .write) {
+                        await contenderStarted.open()
+                    }
+                }
 
-        var contenderRetries = contenderQueued.stream.makeAsyncIterator()
-        #expect(await contenderRetries.next() != nil, "Contender completed before reporting contention")
-        #expect(await !contenderStarted.isOpen)
-        #expect(await !activeFinished.isOpen)
-        activeRelease.continuation.finish()
-        _ = try? await active.value
-        #expect(await activeFinished.isOpen)
-        try await contender.value
-        #expect(await contenderStarted.isOpen)
+                var contenderRetries = contenderQueued.stream.makeAsyncIterator()
+                #expect(await contenderRetries.next() != nil, "Contender completed before reporting contention")
+                #expect(await !contenderStarted.isOpen)
+                #expect(await !activeFinished.isOpen)
+                activeRelease.continuation.finish()
+                _ = try? await active.value
+                #expect(await activeFinished.isOpen)
+                try await contender.value
+                #expect(await contenderStarted.isOpen)
+            })
     }
 
     @Test
@@ -436,54 +452,61 @@ struct DesktopOperationLaneCoordinatorTests {
                 for await _ in writerCompleted.stream {}
             })
 
-        let owner = Task {
-            defer {
-                ownerStarted.continuation.finish()
-                ownerCompleted.continuation.finish()
-            }
-            try await coordinator.run(scope: .global, access: .read) {
-                ownerStarted.continuation.yield()
-                for await _ in ownerRelease.stream {}
-            }
-        }
-        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
-        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
-        let writer = Task {
-            defer {
-                writerQueued.continuation.finish()
-                writerStarted.continuation.finish()
-                writerCompleted.continuation.finish()
-            }
-            try await coordinator.run(scope: .global, access: .write) {
-                writerQueued.continuation.finish()
-                writerStarted.continuation.yield()
-                for await _ in writerRelease.stream {}
-            }
-        }
-        var writerRetries = writerQueued.stream.makeAsyncIterator()
-        #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
-        let reader = Task {
-            defer { readerQueued.continuation.finish() }
-            let process = ApplicationProcessIdentity(processIdentifier: 910, processStartIdentity: 1)
-            try await readerCoordinator.run(scope: .process(process), access: .read) {
-                await laterReaderStarted.open()
-            }
-        }
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for turnstile ordering; releasing both owners",
+            release: {
+                ownerRelease.continuation.finish()
+                writerRelease.continuation.finish()
+            }, operation: {
+                let owner = Task {
+                    defer {
+                        ownerStarted.continuation.finish()
+                        ownerCompleted.continuation.finish()
+                    }
+                    try await coordinator.run(scope: .global, access: .read) {
+                        ownerStarted.continuation.yield()
+                        for await _ in ownerRelease.stream {}
+                    }
+                }
+                var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+                try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
+                let writer = Task {
+                    defer {
+                        writerQueued.continuation.finish()
+                        writerStarted.continuation.finish()
+                        writerCompleted.continuation.finish()
+                    }
+                    try await coordinator.run(scope: .global, access: .write) {
+                        writerQueued.continuation.finish()
+                        writerStarted.continuation.yield()
+                        for await _ in writerRelease.stream {}
+                    }
+                }
+                var writerRetries = writerQueued.stream.makeAsyncIterator()
+                #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
+                let reader = Task {
+                    defer { readerQueued.continuation.finish() }
+                    let process = ApplicationProcessIdentity(processIdentifier: 910, processStartIdentity: 1)
+                    try await readerCoordinator.run(scope: .process(process), access: .read) {
+                        await laterReaderStarted.open()
+                    }
+                }
 
-        // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
-        var readerRetries = readerQueued.stream.makeAsyncIterator()
-        #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
-        #expect(await !laterReaderStarted.isOpen)
-        ownerRelease.continuation.finish()
-        var writerStarts = writerStarted.stream.makeAsyncIterator()
-        #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
-        #expect(await !laterReaderStarted.isOpen)
-        writerRelease.continuation.finish()
+                // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
+                var readerRetries = readerQueued.stream.makeAsyncIterator()
+                #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
+                #expect(await !laterReaderStarted.isOpen)
+                ownerRelease.continuation.finish()
+                var writerStarts = writerStarted.stream.makeAsyncIterator()
+                #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
+                #expect(await !laterReaderStarted.isOpen)
+                writerRelease.continuation.finish()
 
-        try await owner.value
-        try await writer.value
-        try await reader.value
-        #expect(await laterReaderStarted.isOpen)
+                try await owner.value
+                try await writer.value
+                try await reader.value
+                #expect(await laterReaderStarted.isOpen)
+            })
     }
 
     @Test
@@ -519,53 +542,60 @@ struct DesktopOperationLaneCoordinatorTests {
                 for await _ in writerCompleted.stream {}
             })
 
-        let owner = Task {
-            defer {
-                ownerStarted.continuation.finish()
-                ownerCompleted.continuation.finish()
-            }
-            try await coordinator.run(scope: .window(firstWindow), access: .read) {
-                ownerStarted.continuation.yield()
-                for await _ in ownerRelease.stream {}
-            }
-        }
-        var ownerStarts = ownerStarted.stream.makeAsyncIterator()
-        try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
-        let writer = Task {
-            defer {
-                writerQueued.continuation.finish()
-                writerStarted.continuation.finish()
-                writerCompleted.continuation.finish()
-            }
-            try await coordinator.run(scope: .process(process), access: .write) {
-                writerQueued.continuation.finish()
-                writerStarted.continuation.yield()
-                for await _ in writerRelease.stream {}
-            }
-        }
-        var writerRetries = writerQueued.stream.makeAsyncIterator()
-        #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
-        let reader = Task {
-            defer { readerQueued.continuation.finish() }
-            try await readerCoordinator.run(scope: .window(secondWindow), access: .read) {
-                await laterReaderStarted.open()
-            }
-        }
+        try await withTestReleaseWatchdog(
+            "Timed out waiting for turnstile ordering; releasing both owners",
+            release: {
+                ownerRelease.continuation.finish()
+                writerRelease.continuation.finish()
+            }, operation: {
+                let owner = Task {
+                    defer {
+                        ownerStarted.continuation.finish()
+                        ownerCompleted.continuation.finish()
+                    }
+                    try await coordinator.run(scope: .window(firstWindow), access: .read) {
+                        ownerStarted.continuation.yield()
+                        for await _ in ownerRelease.stream {}
+                    }
+                }
+                var ownerStarts = ownerStarted.stream.makeAsyncIterator()
+                try #require(await ownerStarts.next() != nil, "Owner completed before acquiring its lane")
+                let writer = Task {
+                    defer {
+                        writerQueued.continuation.finish()
+                        writerStarted.continuation.finish()
+                        writerCompleted.continuation.finish()
+                    }
+                    try await coordinator.run(scope: .process(process), access: .write) {
+                        writerQueued.continuation.finish()
+                        writerStarted.continuation.yield()
+                        for await _ in writerRelease.stream {}
+                    }
+                }
+                var writerRetries = writerQueued.stream.makeAsyncIterator()
+                #expect(await writerRetries.next() != nil, "Writer entered or completed before reporting contention")
+                let reader = Task {
+                    defer { readerQueued.continuation.finish() }
+                    try await readerCoordinator.run(scope: .window(secondWindow), access: .read) {
+                        await laterReaderStarted.open()
+                    }
+                }
 
-        // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
-        var readerRetries = readerQueued.stream.makeAsyncIterator()
-        #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
-        #expect(await !laterReaderStarted.isOpen)
-        ownerRelease.continuation.finish()
-        var writerStarts = writerStarted.stream.makeAsyncIterator()
-        #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
-        #expect(await !laterReaderStarted.isOpen)
-        writerRelease.continuation.finish()
+                // Completion closes the stream too, so a turnstile bypass fails instead of hanging.
+                var readerRetries = readerQueued.stream.makeAsyncIterator()
+                #expect(await readerRetries.next() != nil, "Reader completed before reporting contention")
+                #expect(await !laterReaderStarted.isOpen)
+                ownerRelease.continuation.finish()
+                var writerStarts = writerStarted.stream.makeAsyncIterator()
+                #expect(await writerStarts.next() != nil, "Writer completed before acquiring its lane")
+                #expect(await !laterReaderStarted.isOpen)
+                writerRelease.continuation.finish()
 
-        try await owner.value
-        try await writer.value
-        try await reader.value
-        #expect(await laterReaderStarted.isOpen)
+                try await owner.value
+                try await writer.value
+                try await reader.value
+                #expect(await laterReaderStarted.isOpen)
+            })
     }
 
     static func window(

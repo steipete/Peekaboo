@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import PeekabooAutomationKit
+import PeekabooAutomationKitTestSupport
 import PeekabooFoundation
 import Testing
 
@@ -229,62 +230,42 @@ extension VerifyStateToolTests {
         _ operation: (NoncooperativeWorkGate) async throws -> T) async throws -> T
     {
         let gate = NoncooperativeWorkGate()
-        let watchdog = Task {
-            do {
-                try await Task.sleep(for: .seconds(10))
+        return try await withTestReleaseWatchdog(
+            "Verification waited for held noncooperative work; releasing the worker",
+            release: { await gate.release() },
+            operation: {
+                let result = try await operation(gate)
+                #expect(await gate.hasEntered)
+                #expect(await !gate.isReleased, "The deadline must return without joining held work")
+                #expect(await !gate.hasFinished)
                 await gate.release()
-            } catch {}
-        }
-        do {
-            let result = try await operation(gate)
-            #expect(await gate.hasEntered)
-            #expect(await !gate.isReleased, "The deadline must return without joining held work")
-            #expect(await !gate.hasFinished)
-            await gate.release()
-            if await gate.hasEntered {
-                await gate.waitUntilFinished()
-            }
-            watchdog.cancel()
-            await watchdog.value
-            return result
-        } catch {
-            await gate.release()
-            watchdog.cancel()
-            await watchdog.value
-            throw error
-        }
+                if await gate.hasEntered {
+                    await gate.waitUntilFinished()
+                }
+                return result
+            })
     }
 
     func withPendingSynchronousWork<T: Sendable>(
         _ operation: @escaping @MainActor @Sendable (VerifyStateSynchronousGate) async throws -> T) async throws -> T
     {
         let gate = VerifyStateSynchronousGate()
-        let watchdog = Task.detached {
-            do {
-                try await Task.sleep(for: .seconds(10))
+        return try await withTestReleaseWatchdog(
+            "Verification waited for held synchronous work; releasing the worker",
+            release: { gate.release() },
+            operation: {
+                let task = Task { @MainActor in try await operation(gate) }
+                #expect(await gate.waitUntilEntered())
+                let heartbeat = Task { @MainActor in gate.isHeld }
+                #expect(await heartbeat.value, "MainActor must run while the synchronous worker is held")
+                let result = try await task.value
+                #expect(gate.isHeld, "The deadline must return without joining the synchronous worker")
                 gate.release()
-            } catch {}
-        }
-        let task = Task { @MainActor in try await operation(gate) }
-        #expect(await gate.waitUntilEntered())
-        let heartbeat = Task { @MainActor in gate.isHeld }
-        #expect(await heartbeat.value, "MainActor must run while the synchronous worker is held")
-        do {
-            let result = try await task.value
-            #expect(gate.isHeld, "The deadline must return without joining the synchronous worker")
-            gate.release()
-            if gate.hasEntered {
-                await gate.waitUntilFinished()
-            }
-            watchdog.cancel()
-            await watchdog.value
-            return result
-        } catch {
-            gate.release()
-            watchdog.cancel()
-            await watchdog.value
-            throw error
-        }
+                if gate.hasEntered {
+                    await gate.waitUntilFinished()
+                }
+                return result
+            })
     }
 }
 
