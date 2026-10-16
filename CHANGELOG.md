@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 4.9.4 - 2026-10-15
 
 **Highlights:** Keep Peekaboo.app's granted bridge host selected after a command auto-starts an ungranted on-demand daemon, name macOS 27's renamed "Device Control and Data Access" Settings row in permission guidance, explain unsigned source builds such as Homebrew core's `peekaboo` formula in Bridge and daemon trust failures, and reject non-finite coordinates and regions.
