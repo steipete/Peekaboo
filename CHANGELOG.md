@@ -1,13 +1,18 @@
 # Changelog
 
-## Unreleased
+## 4.9.5 - 2026-10-16
 
-- Stop reporting complete Accessibility observations as incomplete when an app declines an inapplicable child attribute, such as Calculator's Help search field after a menu opens; preserve readable children and genuine read-failure warnings. Thanks @jandubois! #1094.
+**Highlights:** Let unsigned source builds such as Homebrew core's `peekaboo` formula run commands in-process immediately instead of waiting on or aborting at daemons they cannot trust, with an explicit same-binary daemon opt-in; stop starting daemons that a granted Peekaboo.app host would outrank; and keep `see` and multi-app `quit` outcomes accurate.
+
+- Fall back to in-process execution immediately when an unsigned source build (such as Homebrew core's `peekaboo` formula) meets a daemon it cannot trust, instead of waiting out daemon startup or aborting, and add an explicit `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` opt-in that lets such a build trust only its own exact-binary daemon; release-signed builds ignore it. Thanks @fry69! #1089, #1064.
 - Skip auto-starting an on-demand daemon when a granted Peekaboo.app bridge host would be selected anyway, avoiding the daemon's startup wait and an idle permission-less daemon; lifecycle commands, snapshot-owned actions and explicit sockets still start it. #1082, follow-up to #1073.
 - Declare route-specific Accessibility and Event Synthesizing needs for `type`, `paste`, `press`/`hotkey`, `window`, `menu` and `menubar`, so hosts that explicitly lack them are skipped while grant-free routes and unknown host reports keep working. #1088.
-- Fall back to in-process execution immediately when an unsigned source build (such as Homebrew core's `peekaboo` formula) meets a daemon it cannot trust, instead of waiting out daemon startup or aborting, and add an explicit `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` opt-in that lets such a build trust only its own exact-binary daemon; release-signed builds ignore it. Thanks @fry69! #1089, #1064.
+- Stop reporting complete Accessibility observations as incomplete when an app declines an inapplicable child attribute, such as Calculator's Help search field after a menu opens; preserve readable children and genuine read-failure warnings. Thanks @jandubois! #1094.
+- Keep a multi-application `app quit` cancelled after a suspected no-op reported as a no-op instead of a partial change that asks callers to recover a side effect. Thanks @SebTardif! #1098.
+- Stop shipping the CI runner's Swift toolchain directory as an `LC_RPATH` in released CLI binaries, and fail release builds that carry any non-system absolute rpath. #1099.
 - Show macOS 27's renamed "Device Control and Data Access" Settings row in `axorc permissions` guidance by updating AXorcist. openclaw/AXorcist#102.
 - Render indented code fences, nested and wrapped list items, and parentheses inside link URLs correctly on the documentation site. Thanks @rudycelekli! #1084, #1085, #1086.
+- Update Service Lifecycle to 2.13.0; Swift 6.2 builds select the same runtime code. #1097.
 
 ## 4.9.4 - 2026-10-15
 

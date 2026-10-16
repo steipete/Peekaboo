@@ -51,9 +51,9 @@ peekaboo see --app Finder --json
 
 That is the core loop: observe the current screen, choose an element from the result, and act on it.
 
-## What's new in 4.9.4
+## What's new in 4.9.5
 
-Peekaboo 4.9.4 is a fix release. While a granted Peekaboo.app is running, commands no longer drop to the permissions of an on-demand daemon started from an ungranted terminal, permission guidance names macOS 27's renamed "Device Control and Data Access" Settings row, and an unsigned source build such as Homebrew core's `peekaboo` formula now explains why Bridge and daemon hosts reject it and points to the notarized install. See the changelog for details.
+Peekaboo 4.9.5 is a fix release. Unsigned source builds, such as Homebrew core's `peekaboo` formula, now run commands in-process immediately instead of waiting on or aborting at a daemon they cannot trust, and developers can opt in to trusting their own exact-binary daemon with `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1`. Commands no longer start an on-demand daemon that a granted Peekaboo.app would outrank, `see` stops flagging complete Accessibility reads as incomplete, and released CLI binaries no longer carry the build machine's toolchain path. See the changelog for details.
 
 ## Automate an app
 
