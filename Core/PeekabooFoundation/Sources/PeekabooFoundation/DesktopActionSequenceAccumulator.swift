@@ -220,8 +220,9 @@ public struct DesktopActionSequenceAccumulator: Sendable {
 
     /// Resolves the completed prefix of a batch that stopped before every planned target finished.
     ///
-    /// A complete prefix cannot remain a confirmed outcome for the whole batch. Definite, homogeneous
-    /// delivery becomes partial; stronger uncertainty remains authoritative. If cancellation interrupted
+    /// A confirmed change cannot stay confirmed for the unfinished batch, so it becomes partial.
+    /// A suspected no-op stays a no-op: partial means the primary change was verified.
+    /// Stronger uncertainty remains authoritative. If cancellation interrupted
     /// an in-flight attempt, that attempt may have dispatched and the aggregate becomes indeterminate.
     /// Receiptless prefixes continue to omit the additive outcome only when cancellation happened
     /// between targets; an in-flight interruption must retain possible-dispatch uncertainty.
@@ -285,7 +286,7 @@ public struct DesktopActionSequenceAccumulator: Sendable {
             return InterruptedBatchResult(outcome: nil, fallbackEffect: fallbackEffect)
         }
         switch completedOutcome.state {
-        case .confirmedChange, .suspectedNoop:
+        case .confirmedChange:
             guard let delivery = completedOutcome.delivery else { return nil }
             return InterruptedBatchResult(
                 outcome: .partial(
@@ -293,6 +294,8 @@ public struct DesktopActionSequenceAccumulator: Sendable {
                     delivery: delivery,
                     unitCount: completedOutcome.dispatchState.unitCount),
                 fallbackEffect: .partial)
+        case .suspectedNoop:
+            return InterruptedBatchResult(outcome: completedOutcome, fallbackEffect: .suspectedNoop)
         case .confirmedNoChange:
             return InterruptedBatchResult(outcome: nil, fallbackEffect: .suspectedNoop)
         case .refused:
