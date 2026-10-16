@@ -112,6 +112,9 @@ struct CommandRuntimeOptions {
     var requiresBackgroundCoordinateScroll = false
     var requiresPostEventPermission = false
     var requiresAccessibilityPermission = false
+    /// Route-derived requirements reject only permissions the host explicitly reports missing.
+    var routeRequiresPostEventPermission = false
+    var routeRequiresAccessibilityPermission = false
     var requiresLongPressClick = false
     var requiresBackgroundWindowClose = false
     var requiresBackgroundDialogClick = false

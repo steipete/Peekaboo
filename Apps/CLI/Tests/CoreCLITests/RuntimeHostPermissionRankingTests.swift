@@ -14,8 +14,11 @@ struct RuntimeHostPermissionRankingTests {
         let fixture = try Fixture(exactBuild: true)
         defer { Task { await fixture.peer.stop() } }
         let options = try Self.options(TypeCommand.self)
-        #expect(BridgeCapabilityPolicy.requiredRemotePermissions(for: fixture.daemonHandshake, options: options)
-            .isEmpty)
+        #expect(BridgeCapabilityPolicy.explicitlyMissingRemotePermissions(
+            for: fixture.daemonHandshake,
+            options: options
+        )
+            == [.accessibility])
         let resolution = try await fixture.resolve(options)
         #expect(resolution.selectedRemoteSocketPath == PeekabooBridgeConstants.peekabooSocketPath)
         #expect(fixture.handshakePaths.filter { $0 == fixture.peer.socketPath }.count == 1)
@@ -27,8 +30,11 @@ struct RuntimeHostPermissionRankingTests {
         let fixture = try Fixture()
         defer { Task { await fixture.peer.stop() } }
         let options = try Self.options(PressCommand.self)
-        #expect(BridgeCapabilityPolicy.requiredRemotePermissions(for: fixture.daemonHandshake, options: options)
-            .isEmpty)
+        #expect(BridgeCapabilityPolicy.explicitlyMissingRemotePermissions(
+            for: fixture.daemonHandshake,
+            options: options
+        )
+            == [.accessibility, .postEvent])
         let resolution = try await fixture.resolve(options)
         #expect(resolution.selectedRemoteSocketPath == PeekabooBridgeConstants.peekabooSocketPath)
         #expect(fixture.handshakePaths.count == 2)
@@ -53,10 +59,10 @@ struct RuntimeHostPermissionRankingTests {
     }
 
     @Test(arguments: [false, true])
-    func `unavailable or incapable GUI retains ungranted daemon`(unavailable: Bool) async throws {
+    func `unavailable or incapable GUI retains ungranted daemon for native hide`(unavailable: Bool) async throws {
         let fixture = try Fixture(guiUnavailable: unavailable, guiCapable: unavailable)
         defer { Task { await fixture.peer.stop() } }
-        let resolution = try await fixture.resolve(Self.options(PressCommand.self))
+        let resolution = try await fixture.resolve(Self.options(AppCommand.HideSubcommand.self))
         #expect(resolution.selectedRemoteSocketPath == fixture.peer.socketPath)
     }
 
@@ -67,7 +73,7 @@ struct RuntimeHostPermissionRankingTests {
             guiPermissions: .init(screenRecording: true, accessibility: false, postEvent: true)
         )
         defer { Task { await fixture.peer.stop() } }
-        let resolution = try await fixture.resolve(Self.options(PressCommand.self))
+        let resolution = try await fixture.resolve(Self.options(AppCommand.HideSubcommand.self))
         #expect(resolution.selectedRemoteSocketPath == fixture.peer.socketPath)
     }
 
@@ -75,7 +81,7 @@ struct RuntimeHostPermissionRankingTests {
     func `explicit socket and environment override retain ungranted daemon`(environmentOverride: Bool) async throws {
         let fixture = try Fixture()
         defer { Task { await fixture.peer.stop() } }
-        var options = try Self.options(PressCommand.self)
+        var options = try Self.options(AppCommand.HideSubcommand.self)
         if !environmentOverride {
             options.bridgeSocketPath = fixture.peer.socketPath
         }
@@ -89,7 +95,7 @@ struct RuntimeHostPermissionRankingTests {
     func `snapshot reference keeps ungranted daemon producer`() async throws {
         let fixture = try Fixture()
         defer { Task { await fixture.peer.stop() } }
-        var options = try Self.options(PressCommand.self)
+        var options = try Self.options(AppCommand.HideSubcommand.self)
         options.explicitSnapshotID = "ps1_0123456789abcdef0123456789abcdef"
         let resolution = try await fixture.resolve(options)
         #expect(resolution.selectedRemoteSocketPath == fixture.peer.socketPath)
@@ -117,7 +123,7 @@ struct RuntimeHostPermissionRankingTests {
     func `unknown GUI permissions or no grants anywhere preserve daemon priority`(unknown: Bool) async throws {
         let fixture = try Fixture(guiPermissions: unknown ? nil : Self.denied)
         defer { Task { await fixture.peer.stop() } }
-        let resolution = try await fixture.resolve(Self.options(PressCommand.self))
+        let resolution = try await fixture.resolve(Self.options(AppCommand.HideSubcommand.self))
         #expect(resolution.selectedRemoteSocketPath == fixture.peer.socketPath)
     }
 
@@ -158,7 +164,7 @@ struct RuntimeHostPermissionRankingTests {
             guiPermissions: .init(screenRecording: true, accessibility: true, appleScript: true, postEvent: true)
         )
         defer { Task { await fixture.peer.stop() } }
-        let resolution = try await fixture.resolve(Self.options(PressCommand.self))
+        let resolution = try await fixture.resolve(Self.options(AppCommand.HideSubcommand.self))
         let expectedSocket = missing == .appleScript
             ? fixture.peer.socketPath : PeekabooBridgeConstants.peekabooSocketPath
         #expect(resolution.selectedRemoteSocketPath == expectedSocket)
@@ -282,8 +288,8 @@ struct RuntimeHostPermissionRankingTests {
     private static func options(_ command: any ParsableCommand.Type) throws -> CommandRuntimeOptions {
         var options = try CommanderCLIBinder.makeRuntimeOptions(
             from: ParsedValues(
-                positional: [],
-                options: [:],
+                positional: command == PressCommand.self ? ["return"] : [],
+                options: command == PressCommand.self ? ["windowId": ["42"]] : [:],
                 flags: command == AppCommand.RelaunchSubcommand.self ? ["foreground"] : []
             ),
             commandType: command,
@@ -317,6 +323,8 @@ struct RuntimeHostPermissionRankingTests {
                 .quitApplication,
                 .targetedTypeActions,
                 .targetedHotkey,
+                .getFocusedElement,
+                .hideApplication,
                 .launchApplicationWithOptions,
                 .relaunchApplicationWithOptions,
             ]
@@ -332,14 +340,22 @@ struct RuntimeHostPermissionRankingTests {
                 negotiatedVersion: PeekabooBridgeConstants.protocolVersion,
                 supportedOperations: operations,
                 permissions: daemonPermissions,
-                enabledOperations: operations
+                enabledOperations: operations,
+                hostCapabilities: [
+                    PeekabooBridgeHostCapability.attestedOperationReceipts,
+                    PeekabooBridgeHostCapability.processGenerationPinnedApplicationHide
+                ]
             )
             self.guiHandshake = BridgeTestFixtures.handshake(
                 negotiatedVersion: PeekabooBridgeConstants.protocolVersion,
                 hostKind: .gui,
                 supportedOperations: guiCapable ? operations : [],
                 permissions: guiPermissions,
-                enabledOperations: guiCapable ? operations : []
+                enabledOperations: guiCapable ? operations : [],
+                hostCapabilities: [
+                    PeekabooBridgeHostCapability.attestedOperationReceipts,
+                    PeekabooBridgeHostCapability.processGenerationPinnedApplicationHide
+                ]
             )
         }
 

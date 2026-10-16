@@ -163,17 +163,17 @@ enum CommanderCLIBinder {
             options.usesPerToolSnapshotInvalidation
         options.verbose = parsedValues.flags.contains("verbose")
         options.jsonOutput = parsedValues.flags.contains("jsonOutput")
-        let values = CommanderBindableValues(parsedValues: parsedValues)
-        if let level: LogLevel = try values.decodeOption("logLevel", as: LogLevel.self) {
+        if let level: LogLevel = try commandValues.decodeOption("logLevel", as: LogLevel.self) {
             options.logLevel = level
         }
-        try Self.applyCaptureEnginePreference(to: &options, values: values, seeSkipsPixels: seeSkipsPixels)
+        try Self.applyCaptureEnginePreference(to: &options, values: commandValues, seeSkipsPixels: seeSkipsPixels)
         try Self.applyRuntimeTransportOptions(
             &options,
             commandType: commandType,
             parsedValues: parsedValues,
             environment: environment
         )
+        Self.applyRoutePermissionOptions(&options, commandType, values: commandValues)
         if commandType == SetValueCommand.self {
             options.requiredElementActionOperations.insert(.setValue)
         } else if commandType == SelectTextCommand.self {
@@ -181,7 +181,7 @@ enum CommanderCLIBinder {
         } else if commandType == ActionCommand.self {
             options.requiredElementActionOperations.insert(.performAction)
         }
-        if commandType == SeeCommand.self, values.flag("noScreenshot") {
+        if commandType == SeeCommand.self, commandValues.flag("noScreenshot") {
             options.requiresInspectAccessibilityTree = true
         }
         if commandType == BrowserCommand.self {

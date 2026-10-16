@@ -28,6 +28,29 @@ Synthesizing grants held by the running Peekaboo.app host ranks after that app, 
 the app reports missing; unreported permissions keep the existing order. Snapshot-owned actions and lifecycle
 commands requiring a surviving daemon retain their existing routing.
 
+Permission admission follows the parsed command route. Background exact-window keyboard input requires
+Accessibility to pin its receiver; raw `press` chords other than AX-capable Cmd+A additionally require Event
+Synthesizing. Background text typing and explicit text paste use Accessibility by default, but do not require
+Event Synthesizing merely because keyboard fallback is possible. Foreground `type` requires Event Synthesizing;
+targeted foreground setup also requires Accessibility. Foreground hotkeys and paste use Event Synthesizing under
+the default synthesis policy; an explicit AX-first policy can instead use menu shortcuts. Input-policy overrides
+retain their existing local routing.
+
+Window mutations and application-menu traversal/actions require Accessibility. Foreground window close can
+finish through AX before its keyboard fallback, so it does not declare Event Synthesizing. Scoped status-item
+clicks require Accessibility; global status-item names/indices use coordinate delivery and require Event
+Synthesizing. Native app hide/focus, window/status-item inventory, and clipboard-only writes declare neither.
+File paste with an unknown payload leaves its delivery requirement undecided until decoding selects text
+or Cmd+V. Current-clipboard paste always uses Cmd+V and requires Event Synthesizing under the default policy;
+`paste` itself always delivers input, whereas `clipboard set` only writes the clipboard.
+
+For these route-derived declarations, an explicitly denied permission skips that remote candidate; omitted
+permission reports (including legacy reports without Event Synthesizing status) remain unknown. Existing
+click/move/drag/scroll permission flags retain their strict grant checks, and operation-derived requirements
+retain their existing admission rules. When all implicit candidates are rejected,
+commands permitting local execution still attempt the same in-process fallback and retain their own local
+permission errors. Snapshot-owner and explicit-socket routing remain strict.
+
 Commands carrying a concrete snapshot reference do not use this preference order. They resolve the unique producer as
 described in [Snapshot authority](#snapshot-authority) before selecting an execution host.
 
