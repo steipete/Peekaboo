@@ -9,7 +9,13 @@ struct DialogServiceOperationLaneTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-dialog-lane-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let actionQueued = DialogOperationLatch()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await actionQueued.open()
+                try await Task.sleep(for: .seconds(60))
+            })
         let ownerStarted = DialogOperationLatch()
         let ownerRelease = DialogOperationLatch()
         let service = DialogService(
@@ -29,14 +35,13 @@ struct DialogServiceOperationLaneTests {
                 windowTitle: "Missing dialog",
                 appName: nil)
         }
-        try await Task.sleep(for: .milliseconds(50))
+        await actionQueued.wait()
         dialogAction.cancel()
-        await ownerRelease.open()
-
-        try await owner.value
         await #expect(throws: CancellationError.self) {
             try await dialogAction.value
         }
+        await ownerRelease.open()
+        try await owner.value
     }
 }
 

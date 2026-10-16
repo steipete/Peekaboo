@@ -182,7 +182,13 @@ struct DesktopOperationLaneCoordinatorTests {
         let root = Self.temporaryDirectory(named: "queued-cancel")
         defer { try? FileManager.default.removeItem(at: root) }
         let firstCoordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
-        let secondCoordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let waiterQueued = AsyncTestLatch()
+        let secondCoordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await waiterQueued.open()
+                try await Task.sleep(for: .seconds(60))
+            })
         let target = Self.window(windowID: 81)
         let release = AsyncTestLatch()
         let ownerStarted = AsyncTestLatch()
@@ -200,15 +206,14 @@ struct DesktopOperationLaneCoordinatorTests {
                 await waiterDispatched.open()
             }
         }
-        try await Task.sleep(for: .milliseconds(50))
+        await waiterQueued.wait()
         waiter.cancel()
-        await release.open()
-
-        try await owner.value
         await #expect(throws: CancellationError.self) {
             try await waiter.value
         }
         #expect(await !(waiterDispatched.isOpen))
+        await release.open()
+        try await owner.value
         try await secondCoordinator.run(scope: .global, access: .write) {}
     }
 
@@ -216,7 +221,14 @@ struct DesktopOperationLaneCoordinatorTests {
     func `Active body that ignores cancellation retains its lease`() async throws {
         let root = Self.temporaryDirectory(named: "active-cancel")
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let activeRelease = AsyncTestLatch()
+        let contenderQueued = AsyncTestLatch()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await contenderQueued.open()
+                await activeRelease.wait()
+            })
         let target = Self.window(windowID: 91)
         let activeStarted = AsyncTestLatch()
         let activeFinished = AsyncTestLatch()
@@ -225,10 +237,7 @@ struct DesktopOperationLaneCoordinatorTests {
         let active = Task {
             try await coordinator.run(scope: .window(target), access: .write) {
                 await activeStarted.open()
-                let noncooperative = Task.detached {
-                    try? await Task.sleep(for: .milliseconds(250))
-                }
-                await noncooperative.value
+                await activeRelease.wait()
                 await activeFinished.open()
             }
         }
@@ -240,9 +249,12 @@ struct DesktopOperationLaneCoordinatorTests {
             }
         }
 
-        #expect(await !(contenderStarted.opensWithin(.milliseconds(100))))
-        #expect(await activeFinished.opensWithin(.seconds(1)))
+        await contenderQueued.wait()
+        #expect(await !contenderStarted.isOpen)
+        #expect(await !activeFinished.isOpen)
+        await activeRelease.open()
         _ = try? await active.value
+        #expect(await activeFinished.isOpen)
         try await contender.value
         #expect(await contenderStarted.isOpen)
     }
@@ -382,12 +394,25 @@ struct DesktopOperationLaneCoordinatorTests {
     func `Queued global writer closes the turnstile to later scoped readers`() async throws {
         let root = Self.temporaryDirectory(named: "writer-turnstile")
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
         let ownerStarted = AsyncTestLatch()
         let ownerRelease = AsyncTestLatch()
         let writerStarted = AsyncTestLatch()
         let writerRelease = AsyncTestLatch()
         let laterReaderStarted = AsyncTestLatch()
+        let writerQueued = AsyncTestLatch()
+        let readerQueued = AsyncTestLatch()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await writerQueued.open()
+                await ownerRelease.wait()
+            })
+        let readerCoordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await readerQueued.open()
+                await writerRelease.wait()
+            })
 
         let owner = Task {
             try await coordinator.run(scope: .global, access: .read) {
@@ -402,17 +427,19 @@ struct DesktopOperationLaneCoordinatorTests {
                 await writerRelease.wait()
             }
         }
-        try await Task.sleep(for: .milliseconds(100))
+        await writerQueued.wait()
         let reader = Task {
             let process = ApplicationProcessIdentity(processIdentifier: 910, processStartIdentity: 1)
-            try await coordinator.run(scope: .process(process), access: .read) {
+            try await readerCoordinator.run(scope: .process(process), access: .read) {
                 await laterReaderStarted.open()
             }
         }
 
+        await readerQueued.wait()
+        #expect(await !laterReaderStarted.isOpen)
         await ownerRelease.open()
-        #expect(await writerStarted.opensWithin(.seconds(1)))
-        #expect(await !(laterReaderStarted.opensWithin(.milliseconds(100))))
+        await writerStarted.wait()
+        #expect(await !laterReaderStarted.isOpen)
         await writerRelease.open()
 
         try await owner.value
@@ -425,7 +452,6 @@ struct DesktopOperationLaneCoordinatorTests {
     func `Queued process writer closes its turnstile to later window readers`() async throws {
         let root = Self.temporaryDirectory(named: "process-writer-turnstile")
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
         let process = ApplicationProcessIdentity(processIdentifier: 920, processStartIdentity: 2)
         let firstWindow = Self.window(windowID: 111, process: process)
         let secondWindow = Self.window(windowID: 112, process: process)
@@ -434,6 +460,20 @@ struct DesktopOperationLaneCoordinatorTests {
         let writerStarted = AsyncTestLatch()
         let writerRelease = AsyncTestLatch()
         let laterReaderStarted = AsyncTestLatch()
+        let writerQueued = AsyncTestLatch()
+        let readerQueued = AsyncTestLatch()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await writerQueued.open()
+                await ownerRelease.wait()
+            })
+        let readerCoordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await readerQueued.open()
+                await writerRelease.wait()
+            })
 
         let owner = Task {
             try await coordinator.run(scope: .window(firstWindow), access: .read) {
@@ -448,16 +488,18 @@ struct DesktopOperationLaneCoordinatorTests {
                 await writerRelease.wait()
             }
         }
-        try await Task.sleep(for: .milliseconds(100))
+        await writerQueued.wait()
         let reader = Task {
-            try await coordinator.run(scope: .window(secondWindow), access: .read) {
+            try await readerCoordinator.run(scope: .window(secondWindow), access: .read) {
                 await laterReaderStarted.open()
             }
         }
 
+        await readerQueued.wait()
+        #expect(await !laterReaderStarted.isOpen)
         await ownerRelease.open()
-        #expect(await writerStarted.opensWithin(.seconds(1)))
-        #expect(await !(laterReaderStarted.opensWithin(.milliseconds(100))))
+        await writerStarted.wait()
+        #expect(await !laterReaderStarted.isOpen)
         await writerRelease.open()
 
         try await owner.value

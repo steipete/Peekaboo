@@ -14,7 +14,13 @@ struct ApplicationServiceOperationLaneTests {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-application-lane-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let coordinator = DesktopOperationLaneCoordinator(coordinationRootURL: root)
+        let quitQueued = ApplicationOperationLatch()
+        let coordinator = DesktopOperationLaneCoordinator(
+            coordinationRootURL: root,
+            retrySleep: {
+                await quitQueued.open()
+                try await Task.sleep(for: .milliseconds(10))
+            })
         let expectedIdentity = ApplicationProcessIdentity(
             processIdentifier: runningApplication.processIdentifier,
             processStartIdentity: 70)
@@ -44,7 +50,7 @@ struct ApplicationServiceOperationLaneTests {
                 identifier: "PID:\(runningApplication.processIdentifier)",
                 expectedIdentity: expectedIdentity))
         }
-        try await Task.sleep(for: .milliseconds(50))
+        await quitQueued.wait()
         #expect(terminationCalls == 0)
         let unrelated = Task {
             try await coordinator.run(
@@ -56,12 +62,12 @@ struct ApplicationServiceOperationLaneTests {
                 await unrelatedStarted.open()
             }
         }
-        #expect(await unrelatedStarted.opensWithin(.milliseconds(100)))
+        try await unrelated.value
+        #expect(await unrelatedStarted.isOpen)
         currentGeneration.value = 71
         await ownerRelease.open()
 
         try await owner.value
-        try await unrelated.value
         await #expect(throws: PeekabooError.self) {
             try await quit.value
         }

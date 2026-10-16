@@ -27,18 +27,34 @@ struct ClipboardPasteTransactionGateTests {
         }
 
         var operationRan = false
+        let waiting = AsyncStream<Void>.makeStream()
+        let retry = AsyncStream<Void>.makeStream()
+        defer {
+            waiting.continuation.finish()
+            retry.continuation.finish()
+        }
         let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-                return 42
-            }
+            defer { waiting.continuation.finish() }
+            return try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                lockPath: fixture.path,
+                retrySleep: {
+                    waiting.continuation.yield()
+                    for await _ in retry.stream {}
+                    try Task.checkCancellation()
+                },
+                operation: {
+                    operationRan = true
+                    return 42
+                })
         }
 
-        try await Task.sleep(for: .milliseconds(75))
+        var retries = waiting.stream.makeAsyncIterator()
+        #expect(await retries.next() != nil)
         #expect(operationRan == false)
 
         #expect(flock(heldFD, LOCK_UN) == 0)
         lockHeld = false
+        retry.continuation.finish()
 
         #expect(try await transaction.value == 42)
         #expect(operationRan)
@@ -84,18 +100,34 @@ struct ClipboardPasteTransactionGateTests {
         #expect(readiness == Data("locked\n".utf8))
 
         var operationRan = false
-        let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-                return 42
-            }
+        let waiting = AsyncStream<Void>.makeStream()
+        let retry = AsyncStream<Void>.makeStream()
+        defer {
+            waiting.continuation.finish()
+            retry.continuation.finish()
         }
-        try await Task.sleep(for: .milliseconds(75))
+        let transaction = Task { @MainActor in
+            defer { waiting.continuation.finish() }
+            return try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                lockPath: fixture.path,
+                retrySleep: {
+                    waiting.continuation.yield()
+                    for await _ in retry.stream {}
+                    try Task.checkCancellation()
+                },
+                operation: {
+                    operationRan = true
+                    return 42
+                })
+        }
+        var retries = waiting.stream.makeAsyncIterator()
+        #expect(await retries.next() != nil)
         #expect(operationRan == false)
 
         try childInput.fileHandleForWriting.close()
         child.waitUntilExit()
         #expect(child.terminationStatus == 0)
+        retry.continuation.finish()
         #expect(try await transaction.value == 42)
         #expect(operationRan)
     }
@@ -323,13 +355,23 @@ struct ClipboardPasteTransactionGateTests {
         }
 
         var operationRan = false
+        let waiting = AsyncStream<Void>.makeStream()
+        defer { waiting.continuation.finish() }
         let transaction = Task { @MainActor in
-            try await ClipboardPasteTransactionGate.withExclusiveTransaction(lockPath: fixture.path) {
-                operationRan = true
-            }
+            defer { waiting.continuation.finish() }
+            try await ClipboardPasteTransactionGate.withExclusiveTransaction(
+                lockPath: fixture.path,
+                retrySleep: {
+                    waiting.continuation.yield()
+                    try await Task.sleep(for: .seconds(60))
+                },
+                operation: {
+                    operationRan = true
+                })
         }
 
-        try await Task.sleep(for: .milliseconds(50))
+        var retries = waiting.stream.makeAsyncIterator()
+        #expect(await retries.next() != nil)
         transaction.cancel()
         await #expect(throws: CancellationError.self) {
             try await transaction.value
