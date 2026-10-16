@@ -352,11 +352,19 @@ extension BridgeCapabilityPolicy {
         for handshake: PeekabooBridgeHandshakeResponse,
         options: CommandRuntimeOptions
     ) -> Set<PeekabooBridgePermissionKind> {
-        guard handshake.permissions != nil else { return [] }
+        guard let permissions = handshake.permissions else { return [] }
         var missing = self.requiredRemotePermissions(for: handshake, options: options)
             .subtracting(self.grantedPermissions(from: handshake.permissions))
         if self.defersRemoteScreenRecordingPermission(options: options) {
             missing.remove(.screenRecording)
+        }
+        if !options.requestsHostPermissionGrant {
+            if options.routeRequiresAccessibilityPermission, !permissions.accessibility {
+                missing.insert(.accessibility)
+            }
+            if options.routeRequiresPostEventPermission, permissions.reportsPostEvent, !permissions.postEvent {
+                missing.insert(.postEvent)
+            }
         }
         return missing
     }

@@ -55,7 +55,7 @@ extension CommanderBinderTests {
     @Test
     func `Background press requires process-generation-pinned Bridge hotkeys`() throws {
         let background = try CommanderCLIBinder.makeRuntimeOptions(
-            from: ParsedValues(positional: ["a"], options: ["pid": ["42"]], flags: []),
+            from: ParsedValues(positional: ["a"], options: ["windowId": ["42"]], flags: []),
             commandType: PressCommand.self
         )
         let foreground = try CommanderCLIBinder.makeRuntimeOptions(
@@ -64,6 +64,7 @@ extension CommanderBinderTests {
         )
         let operations: [PeekabooBridgeOperation] = [
             .targetedHotkey,
+            .getFocusedElement,
             .invalidateImplicitLatestSnapshot,
         ]
         let legacy = BridgeTestFixtures.handshake(
