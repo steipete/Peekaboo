@@ -34,3 +34,21 @@ test('switching marker type at the same indentation starts a new list', (t) => {
   const article = render(t, '- bullet\n1. numbered\n');
   assert.match(article, /<ul>\n<li>bullet<\/li>\n<\/ul>\n<ol>\n<li>numbered<\/li>\n<\/ol>/);
 });
+
+test('a paragraph after nested children belongs to the parent item', (t) => {
+  const article = render(t, '- parent\n  - child\n\n  parent continuation\n- sibling\n');
+  assert.match(article, /<li>child<\/li>\n<\/ul>\n<p>parent continuation<\/p>\n<\/li>\n<li>sibling<\/li>/);
+  assert.doesNotMatch(article, /<li>child parent continuation/);
+});
+
+test('lazy continuation without a blank stays with the innermost child', (t) => {
+  for (const indentation of ['', '  ']) {
+    const article = render(t, `- parent\n  - child\n${indentation}lazy child text\n- sibling\n`);
+    assert.match(article, /<li>child lazy child text<\/li>/);
+  }
+});
+
+test('a continuation can return through multiple nested list levels', (t) => {
+  const article = render(t, '1. parent\n   - child\n     - grandchild\n\n   parent continuation\n2. sibling\n');
+  assert.match(article, /<li>grandchild<\/li>\n<\/ul>\n<\/li>\n<\/ul>\n<p>parent continuation<\/p>\n<\/li>\n<li>sibling<\/li>/);
+});

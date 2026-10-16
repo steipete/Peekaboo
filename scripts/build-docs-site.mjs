@@ -453,6 +453,12 @@ function markdownToHtml(markdown, currentRel, nested = false) {
       Object.assign(lists.at(-1), { itemOpen: true, itemAt: html.length - 1, itemText });
       continue;
     }
+    // After a blank line, a paragraph at the parent's content indentation
+    // leaves nested children. Without a blank, preserve lazy continuation.
+    const continuationIndent = line.match(/^\s*/)[0].replaceAll("\t", "    ").length;
+    if (i > 0 && !lines[i - 1].trim()) {
+      while (lists.length > 1 && continuationIndent <= lists.at(-1).indent) closeInnermostList();
+    }
     const owner = lists.at(-1);
     if (owner?.itemOpen && !paragraph.length && html.length - 1 === owner.itemAt) {
       // the next line of an item's own text, not a new paragraph
