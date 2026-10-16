@@ -144,6 +144,7 @@ enum BridgeCandidateResult: Codable {
 }
 
 struct BridgeHandshakeReport: Codable {
+    let trustMode: PeekabooBridgeTrustMode?
     let negotiatedVersion: PeekabooBridgeProtocolVersion
     let hostKind: PeekabooBridgeHostKind
     let build: String?
@@ -156,6 +157,7 @@ struct BridgeHandshakeReport: Codable {
     let screenCaptureKitReadiness: ScreenCaptureKitReadiness?
 
     init(from handshake: PeekabooBridgeHandshakeResponse) {
+        self.trustMode = handshake.trustMode
         self.negotiatedVersion = handshake.negotiatedVersion
         self.hostKind = handshake.hostKind
         self.build = handshake.build
@@ -178,8 +180,9 @@ struct BridgeHandshakeReport: Codable {
             let eventSynthesizing = status.postEvent ? "Y" : "N"
             return "perm: SR=\(sr) AX=\(ax) ES=\(eventSynthesizing)"
         } ?? "perm: unknown"
+        let trustSummary = self.trustMode.map { ", trust: \($0.description)" } ?? ""
         return "handshake succeeded (\(self.hostKind.rawValue), \(opsSummary), \(permissionsSummary), " +
-            "\(self.captureSupportSummary), SCK preparation: \(self.capturePreparationSummary))"
+            "\(self.captureSupportSummary), SCK preparation: \(self.capturePreparationSummary)\(trustSummary))"
     }
 
     private var captureSupportSummary: String {

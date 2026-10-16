@@ -117,9 +117,8 @@ extension DaemonLaunchPolicy {
         let process = Process()
         process.executableURL = executableURL
         process.arguments = arguments
-        if let environment {
-            process.environment = environment
-        }
+        // Keep the same-binary developer opt-in on both explicit and automatic launches.
+        process.environment = environment ?? ProcessInfo.processInfo.environment
         let daemonLogURL = DaemonPaths.daemonLogURL()
         let outputHandle = logHandle ?? DaemonPaths.openDaemonLogForAppend() ?? FileHandle.nullDevice
         process.standardOutput = outputHandle

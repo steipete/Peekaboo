@@ -10,9 +10,13 @@ import Testing
 @Suite(.serialized, .tags(.safe))
 @MainActor
 struct RuntimeHostDaemonLaunchTests {
-    @Test(arguments: ["type", "press", "click"])
-    func `ungranted caller skips absent exact daemon for granted GUI`(command: String) async throws {
+    @Test(arguments: ["type", "press", "click"], [false, true])
+    func `ungranted caller skips absent exact daemon for granted GUI`(
+        command: String,
+        releaseSigned: Bool
+    ) async throws {
         let fixture = Fixture()
+        fixture.releaseSigned = releaseSigned
         let options = try Self.options(command)
         #expect(options.requiresImplicitSnapshotInvalidation)
         let resolution = try await fixture.resolve(options)
@@ -238,6 +242,7 @@ struct RuntimeHostDaemonLaunchTests {
             bundleIdentifier: "boo.peekaboo.test.launch", teamIdentifier: nil, processIdentifier: 123
         )
         var exactBuild = true
+        var releaseSigned = true
         var callerPermissions: PermissionsStatus? = RuntimeHostDaemonLaunchTests.denied
         var guiPermissions: PermissionsStatus? = RuntimeHostDaemonLaunchTests.granted
         var guiUnavailable = false
@@ -251,6 +256,7 @@ struct RuntimeHostDaemonLaunchTests {
         var guiHandshake: PeekabooBridgeHandshakeResponse {
             let operations: [PeekabooBridgeOperation] = self.guiCapable ? [
                 .invalidateImplicitLatestSnapshot, .targetedTypeActions, .targetedHotkey, .targetedClick,
+                .getFocusedElement,
             ] : []
             return BridgeTestFixtures.handshake(
                 negotiatedVersion: PeekabooBridgeConstants.protocolVersion,
@@ -319,10 +325,15 @@ struct RuntimeHostDaemonLaunchTests {
                 startOnDemandDaemon: { path, _ in
                     self.launchPaths.append(path)
                     return nil
-                }
+                },
+                fetchDaemonStatus: { _ in nil },
+                currentProcessIsReleaseSigned: { self.releaseSigned }
             )
             return try await RuntimeHostResolver.resolveServices(
-                options: options, environment: [:], configurationInput: nil, dependencies: dependencies
+                options: options,
+                environment: self.releaseSigned ? [:] : ["PEEKABOO_ALLOW_UNSIGNED_DAEMON": "1"],
+                configurationInput: nil,
+                dependencies: dependencies
             )
         }
     }

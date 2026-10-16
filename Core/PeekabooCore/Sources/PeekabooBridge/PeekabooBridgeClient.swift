@@ -12,6 +12,7 @@ struct PeekabooBridgeClientHostAuthentication: @unchecked Sendable {
     let liveIdentity: LiveIdentityProvider
     let signingIdentity: SigningIdentityProvider
     let currentProcessIsReleaseSigned: @Sendable () -> Bool
+    let unsignedDaemonPolicy: PeekabooBridgeUnsignedDaemonPolicy
 
     init(
         liveIdentity: @escaping LiveIdentityProvider = {
@@ -19,11 +20,14 @@ struct PeekabooBridgeClientHostAuthentication: @unchecked Sendable {
         },
         signingIdentity: @escaping SigningIdentityProvider,
         currentProcessIsReleaseSigned: @escaping @Sendable () -> Bool =
-            PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned)
+            PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned,
+        unsignedDaemonPolicy: PeekabooBridgeUnsignedDaemonPolicy? = nil)
     {
         self.liveIdentity = liveIdentity
         self.signingIdentity = signingIdentity
         self.currentProcessIsReleaseSigned = currentProcessIsReleaseSigned
+        self.unsignedDaemonPolicy = unsignedDaemonPolicy ?? .init(
+            currentProcessIsReleaseSigned: currentProcessIsReleaseSigned)
     }
 
     static let live = Self(
@@ -176,8 +180,8 @@ public actor PeekabooBridgeClient {
     /// Creates a Bridge client.
     ///
     /// Bundled Peekaboo socket paths use the release signing teams automatically. Custom socket
-    /// paths must provide `trustedHostTeamIDs` to negotiate protocol 1.29; without explicit host
-    /// trust they remain source-compatible by negotiating receiptless protocol 1.28.
+    /// paths must provide `trustedHostTeamIDs` or enable the unsigned same-binary daemon policy
+    /// to negotiate protocol 1.29; otherwise they negotiate receiptless protocol 1.28.
     public init(
         socketPath: String = PeekabooBridgeConstants.peekabooSocketPath,
         maxResponseBytes: Int = 64 * 1024 * 1024,
@@ -194,10 +198,11 @@ public actor PeekabooBridgeClient {
         self.encoder = encoder
         self.decoder = decoder
         self.operationClientInstanceID = operationClientInstanceID
+        self.hostAuthentication = .live
         self.trustedHostTeamIDs = Self.resolveTrustedHostTeamIDs(
             explicit: trustedHostTeamIDs,
-            socketPath: socketPath)
-        self.hostAuthentication = .live
+            socketPath: socketPath) ?? (self.hostAuthentication.unsignedDaemonPolicy.enabled
+            ? PeekabooBridgeConstants.trustedReleaseTeamIDs : nil)
         self.enqueueTransport = { _, operation in PeekabooBridgeBlockingIO.enqueue(operation) }
         let environmentDirectory = ProcessInfo.processInfo.environment["PEEKABOO_OPERATION_RECEIPT_DIRECTORY"]
             .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0, isDirectory: true) }
@@ -255,7 +260,8 @@ public actor PeekabooBridgeClient {
         self.operationClientInstanceID = operationClientInstanceID
         self.trustedHostTeamIDs = Self.resolveTrustedHostTeamIDs(
             explicit: trustedHostTeamIDs,
-            socketPath: socketPath)
+            socketPath: socketPath) ?? (hostAuthentication.unsignedDaemonPolicy.enabled
+            ? PeekabooBridgeConstants.trustedReleaseTeamIDs : nil)
         self.hostAuthentication = hostAuthentication
         self.enqueueTransport = enqueueTransport
         let environmentDirectory = ProcessInfo.processInfo.environment["PEEKABOO_OPERATION_RECEIPT_DIRECTORY"]
@@ -828,11 +834,17 @@ public actor PeekabooBridgeClient {
                 ? Self.offeredCapabilities(for: protocolVersion)
                 : nil)
         let reply = try await self.sendCarryingActionOutcome(.handshake(payload), timeoutSec: timeoutSec)
-        try self.validateTrustedConnectedHost(reply.connectedHost)
         let response = reply.response
+        let hostKind: PeekabooBridgeHostKind? = if case let .handshake(handshake) = response {
+            handshake.hostKind
+        } else {
+            nil
+        }
+        let trustMode = try self.validateTrustedConnectedHost(reply.connectedHost, hostKind: hostKind)
 
         switch response {
-        case let .handshake(handshake):
+        case var .handshake(handshake):
+            handshake.trustMode = trustMode
             return try self.handshakeCandidate(
                 handshake,
                 replacingOperationSessionID: replacingOperationSessionID,
@@ -847,12 +859,17 @@ public actor PeekabooBridgeClient {
     /// Validates the kernel-connected host before interpreting any trusted-socket handshake response, including
     /// errors that could otherwise trigger protocol fallback. Custom sockets without an explicit trust policy retain
     /// their intentionally unauthenticated protocol-1.28 compatibility behavior.
-    private func validateTrustedConnectedHost(_ connectedHost: PeekabooBridgeConnectedHostIdentity?) throws {
-        guard let trustedHostTeamIDs = self.trustedHostTeamIDs else { return }
-        try PeekabooBridgeConnectedHostTrust.validate(
+    private func validateTrustedConnectedHost(
+        _ connectedHost: PeekabooBridgeConnectedHostIdentity?,
+        hostKind: PeekabooBridgeHostKind?) throws -> PeekabooBridgeTrustMode?
+    {
+        guard let trustedHostTeamIDs = self.trustedHostTeamIDs else { return nil }
+        return try PeekabooBridgeConnectedHostTrust.validate(
             connectedHost,
             socketPath: self.socketPath,
             trustedTeamIDs: trustedHostTeamIDs,
+            hostKind: hostKind,
+            unsignedDaemonPolicy: self.hostAuthentication.unsignedDaemonPolicy,
             currentProcessIsReleaseSigned: self.hostAuthentication.currentProcessIsReleaseSigned)
     }
 
@@ -1021,10 +1038,7 @@ public actor PeekabooBridgeClient {
             guard let connectedHost,
                   let liveCodeSignatureHash = connectedHost.liveIdentity.codeSignatureHash,
                   !liveCodeSignatureHash.isEmpty,
-                  let signingIdentity = connectedHost.signingIdentity,
-                  signingIdentity.codeSignatureHash == liveCodeSignatureHash,
-                  let signingTeamIdentifier = signingIdentity.teamIdentifier,
-                  self.trustedHostTeamIDs?.contains(signingTeamIdentifier) == true,
+                  handshake.trustMode != nil,
                   connectedHost.liveIdentity.processIdentifier == advertisedListenerAttestation.host.processIdentifier,
                   connectedHost.liveIdentity.processStartIdentity ==
                   advertisedListenerAttestation.host.processStartIdentity,
@@ -1060,10 +1074,14 @@ public actor PeekabooBridgeClient {
             listenerLiveIdentity = connectedHost.liveIdentity
             sessionAttestation = advertisedSessionAttestation
             receiptlessAuthenticatedHost = nil
-            authenticatedHostIdentity = Self.authenticatedHostIdentity(
-                advertised: advertisedHostIdentity,
-                listener: advertisedListenerAttestation,
-                signingIdentity: signingIdentity)
+            if handshake.trustMode == .releaseSignature, let signingIdentity = connectedHost.signingIdentity {
+                authenticatedHostIdentity = Self.authenticatedHostIdentity(
+                    advertised: advertisedHostIdentity,
+                    listener: advertisedListenerAttestation,
+                    signingIdentity: signingIdentity)
+            } else {
+                authenticatedHostIdentity = nil
+            }
         } else {
             listenerAttestation = nil
             listenerLiveIdentity = nil

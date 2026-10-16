@@ -4,6 +4,42 @@ import PeekabooFoundation
 
 @MainActor
 extension PeekabooBridgeServer {
+    func validatePeerAuthorization(_ peer: PeekabooBridgePeer?) throws {
+        guard !self.allowlistedTeams.isEmpty || !self.allowlistedBundles.isEmpty else { return }
+        guard let peer else {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .unauthorizedClient,
+                message: "Unsigned bridge clients are not allowed for this listener")
+        }
+
+        let developerDaemonPeer = self.hostKind == .onDemand &&
+            peer.trustMode == .unsignedSameBinaryDeveloperOptIn
+        if !self.allowlistedTeams.isEmpty, !developerDaemonPeer {
+            guard let team = peer.teamIdentifier, self.allowlistedTeams.contains(team) else {
+                let team = peer.teamIdentifier ?? "<unknown>"
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .unauthorizedClient,
+                    message: "Team \(team) is not authorized")
+            }
+        }
+
+        if !self.allowlistedBundles.isEmpty {
+            guard let bundle = peer.bundleIdentifier, self.allowlistedBundles.contains(bundle) else {
+                let bundle = peer.bundleIdentifier ?? "<unknown>"
+                throw PeekabooBridgeErrorEnvelope(
+                    code: .unauthorizedClient,
+                    message: "Bundle \(bundle) is not authorized")
+            }
+        }
+
+        let expectedUID = developerDaemonPeer ? geteuid() : getuid()
+        if let uid = peer.userIdentifier, uid != expectedUID {
+            throw PeekabooBridgeErrorEnvelope(
+                code: .unauthorizedClient,
+                message: "UID \(uid) is not authorized for this listener")
+        }
+    }
+
     func route(
         _ request: PeekabooBridgeRequest,
         peer: PeekabooBridgePeer?) async throws -> PeekabooBridgeHandledResponse

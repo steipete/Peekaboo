@@ -101,6 +101,8 @@ extension RuntimeHostResolver {
     typealias RemoteHandshakeCacheFactory = @MainActor () -> RemoteHandshakeCache
     typealias CallerPermissionPreflight = @MainActor () -> PermissionsStatus?
     typealias OnDemandDaemonStarter = @MainActor (String, [String: String]) async throws -> String?
+    typealias DaemonStatusFetcher = @MainActor (String) async throws -> PeekabooDaemonStatus?
+    typealias ReleaseSigningCheck = @MainActor () -> Bool
 
     struct Dependencies {
         let makeLocalServices: LocalServiceFactory
@@ -114,6 +116,8 @@ extension RuntimeHostResolver {
         let makeRemoteServices: RemoteServiceFactory
         let callerPermissionPreflight: CallerPermissionPreflight
         let startOnDemandDaemon: OnDemandDaemonStarter
+        let fetchDaemonStatus: DaemonStatusFetcher
+        let currentProcessIsReleaseSigned: ReleaseSigningCheck
 
         init(
             makeLocalServices: @escaping LocalServiceFactory,
@@ -132,6 +136,12 @@ extension RuntimeHostResolver {
             },
             startOnDemandDaemon: @escaping OnDemandDaemonStarter = {
                 try await DaemonLaunchPolicy.startOnDemandDaemon(socketPath: $0, environment: $1)
+            },
+            fetchDaemonStatus: @escaping DaemonStatusFetcher = {
+                try await DaemonControlClient(socketPath: $0).fetchStatus()
+            },
+            currentProcessIsReleaseSigned: @escaping ReleaseSigningCheck = {
+                PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned()
             }
         ) {
             self.makeLocalServices = makeLocalServices
@@ -145,6 +155,39 @@ extension RuntimeHostResolver {
             self.makeRemoteServices = makeRemoteServices
             self.callerPermissionPreflight = callerPermissionPreflight
             self.startOnDemandDaemon = startOnDemandDaemon
+            self.fetchDaemonStatus = fetchDaemonStatus
+            self.currentProcessIsReleaseSigned = currentProcessIsReleaseSigned
+        }
+
+        func resolutionContext(
+            options: CommandRuntimeOptions,
+            environment: [String: String],
+            candidatePlan: RemoteCandidatePlan,
+            handshakeCache: RemoteHandshakeCache,
+            preferredScreenCaptureKitOwner: ScreenCaptureKitOwnerLease.OwnerReceipt? = nil
+        ) -> RemoteResolutionContext {
+            RemoteResolutionContext(
+                options: options,
+                environment: environment,
+                candidatePlan: candidatePlan,
+                identity: handshakeCache.identity,
+                handshakeCache: handshakeCache,
+                snapshotInvalidationRemoteSocketPaths: RuntimeHostResolver.snapshotInvalidationRemoteSocketPaths(
+                    explicitSocket: candidatePlan.explicitSocket,
+                    daemonSocketPath: candidatePlan.daemonSocketPath,
+                    buildScopedDaemonSocketPath: candidatePlan.buildScopedDaemonSocketPath,
+                    historicalBuildScopedDaemonSocketPaths: candidatePlan.historicalBuildScopedDaemonSocketPaths
+                ),
+                preferredScreenCaptureKitOwner: preferredScreenCaptureKitOwner,
+                makeLocalServices: self.makeLocalServices,
+                inspectScreenCaptureKitSafety: self.inspectScreenCaptureKitSafety,
+                recordScreenCaptureKitSafetyBlocker: self.recordScreenCaptureKitSafetyBlocker,
+                makeRemoteServices: self.makeRemoteServices,
+                callerPermissionPreflight: self.callerPermissionPreflight,
+                startOnDemandDaemon: self.startOnDemandDaemon,
+                fetchDaemonStatus: self.fetchDaemonStatus,
+                currentProcessIsReleaseSigned: self.currentProcessIsReleaseSigned
+            )
         }
 
         static let live = Dependencies(
@@ -202,6 +245,14 @@ extension RuntimeHostResolver {
             try await DaemonLaunchPolicy.startOnDemandDaemon(socketPath: $0, environment: $1)
         }
 
+        var fetchDaemonStatus: DaemonStatusFetcher = {
+            try await DaemonControlClient(socketPath: $0).fetchStatus()
+        }
+
+        var currentProcessIsReleaseSigned: ReleaseSigningCheck = {
+            PeekabooBridgeSigningDiagnostics.currentProcessIsReleaseSigned()
+        }
+
         func resolveRemoteServices(
             candidates: [ImplicitRemoteCandidate],
             requiredProtocolVersion: PeekabooBridgeProtocolVersion? = nil,
@@ -222,6 +273,9 @@ extension RuntimeHostResolver {
                 guiPermissionCandidate: self.candidatePlan.explicitSocket == nil &&
                     self.options.explicitSnapshotID == nil && requiredOwner == nil
                     ? self.candidatePlan.candidates.first { $0.requiredHostKind == .gui } : nil,
+                reportUntrustedHosts: !self.currentProcessIsReleaseSigned(),
+                preserveHostAuthenticationFailure: self.candidatePlan.explicitSocket != nil &&
+                    !self.currentProcessIsReleaseSigned(),
                 recordRejection: recordRejection
             )
         }

@@ -241,7 +241,9 @@ extension PeekabooBridgeHost {
         signingIdentityProvider: (PeekabooBridgePeerAuditIdentity) -> PeerSigningIdentity? = {
             PeekabooBridgeHost.signingIdentity(auditIdentity: $0)
         },
-        allowUnsignedSocketClients: Bool = PeekabooBridgeHost.allowUnsignedSocketClients) -> PeekabooBridgePeer?
+        allowUnsignedSocketClients: Bool = PeekabooBridgeHost.allowUnsignedSocketClients,
+        hostKind: PeekabooBridgeHostKind = .gui,
+        unsignedDaemonPolicy: PeekabooBridgeUnsignedDaemonPolicy = .init()) -> PeekabooBridgePeer?
     {
         guard let auditIdentity = liveIdentity.auditIdentity else { return nil }
         guard SystemIdentityResolver.processStartIdentity(auditIdentity.processIdentifier) ==
@@ -268,6 +270,19 @@ extension PeekabooBridgeHost {
         }
         let pid = liveIdentity.processIdentifier
         let callerUID = liveIdentity.effectiveUserIdentifier
+
+        // An opted-in unsigned daemon admits only same-UID clients running its exact binary: no team,
+        // legacy same-UID or debug admission may widen that.
+        if unsignedDaemonPolicy.enabled, hostKind == .onDemand {
+            guard unsignedDaemonPolicy.allows(liveIdentity, hostKind: hostKind) else { return nil }
+            self.logger.warning(
+                "allowing bridge client pid=\(pid, privacy: .public) (unsigned same-binary developer opt-in)")
+            return PeekabooBridgePeer(
+                liveIdentity: liveIdentity,
+                bundleIdentifier: nil,
+                teamIdentifier: nil,
+                trustMode: .unsignedSameBinaryDeveloperOptIn)
+        }
 
         if allowedTeamIDs.isEmpty, callerUID == getuid() {
             return self.peer(

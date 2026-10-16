@@ -114,8 +114,37 @@ response loss after handshake fails the command with `success: false` and a nonz
 Explicit start/stop use the same strict probes before choosing a target. Shutdown retains its existing wait and PID
 checks, retries read-only observations, and reports an unresolved probe failure rather than claiming successful stop.
 
-Bridge and daemon features require a release-signed CLI; if using an unsigned source build (including Homebrew core's
-`peekaboo` formula), install the [notarized tap or npm CLI](install.md#homebrew-recommended).
+### Unsigned developer builds
+
+Prefer the [notarized tap or npm CLI](install.md#homebrew-recommended). For a source build (including Homebrew core's
+`peekaboo` formula), explicitly opt in before starting or connecting to your own daemon:
+
+```bash
+export PEEKABOO_ALLOW_UNSIGNED_DAEMON=1
+peekaboo daemon start
+peekaboo daemon status
+```
+
+The variable applies only when the current process is not release-signed. It lets an unsigned CLI trust only an
+on-demand daemon with the same effective UID and exact same live kernel CDHash (the same executable bytes), and
+lets that daemon admit only matching clients. Auto-start and `daemon start` propagate the variable. Restart an
+existing daemon to apply the opt-in policy on the host as well. Different builds and GUI Bridge hosts still
+require release signing. Release-signed CLIs, daemons, and Peekaboo.app ignore this variable completely.
+
+`bridge status` and `daemon status` label accepted connections `unsigned same-binary developer opt-in`; JSON includes
+`trustMode: "unsignedSameBinaryDeveloperOptIn"`. This is developer trust, not release-signature or source-provenance
+attestation. Without the variable, an unsigned CLI skips implicit daemon auto-start and evaluates existing hosts
+before falling back to local services where the command permits it. Its fallback description reports skipped
+startup and untrusted hosts. A failed local host-authentication check makes that candidate unavailable during
+implicit routing; it never authorizes replacing its socket or relaunching onto it. Other occupancy-probe errors
+still fail the command. Release-signed clients retain their existing routing and error behavior.
+
+Explicit `daemon start` and `daemon run` still start daemons without the variable; unsuccessful authenticated
+readiness checks retain the unsigned-build installation hint. Explicit `daemon status`, `daemon stop`,
+`--bridge-socket`, and `PEEKABOO_BRIDGE_SOCKET` retain authentication failures instead of silently falling back.
+
+Ad-hoc source builds lack the hardened runtime: injected code can run inside the same binary and therefore share its
+CDHash. Enable this only on machines you control. Prefer the notarized install for normal use.
 
 See [`peekaboo daemon`](commands/daemon.md) for command flags and [Bridge host](bridge-host.md) for transport and
 security details.

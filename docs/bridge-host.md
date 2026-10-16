@@ -455,10 +455,12 @@ deliberately omitted from public help and shell completions.
 
 The client does not treat the response-carried, self-signed listener as provenance by itself. It captures the connected
 socket peer's audit token and requires exact PID/PID-version, process-start, live kernel CDHash, Apple-anchored signing
-identity, trusted team membership, and listener-host agreement before installing a 1.29 session. Bundled Peekaboo
-socket paths use the release-team migration allowlist. Custom socket clients must pass `trustedHostTeamIDs`; omitting
-that policy caps the handshake at receiptless protocol 1.28 so an arbitrary same-user Developer ID process cannot
-replace the socket and mint a trusted-looking receipt chain.
+identity, trusted team membership, and listener-host agreement before installing a 1.29 session. The unsigned daemon
+developer opt-in described under [Security](#security) replaces only the signing/team requirement with same-effective-UID
+and own-live-CDHash checks; listener, session, and per-request generation binding still apply. Bundled Peekaboo socket
+paths use the release-team migration allowlist. Custom socket clients must pass `trustedHostTeamIDs` or enable that
+unsigned developer policy; otherwise the handshake is capped at receiptless protocol 1.28 so an arbitrary same-user
+Developer ID process cannot replace the socket and mint a trusted-looking receipt chain.
 
 Each protocol 1.29 request reserves one decimal-string sequence in its logical session and carries a deterministic
 RFC 9562 version-8 request UUID derived from the full `(session ID, sequence)` tuple. Replay protection retains the
@@ -587,8 +589,20 @@ Peekaboo BridgeHost validates callers before processing any request:
 - Rejects any process not signed by an allowlisted TeamID (default: `FWJYW4S8P8`, plus `Y5PE65HELJ` for transition-era CLI compatibility).
 - Peekaboo.app additionally admits only the exact signing identifiers of its CLI, GUI, and source-bound certification controller (`boo.peekaboo.peekaboo-certification-controller`). The controller retains its own matched-build checks; this admission does not grant CLI-only certification, browser-handoff, or Agent operations to other clients.
 
-Unsigned source builds, including Homebrew core's `peekaboo` formula, cannot use trusted Bridge or daemon hosts;
-see the [notarized tap or npm CLI installs](install.md#homebrew-recommended).
+Unsigned source builds, including Homebrew core's `peekaboo` formula, normally cannot use trusted Bridge or daemon
+hosts; prefer the [notarized tap or npm CLI installs](install.md#homebrew-recommended).
+
+`PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` is an explicit developer exception only for processes that are not release-signed.
+An opted-in unsigned client can authenticate an on-demand daemon only when its live socket peer has the same
+effective UID and exact same live kernel CDHash as itself. An opted-in unsigned daemon applies the same rule to
+clients. Existing audit-token, liveness, process-generation, and receipt bindings remain in force. GUI hosts and
+different binaries still require release signing; release-signed binaries ignore the variable. Every relaxed
+connection is marked `unsigned same-binary developer opt-in` by Bridge/daemon status (JSON `trustMode` is
+`unsignedSameBinaryDeveloperOptIn`), and host admission is logged. This does not claim release-authenticated source
+provenance. See [daemon development](daemon.md#unsigned-developer-builds).
+
+Ad-hoc source builds lack the hardened runtime, so injected code can run under the same binary and share its CDHash.
+Enable only on machines you control; prefer the notarized install.
 
 Debug-only escape hatch:
 

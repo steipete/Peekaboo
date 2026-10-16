@@ -23,7 +23,7 @@ peekaboo --version
 Update with `brew upgrade openclaw/tap/peekaboo`.
 
 `brew install peekaboo` installs Homebrew core's source-built formula without release signing.
-Local in-process commands still work, but Peekaboo Bridge and daemon hosts require the notarized CLI:
+Local in-process commands still work. For normal Bridge and daemon use, install the notarized CLI:
 install it with `brew install openclaw/tap/peekaboo` or `npm i -g @steipete/peekaboo`.
 
 ## npm (for MCP clients)
@@ -65,6 +65,14 @@ pnpm run build:swift:all   # universal release
 ```
 
 The output binary lives under `Apps/CLI/.build/...`. See [building.md](building.md) for signing and notarization.
+
+For local daemon development, set `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` on both the unsigned CLI and daemon (CLI auto-start
+and `daemon start` propagate it). This permits only an on-demand daemon/client pair with the same effective UID and
+exact same live kernel CDHash. It does not enable unsigned GUI Bridge access, and release-signed binaries ignore it.
+Status labels the connection as `unsigned same-binary developer opt-in`. Ad-hoc builds lack the hardened runtime,
+so injected code can run under the same binary; enable only on machines you control. Prefer the notarized install.
+See [unsigned developer builds](daemon.md#unsigned-developer-builds) for details.
+
 Raw SwiftPM and manual unstamped Xcode builds use stable `unknown` placeholders for source and build-time metadata.
 Use the repository's debug or release build scripts from a clean checkout when `peekaboo --version --json` must
 include immutable provenance. Dirty or unverifiable debug builds remain available but report `sourceCommit: unknown`;

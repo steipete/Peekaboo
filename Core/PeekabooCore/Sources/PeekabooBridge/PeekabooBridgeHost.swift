@@ -52,13 +52,18 @@ struct PeekabooBridgeHostAuthentication: @unchecked Sendable {
     let liveIdentity: @Sendable (Int32) throws -> PeekabooBridgeLivePeerIdentity
     let coldPeer: @Sendable (PeekabooBridgeLivePeerIdentity, Set<String>) -> PeekabooBridgePeer?
 
-    static let live = PeekabooBridgeHostAuthentication(
-        liveIdentity: { try PeekabooBridgeSocketIO.livePeerIdentity(fd: $0) },
-        coldPeer: { liveIdentity, allowedTeamIDs in
-            PeekabooBridgeHost.peerInfoIfAllowed(
-                liveIdentity: liveIdentity,
-                allowedTeamIDs: allowedTeamIDs)
-        })
+    static func live(hostKind: PeekabooBridgeHostKind) -> Self {
+        let unsignedDaemonPolicy = PeekabooBridgeUnsignedDaemonPolicy()
+        return PeekabooBridgeHostAuthentication(
+            liveIdentity: { try PeekabooBridgeSocketIO.livePeerIdentity(fd: $0) },
+            coldPeer: { liveIdentity, allowedTeamIDs in
+                PeekabooBridgeHost.peerInfoIfAllowed(
+                    liveIdentity: liveIdentity,
+                    allowedTeamIDs: allowedTeamIDs,
+                    hostKind: hostKind,
+                    unsignedDaemonPolicy: unsignedDaemonPolicy)
+            })
+    }
 }
 
 actor PeekabooBridgeConnectionTracker {
@@ -343,7 +348,7 @@ public final actor PeekabooBridgeHost {
     private let requestDrainTimeoutSec: TimeInterval
     var browserHandoffMaintenanceIntervalMilliseconds: Int64 = 1000
     let server: PeekabooBridgeServer
-    private var authentication = PeekabooBridgeHostAuthentication.live
+    private var authentication: PeekabooBridgeHostAuthentication
 
     public init(
         socketPath: String = PeekabooBridgeConstants.peekabooSocketPath,
@@ -356,6 +361,7 @@ public final actor PeekabooBridgeHost {
     {
         self.socketPath = socketPath
         self.server = server
+        self.authentication = .live(hostKind: server.hostKind)
         self.maxMessageBytes = maxMessageBytes
         self.allowedTeamIDs = allowedTeamIDs
         self.requestTimeoutSec = requestTimeoutSec
