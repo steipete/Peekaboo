@@ -471,7 +471,7 @@ function inline(text, currentRel, inheritedStash = []) {
     stash.push({ html: `<code>${escapeHtml(code)}</code>`, raw });
     return `\u0000${stash.length - 1}\u0000`;
   });
-  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (raw, label, href) => {
+  out = out.replace(/\[([^\]]+)\]\(((?:[^()]|\([^()]*\))+)\)/g, (raw, label, href) => {
     const destination = href
       .replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].raw)
       .replace(/\\\|/g, "|");
