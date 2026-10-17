@@ -75,7 +75,10 @@ final class PeekabooSettings {
     }
 
     var ollamaBaseURL: String = "http://localhost:11434" {
-        didSet { self.save() }
+        didSet {
+            self.save()
+            self.persistOllamaBaseURL()
+        }
     }
 
     var selectedModel: String = "claude-opus-5" {
@@ -592,10 +595,7 @@ extension PeekabooSettings {
                 // Set providers string with fallbacks
                 config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
 
-                // Set Ollama base URL if custom
-                if self.ollamaBaseURL != "http://localhost:11434" {
-                    config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
-                }
+                self.assignPersistedOllamaBaseURL(to: &config)
             }
 
             // Mark as migrated
@@ -604,6 +604,30 @@ extension PeekabooSettings {
             print("Successfully migrated settings to config.json")
         } catch {
             print("Failed to migrate settings to config.json: \(error)")
+        }
+    }
+
+    /// Writes only the Ollama URL. A full settings save would rewrite unrelated keys.
+    private func persistOllamaBaseURL() {
+        guard !self.isLoading else { return }
+        do {
+            try self.configManager.updateConfiguration { config in
+                self.assignPersistedOllamaBaseURL(to: &config)
+            }
+        } catch {
+            print("Failed to update Ollama base URL in config.json: \(error)")
+        }
+    }
+
+    /// The default URL clears a saved custom value. Otherwise the next launch reloads it.
+    private func assignPersistedOllamaBaseURL(to config: inout Configuration) {
+        if config.aiProviders == nil {
+            config.aiProviders = Configuration.AIProviderConfig()
+        }
+        if self.ollamaBaseURL == "http://localhost:11434" {
+            config.aiProviders?.ollamaBaseUrl = nil
+        } else {
+            config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
         }
     }
 
@@ -661,10 +685,7 @@ extension PeekabooSettings {
                     config.aiProviders?.providers = "\(providerString),ollama/llava:latest"
                 }
 
-                // Update Ollama base URL if custom
-                if self.ollamaBaseURL != "http://localhost:11434" {
-                    config.aiProviders?.ollamaBaseUrl = self.ollamaBaseURL
-                }
+                self.assignPersistedOllamaBaseURL(to: &config)
 
                 // Mirror the element-box toggle into config.json so the CLI's
                 // dispatch gate (SeeTool) follows the app setting.
