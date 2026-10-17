@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
+
 ## 4.9.5 - 2026-10-16
 
 **Highlights:** Let unsigned source builds such as Homebrew core's `peekaboo` formula run commands in-process immediately instead of waiting on or aborting at daemons they cannot trust, with an explicit same-binary daemon opt-in; stop starting daemons that a granted Peekaboo.app host would outrank; and keep `see` and multi-app `quit` outcomes accurate.
