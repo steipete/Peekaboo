@@ -55,11 +55,17 @@ struct SessionSidebar: View {
         .searchable(text: self.$searchText, prompt: "Search Sessions")
         .safeAreaInset(edge: .top) {
             if let notice = self.sessionStore.sessionPersistenceNotice {
-                Text(notice)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(notice)
+                        .font(.caption)
+                    Button("Try again") {
+                        self.sessionStore.saveSessions()
+                    }
                     .font(.caption)
-                    .padding(8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.orange.opacity(0.15))
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.15))
             }
         }
         .overlay {

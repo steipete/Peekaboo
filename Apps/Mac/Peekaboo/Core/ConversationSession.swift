@@ -18,17 +18,37 @@ final class SessionStore {
     private let titleGenerator = SessionTitleGenerator()
 
     private let storageURL: URL
-    /// True until an unreadable sessions file can be moved aside or read again.
-    private(set) var sessionPersistenceBlocked = false
+    private enum SessionPersistenceBlock {
+        case unreadableFile
+        case saveFailed
+    }
+
+    /// Set until the original file is safe and a snapshot has been written.
+    private var sessionPersistenceBlock: SessionPersistenceBlock?
+
+    var sessionPersistenceBlocked: Bool {
+        self.sessionPersistenceBlock != nil
+    }
 
     static let sessionPersistenceBlockedNotice = """
     Chat history is not being saved. The sessions file is unreadable and could \
     not be moved aside. The next save will try again.
     """
 
+    static let sessionSaveFailedNotice = """
+    Chat history is not being saved. The last save did not finish. The next \
+    save will try again.
+    """
+
     var sessionPersistenceNotice: String? {
-        guard self.sessionPersistenceBlocked else { return nil }
-        return Self.sessionPersistenceBlockedNotice
+        switch self.sessionPersistenceBlock {
+        case .unreadableFile:
+            Self.sessionPersistenceBlockedNotice
+        case .saveFailed:
+            Self.sessionSaveFailedNotice
+        case nil:
+            nil
+        }
     }
 
     init(storageURL: URL? = nil) {
@@ -130,11 +150,11 @@ final class SessionStore {
         } catch let error as DecodingError {
             // Keep the bytes the decoder rejected. A later save must not replace them.
             if !self.moveUnreadableStoreAside() {
-                self.sessionPersistenceBlocked = true
+                self.sessionPersistenceBlock = .unreadableFile
             }
             print("Failed to load sessions: \(error)")
         } catch {
-            self.sessionPersistenceBlocked = true
+            self.sessionPersistenceBlock = .unreadableFile
             print("Failed to load sessions: \(error)")
         }
     }
@@ -148,7 +168,7 @@ final class SessionStore {
     /// Tries again to protect the original file, then lets the caller save.
     private func retryPreservingUnreadableStore() {
         guard FileManager.default.fileExists(atPath: self.storageURL.path) else {
-            self.sessionPersistenceBlocked = false
+            self.sessionPersistenceBlock = nil
             return
         }
         do {
@@ -156,10 +176,10 @@ final class SessionStore {
             let decoded = try self.decodeSessions(from: data)
             let known = Set(self.sessions.map(\.id))
             self.sessions.append(contentsOf: decoded.filter { !known.contains($0.id) })
-            self.sessionPersistenceBlocked = false
+            self.sessionPersistenceBlock = nil
         } catch is DecodingError {
             if self.moveUnreadableStoreAside() {
-                self.sessionPersistenceBlocked = false
+                self.sessionPersistenceBlock = nil
             }
         } catch {
             return
@@ -184,10 +204,10 @@ final class SessionStore {
     }
 
     func saveSessions() {
-        if self.sessionPersistenceBlocked {
+        if self.sessionPersistenceBlock != nil {
             self.retryPreservingUnreadableStore()
         }
-        guard !self.sessionPersistenceBlocked else { return }
+        guard self.sessionPersistenceBlock == nil else { return }
         do {
             try FileManager.default.createDirectory(
                 at: self.storageURL.deletingLastPathComponent(),
@@ -197,7 +217,9 @@ final class SessionStore {
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(self.sessions)
             try data.write(to: self.storageURL, options: .atomic)
+            self.sessionPersistenceBlock = nil
         } catch {
+            self.sessionPersistenceBlock = .saveFailed
             print("Failed to save sessions: \(error)")
         }
     }

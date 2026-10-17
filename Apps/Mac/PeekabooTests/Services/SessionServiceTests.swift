@@ -267,4 +267,46 @@ struct SessionStorePersistenceTests {
         #expect(!reloaded.sessionPersistenceBlocked)
         #expect(try Data(contentsOf: preservedURL) == original)
     }
+
+    @Test
+    func `a failed atomic save stays visible until a later save finishes`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let storageURL = directory.appendingPathComponent("sessions.json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let store = SessionStore(storageURL: storageURL)
+        let session = store.createSession(title: "Kept", modelName: "test")
+        store.addMessage(
+            ConversationMessage(role: .user, content: "before"),
+            to: session)
+        store.saveSessions()
+        let saved = try Data(contentsOf: storageURL)
+        #expect(String(data: saved, encoding: .utf8)?.contains("before") == true)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        store.addMessage(
+            ConversationMessage(role: .user, content: "after"),
+            to: session)
+        store.saveSessions()
+        #expect(store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == SessionStore.sessionSaveFailedNotice)
+        let duringFailure = try Data(contentsOf: storageURL)
+        #expect(duringFailure == saved)
+        #expect(String(data: duringFailure, encoding: .utf8)?.contains("after") != true)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+        store.saveSessions()
+        #expect(!store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == nil)
+
+        let reloaded = SessionStore(storageURL: storageURL)
+        let message = reloaded.sessions.first?.messages.map(\.content) ?? []
+        #expect(message.contains("before"))
+        #expect(message.contains("after"))
+        #expect(!reloaded.sessionPersistenceBlocked)
+    }
 }
