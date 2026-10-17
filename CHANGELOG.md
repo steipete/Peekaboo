@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
+- Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
+
 ## 4.9.5 - 2026-10-16
 
 **Highlights:** Let unsigned source builds such as Homebrew core's `peekaboo` formula run commands in-process immediately instead of waiting on or aborting at daemons they cannot trust, with an explicit same-binary daemon opt-in; stop starting daemons that a granted Peekaboo.app host would outrank; and keep `see` and multi-app `quit` outcomes accurate.
