@@ -1237,8 +1237,21 @@ extension PeekabooSettingsConfigHydrationTests {
             let configJSON = """
             {
               "aiProviders": {
-                "providers": "ollama/llava:latest",
+                "providers": "anthropic/claude-opus-4-8,ollama/llava:latest",
                 "ollamaBaseUrl": "http://ollama.example:11434"
+              },
+              "agent": {
+                "defaultModel": "claude-opus-4-8",
+                "temperature": 0.3,
+                "maxTokens": 4096
+              },
+              "defaults": {
+                "savePath": "~/Desktop/Screenshots",
+                "imageFormat": "png"
+              },
+              "logging": {
+                "level": "info",
+                "path": "~/.peekaboo/logs/peekaboo.log"
               }
             }
             """
@@ -1254,22 +1267,68 @@ extension PeekabooSettingsConfigHydrationTests {
             _ = ConfigurationManager.shared.loadConfiguration()
             #expect(ConfigurationManager.shared.getOllamaBaseURL() == "http://127.0.0.1:11435")
             #expect(try Self.ollamaBaseURL(in: configPath) == "http://127.0.0.1:11435")
+            try Self.expectUnrelatedSettings(in: configPath)
 
             settings.ollamaBaseURL = "http://localhost:11434"
             ConfigurationManager.shared.resetForTesting()
             _ = ConfigurationManager.shared.loadConfiguration()
             #expect(ConfigurationManager.shared.getOllamaBaseURL() == "http://localhost:11434")
             #expect(try Self.ollamaBaseURL(in: configPath) == nil)
+            try Self.expectUnrelatedSettings(in: configPath)
 
             let reloaded = PeekabooSettings(credentialCoordinator: credentialCoordinator)
             #expect(reloaded.ollamaBaseURL == "http://localhost:11434")
+            #expect(reloaded.selectedModel == "claude-opus-4-8")
+            #expect(reloaded.temperature == 0.3)
+            #expect(reloaded.maxTokens == 4096)
+        }
+    }
+
+    @Test
+    func `a new config file records an Ollama URL and drops the default`() throws {
+        try withIsolatedSettingsEnvironment { configDir, credentialCoordinator in
+            let configPath = configDir.appendingPathComponent("config.json")
+            #expect(!FileManager.default.fileExists(atPath: configPath.path))
+
+            let settings = PeekabooSettings(credentialCoordinator: credentialCoordinator)
+            settings.ollamaBaseURL = "http://127.0.0.1:11435"
+            #expect(FileManager.default.fileExists(atPath: configPath.path))
+            let stored = try Self.ollamaBaseURL(in: configPath)
+            #expect(stored == "http://127.0.0.1:11435")
+
+            settings.ollamaBaseURL = "http://localhost:11434"
+            let cleared = try Self.ollamaBaseURL(in: configPath)
+            #expect(cleared == nil)
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+            #expect(ConfigurationManager.shared.getOllamaBaseURL() == "http://localhost:11434")
         }
     }
 
     private static func ollamaBaseURL(in configPath: URL) throws -> String? {
-        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: configPath)) as? [String: Any]
-        let providers = object?["aiProviders"] as? [String: Any]
+        let providers = try Self.object(in: configPath)["aiProviders"] as? [String: Any]
         return providers?["ollamaBaseUrl"] as? String
+    }
+
+    private static func expectUnrelatedSettings(in configPath: URL) throws {
+        let object = try Self.object(in: configPath)
+        let providers = try #require(object["aiProviders"] as? [String: Any])
+        let agent = try #require(object["agent"] as? [String: Any])
+        let defaults = try #require(object["defaults"] as? [String: Any])
+        let logging = try #require(object["logging"] as? [String: Any])
+        #expect(providers["providers"] as? String == "anthropic/claude-opus-4-8,ollama/llava:latest")
+        #expect(agent["defaultModel"] as? String == "claude-opus-4-8")
+        #expect(agent["temperature"] as? Double == 0.3)
+        #expect(agent["maxTokens"] as? Int == 4096)
+        #expect(defaults["savePath"] as? String == "~/Desktop/Screenshots")
+        #expect(defaults["imageFormat"] as? String == "png")
+        #expect(logging["level"] as? String == "info")
+        #expect(logging["path"] as? String == "~/.peekaboo/logs/peekaboo.log")
+    }
+
+    private static func object(in configPath: URL) throws -> [String: Any] {
+        try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: configPath)) as? [String: Any])
     }
 }
 
