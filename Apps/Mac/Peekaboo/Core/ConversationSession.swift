@@ -18,6 +18,38 @@ final class SessionStore {
     private let titleGenerator = SessionTitleGenerator()
 
     private let storageURL: URL
+    private enum SessionPersistenceBlock {
+        case unreadableFile
+        case saveFailed
+    }
+
+    /// Set until the original file is safe and a snapshot has been written.
+    private var sessionPersistenceBlock: SessionPersistenceBlock?
+
+    var sessionPersistenceBlocked: Bool {
+        self.sessionPersistenceBlock != nil
+    }
+
+    static let sessionPersistenceBlockedNotice = """
+    Chat history is not being saved. The sessions file is unreadable and could \
+    not be moved aside. The next save will try again.
+    """
+
+    static let sessionSaveFailedNotice = """
+    Chat history is not being saved. The last save did not finish. The next \
+    save will try again.
+    """
+
+    var sessionPersistenceNotice: String? {
+        switch self.sessionPersistenceBlock {
+        case .unreadableFile:
+            Self.sessionPersistenceBlockedNotice
+        case .saveFailed:
+            Self.sessionSaveFailedNotice
+        case nil:
+            nil
+        }
+    }
 
     init(storageURL: URL? = nil) {
         if let storageURL {
@@ -113,16 +145,74 @@ final class SessionStore {
         guard FileManager.default.fileExists(atPath: self.storageURL.path) else { return }
 
         do {
-            let data = try Data(contentsOf: storageURL)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            self.sessions = try decoder.decode([ConversationSession].self, from: data)
+            let data = try Data(contentsOf: self.storageURL)
+            self.sessions = try self.decodeSessions(from: data)
+        } catch let error as DecodingError {
+            // Keep the bytes the decoder rejected. A later save must not replace them.
+            if !self.moveUnreadableStoreAside() {
+                self.sessionPersistenceBlock = .unreadableFile
+            }
+            print("Failed to load sessions: \(error)")
         } catch {
+            self.sessionPersistenceBlock = .unreadableFile
             print("Failed to load sessions: \(error)")
         }
     }
 
+    private func decodeSessions(from data: Data) throws -> [ConversationSession] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([ConversationSession].self, from: data)
+    }
+
+    /// Tries again to protect the original file, then lets the caller save.
+    private func retryPreservingUnreadableStore() {
+        guard FileManager.default.fileExists(atPath: self.storageURL.path) else {
+            self.sessionPersistenceBlock = nil
+            return
+        }
+        do {
+            let data = try Data(contentsOf: self.storageURL)
+            let decoded = try self.decodeSessions(from: data)
+            let known = Set(self.sessions.map(\.id))
+            self.sessions.append(contentsOf: decoded.filter { !known.contains($0.id) })
+            self.sessionPersistenceBlock = nil
+        } catch is DecodingError {
+            if self.moveUnreadableStoreAside() {
+                self.sessionPersistenceBlock = nil
+            }
+        } catch {
+            return
+        }
+    }
+
+    private func moveUnreadableStoreAside() -> Bool {
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        for attempt in 0..<100 {
+            let suffix = attempt == 0 ? stamp : "\(stamp)-\(attempt)"
+            let destination = self.storageURL.appendingPathExtension("unreadable-\(suffix)")
+            guard !FileManager.default.fileExists(atPath: destination.path) else { continue }
+            do {
+                try FileManager.default.moveItem(at: self.storageURL, to: destination)
+                return true
+            } catch {
+                return false
+            }
+        }
+        return false
+    }
+
     func saveSessions() {
+        switch self.sessionPersistenceBlock {
+        case .unreadableFile:
+            self.retryPreservingUnreadableStore()
+        case .saveFailed:
+            self.sessionPersistenceBlock = nil
+        case nil:
+            break
+        }
+        guard self.sessionPersistenceBlock == nil else { return }
         do {
             try FileManager.default.createDirectory(
                 at: self.storageURL.deletingLastPathComponent(),
@@ -131,8 +221,10 @@ final class SessionStore {
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(self.sessions)
-            try data.write(to: self.storageURL)
+            try data.write(to: self.storageURL, options: .atomic)
+            self.sessionPersistenceBlock = nil
         } catch {
+            self.sessionPersistenceBlock = .saveFailed
             print("Failed to save sessions: \(error)")
         }
     }

@@ -25,6 +25,21 @@ struct SessionChatView: View {
 
             Divider()
 
+            if let notice = self.sessionStore.sessionPersistenceNotice {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(notice)
+                        .font(.caption)
+                    Button("Try again") {
+                        self.sessionStore.saveSessions()
+                    }
+                    .font(.caption)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.orange.opacity(0.15))
+                Divider()
+            }
+
             // Messages
             ScrollViewReader { proxy in
                 ScrollView {
