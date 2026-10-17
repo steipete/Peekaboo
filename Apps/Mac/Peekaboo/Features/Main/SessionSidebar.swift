@@ -53,6 +53,15 @@ struct SessionSidebar: View {
         }
         .listStyle(.sidebar)
         .searchable(text: self.$searchText, prompt: "Search Sessions")
+        .safeAreaInset(edge: .top) {
+            if let notice = self.sessionStore.sessionPersistenceNotice {
+                Text(notice)
+                    .font(.caption)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.orange.opacity(0.15))
+            }
+        }
         .overlay {
             if self.filteredSessions.isEmpty {
                 if self.searchText.isEmpty {

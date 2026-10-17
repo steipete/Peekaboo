@@ -183,4 +183,88 @@ struct SessionStorePersistenceTests {
         let reread = try Data(contentsOf: preservedURL)
         #expect(reread == original)
     }
+
+    @Test
+    func `an existing session file still loads`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storageURL = directory.appendingPathComponent("sessions.json")
+        let stored = """
+        [
+          {
+            "id" : "session_existing",
+            "title" : "Existing chat",
+            "messages" : [
+              {
+                "id" : "11111111-1111-1111-1111-111111111111",
+                "role" : "user",
+                "content" : "hello from before",
+                "timestamp" : "2026-08-01T12:00:00Z",
+                "toolCalls" : []
+              }
+            ],
+            "startTime" : "2026-08-01T12:00:00Z",
+            "summary" : "Kept",
+            "modelName" : "gpt"
+          }
+        ]
+        """
+        try stored.write(to: storageURL, atomically: true, encoding: .utf8)
+
+        let store = SessionStore(storageURL: storageURL)
+        #expect(!store.sessionPersistenceBlocked)
+        #expect(store.sessions.count == 1)
+        #expect(store.sessions.first?.title == "Existing chat")
+        #expect(store.sessions.first?.summary == "Kept")
+        #expect(store.sessions.first?.messages.first?.content == "hello from before")
+        store.saveSessions()
+
+        let reloaded = SessionStore(storageURL: storageURL)
+        #expect(reloaded.sessions.first?.messages.first?.content == "hello from before")
+        #expect(reloaded.sessions.first?.title == "Existing chat")
+    }
+
+    @Test
+    func `a blocked save retries after the sessions directory is writable`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let storageURL = directory.appendingPathComponent("sessions.json")
+        let original = Data("{ invalid json }".utf8)
+        try original.write(to: storageURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let store = SessionStore(storageURL: storageURL)
+        #expect(store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == SessionStore.sessionPersistenceBlockedNotice)
+        store.saveSessions()
+        #expect(try Data(contentsOf: storageURL) == original)
+        #expect(store.sessions.isEmpty)
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+        let created = store.createSession(title: "Recovered", modelName: "test")
+        store.saveSessions()
+        #expect(!store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == nil)
+
+        let preserved = try FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil)
+            .filter { url in
+                (try? Data(contentsOf: url)) == original
+            }
+        let preservedURL = try #require(preserved.first)
+        #expect(preservedURL.lastPathComponent != "sessions.json")
+
+        let reloaded = SessionStore(storageURL: storageURL)
+        #expect(reloaded.sessions.count == 1)
+        #expect(reloaded.sessions.first?.id == created.id)
+        #expect(reloaded.sessions.first?.title == "Recovered")
+        #expect(!reloaded.sessionPersistenceBlocked)
+        #expect(try Data(contentsOf: preservedURL) == original)
+    }
 }
