@@ -204,8 +204,13 @@ final class SessionStore {
     }
 
     func saveSessions() {
-        if self.sessionPersistenceBlock != nil {
+        switch self.sessionPersistenceBlock {
+        case .unreadableFile:
             self.retryPreservingUnreadableStore()
+        case .saveFailed:
+            self.sessionPersistenceBlock = nil
+        case nil:
+            break
         }
         guard self.sessionPersistenceBlock == nil else { return }
         do {

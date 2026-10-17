@@ -269,6 +269,43 @@ struct SessionStorePersistenceTests {
     }
 
     @Test
+    func `retrying a failed save does not restore deleted sessions`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let storageURL = directory.appendingPathComponent("sessions.json")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let store = SessionStore(storageURL: storageURL)
+        let kept = store.createSession(title: "Kept", modelName: "test")
+        let deleted = store.createSession(title: "Deleted", modelName: "test")
+        store.saveSessions()
+        let saved = try Data(contentsOf: storageURL)
+        #expect(SessionStore(storageURL: storageURL).sessions.count == 2)
+
+        store.sessions.removeAll { $0.id == deleted.id }
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        store.saveSessions()
+        #expect(store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == SessionStore.sessionSaveFailedNotice)
+        #expect(try Data(contentsOf: storageURL) == saved)
+        #expect(store.sessions.map(\.id) == [kept.id])
+
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+        store.saveSessions()
+        #expect(store.sessions.map(\.id) == [kept.id])
+        #expect(!store.sessionPersistenceBlocked)
+        #expect(store.sessionPersistenceNotice == nil)
+
+        let reloaded = SessionStore(storageURL: storageURL)
+        #expect(reloaded.sessions.map(\.id) == [kept.id])
+        #expect(!reloaded.sessionPersistenceBlocked)
+        #expect(reloaded.sessionPersistenceNotice == nil)
+    }
+
+    @Test
     func `a failed atomic save stays visible until a later save finishes`() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
