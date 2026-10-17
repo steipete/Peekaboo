@@ -1229,6 +1229,48 @@ extension PeekabooSettingsConfigHydrationTests {
             #expect(refreshedAgent.defaultModelSelection == "local-proxy/mini")
         }
     }
+
+    @Test
+    func `Ollama base URL edits stick in config and a default clears the saved URL`() throws {
+        try withIsolatedSettingsEnvironment { configDir, credentialCoordinator in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let configJSON = """
+            {
+              "aiProviders": {
+                "providers": "ollama/llava:latest",
+                "ollamaBaseUrl": "http://ollama.example:11434"
+              }
+            }
+            """
+            try configJSON.write(to: configPath, atomically: true, encoding: .utf8)
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings(credentialCoordinator: credentialCoordinator)
+            #expect(settings.ollamaBaseURL == "http://ollama.example:11434")
+
+            settings.ollamaBaseURL = "http://127.0.0.1:11435"
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+            #expect(ConfigurationManager.shared.getOllamaBaseURL() == "http://127.0.0.1:11435")
+            #expect(try Self.ollamaBaseURL(in: configPath) == "http://127.0.0.1:11435")
+
+            settings.ollamaBaseURL = "http://localhost:11434"
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+            #expect(ConfigurationManager.shared.getOllamaBaseURL() == "http://localhost:11434")
+            #expect(try Self.ollamaBaseURL(in: configPath) == nil)
+
+            let reloaded = PeekabooSettings(credentialCoordinator: credentialCoordinator)
+            #expect(reloaded.ollamaBaseURL == "http://localhost:11434")
+        }
+    }
+
+    private static func ollamaBaseURL(in configPath: URL) throws -> String? {
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: configPath)) as? [String: Any]
+        let providers = object?["aiProviders"] as? [String: Any]
+        return providers?["ollamaBaseUrl"] as? String
+    }
 }
 
 /// Hosted CI only: this surrounding Settings graph still uses ambient defaults and provider singletons.
