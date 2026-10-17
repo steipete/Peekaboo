@@ -1305,6 +1305,55 @@ extension PeekabooSettingsConfigHydrationTests {
         }
     }
 
+    @Test
+    func `a v4_9_5 config keeps its other settings when the Ollama URL changes`() throws {
+        try withIsolatedSettingsEnvironment { configDir, credentialCoordinator in
+            let configPath = configDir.appendingPathComponent("config.json")
+            let template = """
+            {
+              "aiProviders": {
+              "providers": "openai/gpt-5.6,anthropic/claude-opus-5"
+              },
+              "defaults": {
+                "savePath": "~/Desktop/Screenshots",
+                "imageFormat": "png",
+                "captureMode": "window",
+                "captureFocus": "background"
+              },
+              "logging": {
+                "level": "info",
+                "path": "~/.peekaboo/logs/peekaboo.log"
+              }
+            }
+            """
+            try template.write(to: configPath, atomically: true, encoding: .utf8)
+            ConfigurationManager.shared.resetForTesting()
+            _ = ConfigurationManager.shared.loadConfiguration()
+
+            let settings = PeekabooSettings(credentialCoordinator: credentialCoordinator)
+            settings.ollamaBaseURL = "http://127.0.0.1:11435"
+            let custom = try Self.object(in: configPath)
+            let customProviders = try #require(custom["aiProviders"] as? [String: Any])
+            let customDefaults = try #require(custom["defaults"] as? [String: Any])
+            let customLogging = try #require(custom["logging"] as? [String: Any])
+            #expect(customProviders["ollamaBaseUrl"] as? String == "http://127.0.0.1:11435")
+            #expect(customProviders["providers"] as? String == "openai/gpt-5.6,anthropic/claude-opus-5")
+            #expect(customDefaults["savePath"] as? String == "~/Desktop/Screenshots")
+            #expect(customDefaults["imageFormat"] as? String == "png")
+            #expect(customDefaults["captureMode"] as? String == "window")
+            #expect(customDefaults["captureFocus"] as? String == "background")
+            #expect(customLogging["level"] as? String == "info")
+            #expect(customLogging["path"] as? String == "~/.peekaboo/logs/peekaboo.log")
+
+            settings.ollamaBaseURL = "http://localhost:11434"
+            let cleared = try Self.object(in: configPath)
+            let clearedProviders = try #require(cleared["aiProviders"] as? [String: Any])
+            #expect(clearedProviders["ollamaBaseUrl"] == nil)
+            #expect(clearedProviders["providers"] as? String == "openai/gpt-5.6,anthropic/claude-opus-5")
+            #expect((cleared["defaults"] as? [String: Any])?["captureMode"] as? String == "window")
+        }
+    }
+
     private static func ollamaBaseURL(in configPath: URL) throws -> String? {
         let providers = try Self.object(in: configPath)["aiProviders"] as? [String: Any]
         return providers?["ollamaBaseUrl"] as? String

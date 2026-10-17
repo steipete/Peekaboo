@@ -77,7 +77,7 @@ final class PeekabooSettings {
     var ollamaBaseURL: String = "http://localhost:11434" {
         didSet {
             self.save()
-            self.updateConfigFile()
+            self.persistOllamaBaseURL()
         }
     }
 
@@ -604,6 +604,18 @@ extension PeekabooSettings {
             print("Successfully migrated settings to config.json")
         } catch {
             print("Failed to migrate settings to config.json: \(error)")
+        }
+    }
+
+    /// Writes only the Ollama URL. A full settings save would rewrite unrelated keys.
+    private func persistOllamaBaseURL() {
+        guard !self.isLoading else { return }
+        do {
+            try self.configManager.updateConfiguration { config in
+                self.assignPersistedOllamaBaseURL(to: &config)
+            }
+        } catch {
+            print("Failed to update Ollama base URL in config.json: \(error)")
         }
     }
 
