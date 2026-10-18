@@ -46,29 +46,19 @@ jobs:
 
   analyze-swift:
     name: Analyze Swift
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 330
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - name: Select Xcode 26
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in \
-            /Applications/Xcode_26.6.app \
-            /Applications/Xcode_26.5.app \
-            /Applications/Xcode_26.4.1.app \
-            /Applications/Xcode_26.3.app \
-            /Applications/Xcode_26.2.app \
-            /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           xcodebuild -version
 
       - name: Initialize CodeQL
