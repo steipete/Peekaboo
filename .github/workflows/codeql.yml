@@ -75,6 +75,7 @@ jobs:
 
           python3 scripts/setup-swift-workspace.py setup
 
+          # CodeQL's tracer cannot spawn macOS 27's arm64e-only sandbox-exec.
           xcodebuild \
             -workspace Apps/Peekaboo.xcworkspace \
             -scheme CodeQL \
@@ -84,6 +85,7 @@ jobs:
             -disableAutomaticPackageResolution \
             -onlyUsePackageVersionsFromResolvedFile \
             -skipPackageUpdates \
+            -IDEPackageSupportDisableManifestSandbox YES \
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \

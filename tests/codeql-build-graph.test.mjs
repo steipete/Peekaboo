@@ -131,6 +131,8 @@ test('Swift CodeQL uses one complete shared Xcode build graph', () => {
   assert.match(swiftJob, /-workspace Apps\/Peekaboo\.xcworkspace/);
   assert.match(swiftJob, /-scheme CodeQL/);
   assert.match(swiftJob, /-derivedDataPath "\$CODEQL_DERIVED_DATA"/);
+  assert.match(swiftJob, /-IDEPackageSupportDisableManifestSandbox YES/);
+  assert.doesNotMatch(macOSCI, /IDEPackageSupportDisableManifestSandbox/);
   assert.doesNotMatch(swiftJob, /schemes=\(/);
   assert.doesNotMatch(swiftJob, /swift build --package-path Apps\/CLI/);
   assert.match(workspace, /location = "group:CLI"/);
