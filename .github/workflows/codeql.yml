@@ -85,7 +85,7 @@ jobs:
             -disableAutomaticPackageResolution \
             -onlyUsePackageVersionsFromResolvedFile \
             -skipPackageUpdates \
-            -IDEPackageSupportDisableManifestSandbox YES \
+            -IDEPackageSupportDisableManifestSandbox=YES \
             build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
