@@ -531,7 +531,8 @@ function inline(text, currentRel, inheritedStash = []) {
   out = escapeHtml(out)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>")
-    .replace(/(^|[^_])_([^_\s][^_]*?)_(?!_)/g, "$1<em>$2</em>");
+    // underscores inside words (WINDOW_NOT_FOUND, snake_case) are literal, not emphasis delimiters
+    .replace(/(^|[^\p{L}\p{N}_])_([^_\s](?:[^_]|(?<=[\p{L}\p{N}])_(?=[\p{L}\p{N}]))*?)_(?![\p{L}\p{N}_])/gu, "$1<em>$2</em>");
   out = out.replace(/\\\|/g, "|");
   out = out.replace(/&lt;br&gt;/g, "<br>");
   return out.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].html);
