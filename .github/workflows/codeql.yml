@@ -61,6 +61,12 @@ jobs:
           echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           xcodebuild -version
 
+      - name: Prepare native Swift macro host for CodeQL
+        run: |
+          arch -x86_64 /usr/bin/true || softwareupdate --install-rosetta --agree-to-license
+          arch -x86_64 /usr/bin/true
+          bash scripts/prepare-codeql-plugin-server.sh "$RUNNER_TEMP/codeql-plugin"
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -90,7 +96,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
+            DEVELOPMENT_TEAM="" \
+            OTHER_SWIFT_FLAGS="\$(inherited) -Xfrontend -external-plugin-path -Xfrontend \"$DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#$RUNNER_TEMP/codeql-plugin/native-plugin-server\""
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4

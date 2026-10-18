@@ -436,8 +436,14 @@ aborted = any(row['case'] == sys.argv[2] and row['method'] == 'DELETE' for row i
 assert aborted == (sys.argv[2] != 'bad-final-etag'), 'wrong multipart abort behavior'
 assert not any(row['method'] == 'HEAD' for row in rows), 'upload must not read the object back'
 if sys.argv[2] in ('persistent', 'bad-etag'):
-    assert sum(row['case'] == sys.argv[2] and row['method'] == 'PUT' and
-               row['query']['partNumber'] == ['1'] for row in rows) == 4, 'wrong retry bound'
+    from collections import Counter
+    attempts = Counter(row['query']['partNumber'][0] for row in rows
+                       if row['case'] == sys.argv[2] and row['method'] == 'PUT')
+    if sys.argv[2] == 'persistent':
+        assert attempts['1'] == 4, 'wrong retry bound'
+    else:
+        # Any exhausted worker cancels its peers; part 1 need not finish first.
+        assert attempts and max(attempts.values()) == 4, 'wrong retry bound'
 PYCHECK
     fi
   fi

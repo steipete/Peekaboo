@@ -133,6 +133,10 @@ test('Swift CodeQL uses one complete shared Xcode build graph', () => {
   assert.match(swiftJob, /-derivedDataPath "\$CODEQL_DERIVED_DATA"/);
   assert.match(swiftJob, /-IDEPackageSupportDisableManifestSandbox=YES/);
   assert.doesNotMatch(macOSCI, /IDEPackageSupportDisableManifestSandbox/);
+  assert.match(swiftJob, /bash scripts\/prepare-codeql-plugin-server\.sh/);
+  assert.match(swiftJob, /arch -x86_64 \/usr\/bin\/true/);
+  assert.match(swiftJob, /OTHER_SWIFT_FLAGS=.*inherited.*-external-plugin-path/);
+  assert.doesNotMatch(macOSCI, /native-plugin-server|external-plugin-path/);
   assert.doesNotMatch(swiftJob, /schemes=\(/);
   assert.doesNotMatch(swiftJob, /swift build --package-path Apps\/CLI/);
   assert.match(workspace, /location = "group:CLI"/);

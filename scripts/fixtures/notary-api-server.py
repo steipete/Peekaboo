@@ -79,7 +79,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 attempt = state["tries"][number] = state["tries"].get(number, 0) + 1
                 state["active"] += 1
                 state["peak"] = max(state["peak"], state["active"])
-            time.sleep(0.1)
+            # Let another failing part exhaust retries first, exercising cancellation.
+            time.sleep(0.3 if case == "bad-etag" and number == 1 else 0.1)
             with LOCK:
                 state["active"] -= 1
             if number == 1 and (case == "persistent" or (case == "transient" and attempt == 1)):
