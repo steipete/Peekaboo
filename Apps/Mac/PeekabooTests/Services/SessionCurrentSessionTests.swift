@@ -57,4 +57,48 @@ struct SessionCurrentSessionTests {
         #expect(store.currentSession?.messages.isEmpty == true)
         #expect(store.sessions.first { $0.id == older.id }?.title == "Older renamed")
     }
+
+    @Test
+    func `menu bar session sees replies streamed straight into the store`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SessionStore(storageURL: directory.appendingPathComponent("sessions.json"))
+        let session = store.createSession()
+        store.addMessage(ConversationMessage(role: .assistant, content: "Hel"), to: session)
+
+        // PeekabooAgent accumulates streamed deltas by writing the session array directly.
+        guard let index = store.sessions.firstIndex(where: { $0.id == session.id }),
+              let last = store.sessions[index].messages.last
+        else {
+            Issue.record("The streamed reply is missing")
+            return
+        }
+        store.sessions[index].messages[store.sessions[index].messages.count - 1] = ConversationMessage(
+            id: last.id,
+            role: .assistant,
+            content: "Hello there",
+            timestamp: last.timestamp,
+            toolCalls: last.toolCalls)
+        store.sessions[index].modelName = "claude-opus-4-8"
+
+        #expect(store.currentSession?.messages.last?.content == "Hello there")
+        #expect(store.currentSession?.modelName == "claude-opus-4-8")
+    }
+
+    @Test
+    func `deleting the menu bar session clears it`() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SessionStore(storageURL: directory.appendingPathComponent("sessions.json"))
+        let older = store.createSession(title: "Older")
+        let current = store.createSession(title: "Current")
+
+        store.sessions.removeAll { $0.id == current.id }
+        #expect(store.currentSession == nil)
+
+        store.selectSession(older)
+        #expect(store.currentSession?.id == older.id)
+    }
 }
