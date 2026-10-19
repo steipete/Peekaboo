@@ -29,12 +29,8 @@ struct AgentFollowUpTests {
     @Test(arguments: [true, false])
     func `An immediate prompt is logged exactly once`(existingSession: Bool) async throws {
         let gate = FollowUpGate()
-        let (agent, store) = makeFollowUpAgent(gate: gate)
+        let (agent, store) = makeFollowUpAgent(gate: gate, startsWithSession: existingSession)
         defer { gate.releaseAll() }
-        if !existingSession {
-            store.sessions.removeAll()
-            store.currentSession = nil
-        }
 
         let task = Task { try await agent.executeTask("first") }
         await gate.waitUntilEntered("first")
@@ -506,14 +502,17 @@ private struct ParkedWork {
 private func makeFollowUpAgent(
     gate: FollowUpGate,
     failingTexts: Set<String> = [],
-    runner: (@MainActor (String, SessionStore) throws -> AgentExecutionResult)? = nil) -> (PeekabooAgent, SessionStore)
+    runner: (@MainActor (String, SessionStore) throws -> AgentExecutionResult)? = nil,
+    startsWithSession: Bool = true) -> (PeekabooAgent, SessionStore)
 {
     let settings = makeTestSettings()
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let sessionStore = SessionStore(storageURL: directory.appendingPathComponent("sessions.json"))
-    let session = sessionStore.createSession(title: "Follow-up", modelName: "test")
-    sessionStore.selectSession(session)
+    if startsWithSession {
+        let session = sessionStore.createSession(title: "Follow-up", modelName: "test")
+        sessionStore.selectSession(session)
+    }
     let services = PeekabooServices(initializeAgentService: false)
     let agent = PeekabooAgent(
         settings: settings,
