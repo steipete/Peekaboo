@@ -16,7 +16,7 @@ concurrency:
 jobs:
   peekaboo-core:
     name: PeekabooCore build & tests
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       PEEKABOO_INCLUDE_AUTOMATION_TESTS: "false"
       RUN_AUTOMATION_TESTS: "false"
@@ -68,16 +68,12 @@ jobs:
       - name: Verify log helper contracts
         run: pnpm run test:log-scripts
 
-      - name: Select Xcode 26.6 (if present) or fallback to default
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           /usr/bin/xcodebuild -version
 
       - name: Verify Swift runtime-library contracts
@@ -479,7 +475,7 @@ jobs:
 
   peekaboo-cli:
     name: Peekaboo CLI build & tests
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       PEEKABOO_INCLUDE_AUTOMATION_TESTS: "false"
       PEEKABOO_SKIP_AUTOMATION: "1"
@@ -492,16 +488,12 @@ jobs:
       - name: Configure checkout-local Swift workspace
         run: python3 scripts/setup-swift-workspace.py setup
 
-      - name: Select Xcode 26.6 (if present) or fallback to default
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           /usr/bin/xcodebuild -version
 
       - name: Compute SwiftPM cache key (CLI)
@@ -701,7 +693,7 @@ jobs:
 
   tachikoma:
     name: Tachikoma build & tests
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -709,16 +701,12 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Select Xcode 26.6 (if present) or fallback to default
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           /usr/bin/xcodebuild -version
 
       - name: Remove phantom submodule metadata
@@ -804,7 +792,7 @@ jobs:
 
   mac-apps:
     name: Build macOS apps (Peekaboo + Inspector)
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -814,16 +802,12 @@ jobs:
       - name: Configure checkout-local Swift workspace
         run: python3 scripts/setup-swift-workspace.py setup
 
-      - name: Select Xcode 26.6 (if present) or fallback to default
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              echo "DEVELOPER_DIR=${candidate}/Contents/Developer" >> "$GITHUB_ENV"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           /usr/bin/xcodebuild -version
 
       - name: Run Mac package tests (secretless hosted runner only)
@@ -891,7 +875,7 @@ jobs:
 
   lint:
     name: SwiftLint (core + CLI)
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -903,7 +887,7 @@ jobs:
 
   format:
     name: SwiftFormat
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       # Keep in sync with the SwiftFormat version used locally; rule output changes between releases.
       SWIFTFORMAT_VERSION: "0.63.1"

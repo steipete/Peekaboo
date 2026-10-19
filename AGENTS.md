@@ -12,7 +12,7 @@
 - Documentation lives in `docs/`; assets and marketing material are in `assets/`.
 
 ## Build, Test, and Development Commands
-- Current local baseline is macOS 26.1 on arm64. If you’re on an older SDK/OS, expect menubar/accessibility flakiness; re-run with the 26 SDK before chasing Peekaboo regressions.
+- Current CI baseline is macOS 27 on arm64 with Xcode 27.0 and its bundled Swift toolchain. Keep the macOS 15 deployment targets and the pre-macOS-27 Swift runtime audit intact when changing build settings.
 - Run tools directly (runner removed). Use pnpm (Corepack-enabled).
 - Build the CLI: `pnpm run build:cli` (debug) or `pnpm run build:swift:all` (universal release). For arm64-only: `pnpm run build:swift`.
 - Rebuild the Mac app while editing Swift: `./scripts/build-mac-debug.sh`.
