@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Use the Mac app's saved Vision model for screenshots and image analysis: a custom choice is written to `agent.visionModel` in `config.json` (as `provider/modelId`) and used by `see`/`analyze` when no model is given, while "Same as agent model" removes it. Thanks @SebTardif! #1110.
 - Move macOS CI and qualification jobs to Xcode 27 runners (except CodeQL Swift tracing), retain macOS 15 deployment and runtime-symbol checks, and smoke-test Intel artifacts under Rosetta.
 - Keep underscores inside words, such as `WINDOW_NOT_FOUND` or `browser_wait_for`, literal on the documentation site instead of rendering them as emphasis. Thanks @rudycelekli! #1112.
 - Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
