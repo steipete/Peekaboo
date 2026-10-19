@@ -1,4 +1,4 @@
-name: macOS 26 extracted-artifact smoke
+name: macOS 27 extracted-artifact smoke
 
 on:
   workflow_dispatch:
@@ -8,23 +8,25 @@ permissions:
 
 jobs:
   extracted-artifact-smoke:
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Select Xcode 26.6 (if present) or fallback to default
+      - name: Select Xcode 27
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              sudo xcode-select -s "$candidate"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           xcodebuild -version
+
+      - name: Ensure Rosetta for Intel artifact smoke
+        run: |
+          arch -x86_64 /usr/bin/true || softwareupdate --install-rosetta --agree-to-license
+          arch -x86_64 /usr/bin/true
 
       - name: Build and launch extracted universal CLI artifact
         run: scripts/test-extracted-cli-artifact.sh

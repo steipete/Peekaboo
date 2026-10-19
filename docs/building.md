@@ -10,7 +10,7 @@ read_when:
 ## Prerequisites
 
 - macOS 15.0+
-- Swift 6.2+ toolchain (Xcode 26.x or newer recommended)
+- Swift 6.2+ toolchain (CI uses Xcode 27.0 and its bundled Swift 6.4 compiler)
 - Python 3.9+ for the checkout-local Swift workspace setup (Xcode provides `python3`).
 - Node.js 22.13+ for the pinned pnpm source helpers (Corepack-enabled) — only needed for pnpm helper scripts; core Swift builds do not require Node.
 - pnpm (`corepack enable pnpm`)

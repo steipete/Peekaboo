@@ -20,7 +20,7 @@ permissions:
 jobs:
   full-suites:
     name: Full suites (${{ matrix.group }})
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: ${{ matrix.job_minutes }}
     strategy:
       fail-fast: false
@@ -131,16 +131,11 @@ jobs:
       - name: Configure checkout-local Swift workspace
         run: python3 scripts/setup-swift-workspace.py setup
 
-      # Compatibility coverage only; the separately owned release proof uses Xcode 27.
-      - name: Select installed Xcode 26.x and record actual toolchain
+      - name: Select Xcode 27 and record actual toolchain
         run: |
           set -euo pipefail
-          for candidate in /Applications/Xcode_26.6.app /Applications/Xcode_26.5.app /Applications/Xcode_26.4.1.app /Applications/Xcode_26.3.app /Applications/Xcode_26.2.app /Applications/Xcode.app; do
-            if [[ -d "$candidate" ]]; then
-              export DEVELOPER_DIR="${candidate}/Contents/Developer"
-              break
-            fi
-          done
+          export DEVELOPER_DIR=/Applications/Xcode_27.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
           {
             printf 'DEVELOPER_DIR=%s\n' "${DEVELOPER_DIR:?No installed Xcode found}"
             sw_vers
@@ -151,7 +146,7 @@ jobs:
             swift --version
           } | tee "$VALIDATION_RESULTS/toolchain.txt"
           # Validate the completed record without closing a live producer's output pipe.
-          grep -Eq '^Xcode 26\.[0-9]+(\.[0-9]+)?$' "$VALIDATION_RESULTS/toolchain.txt"
+          grep -Eq '^Xcode 27\.0$' "$VALIDATION_RESULTS/toolchain.txt"
           printf 'DEVELOPER_DIR=%s\n' "$DEVELOPER_DIR" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v7
@@ -338,7 +333,7 @@ jobs:
             printf 'The complete stage/test output is in full-safe/test.log; failures-skips.txt is only an index.\n'
             printf 'A running/not-run status or unavailable exit is incomplete, never a pass.\n'
             printf 'Built-in automation/provider skips and synthetic certification are not live proof.\n'
-            printf 'Hosted compatibility evidence does not replace Xcode 27 preflight or signed isolated desktop proof.\n'
+            printf 'Hosted suite evidence does not replace signed isolated desktop proof.\n'
           } | tee "$VALIDATION_RESULTS/summary.md" >> "$GITHUB_STEP_SUMMARY"
           cmp "$VALIDATION_RESULTS/workspace-Package.resolved" \
             Apps/Peekaboo.xcworkspace/xcshareddata/swiftpm/Package.resolved

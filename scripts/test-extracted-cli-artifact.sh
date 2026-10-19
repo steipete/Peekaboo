@@ -30,26 +30,34 @@ tar -xzf "$ARCHIVE_PATH" -C "$EXTRACT_DIR"
 
 EXTRACTED_DIR="$EXTRACT_DIR/peekaboo-macos-universal"
 "$ROOT_DIR/scripts/verify-swift-runtime-libraries.sh" "$EXTRACTED_DIR/peekaboo" "$EXTRACTED_DIR"
-VERSION_OUTPUT_1=$("$EXTRACTED_DIR/peekaboo" --version)
-sleep 1
-VERSION_OUTPUT_2=$("$EXTRACTED_DIR/peekaboo" --version)
-[ "$VERSION_OUTPUT_1" = "$VERSION_OUTPUT_2" ] || {
-    echo "Extracted CLI version output changed between invocations" >&2
-    exit 1
-}
-printf '%s\n' "$VERSION_OUTPUT_1" | grep -Fq "Peekaboo $VERSION"
-if printf '%s\n' "$VERSION_OUTPUT_1" | grep -Fq "unknown"; then
-    echo "Extracted release CLI is missing embedded build metadata" >&2
-    exit 1
+architectures=("$(uname -m)")
+if [[ "${architectures[0]}" == arm64 ]]; then
+    arch -x86_64 /usr/bin/true
+    architectures+=(x86_64)
 fi
-PROVENANCE_JSON=$("$EXTRACTED_DIR/peekaboo" --version --json)
-PROVENANCE_COMMIT=$(node -e '
+for architecture in "${architectures[@]}"; do
+    VERSION_OUTPUT_1=$(arch "-$architecture" "$EXTRACTED_DIR/peekaboo" --version)
+    sleep 1
+    VERSION_OUTPUT_2=$(arch "-$architecture" "$EXTRACTED_DIR/peekaboo" --version)
+    [ "$VERSION_OUTPUT_1" = "$VERSION_OUTPUT_2" ] || {
+        echo "Extracted CLI version output changed between invocations" >&2
+        exit 1
+    }
+    printf '%s\n' "$VERSION_OUTPUT_1" | grep -Fq "Peekaboo $VERSION"
+    if printf '%s\n' "$VERSION_OUTPUT_1" | grep -Fq "unknown"; then
+        echo "Extracted release CLI is missing embedded build metadata" >&2
+        exit 1
+    fi
+    PROVENANCE_JSON=$(arch "-$architecture" "$EXTRACTED_DIR/peekaboo" --version --json)
+    PROVENANCE_COMMIT=$(node -e '
   const input = require("fs").readFileSync(0, "utf8");
   process.stdout.write(JSON.parse(input).data.sourceCommit ?? "");
 ' <<<"$PROVENANCE_JSON")
-peekaboo_is_exact_source_commit "$PROVENANCE_COMMIT" || {
-    echo "Extracted release CLI has no exact source commit in version JSON" >&2
-    exit 1
-}
+    peekaboo_is_exact_source_commit "$PROVENANCE_COMMIT" || {
+        echo "Extracted release CLI has no exact source commit in version JSON" >&2
+        exit 1
+    }
+    echo "Extracted CLI $architecture smoke passed"
+done
 
 echo "test-extracted-cli-artifact: ok"
