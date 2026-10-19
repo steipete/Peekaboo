@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Move macOS CI and qualification jobs to Xcode 27 runners (except CodeQL Swift tracing), retain macOS 15 deployment and runtime-symbol checks, and smoke-test Intel artifacts under Rosetta.
+- Keep underscores inside words, such as `WINDOW_NOT_FOUND` or `browser_wait_for`, literal on the documentation site instead of rendering them as emphasis. Thanks @rudycelekli! #1112.
 - Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
 - Keep the Mac chat's Stop button attached to the running task when you send follow-ups: follow-ups now queue behind the active task and run in order, Stop cancels the in-flight provider request and discards queued follow-ups, and a queued prompt stays with the session it was sent from. Thanks @SebTardif! #1095.
 - Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
