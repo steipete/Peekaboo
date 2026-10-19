@@ -8,12 +8,20 @@ struct SessionChatView: View {
     @Environment(SessionStore.self) private var sessionStore
 
     let session: ConversationSession
+    var acceptsInput = false
     @State private var inputText = ""
     @State private var isProcessing = false
     @State private var hasConnectionError = false
 
     private var isCurrentSession: Bool {
         self.session.id == self.agent.currentSession?.id
+    }
+
+    private var showsComposer: Bool {
+        SessionWindowSelection.showsComposer(
+            sessionId: self.session.id,
+            activeSessionId: self.agent.currentSession?.id,
+            windowKeepsOpenedSession: self.acceptsInput)
     }
 
     var body: some View {
@@ -45,7 +53,10 @@ struct SessionChatView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
                         ForEach(self.session.messages) { message in
-                            DetailedMessageRow(message: message)
+                            DetailedMessageRow(
+                                message: message,
+                                activatesSessionOnRetry: SessionWindowSelection.retryActivatesSession(
+                                    windowKeepsOpenedSession: self.acceptsInput))
                                 .id(message.id)
                                 .transition(.asymmetric(
                                     insertion: .push(from: .bottom).combined(with: .opacity),
@@ -78,8 +89,8 @@ struct SessionChatView: View {
                 }
             }
 
-            // Input area (only for current session)
-            if self.isCurrentSession {
+            // The active chat, and a window opened for one session, can continue that chat.
+            if self.showsComposer {
                 Divider()
 
                 // Connection error banner
@@ -87,7 +98,8 @@ struct SessionChatView: View {
                     ConnectionErrorBanner(
                         hasConnectionError: self.$hasConnectionError,
                         agent: self.agent,
-                        isProcessing: self.$isProcessing)
+                        isProcessing: self.$isProcessing,
+                        retrySession: self.session)
                     Divider()
                 }
 
@@ -149,10 +161,10 @@ struct SessionChatView: View {
         self.inputText = ""
 
         if self.agent.isProcessing, self.isCurrentSession {
-            // Start a new execution with the follow-up
+            // The runner records this follow-up. Do not add it here too.
             Task {
                 do {
-                    try await self.agent.executeTask(trimmedInput)
+                    try await self.runTask(trimmedInput)
                 } catch {
                     print("Failed to execute follow-up: \(error)")
                 }
@@ -164,7 +176,7 @@ struct SessionChatView: View {
                 defer { isProcessing = false }
 
                 do {
-                    try await self.agent.executeTask(trimmedInput)
+                    try await self.runTask(trimmedInput)
                 } catch {
                     // Check if it's a connection error
                     let errorMessage = error.localizedDescription
@@ -175,6 +187,14 @@ struct SessionChatView: View {
                     print("Task error: \(errorMessage)")
                 }
             }
+        }
+    }
+
+    private func runTask(_ text: String) async throws {
+        if self.acceptsInput, self.session.id != self.agent.currentSession?.id {
+            try await self.agent.executeTask(text, in: self.session)
+        } else {
+            try await self.agent.executeTask(text)
         }
     }
 }
@@ -293,6 +313,7 @@ struct ConnectionErrorBanner: View {
     @Binding var hasConnectionError: Bool
     let agent: PeekabooAgent
     @Binding var isProcessing: Bool
+    var retrySession: ConversationSession?
 
     var body: some View {
         HStack {
@@ -311,13 +332,17 @@ struct ConnectionErrorBanner: View {
 
                 // Retry the last failed task if available
                 if let lastTask = agent.lastTask {
+                    let retrySession = self.retrySession
                     Task {
                         self.isProcessing = true
                         defer { isProcessing = false }
 
-                        // Re-execute the last task
                         do {
-                            try await self.agent.executeTask(lastTask)
+                            if let retrySession {
+                                try await self.agent.executeTask(lastTask, in: retrySession)
+                            } else {
+                                try await self.agent.executeTask(lastTask)
+                            }
                             self.hasConnectionError = false
                         } catch {
                             // Error persists

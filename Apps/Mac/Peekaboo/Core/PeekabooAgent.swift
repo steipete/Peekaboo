@@ -148,6 +148,12 @@ final class PeekabooAgent {
         try await self.executeTaskWithContent(.text(task))
     }
 
+    /// Continue one session. The queued prompt carries `session.id`, and the
+    /// runner selects that session when the prompt starts.
+    func executeTask(_ task: String, in session: ConversationSession) async throws {
+        try await self.executeTaskWithContent(.text(task), sessionId: session.id)
+    }
+
     /// Common implementation for executing tasks with different content types.
     private func executeTaskWithContent(
         _ content: ModelMessage.ContentPart,
