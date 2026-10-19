@@ -178,6 +178,7 @@ struct WindowStateMutationPolicyTests {
         let presence = pinnedWindowCloseOwnerPresence(expectedIdentity: self.identity, observation: .absent)
         let disposition = pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: presence,
             expectedMinimized: false)
         var verification = PinnedWindowCloseVerification()
