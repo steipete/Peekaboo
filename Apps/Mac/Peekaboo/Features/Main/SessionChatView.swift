@@ -149,11 +149,6 @@ struct SessionChatView: View {
         self.inputText = ""
 
         if self.agent.isProcessing, self.isCurrentSession {
-            // During execution, just add as a follow-up message
-            self.sessionStore.addMessage(
-                ConversationMessage(role: .user, content: trimmedInput),
-                to: self.session)
-
             // Start a new execution with the follow-up
             Task {
                 do {

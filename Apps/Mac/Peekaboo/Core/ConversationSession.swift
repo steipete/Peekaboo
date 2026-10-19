@@ -24,6 +24,8 @@ final class SessionStore {
     private var currentSessionID: String?
 
     private let titleGenerator = SessionTitleGenerator()
+    /// Replaces the AI title generator in tests.
+    private let titleOverride: (@MainActor (String) async -> String)?
 
     private let storageURL: URL
     private enum SessionPersistenceBlock {
@@ -59,7 +61,8 @@ final class SessionStore {
         }
     }
 
-    init(storageURL: URL? = nil) {
+    init(storageURL: URL? = nil, titleOverride: (@MainActor (String) async -> String)? = nil) {
+        self.titleOverride = titleOverride
         if let storageURL {
             self.storageURL = storageURL
         } else {
@@ -119,15 +122,20 @@ final class SessionStore {
 
     /// Generate AI title for session based on first user message
     func generateTitleForSession(_ session: ConversationSession) {
-        // Only generate title if it's still "New Session" and has user messages
-        guard session.title == "New Session",
-              let firstUserMessage = session.messages.first(where: { $0.role == .user })
+        // Callers pass a copy taken before their message was added, so read the stored session.
+        guard let stored = self.sessions.first(where: { $0.id == session.id }),
+              stored.title == "New Session",
+              let firstUserMessage = stored.messages.first(where: { $0.role == .user })
         else {
             return
         }
 
         Task { @MainActor in
-            let generatedTitle = await titleGenerator.generateTitleFromFirstMessage(firstUserMessage.content)
+            let generatedTitle = if let titleOverride {
+                await titleOverride(firstUserMessage.content)
+            } else {
+                await self.titleGenerator.generateTitleFromFirstMessage(firstUserMessage.content)
+            }
             if generatedTitle != "New Session" {
                 self.updateTitle(generatedTitle, for: session)
             }

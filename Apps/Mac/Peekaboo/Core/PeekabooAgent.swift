@@ -159,8 +159,12 @@ final class PeekabooAgent {
             }
         }
 
-        let prompt = self.pendingPrompt(for: content, sessionId: sessionId)
+        var prompt = self.pendingPrompt(for: content, sessionId: sessionId)
         if self.processingTask != nil {
+            if let session = self.sessionStore.sessions.first(where: { $0.id == prompt.sessionId }) {
+                self.logUserMessage(prompt.content, in: session)
+                prompt.userMessageLogged = true
+            }
             if self.runnerIsStopping {
                 self.promptsAcceptedWhileStopping.append(prompt)
             } else {
@@ -193,8 +197,7 @@ final class PeekabooAgent {
             }
             do {
                 try await self.executeTaskInternal(
-                    content: current.content,
-                    sessionId: current.sessionId,
+                    prompt: current,
                     agentService: self.services.agent)
             } catch is CancellationError {
                 self.queuedFollowUps.removeAll()
@@ -246,12 +249,11 @@ final class PeekabooAgent {
     /// Internal task execution helper
     @MainActor
     private func executeTaskInternal(
-        content: ModelMessage.ContentPart,
-        sessionId: String?,
+        prompt: PendingPrompt,
         agentService: (any AgentServiceProtocol)?) async throws
     {
-        let taskDescription = self.taskDescription(for: content)
-        try self.useSession(sessionId)
+        let taskDescription = self.taskDescription(for: prompt.content)
+        try self.useSession(prompt.sessionId)
         self.prepareForTask(description: taskDescription)
         defer { self.cleanupAfterTask() }
 
@@ -259,13 +261,17 @@ final class PeekabooAgent {
             try Task.checkCancellation()
             let configuredAgent = try self.configuredAgent(agentService)
             let session = self.ensureSession()
-            self.logUserMessage(content, in: session)
+            if !prompt.userMessageLogged {
+                self.logUserMessage(prompt.content, in: session)
+            }
+            let messageCountAtStart = self.sessionStore.sessions
+                .first(where: { $0.id == session.id })?.messages.count ?? 0
             let result = try await self.runCurrentTask(
-                content: content,
+                content: prompt.content,
                 description: taskDescription,
                 agent: configuredAgent)
             try Task.checkCancellation()
-            await self.persistResult(result, for: session, taskDescription: taskDescription)
+            await self.persistResult(result, for: session, messageCountAtStart: messageCountAtStart)
         } catch {
             try self.handleTaskError(error, taskDescription: taskDescription)
             throw error
@@ -340,6 +346,7 @@ final class PeekabooAgent {
 private struct PendingPrompt {
     var content: ModelMessage.ContentPart
     var sessionId: String?
+    var userMessageLogged = false
 }
 
 // MARK: - Private Methods
@@ -462,11 +469,14 @@ extension PeekabooAgent {
     private func persistResult(
         _ result: AgentExecutionResult,
         for session: PeekabooCore.ConversationSession,
-        taskDescription: String) async
+        messageCountAtStart: Int) async
     {
         self.currentSessionId = result.sessionId
         self.updateModelNameIfNeeded(for: session)
-        self.appendAssistantMessageIfNeeded(result: result, session: session)
+        self.appendAssistantMessageIfNeeded(
+            result: result,
+            session: session,
+            messageCountAtStart: messageCountAtStart)
         self.appendSummaryIfNeeded(to: session)
 
         if !result.content.isEmpty {
@@ -487,14 +497,15 @@ extension PeekabooAgent {
     @MainActor
     private func appendAssistantMessageIfNeeded(
         result: AgentExecutionResult,
-        session: PeekabooCore.ConversationSession)
+        session: PeekabooCore.ConversationSession,
+        messageCountAtStart: Int)
     {
-        let hasAssistantMessage = self.sessionStore.sessions
-            .first(where: { $0.id == session.id })?
-            .messages
-            .contains(where: { $0.role == .assistant && $0.content == result.content }) ?? false
-
-        guard !hasAssistantMessage else { return }
+        guard !result.content.isEmpty else { return }
+        // Streaming already recorded each turn; result.content concatenates them after multi-step runs.
+        let messages = self.sessionStore.sessions.first(where: { $0.id == session.id })?.messages ?? []
+        let streamedReply = messages.dropFirst(messageCountAtStart)
+            .contains(where: { $0.role == .assistant && !$0.content.isEmpty })
+        guard !streamedReply else { return }
 
         let assistantMessage = ConversationMessage(
             role: .assistant,

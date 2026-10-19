@@ -7,6 +7,125 @@ import Testing
 @MainActor
 struct AgentFollowUpTests {
     @Test
+    func `A queued follow-up is logged once at acceptance`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate)
+        defer { gate.releaseAll() }
+
+        let first = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        try await agent.executeTask("second")
+        #expect(!gate.didEnter("second"))
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "second"])
+
+        gate.release("first")
+        await gate.waitUntilEntered("second")
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "second"])
+        gate.release("second")
+        try await first.value
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "second"])
+    }
+
+    @Test(arguments: [true, false])
+    func `An immediate prompt is logged exactly once`(existingSession: Bool) async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate, startsWithSession: existingSession)
+        defer { gate.releaseAll() }
+
+        let task = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        #expect(store.sessions.count == 1)
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first"])
+        gate.release("first")
+        try await task.value
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first"])
+    }
+
+    @Test
+    func `Streamed assistant turns do not gain a combined duplicate`() async throws {
+        let gate = FollowUpGate()
+        let replies = ["I'll call the sleep tool as requested.", "FIRSTDONE"]
+        let (agent, store) = makeFollowUpAgent(gate: gate, runner: { _, store in
+            let session = try #require(store.currentSession)
+            for reply in replies {
+                store.addMessage(ConversationMessage(role: .assistant, content: reply), to: session)
+            }
+            return sampleFollowUpResult(replies.joined())
+        })
+        defer { gate.releaseAll() }
+
+        let task = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        gate.release("first")
+        try await task.value
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .assistant }.map(\.content) == replies)
+    }
+
+    @Test
+    func `A non-streaming run appends its result even when an older reply matches`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate)
+        defer { gate.releaseAll() }
+        let session = try #require(store.currentSession)
+        store.addMessage(ConversationMessage(role: .assistant, content: "first"), to: session)
+
+        let task = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        gate.release("first")
+        try await task.value
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .assistant }.map(\.content) == [
+            "first",
+            "first",
+        ])
+    }
+
+    @Test
+    func `An empty result adds no empty assistant message`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate, runner: { _, _ in sampleFollowUpResult("") })
+        defer { gate.releaseAll() }
+
+        for prompt in ["first", "second"] {
+            let task = Task { try await agent.executeTask(prompt) }
+            await gate.waitUntilEntered(prompt)
+            gate.release(prompt)
+            try await task.value
+        }
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .assistant }.isEmpty)
+    }
+
+    @Test
+    func `The first prompt in a new chat gets a generated title`() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SessionStore(
+            storageURL: directory.appendingPathComponent("sessions.json"),
+            titleOverride: { "Title: \($0)" })
+        let gate = FollowUpGate()
+        defer { gate.releaseAll() }
+        let agent = PeekabooAgent(
+            settings: makeTestSettings(),
+            sessionStore: store,
+            services: PeekabooServices(initializeAgentService: false),
+            taskRunner: { text in
+                try await gate.enter(text)
+                return sampleFollowUpResult(text)
+            })
+
+        // No current session: the agent creates one, as a menu bar prompt does.
+        let task = Task { try await agent.executeTask("plan my week") }
+        await gate.waitUntilEntered("plan my week")
+        gate.release("plan my week")
+        try await task.value
+
+        let titled = await waitUntil(timeout: .seconds(5)) { store.sessions.first?.title == "Title: plan my week" }
+        #expect(titled)
+        #expect(store.sessions.count == 1)
+        #expect(store.sessions.first?.messages.filter { $0.role == .user }.map(\.content) == ["plan my week"])
+    }
+
+    @Test
     func `Follow-up waits for the live task and Stop stays available`() async throws {
         let gate = FollowUpGate()
         let (agent, _) = makeFollowUpAgent(gate: gate)
@@ -123,7 +242,7 @@ struct AgentFollowUpTests {
     func `A prompt sent while Stop is unwinding still runs`() async throws {
         let gate = FollowUpGate()
         gate.holdCancellation = true
-        let (agent, _) = makeFollowUpAgent(gate: gate)
+        let (agent, store) = makeFollowUpAgent(gate: gate)
         defer { gate.releaseAll() }
 
         let first = Task { try await agent.executeTask("first") }
@@ -139,17 +258,22 @@ struct AgentFollowUpTests {
         #expect(accepted)
         #expect(!gate.didEnter("retry"))
         #expect(agent.isProcessing)
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "retry"])
 
         gate.finishHeldCancellation()
         await gate.waitUntilEntered("retry")
         #expect(agent.isProcessing)
         #expect(gate.wasCancelled("first"))
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "retry"])
 
         gate.release("retry")
         let firstResult = await first.result
         try await retry.value
-        #expect(!agent.isProcessing)
+        // The retry runs on the runner finishRunner() started, which nothing here awaits.
+        let idle = await waitUntil(timeout: .seconds(5)) { !agent.isProcessing }
+        #expect(idle)
         #expect(gate.entered == ["first", "retry"])
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "retry"])
         guard case let .failure(error) = firstResult else {
             Issue.record("Stop should fail the live task")
             return
@@ -203,6 +327,12 @@ struct AgentFollowUpTests {
         #expect(store.currentSession?.id == original.id)
         #expect(agent.currentSessionId == original.id)
         #expect(!gate.didEnter("second"))
+        #expect(store.sessions.first { $0.id == original.id }?.messages.filter { $0.role == .user }.map(\.content) == [
+            "first",
+        ])
+        #expect(store.sessions.first { $0.id == other.id }?.messages.filter { $0.role == .user }.map(\.content) == [
+            "second",
+        ])
 
         gate.release("first")
         await gate.waitUntilEntered("second")
@@ -215,13 +345,14 @@ struct AgentFollowUpTests {
     func `A second Stop drops prompts accepted while cancellation unwinds`() async throws {
         let gate = FollowUpGate()
         gate.holdCancellation = true
-        let (agent, _) = makeFollowUpAgent(gate: gate)
+        let (agent, store) = makeFollowUpAgent(gate: gate)
         defer { gate.releaseAll() }
 
         let first = Task { try await agent.executeTask("first") }
         await gate.waitUntilEntered("first")
         agent.cancelCurrentTask()
         try await agent.executeTask("retry")
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "retry"])
         agent.cancelCurrentTask()
 
         let cancelled = await waitUntil { gate.wasCancelled("first") }
@@ -232,11 +363,12 @@ struct AgentFollowUpTests {
         #expect(settled)
         #expect(!gate.didEnter("retry"))
         #expect(!agent.isProcessing)
+        #expect(store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content) == ["first", "retry"])
         gate.release("retry")
     }
 
-    @Test
-    func `A deleted originating session cannot redirect a queued prompt`() async throws {
+    @Test(arguments: [true, false])
+    func `A deleted originating session cannot redirect a queued prompt`(deleteBeforeAcceptance: Bool) async throws {
         let gate = FollowUpGate()
         let (agent, store) = makeFollowUpAgent(gate: gate)
         defer { gate.releaseAll() }
@@ -244,6 +376,9 @@ struct AgentFollowUpTests {
 
         let first = Task { try await agent.executeTask("first") }
         await gate.waitUntilEntered("first")
+        if deleteBeforeAcceptance {
+            store.sessions.removeAll { $0.id == originalID }
+        }
         try await agent.executeTask("discarded")
         let other = store.createSession(title: "Other", modelName: "test")
         store.sessions.removeAll { $0.id == originalID }
@@ -366,14 +501,18 @@ private struct ParkedWork {
 @MainActor
 private func makeFollowUpAgent(
     gate: FollowUpGate,
-    failingTexts: Set<String> = []) -> (PeekabooAgent, SessionStore)
+    failingTexts: Set<String> = [],
+    runner: (@MainActor (String, SessionStore) throws -> AgentExecutionResult)? = nil,
+    startsWithSession: Bool = true) -> (PeekabooAgent, SessionStore)
 {
     let settings = makeTestSettings()
     let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     let sessionStore = SessionStore(storageURL: directory.appendingPathComponent("sessions.json"))
-    let session = sessionStore.createSession(title: "Follow-up", modelName: "test")
-    sessionStore.selectSession(session)
+    if startsWithSession {
+        let session = sessionStore.createSession(title: "Follow-up", modelName: "test")
+        sessionStore.selectSession(session)
+    }
     let services = PeekabooServices(initializeAgentService: false)
     let agent = PeekabooAgent(
         settings: settings,
@@ -384,7 +523,7 @@ private func makeFollowUpAgent(
             if failingTexts.contains(text) {
                 throw AgentError.executionFailed("network down")
             }
-            return sampleFollowUpResult(text)
+            return try runner?(text, sessionStore) ?? sampleFollowUpResult(text)
         })
     return (agent, sessionStore)
 }
