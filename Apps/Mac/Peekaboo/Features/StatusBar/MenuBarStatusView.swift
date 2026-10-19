@@ -93,19 +93,6 @@ struct MenuBarStatusView: View {
     }
 
     private func executeTask(_ text: String) {
-        // Add user message to current session (or create new if needed)
-        if let session = sessionStore.currentSession {
-            self.sessionStore.addMessage(
-                PeekabooCore.ConversationMessage(role: .user, content: text),
-                to: session)
-        } else {
-            // Create new session if needed
-            let newSession = self.sessionStore.createSession(title: text)
-            self.sessionStore.addMessage(
-                PeekabooCore.ConversationMessage(role: .user, content: text),
-                to: newSession)
-        }
-
         // Execute the task
         Task {
             do {
