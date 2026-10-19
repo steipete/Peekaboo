@@ -13,7 +13,15 @@ import PeekabooCore
 @MainActor
 final class SessionStore {
     var sessions: [ConversationSession] = []
-    var currentSession: ConversationSession?
+
+    /// Reads through `sessions`, so edits made anywhere (including streamed replies) show up here,
+    /// and a deleted chat stops being current.
+    var currentSession: ConversationSession? {
+        guard let currentSessionID else { return nil }
+        return self.sessions.first { $0.id == currentSessionID }
+    }
+
+    private var currentSessionID: String?
 
     private let titleGenerator = SessionTitleGenerator()
 
@@ -78,7 +86,7 @@ final class SessionStore {
     func createSession(title: String = "", modelName: String = "") -> ConversationSession {
         let session = ConversationSession(title: title.isEmpty ? "New Session" : title, modelName: modelName)
         self.sessions.insert(session, at: 0)
-        self.currentSession = session
+        self.currentSessionID = session.id
         Task { @MainActor in
             self.saveSessions()
         }
@@ -138,7 +146,7 @@ final class SessionStore {
     }
 
     func selectSession(_ session: ConversationSession) {
-        self.currentSession = session
+        self.currentSessionID = session.id
     }
 
     private func loadSessions() {
