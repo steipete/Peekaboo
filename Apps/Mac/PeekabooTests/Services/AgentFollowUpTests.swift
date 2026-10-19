@@ -99,6 +99,37 @@ struct AgentFollowUpTests {
     }
 
     @Test
+    func `The first prompt in a new chat gets a generated title`() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = SessionStore(
+            storageURL: directory.appendingPathComponent("sessions.json"),
+            titleOverride: { "Title: \($0)" })
+        let gate = FollowUpGate()
+        defer { gate.releaseAll() }
+        let agent = PeekabooAgent(
+            settings: makeTestSettings(),
+            sessionStore: store,
+            services: PeekabooServices(initializeAgentService: false),
+            taskRunner: { text in
+                try await gate.enter(text)
+                return sampleFollowUpResult(text)
+            })
+
+        // No current session: the agent creates one, as a menu bar prompt does.
+        let task = Task { try await agent.executeTask("plan my week") }
+        await gate.waitUntilEntered("plan my week")
+        gate.release("plan my week")
+        try await task.value
+
+        let titled = await waitUntil(timeout: .seconds(5)) { store.sessions.first?.title == "Title: plan my week" }
+        #expect(titled)
+        #expect(store.sessions.count == 1)
+        #expect(store.sessions.first?.messages.filter { $0.role == .user }.map(\.content) == ["plan my week"])
+    }
+
+    @Test
     func `Follow-up waits for the live task and Stop stays available`() async throws {
         let gate = FollowUpGate()
         let (agent, _) = makeFollowUpAgent(gate: gate)
