@@ -86,6 +86,7 @@ struct WindowStateMutationPolicyTests {
     func `minimized close treats a surviving AX window as present`() {
         #expect(pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: .present,
             expectedMinimized: true) == .present)
     }
@@ -94,6 +95,7 @@ struct WindowStateMutationPolicyTests {
     func `minimized close treats verified AX absence as missing`() {
         #expect(pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: .missing,
             expectedMinimized: true) == .missing)
     }
@@ -102,6 +104,7 @@ struct WindowStateMutationPolicyTests {
     func `minimized close fails closed when AX presence is unavailable`() {
         #expect(pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: nil,
             expectedMinimized: true) == .unverifiable)
     }
@@ -115,6 +118,7 @@ struct WindowStateMutationPolicyTests {
             scan: PinnedMinimizedWindowAXScan(matchingWindowBounds: [], isComplete: true))
         let disposition = pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: presence,
             expectedMinimized: true)
         var verification = PinnedWindowCloseVerification()
@@ -148,6 +152,7 @@ struct WindowStateMutationPolicyTests {
         #expect(presence == .replacement)
         #expect(pinnedWindowClosePresenceDisposition(
             windowServerEntryPresent: false,
+            windowServerEntryIsOnScreen: false,
             minimizedAXPresence: presence,
             expectedMinimized: true) == .replacement)
     }
