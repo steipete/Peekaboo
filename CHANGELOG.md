@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 4.9.6 - 2026-10-20
 
 **Highlights:** Find, inspect and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1; report `window close` as closed when an app keeps the closed window alive or quits; use the Mac app's saved Vision model for image analysis; and keep the Mac chat's Stop button, follow-ups, transcript, menu bar and recent sessions reliable.
