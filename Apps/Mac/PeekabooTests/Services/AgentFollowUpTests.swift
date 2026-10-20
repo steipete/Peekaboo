@@ -126,6 +126,30 @@ struct AgentFollowUpTests {
     }
 
     @Test
+    func `A queued prompt's failure keeps its own session for retry`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate, failingTexts: ["other chat"])
+        defer { gate.releaseAll() }
+        let first = store.currentSession
+        let other = store.createSession(title: "Other", modelName: "test")
+        if let first {
+            store.selectSession(first)
+        }
+
+        let running = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        try await agent.executeTask("other chat", in: other)
+        gate.release("first")
+        await gate.waitUntilEntered("other chat")
+        gate.release("other chat")
+        _ = await running.result
+
+        #expect(agent.lastTask == "other chat")
+        #expect(agent.lastTaskSessionId == other.id)
+        #expect(agent.lastTaskSessionId != first?.id)
+    }
+
+    @Test
     func `Follow-up waits for the live task and Stop stays available`() async throws {
         let gate = FollowUpGate()
         let (agent, _) = makeFollowUpAgent(gate: gate)

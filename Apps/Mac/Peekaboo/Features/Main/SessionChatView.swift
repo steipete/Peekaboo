@@ -98,8 +98,7 @@ struct SessionChatView: View {
                     ConnectionErrorBanner(
                         hasConnectionError: self.$hasConnectionError,
                         agent: self.agent,
-                        isProcessing: self.$isProcessing,
-                        retrySession: self.session)
+                        isProcessing: self.$isProcessing)
                     Divider()
                 }
 
@@ -310,10 +309,10 @@ struct SessionChatHeader: View {
 // MARK: - Connection Error Banner
 
 struct ConnectionErrorBanner: View {
+    @Environment(SessionStore.self) private var sessionStore
     @Binding var hasConnectionError: Bool
     let agent: PeekabooAgent
     @Binding var isProcessing: Bool
-    var retrySession: ConversationSession?
 
     var body: some View {
         HStack {
@@ -332,7 +331,10 @@ struct ConnectionErrorBanner: View {
 
                 // Retry the last failed task if available
                 if let lastTask = agent.lastTask {
-                    let retrySession = self.retrySession
+                    // Retry where the failed task ran; the banner may belong to another chat.
+                    let retrySession = self.agent.lastTaskSessionId.flatMap { id in
+                        self.sessionStore.sessions.first { $0.id == id }
+                    }
                     Task {
                         self.isProcessing = true
                         defer { isProcessing = false }

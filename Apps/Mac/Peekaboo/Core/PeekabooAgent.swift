@@ -107,9 +107,18 @@ final class PeekabooAgent {
     @ObservationIgnored
     private var lastFailedTask: String?
 
+    /// Session the last failed task ran in. A queued prompt's failure can surface in another chat's view.
+    @ObservationIgnored
+    private var lastFailedSessionId: String?
+
     /// Get the last failed task (for retry button)
     var lastTask: String? {
         self.lastFailedTask
+    }
+
+    /// Session to retry `lastTask` in.
+    var lastTaskSessionId: String? {
+        self.lastFailedSessionId
     }
 
     // MARK: - Initialization
@@ -391,6 +400,7 @@ extension PeekabooAgent {
         self.currentTask = description
         self.lastError = nil
         self.lastFailedTask = nil
+        self.lastFailedSessionId = nil
         self.isThinking = true
         self.currentTool = nil
         self.currentToolArgs = nil
@@ -560,6 +570,7 @@ extension PeekabooAgent {
 
         self.lastError = error.localizedDescription
         self.lastFailedTask = taskDescription
+        self.lastFailedSessionId = self.sessionStore.currentSession?.id
         if let session = self.sessionStore.currentSession {
             let errorMessage = PeekabooCore.ConversationMessage(
                 role: .system,
