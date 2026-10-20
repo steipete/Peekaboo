@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Classify Dock separators and the Trash from their Accessibility subroles, so `peekaboo dock list` hides separators unless `--include-all` is passed, reports included separators as `separator` instead of blank `unknown` items, and identifies a localized Trash (such as "Papierkorb") as `trash`. #1120.
+
 - Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch. #1123.
 
 ## 4.9.6 - 2026-10-20

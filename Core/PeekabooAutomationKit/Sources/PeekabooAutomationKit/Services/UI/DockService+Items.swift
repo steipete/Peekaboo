@@ -58,11 +58,10 @@ extension DockService {
     }
 
     private func makeDockItem(from element: Element, index: Int, includeAll: Bool) -> DockItem? {
-        let role = element.role() ?? ""
         let title = element.title() ?? ""
         let subrole = element.subrole() ?? ""
 
-        let itemType = self.determineItemType(role: role, subrole: subrole, title: title)
+        let itemType = Self.dockItemType(subrole: subrole)
         if itemType == .separator, !includeAll {
             return nil
         }
@@ -91,31 +90,25 @@ extension DockService {
             size: size)
     }
 
-    private func determineItemType(role: String, subrole: String, title: String) -> DockItemType {
-        if role == "AXSeparator" || subrole == "AXSeparator" {
-            return .separator
-        }
-
+    nonisolated static func dockItemType(subrole: String) -> DockItemType {
         switch subrole {
         case "AXApplicationDockItem":
-            return .application
+            .application
         case "AXFolderDockItem":
-            return .folder
+            .folder
         case "AXFileDockItem":
-            return .file
+            .file
         case "AXURLDockItem":
-            return .url
+            .url
         case "AXMinimizedWindowDockItem":
-            return .minimizedWindow
+            .minimizedWindow
+        case "AXSeparatorDockItem":
+            .separator
+        case "AXTrashDockItem":
+            .trash
         default:
-            break
+            .unknown
         }
-
-        let normalizedTitle = title.lowercased()
-        if normalizedTitle == "trash" || normalizedTitle == "bin" {
-            return .trash
-        }
-        return .unknown
     }
 
     private func findBundleIdentifier(for appName: String) -> String? {
