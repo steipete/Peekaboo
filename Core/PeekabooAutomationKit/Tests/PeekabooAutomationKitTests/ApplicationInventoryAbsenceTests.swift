@@ -86,7 +86,8 @@ struct ApplicationInventoryAbsenceTests {
                     isHidden: false,
                     activationPolicy: .regular,
                     isFinishedLaunching: true)
-            })
+            },
+            applicationInventoryWorker: DetachedApplicationInventoryWorker())
 
         let output = try await service.listApplications()
 
@@ -156,7 +157,8 @@ struct ApplicationInventoryAbsenceTests {
                     isHidden: false,
                     activationPolicy: .regular,
                     isFinishedLaunching: true)
-            })
+            },
+            applicationInventoryWorker: DetachedApplicationInventoryWorker())
     }
 
     private enum FixtureError: Error {

@@ -191,10 +191,12 @@ extension LegacyScreenCaptureOperator {
         }
 
         let applicationInfo: ServiceApplicationInfo? = if let runningApplication = NSRunningApplication(
-            processIdentifier: owningPid)
+            processIdentifier: owningPid),
+            let processIdentifier = RunningApplicationProcessIdentity.resolve(runningApplication),
+            processIdentifier == owningPid
         {
             ServiceApplicationInfo(
-                processIdentifier: runningApplication.processIdentifier,
+                processIdentifier: processIdentifier,
                 processStartIdentity: mutationIdentity?.ownerProcessStartIdentity,
                 bundleIdentifier: runningApplication.bundleIdentifier,
                 name: runningApplication.localizedName ?? runningApplication.bundleIdentifier ?? "Unknown",

@@ -123,7 +123,8 @@ public final class WindowIdentityService {
         in app: NSRunningApplication,
         messagingTimeout: Float) -> AXWindowHandle?
     {
-        let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
+        guard let pid = RunningApplicationProcessIdentity.resolve(app) else { return nil }
+        let appElement = Element(AXUIElementCreateApplication(pid))
         guard let windows = try? appElement.withMessagingTimeout(
             messagingTimeout,
             operation: { $0.windows() })
@@ -147,10 +148,11 @@ public final class WindowIdentityService {
 
     func focusedWindowID(for app: NSRunningApplication, timeout: TimeInterval) -> CGWindowID? {
         guard timeout > 0 else { return nil }
-        let axApp = AXApp(app)
-        guard let focusedWindow = try? axApp.element.withMessagingTimeout(
+        guard let pid = RunningApplicationProcessIdentity.resolve(app) else { return nil }
+        let appElement = Element(AXUIElementCreateApplication(pid))
+        guard let focusedWindow = try? appElement.withMessagingTimeout(
             Float(timeout),
-            operation: { _ in axApp.focusedWindow() })
+            operation: { $0.focusedWindow() })
         else {
             return nil
         }
@@ -192,14 +194,19 @@ public final class WindowIdentityService {
 
     /// List windows for a running application using CGWindow metadata.
     public func getWindows(for app: NSRunningApplication) -> [WindowIdentityInfo] {
-        guard let windowDicts = WindowInfoHelper.getWindows(for: app.processIdentifier) else {
+        guard let pid = RunningApplicationProcessIdentity.resolve(app) else { return [] }
+        return self.getWindows(for: app, processIdentifier: pid)
+    }
+
+    func getWindows(for app: NSRunningApplication, processIdentifier: pid_t) -> [WindowIdentityInfo] {
+        guard let windowDicts = WindowInfoHelper.getWindows(for: processIdentifier) else {
             return []
         }
 
         return windowDicts.compactMap { dict in
             guard let id = dict[kCGWindowNumber as String] as? Int else { return nil }
             let title = dict[kCGWindowName as String] as? String
-            let ownerPID = dict[kCGWindowOwnerPID as String] as? Int ?? Int(app.processIdentifier)
+            let ownerPID = dict[kCGWindowOwnerPID as String] as? Int ?? Int(processIdentifier)
             let layer = dict[kCGWindowLayer as String] as? Int ?? 0
             let alpha = dict[kCGWindowAlpha as String] as? CGFloat ?? 1.0
             var boundsRect: CGRect = .zero

@@ -23,6 +23,11 @@ Prefer IDs when you can capture them, labels when you can't, and coordinates onl
 
 Process and window selectors are fail-closed. Choose either `--app` or `--pid`, never both. Choose at most one of `--window-id`, `--window-title`, or `--window-index`; title and index require an app or PID owner. The same rules apply to MCP's `app`, `pid`, `window_id`, `window_title`, and `window_index` fields.
 
+When AppKit reports an invalid PID after an app re-execs itself, Peekaboo recovers it only if exactly one live process
+has the same resolved executable path and matching bundle ID, bundle URL and executable URL, with a readable process
+generation that stays unchanged during verification. Ambiguous or unverifiable identities remain unavailable; window
+ownership and mutation-generation checks still apply.
+
 Reusable snapshots have producer-bound references: exactly `ps1_` plus 32 lowercase ASCII hexadecimal digits. The
 producer generates the 128-bit random suffix and reserves the reference before it can store detection results,
 screenshots, or other snapshot state. A store cannot claim an ID that was not created first. Treat the reference as an

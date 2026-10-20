@@ -28,26 +28,39 @@ struct ElementDetectionWindowResolver {
     private let windowManagementService = WindowManagementService()
     private let exactWindowIdentityProvider: (CGWindowID) -> SystemWindowIdentity?
     private let processStartIdentityProvider: (pid_t) -> UInt64?
+    private let runningApplicationProvider: (pid_t) -> NSRunningApplication?
+    private let processIdentifierResolver: (NSRunningApplication) -> pid_t?
 
     init(
         applicationService: ApplicationService,
         exactWindowIdentityProvider: @escaping (CGWindowID) -> SystemWindowIdentity? =
             SystemIdentityResolver.windowIdentity,
         processStartIdentityProvider: @escaping (pid_t) -> UInt64? =
-            SystemIdentityResolver.processStartIdentity)
+            SystemIdentityResolver.processStartIdentity,
+        runningApplicationProvider: @escaping (pid_t) -> NSRunningApplication? = {
+            NSRunningApplication(processIdentifier: $0)
+        },
+        processIdentifierResolver: @escaping (NSRunningApplication) -> pid_t? =
+            RunningApplicationProcessIdentity.resolve)
     {
         self.applicationService = applicationService
         self.exactWindowIdentityProvider = exactWindowIdentityProvider
         self.processStartIdentityProvider = processStartIdentityProvider
+        self.runningApplicationProvider = runningApplicationProvider
+        self.processIdentifierResolver = processIdentifierResolver
     }
 
-    func resolveApplication(windowContext: WindowContext?) async throws -> NSRunningApplication {
+    func resolveApplication(windowContext: WindowContext?) async throws
+        -> (application: NSRunningApplication, processIdentifier: pid_t)
+    {
         let runningApplication: NSRunningApplication
+        let resolvedProcessIdentifier: pid_t?
         switch Self.applicationResolutionAuthority(for: windowContext) {
         case let .processIdentifier(pid):
-            if let runningApp = NSRunningApplication(processIdentifier: pid) {
+            if let runningApp = self.runningApplicationProvider(pid) {
                 self.logger.debug("Resolved application via PID: \(pid)")
                 runningApplication = runningApp
+                resolvedProcessIdentifier = self.processIdentifierResolver(runningApp)
             } else {
                 self.logger.error("Could not resolve NSRunningApplication for PID: \(pid)")
                 throw PeekabooError.appNotFound("PID:\(pid)")
@@ -58,26 +71,34 @@ struct ElementDetectionWindowResolver {
                 receipt: windowContext?.windowMutationIdentity,
                 windowIdentityProvider: self.exactWindowIdentityProvider,
                 processStartIdentityProvider: self.processStartIdentityProvider),
-                let runningApp = NSRunningApplication(processIdentifier: processIdentifier)
+                let runningApp = self.runningApplicationProvider(processIdentifier),
+                self.processIdentifierResolver(runningApp) == processIdentifier
             else {
                 throw PeekabooError.windowNotFound(criteria: "live owner for exact window id \(windowID)")
             }
             self.logger.debug("Resolved application via exact window \(windowID), PID: \(processIdentifier)")
             runningApplication = runningApp
+            resolvedProcessIdentifier = processIdentifier
         case let .identifier(identifier, source):
-            runningApplication = try await self.resolveRunningApplication(
+            let resolved = try await self.resolveRunningApplication(
                 identifier: identifier,
                 source: source.rawValue)
+            runningApplication = resolved.application
+            resolvedProcessIdentifier = resolved.processIdentifier
         case .frontmost:
             guard let frontmost = NSWorkspace.shared.frontmostApplication else {
                 self.logger.error("No frontmost application")
                 throw PeekabooError.operationError(message: "No frontmost application")
             }
             runningApplication = frontmost
+            resolvedProcessIdentifier = self.processIdentifierResolver(frontmost)
         }
 
+        guard let processIdentifier = resolvedProcessIdentifier else {
+            throw PeekabooError.appNotFound(windowContext?.applicationName ?? "unresolved process identity")
+        }
         let candidate = ApplicationIdentifierMatcher.Candidate(
-            processIdentifier: runningApplication.processIdentifier,
+            processIdentifier: processIdentifier,
             bundleIdentifier: runningApplication.bundleIdentifier,
             name: runningApplication.localizedName ?? runningApplication.bundleIdentifier ?? "Unknown",
             bundlePath: runningApplication.bundleURL?.standardizedFileURL.path,
@@ -87,7 +108,7 @@ struct ElementDetectionWindowResolver {
         if let mismatch = Self.applicationConstraintMismatch(candidate: candidate, context: windowContext) {
             throw PeekabooError.invalidInput(field: "windowContext", reason: mismatch)
         }
-        return runningApplication
+        return (runningApplication, processIdentifier)
     }
 
     nonisolated static func applicationResolutionAuthority(
@@ -115,15 +136,19 @@ struct ElementDetectionWindowResolver {
         return .frontmost
     }
 
-    private func resolveRunningApplication(identifier: String, source: String) async throws -> NSRunningApplication {
+    private func resolveRunningApplication(identifier: String, source: String) async throws
+        -> (application: NSRunningApplication, processIdentifier: pid_t)
+    {
         self.logger.debug("Looking for application via \(source): \(identifier)")
         let appInfo = try await self.applicationService.findApplication(identifier: identifier)
-        guard let runningApplication = NSRunningApplication(processIdentifier: appInfo.processIdentifier) else {
+        guard let runningApplication = self.runningApplicationProvider(appInfo.processIdentifier),
+              self.processIdentifierResolver(runningApplication) == appInfo.processIdentifier
+        else {
             self.logger.error("Could not get NSRunningApplication for PID: \(appInfo.processIdentifier)")
             throw PeekabooError.appNotFound(identifier)
         }
         self.logger.debug("Resolved application: \(runningApplication.localizedName ?? "unknown")")
-        return runningApplication
+        return (runningApplication, appInfo.processIdentifier)
     }
 
     nonisolated static func applicationConstraintMismatch(
@@ -193,9 +218,10 @@ struct ElementDetectionWindowResolver {
 
     func resolveWindow(
         for app: NSRunningApplication,
+        processIdentifier: pid_t,
         context: WindowContext?) async throws -> WindowResolution
     {
-        let appElement = AXApp(app).element
+        let appElement = Element(AXUIElementCreateApplication(processIdentifier))
 
         if let windowID = context?.windowID {
             guard windowID > 0, let cgWindowID = CGWindowID(exactly: windowID) else {
@@ -203,8 +229,8 @@ struct ElementDetectionWindowResolver {
                     field: "windowID",
                     reason: "windowID must be a positive UInt32 value")
             }
-            let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
-            guard SystemIdentityResolver.windowOwnerProcessIdentifier(cgWindowID) == app.processIdentifier else {
+            let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(processIdentifier)"
+            guard SystemIdentityResolver.windowOwnerProcessIdentifier(cgWindowID) == processIdentifier else {
                 throw PeekabooError.windowNotFound(criteria: "window id \(windowID) owned by \(identifier)")
             }
 
@@ -220,7 +246,7 @@ struct ElementDetectionWindowResolver {
                 window.setMessagingTimeout(min(timeout, 0.25))
                 defer { window.setMessagingTimeout(0) }
                 let title = window.title() ?? "Untitled"
-                let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
+                let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(processIdentifier)"
                 self.logger.notice("Resolved window via CGWindowID \(windowID): '\(title)' for \(identifier)")
 
                 let isDialog = DialogElementClassifier.isObservationDialog(
@@ -250,16 +276,20 @@ struct ElementDetectionWindowResolver {
             candidateWindows.first
 
         if finalWindow == nil {
-            finalWindow = self.focusedWindowIfMatches(app: app)
+            finalWindow = self.focusedWindowIfMatches(app: app, processIdentifier: processIdentifier)
         }
 
         // When AX window enumeration yields nothing, progressively fall back to CG metadata.
         if finalWindow == nil {
-            finalWindow = await self.resolveWindowViaCGFallback(for: app, title: context?.windowTitle)
+            finalWindow = await self.resolveWindowViaCGFallback(
+                for: app,
+                processIdentifier: processIdentifier,
+                title: context?.windowTitle)
         }
 
         if finalWindow == nil {
-            finalWindow = await self.resolveWindowViaWindowServiceFallback(for: app, title: context?.windowTitle)
+            finalWindow = await self.resolveWindowViaWindowServiceFallback(
+                for: app, processIdentifier: processIdentifier, title: context?.windowTitle)
         }
 
         guard let resolvedWindow = finalWindow else {
@@ -322,8 +352,12 @@ struct ElementDetectionWindowResolver {
         }
     }
 
-    private func resolveWindowViaCGFallback(for app: NSRunningApplication, title: String?) async -> Element? {
-        let cgWindows = self.windowIdentityService.getWindows(for: app)
+    private func resolveWindowViaCGFallback(
+        for app: NSRunningApplication,
+        processIdentifier: pid_t,
+        title: String?) async -> Element?
+    {
+        let cgWindows = self.windowIdentityService.getWindows(for: app, processIdentifier: processIdentifier)
         guard !cgWindows.isEmpty else {
             self.logger.notice("CG fallback found 0 windows for \(app.localizedName ?? "app")")
             return nil
@@ -360,9 +394,10 @@ struct ElementDetectionWindowResolver {
     /// Fallback #3: ask the window-management service, which already talks to CG+AX, for candidates.
     private func resolveWindowViaWindowServiceFallback(
         for app: NSRunningApplication,
+        processIdentifier: pid_t,
         title: String?) async -> Element?
     {
-        let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(app.processIdentifier)"
+        let identifier = app.localizedName ?? app.bundleIdentifier ?? "PID:\(processIdentifier)"
         do {
             let windows = try await self.windowManagementService.listWindows(target: .application(identifier))
             guard !windows.isEmpty else {
@@ -404,7 +439,7 @@ struct ElementDetectionWindowResolver {
         }
     }
 
-    private func focusedWindowIfMatches(app: NSRunningApplication) -> Element? {
+    private func focusedWindowIfMatches(app: NSRunningApplication, processIdentifier: pid_t) -> Element? {
         let systemWide = Element.systemWide()
         guard let focusedWindow = systemWide.focusedWindow(),
               let pid = focusedWindow.pid()
@@ -412,7 +447,7 @@ struct ElementDetectionWindowResolver {
             return nil
         }
 
-        if pid != app.processIdentifier {
+        if pid != processIdentifier {
             guard
                 let ownerApp = NSRunningApplication(processIdentifier: pid),
                 ownerApp.bundleIdentifier == app.bundleIdentifier
