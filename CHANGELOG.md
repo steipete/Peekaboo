@@ -14,6 +14,7 @@
 - See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
 - Keep the Mac menu bar's chat in sync with the conversation: new messages, streamed replies, generated titles and summaries now show up there, and deleting that chat no longer leaves it selected. Thanks @SebTardif! #1107.
 - Open the chat you clicked under Recent Sessions in the Mac menu bar instead of the one already selected; that window can continue or retry its chat without first switching the menu bar's selection. Thanks @SebTardif! #1108.
+- Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch.
 
 ## 4.9.5 - 2026-10-16
 

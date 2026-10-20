@@ -506,8 +506,6 @@ func handleDialogServiceError(_ error: DialogError, jsonOutput: Bool, logger: Lo
         .FILE_IO_ERROR
     case .fileSavedToUnexpectedDirectory:
         .FILE_IO_ERROR
-    case .inputSuppressedUnderTests:
-        .INVALID_INPUT
     }
 
     if jsonOutput {
