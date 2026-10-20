@@ -18,17 +18,16 @@ private struct DialogListPayload: Codable {
     let textElements: [String]
 }
 
+/// Targeted foreground actions whose CLI pins exact focus before the leaf. Targeted `dialog file`
+/// is absent: its exact execution owner focuses and rechecks the retained file panel itself.
 private enum TargetedForegroundDialogAction: CaseIterable {
     case input
-    case file
     case forceDismiss
 
     var arguments: [String] {
         let actionArguments = switch self {
         case .input:
             ["dialog", "input", "--text", "hello", "--foreground"]
-        case .file:
-            ["dialog", "file", "--path", "/tmp", "--name", "test.txt", "--foreground"]
         case .forceDismiss:
             ["dialog", "dismiss", "--force", "--foreground"]
         }
@@ -776,6 +775,57 @@ extension DialogCommandTests {
     }
 
     @Test
+    @MainActor
+    func `targeted foreground dialog file leaves focus refusal to its exact execution owner`() async throws {
+        // CLI-side pinning would refuse this unverified focus before the owner ever saw the request.
+        let windows = InputFocusWindowService(
+            focusOutcome: .dispatchedUnverified(
+                route: .bridge,
+                delivery: .init(mechanism: .accessibilityAction, mode: .foreground),
+                evidence: .deliveryAccepted,
+                unitCount: .one
+            )
+        )
+        let dialogs = StubDialogService(elements: self.fileDialogElements())
+        dialogs.handleFileDialogError = DesktopActionFailure.indeterminate(
+            route: .bridge,
+            delivery: .init(mechanism: .accessibilityAction, mode: .foreground),
+            evidence: .completionUnknown,
+            unitCount: .one,
+            message: "Window focus did not complete with a verified exact target."
+        ).attributed(to: DesktopActionTargetReceipt(
+            processIdentifier: InputFocusFixtures.processIdentifier,
+            processStartIdentity: InputFocusFixtures.processStartIdentity,
+            windowID: InputFocusFixtures.windowID
+        ))
+        let services = InputExecutionHostServices(
+            host: .remote,
+            base: TestServicesFactory.makePeekabooServices(windows: windows, dialogs: dialogs)
+        )
+
+        let result = try await InProcessCommandRunner.run(
+            [
+                "dialog", "file", "--path", "/tmp", "--name", "test.txt", "--foreground",
+                "--pid", String(InputFocusFixtures.processIdentifier),
+                "--window-id", String(InputFocusFixtures.windowID),
+                "--json",
+            ],
+            services: services
+        )
+        let payload = try JSONDecoder().decode(JSONResponse.self, from: Data(result.stdout.utf8))
+
+        #expect(result.exitStatus == 1)
+        #expect(windows.pinnedFocusCalls.isEmpty)
+        #expect(dialogs.exactFileRequests.count == 1)
+        let request = try #require(dialogs.exactFileRequests.first)
+        #expect(request.target.processIdentifier == InputFocusFixtures.processIdentifier)
+        #expect(request.target.windowID == InputFocusFixtures.windowID)
+        #expect(request.focus.autoFocus)
+        #expect(payload.outcome?.state == .indeterminate)
+        #expect(payload.target_receipt?.windowID == InputFocusFixtures.windowID)
+    }
+
+    @Test
     func `dialog PID app hint uses exact local capability and preserves legacy provider names`() async throws {
         var target = InteractionTargetOptions()
         target.pid = 42
@@ -1204,8 +1254,6 @@ extension DialogCommandTests {
         case .input:
             #expect(dialogs.foregroundExactInputRequests.isEmpty)
             #expect(dialogs.enterTextCallCount == 0)
-        case .file:
-            #expect(dialogs.handleFileDialogCallCount == 0)
         case .forceDismiss:
             #expect(dialogs.exactForcedDismissRequests.isEmpty)
         }

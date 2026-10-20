@@ -953,6 +953,7 @@ final class StubDialogService: DialogServiceProtocol {
     var clickButtonResult: DialogActionResult?
     var handleFileDialogResult: DialogActionResult?
     var handleFileDialogDelay: TimeInterval?
+    var handleFileDialogError: (any Error)?
     var dismissResult: DialogActionResult?
     var enterTextResult: DialogActionResult?
     private(set) var exactInputRequests: [DialogInputExecutionRequest] = []
@@ -1094,6 +1095,9 @@ final class StubDialogService: DialogServiceProtocol {
         }
         if let handleFileDialogDelay {
             try await Task.sleep(nanoseconds: UInt64(handleFileDialogDelay * 1_000_000_000))
+        }
+        if let handleFileDialogError {
+            throw handleFileDialogError
         }
         if let result = handleFileDialogResult {
             return result
