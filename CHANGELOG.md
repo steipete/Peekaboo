@@ -11,7 +11,7 @@
 - Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
 - Report `window close` as closed when the app keeps the closed `NSWindow` alive, such as Calculator's About panel: an off-screen WindowServer row no longer counts as the window remaining once Accessibility no longer exposes it. Thanks @jandubois! #1116, fixes #1106.
 - Report `window close` as closed when the owning process exits during close verification (for example the last window of an app that quits) instead of failing with a changed-identity error; a reused PID still counts as a replacement. Refs #1106.
-- See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1119.
+- See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
 - Keep the Mac menu bar's chat in sync with the conversation: new messages, streamed replies, generated titles and summaries now show up there, and deleting that chat no longer leaves it selected. Thanks @SebTardif! #1107.
 
 ## 4.9.5 - 2026-10-16
