@@ -5,6 +5,14 @@ All notable changes to Peekaboo CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.9.6 - 2026-10-20
+
+- See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
+- Report `window close` as closed when the app keeps the closed `NSWindow` alive, such as Calculator's About panel: an off-screen WindowServer row no longer counts as the window remaining once Accessibility no longer exposes it. Thanks @jandubois! #1116, fixes #1106.
+- Report `window close` as closed when the owning process exits during close verification (for example the last window of an app that quits) instead of failing with a changed-identity error; a reused PID still counts as a replacement. #1109, refs #1106.
+- Use the Mac app's saved Vision model for screenshots and image analysis: a custom choice is written to `agent.visionModel` in `config.json` (as `provider/modelId`) and used by `see`/`analyze` when no model is given, while "Same as agent model" removes it. Thanks @SebTardif! #1110.
+- Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
+
 ## 4.9.5 - 2026-10-16
 
 - Fall back to in-process execution immediately when an unsigned source build (such as Homebrew core's `peekaboo` formula) meets a daemon it cannot trust, instead of waiting out daemon startup or aborting, and add an explicit `PEEKABOO_ALLOW_UNSIGNED_DAEMON=1` opt-in that lets such a build trust only its own exact-binary daemon; release-signed builds ignore it. Thanks @fry69! #1089, #1064.
