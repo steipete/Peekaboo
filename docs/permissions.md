@@ -78,6 +78,20 @@ compatible host fails before local fallback.
 
 Use `peekaboo permissions status --all-sources` to compare the selected Bridge host and local CLI process side by side.
 
+## System audio recording
+
+Peekaboo does not currently offer process or system-output recording.
+
+On macOS 26.7, an experimental Core Audio tap recorded a source started after its
+host's audio-only permission switch showed OFF. A fresh capture under the same
+identity returned only zeros. Settings OFF alone did not prove that an existing
+tap had lost access. macOS also displayed a notice that access could continue
+until the app quit.
+
+Future audio capture must verify continuing authorization before writing samples.
+See [the investigation](https://github.com/openclaw/Peekaboo/pull/1010) for the
+receipts and [issue #1009](https://github.com/openclaw/Peekaboo/issues/1009) for follow-up.
+
 ## Performance Tips
 
 - **Hybrid enumeration** – with Screen Recording enabled, Peekaboo prefers the CGWindowList APIs and falls back to AX only when necessary.
