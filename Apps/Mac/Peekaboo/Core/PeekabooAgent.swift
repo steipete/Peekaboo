@@ -107,9 +107,18 @@ final class PeekabooAgent {
     @ObservationIgnored
     private var lastFailedTask: String?
 
+    /// Session the last failed task ran in. A queued prompt's failure can surface in another chat's view.
+    @ObservationIgnored
+    private var lastFailedSessionId: String?
+
     /// Get the last failed task (for retry button)
     var lastTask: String? {
         self.lastFailedTask
+    }
+
+    /// Session to retry `lastTask` in.
+    var lastTaskSessionId: String? {
+        self.lastFailedSessionId
     }
 
     // MARK: - Initialization
@@ -146,6 +155,12 @@ final class PeekabooAgent {
 
         // Call the common implementation with text content
         try await self.executeTaskWithContent(.text(task))
+    }
+
+    /// Continue one session. The queued prompt carries `session.id`, and the
+    /// runner selects that session when the prompt starts.
+    func executeTask(_ task: String, in session: ConversationSession) async throws {
+        try await self.executeTaskWithContent(.text(task), sessionId: session.id)
     }
 
     /// Common implementation for executing tasks with different content types.
@@ -385,6 +400,7 @@ extension PeekabooAgent {
         self.currentTask = description
         self.lastError = nil
         self.lastFailedTask = nil
+        self.lastFailedSessionId = nil
         self.isThinking = true
         self.currentTool = nil
         self.currentToolArgs = nil
@@ -554,6 +570,7 @@ extension PeekabooAgent {
 
         self.lastError = error.localizedDescription
         self.lastFailedTask = taskDescription
+        self.lastFailedSessionId = self.sessionStore.currentSession?.id
         if let session = self.sessionStore.currentSession {
             let errorMessage = PeekabooCore.ConversationMessage(
                 role: .system,

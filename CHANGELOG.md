@@ -12,6 +12,7 @@
 - Report `window close` as closed when the app keeps the closed `NSWindow` alive, such as Calculator's About panel: an off-screen WindowServer row no longer counts as the window remaining once Accessibility no longer exposes it. Thanks @jandubois! #1116, fixes #1106.
 - Report `window close` as closed when the owning process exits during close verification (for example the last window of an app that quits) instead of failing with a changed-identity error; a reused PID still counts as a replacement. Refs #1106.
 - Keep the Mac menu bar's chat in sync with the conversation: new messages, streamed replies, generated titles and summaries now show up there, and deleting that chat no longer leaves it selected. Thanks @SebTardif! #1107.
+- Open the chat you clicked under Recent Sessions in the Mac menu bar instead of the one already selected; that window can continue or retry its chat without first switching the menu bar's selection. Thanks @SebTardif! #1108.
 
 ## 4.9.5 - 2026-10-16
 

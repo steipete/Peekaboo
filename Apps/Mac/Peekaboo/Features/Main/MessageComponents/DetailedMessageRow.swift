@@ -5,6 +5,8 @@ import SwiftUI
 
 struct DetailedMessageRow: View {
     let message: ConversationMessage
+    /// The ordinary Sessions window activates the retried chat. An opened window does not.
+    var activatesSessionOnRetry = false
     @State private var isExpanded = false
     @State private var showingImageInspector = false
     @State private var selectedImage: NSImage?
@@ -299,15 +301,16 @@ struct DetailedMessageRow: View {
         for i in stride(from: errorIndex - 1, through: 0, by: -1) {
             let msg = session.messages[i]
             if msg.role == .user {
-                // Make this the current session if it isn't already
-                if self.sessionStore.currentSession?.id != session.id {
-                    self.sessionStore.selectSession(session)
-                }
-
-                // Re-execute the last user task
                 Task {
                     do {
-                        try await self.agent.executeTask(msg.content)
+                        if self.activatesSessionOnRetry {
+                            if self.sessionStore.currentSession?.id != session.id {
+                                self.sessionStore.selectSession(session)
+                            }
+                            try await self.agent.executeTask(msg.content)
+                        } else {
+                            try await self.agent.executeTask(msg.content, in: session)
+                        }
                     } catch {
                         print("Retry failed: \(error)")
                     }
