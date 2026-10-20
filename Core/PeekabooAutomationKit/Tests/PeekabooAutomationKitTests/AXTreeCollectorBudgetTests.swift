@@ -371,6 +371,7 @@ final class AXTreeCollectorBudgetTests: XCTestCase {
         let resolver = ElementDetectionWindowResolver(applicationService: ApplicationService())
         _ = try await resolver.resolveWindow(
             for: target.app,
+            processIdentifier: target.app.processIdentifier,
             context: WindowContext(
                 applicationProcessId: target.app.processIdentifier,
                 windowID: target.windowID))

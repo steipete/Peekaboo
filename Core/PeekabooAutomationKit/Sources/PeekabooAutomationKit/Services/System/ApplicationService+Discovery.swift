@@ -34,7 +34,7 @@ extension ApplicationService {
         let eligibilityProvider = self.mutationEligibilityProvider
         let candidateProvider = self.applicationMutationCandidateProvider
         return try await self.withApplicationInventoryDeadline { deadline in
-            try await DetachedApplicationInventoryWorker.shared.run(
+            try await self.applicationInventoryWorker.run(
                 seconds: self.remainingInventoryTime(until: deadline))
             {
                 Self.readMutationInventory(
@@ -163,7 +163,7 @@ extension ApplicationService {
         let windowCatalogProvider = self.applicationWindowCatalogProvider
         let generationProvider = self.processStartIdentityProvider
         let identityObservationProvider = self.mutationIdentityObservationProvider
-        let candidates = try await DetachedApplicationInventoryWorker.shared.run(
+        let candidates = try await self.applicationInventoryWorker.run(
             seconds: self.remainingInventoryTime(until: overallDeadline))
         {
             let processIdentifiers = Array(Set(processIdentifiersProvider()))
@@ -231,7 +231,7 @@ extension ApplicationService {
         }
         try Task.checkCancellation()
 
-        let (observedApplications, omissionWarnings) = try await DetachedApplicationInventoryWorker.shared.run(
+        let (observedApplications, omissionWarnings) = try await self.applicationInventoryWorker.run(
             seconds: self.remainingInventoryTime(until: overallDeadline))
         {
             var applications: [ServiceApplicationInfo] = []
@@ -496,17 +496,19 @@ extension ApplicationService {
     public func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
         self.logger.info("Finding application with identifier: \(identifier, privacy: .public)")
 
-        let runningApps = NSWorkspace.shared.runningApplications.filter { app in
-            !app.isTerminated
+        let runningApps = self.runningApplicationsProvider().compactMap { app -> (NSRunningApplication, pid_t)? in
+            guard !app.isTerminated, let pid = self.applicationProcessIdentifierResolver(app) else { return nil }
+            return (app, pid)
         }
-        let candidates = runningApps.map(Self.identifierCandidate)
+        let candidates = runningApps.map { Self.identifierCandidate($0.0, processIdentifier: $0.1) }
         if let resolution = try ApplicationIdentifierMatcher.resolution(for: identifier, in: candidates) {
             guard !resolution.hasWinningTie else {
                 throw PeekabooError.ambiguousAppIdentifier(
                     identifier,
                     suggestions: resolution.ambiguitySuggestions)
             }
-            let application = self.createApplicationInfo(from: runningApps[resolution.index])
+            let (app, pid) = runningApps[resolution.index]
+            let application = self.createApplicationInfo(from: app, processIdentifier: pid)
             let proof = application.processIdentity.map {
                 resolution.proof(selectedProcessIdentity: $0)
             }
@@ -517,9 +519,18 @@ extension ApplicationService {
         throw PeekabooError.appNotFound(identifier)
     }
 
-    nonisolated static func identifierCandidate(_ app: NSRunningApplication) -> ApplicationIdentifierMatcher.Candidate {
+    nonisolated static func identifierCandidate(_ app: NSRunningApplication) -> ApplicationIdentifierMatcher
+    .Candidate? {
+        guard let pid = RunningApplicationProcessIdentity.resolve(app) else { return nil }
+        return self.identifierCandidate(app, processIdentifier: pid)
+    }
+
+    nonisolated static func identifierCandidate(
+        _ app: NSRunningApplication,
+        processIdentifier: pid_t) -> ApplicationIdentifierMatcher.Candidate
+    {
         .init(
-            processIdentifier: app.processIdentifier,
+            processIdentifier: processIdentifier,
             bundleIdentifier: app.bundleIdentifier,
             name: app.localizedName ?? app.bundleIdentifier ?? "Unknown",
             bundlePath: app.bundleURL?.path,
@@ -538,7 +549,10 @@ extension ApplicationService {
         }
 
         self.logger.debug("Frontmost app: \(app.localizedName ?? "Unknown") (PID: \(app.processIdentifier))")
-        return self.createApplicationInfo(from: app)
+        guard let pid = self.applicationProcessIdentifierResolver(app) else {
+            throw PeekabooError.appNotFound("frontmost")
+        }
+        return self.createApplicationInfo(from: app, processIdentifier: pid)
     }
 
     /// Returns false only when no running application matches; ambiguity and lookup errors propagate.
@@ -557,10 +571,14 @@ extension ApplicationService {
         return true
     }
 
-    func createApplicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
-        let processStartIdentityBeforeRead = self.processStartIdentityProvider(app.processIdentifier)
-        let windows = self.getWindowIdentities(for: app)
-        let processStartIdentityAfterRead = self.processStartIdentityProvider(app.processIdentifier)
+    func createApplicationInfo(
+        from app: NSRunningApplication,
+        processIdentifier: pid_t? = nil) -> ServiceApplicationInfo
+    {
+        let pid = processIdentifier ?? self.applicationProcessIdentifierResolver(app) ?? app.processIdentifier
+        let processStartIdentityBeforeRead = self.processStartIdentityProvider(pid)
+        let windows = self.getWindowIdentities(for: app, processIdentifier: pid)
+        let processStartIdentityAfterRead = self.processStartIdentityProvider(pid)
         let stableProcessStartIdentity: UInt64? = if !app.isTerminated,
                                                      processStartIdentityBeforeRead == processStartIdentityAfterRead
         {
@@ -569,7 +587,7 @@ extension ApplicationService {
             nil
         }
         return ServiceApplicationInfo(
-            processIdentifier: app.processIdentifier,
+            processIdentifier: pid,
             processStartIdentity: stableProcessStartIdentity,
             bundleIdentifier: app.bundleIdentifier,
             name: app.localizedName ?? "Unknown",
@@ -600,13 +618,13 @@ extension ApplicationService {
     }
 
     @MainActor
-    private func getWindowCount(for app: NSRunningApplication) -> Int {
-        self.getWindowIdentities(for: app).count
+    private func getWindowCount(for app: NSRunningApplication, processIdentifier: pid_t) -> Int {
+        self.getWindowIdentities(for: app, processIdentifier: processIdentifier).count
     }
 
     @MainActor
-    private func getWindowIdentities(for app: NSRunningApplication) -> [WindowIdentityInfo] {
-        let cgWindows = self.windowIdentityService.getWindows(for: app)
+    private func getWindowIdentities(for app: NSRunningApplication, processIdentifier: pid_t) -> [WindowIdentityInfo] {
+        let cgWindows = self.windowIdentityService.getWindows(for: app, processIdentifier: processIdentifier)
         if cgWindows.isEmpty {
             return []
         }
@@ -621,7 +639,9 @@ extension ApplicationService {
 
         // Now query window count only for this specific app
         let runningApp = NSRunningApplication(processIdentifier: appInfo.processIdentifier)
-        let windowCount = runningApp.map { self.getWindowCount(for: $0) } ?? 0
+        let windowCount = runningApp.map {
+            self.getWindowCount(for: $0, processIdentifier: appInfo.processIdentifier)
+        } ?? 0
 
         appInfo.windowCount = windowCount
         return appInfo

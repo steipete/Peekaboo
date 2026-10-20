@@ -762,12 +762,12 @@ extension ScreenCaptureKitOperator {
             return nil
         }
         guard let runningApplication = NSRunningApplication(processIdentifier: processID),
-              runningApplication.processIdentifier == processID
+              RunningApplicationProcessIdentity.resolve(runningApplication) == processID
         else {
             return nil
         }
         let applicationInfo = ServiceApplicationInfo(
-            processIdentifier: runningApplication.processIdentifier,
+            processIdentifier: processID,
             processStartIdentity: processStartIdentity,
             bundleIdentifier: runningApplication.bundleIdentifier,
             name: runningApplication.localizedName ?? runningApplication.bundleIdentifier ?? "Unknown",

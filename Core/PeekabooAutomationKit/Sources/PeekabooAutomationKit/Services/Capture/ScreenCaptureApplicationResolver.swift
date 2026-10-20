@@ -13,21 +13,26 @@ struct PeekabooApplicationResolver: ApplicationResolving {
         guard let frontmost = NSWorkspace.shared.frontmostApplication else {
             throw NotFoundError.application("frontmost")
         }
-        return Self.applicationInfo(from: frontmost)
+        guard let pid = RunningApplicationProcessIdentity.resolve(frontmost) else {
+            throw NotFoundError.application("frontmost")
+        }
+        return Self.applicationInfo(from: frontmost, processIdentifier: pid)
     }
 
     func findApplication(identifier: String) async throws -> ServiceApplicationInfo {
-        let runningApps = NSWorkspace.shared.runningApplications.filter { app in
-            !app.isTerminated
+        let runningApps = NSWorkspace.shared.runningApplications.compactMap { app -> (NSRunningApplication, pid_t)? in
+            guard !app.isTerminated, let pid = RunningApplicationProcessIdentity.resolve(app) else { return nil }
+            return (app, pid)
         }
-        let candidates = runningApps.map(Self.identifierCandidate)
+        let candidates = runningApps.map { ApplicationService.identifierCandidate($0.0, processIdentifier: $0.1) }
         if let resolution = try ApplicationIdentifierMatcher.resolution(for: identifier, in: candidates) {
             guard !resolution.hasWinningTie else {
                 throw PeekabooError.ambiguousAppIdentifier(
                     identifier,
                     suggestions: resolution.ambiguitySuggestions)
             }
-            let application = Self.applicationInfo(from: runningApps[resolution.index])
+            let (app, pid) = runningApps[resolution.index]
+            let application = Self.applicationInfo(from: app, processIdentifier: pid)
             let proof = application.processIdentity.map {
                 resolution.proof(selectedProcessIdentity: $0)
             }
@@ -37,21 +42,13 @@ struct PeekabooApplicationResolver: ApplicationResolving {
         throw PeekabooError.appNotFound(identifier)
     }
 
-    private static func identifierCandidate(_ app: NSRunningApplication) -> ApplicationIdentifierMatcher.Candidate {
-        .init(
-            processIdentifier: app.processIdentifier,
-            bundleIdentifier: app.bundleIdentifier,
-            name: app.localizedName ?? app.bundleIdentifier ?? "Unknown",
-            bundlePath: app.bundleURL?.path,
-            executablePath: app.executableURL?.path,
-            allowsFuzzyMatching: app.activationPolicy != .prohibited,
-            isRegularApplication: app.activationPolicy == .regular)
-    }
-
-    private static func applicationInfo(from app: NSRunningApplication) -> ServiceApplicationInfo {
+    private static func applicationInfo(
+        from app: NSRunningApplication,
+        processIdentifier: pid_t) -> ServiceApplicationInfo
+    {
         ServiceApplicationInfo(
-            processIdentifier: app.processIdentifier,
-            processStartIdentity: SystemIdentityResolver.processStartIdentity(app.processIdentifier),
+            processIdentifier: processIdentifier,
+            processStartIdentity: SystemIdentityResolver.processStartIdentity(processIdentifier),
             bundleIdentifier: app.bundleIdentifier,
             name: app.localizedName ?? app.bundleIdentifier ?? "Unknown",
             bundlePath: app.bundleURL?.path,

@@ -137,21 +137,27 @@ public final class ElementDetectionService {
 
         let effectiveSnapshotId = SnapshotPublicationBinding.resultIdentifier(explicit: snapshotId)
 
-        let targetApp = try await self.windowResolver.resolveApplication(windowContext: windowContext)
+        let resolvedApplication = try await self.windowResolver.resolveApplication(windowContext: windowContext)
+        let targetApp = resolvedApplication.application
+        let processIdentifier = resolvedApplication.processIdentifier
         let applicationIdentity = Self.applicationIdentity(
             targetApp,
+            processIdentifier: processIdentifier,
             requested: windowContext,
             preservesRequestedIdentity: preservesRequestedApplicationIdentity)
         if windowContext?.shouldFocusWebContent != true {
             return try await self.inspectReadOnlyElements(
-                targetApp: targetApp,
+                targetApplication: resolvedApplication,
                 snapshotId: effectiveSnapshotId,
                 windowContext: windowContext,
                 applicationIdentity: applicationIdentity,
                 allowsApplicationScopedFallback: allowsApplicationScopedFallback)
         }
 
-        let windowResolution = try await self.windowResolver.resolveWindow(for: targetApp, context: windowContext)
+        let windowResolution = try await self.windowResolver.resolveWindow(
+            for: targetApp,
+            processIdentifier: processIdentifier,
+            context: windowContext)
         let windowName = windowResolution.window.title() ?? "Untitled"
         self.logger.debug("Found \(windowResolution.windowTypeDescription): \(windowName)")
 
@@ -168,7 +174,7 @@ public final class ElementDetectionService {
         let resolvedWindowBounds = windowContext?.windowBounds ?? windowResolution.window.frame()
         let resolvedWindowMutationIdentity = try Self.validatedExactWindowReceipt(
             windowID: windowContext?.windowID,
-            processIdentifier: targetApp.processIdentifier,
+            processIdentifier: processIdentifier,
             capturedBounds: windowContext?.windowBounds,
             receipt: windowContext?.windowMutationIdentity,
             requiresActionCapability: windowContext?.shouldFocusWebContent == true)
@@ -177,7 +183,7 @@ public final class ElementDetectionService {
             applicationBundleId: applicationIdentity.bundleIdentifier,
             applicationBundlePath: applicationIdentity.bundlePath,
             applicationExecutablePath: applicationIdentity.executablePath,
-            applicationProcessId: windowContext?.applicationProcessId ?? targetApp.processIdentifier,
+            applicationProcessId: windowContext?.applicationProcessId ?? processIdentifier,
             applicationProcessStartIdentity: resolvedWindowMutationIdentity?.ownerProcessStartIdentity,
             windowTitle: windowName,
             windowID: resolvedWindowID,
@@ -205,7 +211,7 @@ public final class ElementDetectionService {
         let cacheKey = canReuseAXTree
             ? self.axTreeCache.key(
                 windowID: resolvedWindowID,
-                processID: targetApp.processIdentifier,
+                processID: processIdentifier,
                 processStartIdentity: resolvedWindowMutationIdentity?.ownerProcessStartIdentity ?? 0,
                 allowWebFocus: allowWebFocus,
                 includeMenuBarElements: includeMenuBarElements)
@@ -322,19 +328,21 @@ public final class ElementDetectionService {
     }
 
     private func inspectReadOnlyElements(
-        targetApp: NSRunningApplication,
+        targetApplication: (application: NSRunningApplication, processIdentifier: pid_t),
         snapshotId: String,
         windowContext: WindowContext?,
         applicationIdentity: ResolvedApplicationIdentity,
         allowsApplicationScopedFallback: Bool) async throws -> ElementDetectionResult
     {
-        let processIdentifier = targetApp.processIdentifier
+        let targetApp = targetApplication.application
+        let processIdentifier = targetApplication.processIdentifier
         guard let processStartIdentity = SystemIdentityResolver.processStartIdentity(processIdentifier) else {
             throw PeekabooError.snapshotStale(
                 "Could not capture the target process generation before detached AX observation")
         }
         let context = try Self.readOnlyWindowContext(
             targetApp: targetApp,
+            processIdentifier: processIdentifier,
             requested: windowContext,
             applicationIdentity: applicationIdentity)
         if let requestedWindowID = context?.windowID {
@@ -461,18 +469,19 @@ public final class ElementDetectionService {
 
     private static func readOnlyWindowContext(
         targetApp: NSRunningApplication,
+        processIdentifier: pid_t,
         requested: WindowContext?,
         applicationIdentity: ResolvedApplicationIdentity) throws -> WindowContext?
     {
         if let requestedWindowID = requested?.windowID {
             let actionableReceipt = try Self.resolveActionableWindowReceipt(
                 windowID: requestedWindowID,
-                processIdentifier: targetApp.processIdentifier,
+                processIdentifier: processIdentifier,
                 capturedBounds: requested?.windowBounds,
                 receipt: requested?.windowMutationIdentity)
             guard let windowID = CGWindowID(exactly: requestedWindowID),
                   let liveWindow = SystemIdentityResolver.windowIdentity(windowID),
-                  liveWindow.ownerProcessIdentifier == targetApp.processIdentifier,
+                  liveWindow.ownerProcessIdentifier == processIdentifier,
                   liveWindow.bounds == actionableReceipt.bounds
             else {
                 throw PeekabooError.snapshotStale(
@@ -483,7 +492,7 @@ public final class ElementDetectionService {
                 applicationBundleId: applicationIdentity.bundleIdentifier,
                 applicationBundlePath: applicationIdentity.bundlePath,
                 applicationExecutablePath: applicationIdentity.executablePath,
-                applicationProcessId: targetApp.processIdentifier,
+                applicationProcessId: processIdentifier,
                 applicationProcessStartIdentity: actionableReceipt.identity.ownerProcessStartIdentity,
                 windowTitle: requested?.windowTitle ?? liveWindow.title,
                 windowID: requestedWindowID,
@@ -498,11 +507,11 @@ public final class ElementDetectionService {
                 requested?.allowApplicationScopedAccessibilityFallback)
         }
         let windows = SystemIdentityResolver.windowIdentities(
-            ownerProcessIdentifier: targetApp.processIdentifier)
+            ownerProcessIdentifier: processIdentifier)
             .enumerated()
             .map { index, identity in ObservationTargetResolver.serviceWindowInfo(identity, index: index) }
         let applicationIdentifier = targetApp.localizedName ?? targetApp.bundleIdentifier ??
-            "PID:\(targetApp.processIdentifier)"
+            "PID:\(processIdentifier)"
         guard let window = try Self.selectReadOnlyWindow(
             requestedTitle: requested?.windowTitle,
             windows: windows,
@@ -512,7 +521,7 @@ public final class ElementDetectionService {
         }
         let actionableReceipt = try Self.resolveActionableWindowReceipt(
             windowID: window.windowID,
-            processIdentifier: targetApp.processIdentifier,
+            processIdentifier: processIdentifier,
             capturedBounds: window.bounds,
             receipt: window.mutationIdentity)
         return WindowContext(
@@ -520,7 +529,7 @@ public final class ElementDetectionService {
             applicationBundleId: applicationIdentity.bundleIdentifier,
             applicationBundlePath: applicationIdentity.bundlePath,
             applicationExecutablePath: applicationIdentity.executablePath,
-            applicationProcessId: targetApp.processIdentifier,
+            applicationProcessId: processIdentifier,
             applicationProcessStartIdentity: actionableReceipt.identity.ownerProcessStartIdentity,
             windowTitle: window.title,
             windowID: window.windowID,
@@ -544,11 +553,12 @@ public final class ElementDetectionService {
 
     private static func applicationIdentity(
         _ application: NSRunningApplication,
+        processIdentifier: pid_t,
         requested: WindowContext?,
         preservesRequestedIdentity: Bool) -> ResolvedApplicationIdentity
     {
         let canonicalName = application.localizedName ?? application.bundleIdentifier ??
-            "PID:\(application.processIdentifier)"
+            "PID:\(processIdentifier)"
         return self.projectedApplicationIdentity(
             canonical: ResolvedApplicationIdentity(
                 name: canonicalName,

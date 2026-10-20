@@ -136,6 +136,8 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
         _ hidden: Bool) throws -> Bool
     typealias ApplicationVisibilitySleepHandler = @MainActor (_ duration: Duration) async throws -> Void
     typealias RunningApplicationProcessIdentifiersProvider = @Sendable () -> [pid_t]
+    typealias RunningApplicationsProvider = @Sendable () -> [NSRunningApplication]
+    typealias ApplicationProcessIdentifierResolver = @Sendable (NSRunningApplication) -> pid_t?
     typealias ApplicationWindowCatalogProvider = @Sendable () -> [WindowIdentityInfo]?
     typealias ApplicationInventoryNowProvider = @MainActor () -> ContinuousClock.Instant
     typealias ApplicationMetadataProvider = @Sendable (
@@ -172,9 +174,12 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
     let applicationVisibilityHandler: ApplicationVisibilityHandler?
     let applicationVisibilitySleepHandler: ApplicationVisibilitySleepHandler
     let runningApplicationProcessIdentifiersProvider: RunningApplicationProcessIdentifiersProvider
+    let runningApplicationsProvider: RunningApplicationsProvider
+    let applicationProcessIdentifierResolver: ApplicationProcessIdentifierResolver
     let applicationWindowCatalogProvider: ApplicationWindowCatalogProvider
     let applicationInventoryNowProvider: ApplicationInventoryNowProvider
     let applicationMetadataProvider: ApplicationMetadataProvider
+    let applicationInventoryWorker: DetachedApplicationInventoryWorker
     let applicationMetadataTimeout: TimeInterval
     let applicationInventoryOverallTimeout: TimeInterval
     let maximumConcurrentApplicationMetadataReads: Int
@@ -236,7 +241,7 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
         applicationSelectorCandidatesProvider: @escaping ApplicationSelectorCandidatesProvider = {
             NSWorkspace.shared.runningApplications
                 .filter { !$0.isTerminated }
-                .map(ApplicationService.identifierCandidate)
+                .compactMap(ApplicationService.identifierCandidate)
         },
         applicationMutationCandidateProvider: @escaping ApplicationMutationCandidateProvider = { pid in
             guard let application = NSRunningApplication(processIdentifier: pid), !application.isTerminated else {
@@ -255,7 +260,7 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
             ApplicationService.requestAccessibilityActivation,
         applicationActiveProvider: @escaping ApplicationActiveProvider = { $0.isActive },
         frontmostProcessIdentifierProvider: @escaping FrontmostProcessIdentifierProvider = {
-            NSWorkspace.shared.frontmostApplication?.processIdentifier
+            NSWorkspace.shared.frontmostApplication.flatMap(RunningApplicationProcessIdentity.resolve)
         },
         windowServerActivationStateProvider: @escaping WindowServerActivationStateProvider =
             ApplicationService.windowServerActivationState,
@@ -285,9 +290,10 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
         applicationVisibilitySleepHandler: @escaping ApplicationVisibilitySleepHandler = { duration in
             try await Task.sleep(for: duration)
         },
-        runningApplicationProcessIdentifiersProvider: @escaping RunningApplicationProcessIdentifiersProvider = {
-            NSWorkspace.shared.runningApplications.map(\.processIdentifier)
-        },
+        runningApplicationProcessIdentifiersProvider: RunningApplicationProcessIdentifiersProvider? = nil,
+        runningApplicationsProvider: @escaping RunningApplicationsProvider = { NSWorkspace.shared.runningApplications },
+        applicationProcessIdentifierResolver: @escaping ApplicationProcessIdentifierResolver =
+            RunningApplicationProcessIdentity.resolve,
         applicationWindowCatalogProvider: @escaping ApplicationWindowCatalogProvider = {
             WindowIdentityService.readWindowCatalog()
         },
@@ -298,6 +304,7 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
                 processStartIdentity: generation,
                 timeoutSeconds: timeout)
         },
+        applicationInventoryWorker: DetachedApplicationInventoryWorker = .shared,
         applicationMetadataTimeout: TimeInterval = ApplicationService.applicationMetadataTimeout,
         applicationInventoryOverallTimeout: TimeInterval = ApplicationService.applicationInventoryOverallTimeout,
         maximumConcurrentApplicationMetadataReads: Int = ApplicationService.maximumConcurrentApplicationMetadataReads,
@@ -339,10 +346,15 @@ public final class ApplicationService: ApplicationServiceProtocol, ApplicationMu
         self.applicationNativeVisibilityHandler = applicationNativeVisibilityHandler
         self.applicationVisibilityHandler = applicationVisibilityHandler
         self.applicationVisibilitySleepHandler = applicationVisibilitySleepHandler
-        self.runningApplicationProcessIdentifiersProvider = runningApplicationProcessIdentifiersProvider
+        self.runningApplicationsProvider = runningApplicationsProvider
+        self.applicationProcessIdentifierResolver = applicationProcessIdentifierResolver
+        self.runningApplicationProcessIdentifiersProvider = runningApplicationProcessIdentifiersProvider ?? {
+            runningApplicationsProvider().compactMap(applicationProcessIdentifierResolver)
+        }
         self.applicationWindowCatalogProvider = applicationWindowCatalogProvider
         self.applicationInventoryNowProvider = applicationInventoryNowProvider
         self.applicationMetadataProvider = applicationMetadataProvider
+        self.applicationInventoryWorker = applicationInventoryWorker
         self.applicationMetadataTimeout = applicationMetadataTimeout
         self.applicationInventoryOverallTimeout = max(0.001, applicationInventoryOverallTimeout)
         self.maximumConcurrentApplicationMetadataReads = max(1, maximumConcurrentApplicationMetadataReads)

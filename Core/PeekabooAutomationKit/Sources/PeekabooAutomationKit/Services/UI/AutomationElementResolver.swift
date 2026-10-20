@@ -352,9 +352,10 @@ struct AutomationElementResolver: AutomationElementResolving {
             return []
         }
 
-        let axApp = AXApp(app)
+        guard let processIdentifier = RunningApplicationProcessIdentity.resolve(app) else { return [] }
+        let appElement = Element(AXUIElementCreateApplication(processIdentifier))
         if let detectedElement, DetectedElementRootPolicy.requiresApplicationRoot(detectedElement) {
-            return [axApp.element]
+            return [appElement]
         }
 
         if let rawWindowID = windowContext?.windowID {
@@ -366,20 +367,20 @@ struct AutomationElementResolver: AutomationElementResolving {
             return [root]
         }
 
-        let windows = axApp.windows() ?? []
+        let windows = appElement.windows() ?? []
 
         if let title = windowContext?.windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines),
            !title.isEmpty,
            let match = windows.first(where: { $0.title() == title })
         {
-            return [match, axApp.element]
+            return [match, appElement]
         }
 
-        if let focused = axApp.focusedWindow() {
-            return [focused] + windows + [axApp.element]
+        if let focused = appElement.focusedWindow() {
+            return [focused] + windows + [appElement]
         }
 
-        return windows + [axApp.element]
+        return windows + [appElement]
     }
 
     func application(windowContext: WindowContext?, targetProcessIdentifier: pid_t?) -> NSRunningApplication? {
@@ -391,7 +392,8 @@ struct AutomationElementResolver: AutomationElementResolving {
             }
 
             guard let app = NSRunningApplication(processIdentifier: targetProcessIdentifier),
-                  !app.isTerminated
+                  !app.isTerminated,
+                  RunningApplicationProcessIdentity.resolve(app) == targetProcessIdentifier
             else {
                 return nil
             }
@@ -407,7 +409,7 @@ struct AutomationElementResolver: AutomationElementResolving {
         if let processId = windowContext?.applicationProcessId,
            let app = NSRunningApplication(processIdentifier: processId)
         {
-            return app.isTerminated ? nil : app
+            return !app.isTerminated && RunningApplicationProcessIdentity.resolve(app) == processId ? app : nil
         }
 
         if let bundleIdentifier = windowContext?.applicationBundleId,

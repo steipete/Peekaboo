@@ -26,10 +26,12 @@ extension WindowManagementService {
     func findWindowByTitleInApp(_ titleSubstring: String, app: ServiceApplicationInfo) throws -> Element {
         self.logger.info("Searching for window with title containing: '\(titleSubstring)' in app: \(app.name)")
 
-        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else {
+        guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier),
+              RunningApplicationProcessIdentity.resolve(runningApp) == app.processIdentifier
+        else {
             throw NotFoundError.application(app.name)
         }
-        let appElement = AXApp(runningApp).element
+        let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
 
         guard let windows = appElement.windows() else {
             throw NotFoundError.window(app: app.name)
@@ -53,15 +55,17 @@ extension WindowManagementService {
         startTime: Date) -> Element?
     {
         guard let frontmostApp = apps.first(where: { app in
-            NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
+            NSWorkspace.shared.frontmostApplication.flatMap(RunningApplicationProcessIdentity.resolve) ==
+                app.processIdentifier
         }) else {
             return nil
         }
 
         self.logger.debug("Checking frontmost app first: \(frontmostApp.name)")
-        guard let runningApp = NSRunningApplication(processIdentifier: frontmostApp.processIdentifier)
+        guard let runningApp = NSRunningApplication(processIdentifier: frontmostApp.processIdentifier),
+              RunningApplicationProcessIdentity.resolve(runningApp) == frontmostApp.processIdentifier
         else { return nil }
-        let appElement = AXApp(runningApp).element
+        let appElement = Element(AXUIElementCreateApplication(frontmostApp.processIdentifier))
 
         guard let windows = appElement.windows() else { return nil }
         for window in windows where window.title()?.localizedCaseInsensitiveContains(titleSubstring) == true {
@@ -88,8 +92,10 @@ extension WindowManagementService {
                 continue
             }
 
-            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) else { continue }
-            let appElement = AXApp(runningApp).element
+            guard let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier),
+                  RunningApplicationProcessIdentity.resolve(runningApp) == app.processIdentifier
+            else { continue }
+            let appElement = Element(AXUIElementCreateApplication(app.processIdentifier))
 
             guard let windows = appElement.windows() else { continue }
             totalWindows += windows.count
