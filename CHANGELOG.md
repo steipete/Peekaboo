@@ -2,19 +2,24 @@
 
 ## Unreleased
 
+- Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch. #1123.
+
+## 4.9.6 - 2026-10-20
+
+**Highlights:** Find, inspect and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1; report `window close` as closed when an app keeps the closed window alive or quits; use the Mac app's saved Vision model for image analysis; and keep the Mac chat's Stop button, follow-ups, transcript, menu bar and recent sessions reliable.
+
+- See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
+- Report `window close` as closed when the app keeps the closed `NSWindow` alive, such as Calculator's About panel: an off-screen WindowServer row no longer counts as the window remaining once Accessibility no longer exposes it. Thanks @jandubois! #1116, fixes #1106.
+- Report `window close` as closed when the owning process exits during close verification (for example the last window of an app that quits) instead of failing with a changed-identity error; a reused PID still counts as a replacement. #1109, refs #1106.
 - Use the Mac app's saved Vision model for screenshots and image analysis: a custom choice is written to `agent.visionModel` in `config.json` (as `provider/modelId`) and used by `see`/`analyze` when no model is given, while "Same as agent model" removes it. Thanks @SebTardif! #1110.
-- Move macOS CI and qualification jobs to Xcode 27 runners (except CodeQL Swift tracing), retain macOS 15 deployment and runtime-symbol checks, and smoke-test Intel artifacts under Rosetta.
-- Keep underscores inside words, such as `WINDOW_NOT_FOUND` or `browser_wait_for`, literal on the documentation site instead of rendering them as emphasis. Thanks @rudycelekli! #1112.
-- Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
+- Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
 - Keep the Mac chat's Stop button attached to the running task when you send follow-ups: follow-ups now queue behind the active task and run in order, Stop cancels the in-flight provider request and discards queued follow-ups, and a queued prompt stays with the session it was sent from. Thanks @SebTardif! #1095.
 - Stop recording Mac chat prompts twice from the menu bar or queued follow-ups, stop appending a combined copy of the reply after multi-step runs, and title a new chat from its first prompt again. #1117.
-- Save the Mac app's Ollama base URL to `config.json` so the CLI uses it, and clear it when reset to `http://localhost:11434` instead of restoring the old URL on the next launch. Thanks @SebTardif! #1104.
-- Report `window close` as closed when the app keeps the closed `NSWindow` alive, such as Calculator's About panel: an off-screen WindowServer row no longer counts as the window remaining once Accessibility no longer exposes it. Thanks @jandubois! #1116, fixes #1106.
-- Report `window close` as closed when the owning process exits during close verification (for example the last window of an app that quits) instead of failing with a changed-identity error; a reused PID still counts as a replacement. Refs #1106.
-- See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
-- Keep the Mac menu bar's chat in sync with the conversation: new messages, streamed replies, generated titles and summaries now show up there, and deleting that chat no longer leaves it selected. Thanks @SebTardif! #1107.
 - Open the chat you clicked under Recent Sessions in the Mac menu bar instead of the one already selected; that window can continue or retry its chat without first switching the menu bar's selection. Thanks @SebTardif! #1108.
-- Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch. #1123.
+- Keep the Mac menu bar's chat in sync with the conversation: new messages, streamed replies, generated titles and summaries now show up there, and deleting that chat no longer leaves it selected. Thanks @SebTardif! #1107.
+- Keep the Mac app's chat history when `sessions.json` cannot be decoded: move the unreadable file aside instead of overwriting it, save atomically, and show a notice while saves are blocked. Thanks @SebTardif! #1102.
+- Keep underscores inside words, such as `WINDOW_NOT_FOUND` or `browser_wait_for`, literal on the documentation site instead of rendering them as emphasis. Thanks @rudycelekli! #1112.
+- Move macOS CI and qualification jobs to Xcode 27 runners (except CodeQL Swift tracing), retain macOS 15 deployment and runtime-symbol checks, and smoke-test Intel artifacts under Rosetta.
 
 ## 4.9.5 - 2026-10-16
 

@@ -609,12 +609,13 @@ jobs:
           set -o pipefail
           test_log="$RUNNER_TEMP/interaction-receipt-contracts.log"
           swift test --disable-xctest --enable-swift-testing --no-parallel \
-            --filter '^CLIAutomationTests[.](PressCommandTests|ClickCommandTests|ClickCommandActionResultTests|ClickSnapshotWindowSelectionTests|SelectTextCommandTests)/' 2>&1 | tee "$test_log"
+            --filter '^CLIAutomationTests[.](PressCommandTests|ClickCommandTests|ClickCommandActionResultTests|ClickSnapshotWindowSelectionTests|SelectTextCommandTests|DialogCommandTests)/' 2>&1 | tee "$test_log"
           grep -Fq 'Suite PressCommandTests passed after ' "$test_log"
           grep -Fq 'Suite ClickCommandTests passed after ' "$test_log"
           grep -Fq 'Suite ClickCommandActionResultTests passed after ' "$test_log"
           grep -Fq 'Suite ClickSnapshotWindowSelectionTests passed after ' "$test_log"
           grep -Fq 'Suite SelectTextCommandTests passed after ' "$test_log"
+          grep -Fq 'Suite DialogCommandTests passed after ' "$test_log"
           grep -Eq 'Test run with [1-9][0-9]* tests?( in [0-9]+ suites?)? passed after ' "$test_log"
 
           scroll_log="$RUNNER_TEMP/background-coordinate-scroll-cli.log"
