@@ -92,7 +92,7 @@ struct OverlayHitTestingTests {
     }
 
     @Test
-    func `a window missing from the layer zero catalog stays hoverable`() {
+    func `a window missing from the catalog stays hoverable`() {
         let matched = (ownerPID: 1, frames: [CGRect(x: 0, y: 0, width: 200, height: 100)])
         let palette = (ownerPID: 2, frames: [CGRect(x: 400, y: 40, width: 80, height: 40)])
         let order = OverlayHitTesting.windowOrder(
@@ -121,5 +121,31 @@ struct OverlayHitTestingTests {
             containing: CGPoint(x: 80, y: 80),
             in: [window])
         #expect(index == nil)
+    }
+
+    @Test
+    func `a floating palette above a document window wins the hover`() {
+        let document = (ownerPID: 1, frames: [
+            CGRect(x: 0, y: 0, width: 400, height: 300),
+            CGRect(x: 100, y: 100, width: 60, height: 20),
+        ])
+        let palette = (ownerPID: 1, frames: [
+            CGRect(x: 80, y: 80, width: 120, height: 80),
+            CGRect(x: 90, y: 90, width: 100, height: 40),
+        ])
+        // CGWindowList lists the higher-level palette before the document window.
+        let order = OverlayHitTesting.windowOrder(
+            elementGroups: [document, palette],
+            onScreenFrontToBack: [
+                (ownerPID: 1, bounds: CGRect(x: 80, y: 80, width: 120, height: 80)),
+                (ownerPID: 1, bounds: CGRect(x: 0, y: 0, width: 400, height: 300)),
+            ],
+            frontmostPID: 1)
+        #expect(order == [1, 0])
+        let hit = OverlayHitTesting.frontmostElementIndex(
+            containing: CGPoint(x: 120, y: 110),
+            windowsFrontToBack: order.map { [document, palette][$0].frames })
+        #expect(hit?.window == 0)
+        #expect(hit?.element == 1)
     }
 }

@@ -454,10 +454,13 @@ public final class OverlayManager {
             kCGNullWindowID) as? [[String: Any]]
         else { return [] }
         var windows: [(ownerPID: Int, bounds: CGRect)] = []
+        // Keep every level: floating palettes and modal panels sit above normal windows.
+        // Only the Inspector's own overlay windows are skipped.
+        let inspectorPID = Int(ProcessInfo.processInfo.processIdentifier)
         for dict in info {
-            let layer = (dict[kCGWindowLayer as String] as? NSNumber)?.intValue ?? 0
-            guard layer == 0 else { continue }
-            guard let pid = (dict[kCGWindowOwnerPID as String] as? NSNumber)?.intValue else { continue }
+            guard let pid = (dict[kCGWindowOwnerPID as String] as? NSNumber)?.intValue,
+                  pid != inspectorPID
+            else { continue }
             guard let boundsDict = dict[kCGWindowBounds as String] as? [String: Any] else { continue }
             let bounds = CGRect(
                 x: (boundsDict["X"] as? NSNumber)?.doubleValue ?? 0,
