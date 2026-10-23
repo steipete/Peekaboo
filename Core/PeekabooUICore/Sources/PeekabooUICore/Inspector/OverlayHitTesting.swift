@@ -127,10 +127,15 @@ enum OverlayHitTesting {
                     return nil
                 }
             case let .window(group):
-                guard groupFrames.indices.contains(group),
-                      let hit = self.frontmostElementIndex(containing: point, windowsFrontToBack: [groupFrames[group]])
-                else { continue }
-                return (group, hit.element)
+                guard groupFrames.indices.contains(group) else { continue }
+                if let hit = self.frontmostElementIndex(containing: point, windowsFrontToBack: [groupFrames[group]]) {
+                    return (group, hit.element)
+                }
+                // Descendants can extend past the window, such as a popup menu's items.
+                let descendants = Array(groupFrames[group].dropFirst())
+                if let index = self.smallestIndex(containing: point, in: descendants) {
+                    return (group, index + 1)
+                }
             }
         }
         return nil

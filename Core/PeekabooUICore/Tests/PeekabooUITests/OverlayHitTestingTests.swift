@@ -214,4 +214,30 @@ struct OverlayHitTestingTests {
             frontmostPID: 1)
         #expect(layers == [.window(0)])
     }
+
+    @Test
+    func `a popup item outside its host window stays hoverable ahead of windows behind`() {
+        let host = (ownerPID: 1, frames: [
+            CGRect(x: 0, y: 0, width: 400, height: 300),
+            CGRect(x: 100, y: 280, width: 80, height: 20),
+            CGRect(x: 100, y: 320, width: 120, height: 20),
+        ])
+        let behind = (ownerPID: 2, frames: [
+            CGRect(x: 0, y: 300, width: 400, height: 300),
+            CGRect(x: 90, y: 310, width: 200, height: 60),
+        ])
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: [host, behind],
+            onScreenFrontToBack: [
+                (ownerPID: 1, bounds: CGRect(x: 0, y: 0, width: 400, height: 300)),
+                (ownerPID: 2, bounds: CGRect(x: 0, y: 300, width: 400, height: 300)),
+            ],
+            frontmostPID: 1)
+        let hit = OverlayHitTesting.hoveredElement(
+            containing: CGPoint(x: 130, y: 330),
+            layers: layers,
+            groupFrames: [host.frames, behind.frames])
+        #expect(hit?.group == 0)
+        #expect(hit?.element == 2)
+    }
 }
