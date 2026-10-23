@@ -720,7 +720,7 @@ extension PeekabooAgent {
 
         let startTime = self.toolExecutionHistory[index].timestamp
         let duration = Date().timeIntervalSince(startTime)
-        self.toolExecutionHistory[index].status = .completed
+        self.toolExecutionHistory[index].status = Self.toolExecutionStatus(for: result)
         self.toolExecutionHistory[index].result = result
         self.toolExecutionHistory[index].duration = duration
 
@@ -751,6 +751,17 @@ extension PeekabooAgent {
 // MARK: - Tool Display Helpers
 
 extension PeekabooAgent {
+    static func toolExecutionStatus(for result: String) -> ToolExecutionStatus {
+        switch ToolResultKind.classify(result) {
+        case .completed:
+            .completed
+        case .failed:
+            .failed
+        case .cancelled:
+            .cancelled
+        }
+    }
+
     /// Get icon for tool name (delegates to formatter bridge)
     static func iconForTool(_ toolName: String) -> String {
         ToolFormatterBridge.shared.toolIcon(for: toolName)
