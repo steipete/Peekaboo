@@ -8,6 +8,7 @@
 - Use the Mac app's saved Vision model for image analysis even when its provider does not report vision support (OpenRouter, OpenAI-compatible, LM Studio and many Ollama models), surfacing the provider's error instead of silently switching models. Thanks @SebTardif! #1127.
 - Keep the Mac chat's streaming answer together when you queue a follow-up, and keep Retry on the prompt that failed. Thanks @SebTardif! #1126.
 - Show a failed Mac agent tool as failed, not completed, in the menu bar, while cancelled tools stay cancelled. Thanks @SebTardif! #1134.
+- Place Inspector highlight boxes on the correct display when a display does not start at the primary display's origin. Thanks @SebTardif! #1132.
 - Restore source builds after the pinned MCP Swift SDK commit became unreachable upstream when its pull request branch was rebased. #1135.
 - Classify Dock separators and the Trash from their Accessibility subroles, so `peekaboo dock list` hides separators unless `--include-all` is passed, reports included separators as `separator` instead of blank `unknown` items, and identifies a localized Trash (such as "Papierkorb") as `trash`. #1120.
 - Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch. #1123.
