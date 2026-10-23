@@ -94,7 +94,7 @@ extension PeekabooBridgeServer {
             guard let identity = request.pinnedWindowMutation?.identity else {
                 throw DesktopTargetIdentityError.incompleteExactWindow
             }
-            let rawReadback: ServiceWindowInfo?
+            var rawReadback: ServiceWindowInfo?
             do {
                 if request.operation == .focusWindow, let focusReadback {
                     rawReadback = focusReadback
@@ -111,6 +111,13 @@ extension PeekabooBridgeServer {
                 } else {
                     throw error
                 }
+            }
+            if [.closeWindow, .backgroundCloseWindow].contains(request.operation),
+               rawReadback != nil,
+               let presenceProvider = self.services.windows as? any WindowClosePresenceProviding,
+               try await presenceProvider.windowClosePresence(expectedIdentity: identity) == .missing
+            {
+                rawReadback = nil
             }
             if request.operation == .maximizeWindow, let rawReadback {
                 let visibleWorkArea = self.maximizedVisibleWorkAreaProvider(rawReadback.bounds)

@@ -465,6 +465,24 @@ extension WindowManagementService {
         try await self.verifyPinnedWindowClose(expectedIdentity) == .succeeded
     }
 
+    public func windowClosePresence(
+        expectedIdentity: WindowMutationIdentity) async throws -> WindowClosePresence
+    {
+        let disposition = try await readPinnedWindowClosePresence(
+            expectedIdentity: expectedIdentity,
+            windowServerIdentity: SystemIdentityResolver.windowIdentity(CGWindowID(expectedIdentity.windowID)),
+            processStartIdentityReader: SystemIdentityResolver.processStartIdentity,
+            axPresenceReader: {
+                await BoundedBackgroundWindowAX.windowPresence(expectedIdentity: expectedIdentity)
+            })
+        return switch disposition {
+        case .present: .present
+        case .missing: .missing
+        case .replacement: .replacement
+        case .unverifiable: .unverifiable
+        }
+    }
+
     func requirePinnedForegroundCloseReadiness(
         _ expectedIdentity: WindowMutationIdentity,
         focusSucceeded: Bool) async throws
