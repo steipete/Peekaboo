@@ -120,6 +120,46 @@ struct PeekabooAIServiceTests {
 
     @Test
     @MainActor
+    func `Saved vision model is used when supportsVision is false`() throws {
+        try self.withIsolatedAIService(
+            configJSON: """
+            {
+              "aiProviders": { "providers": "openai/gpt-5.6,ollama/llama3.2" },
+              "agent": { "visionModel": "ollama/llama3.2" }
+            }
+            """) { service in
+                #expect(service.resolvedDefaultVisionModel == .openai(.gpt56Sol))
+                #expect(service.resolvedDefaultVisionModel?.supportsVision == true)
+                let analysisModel = try service.resolvedAnalysisVisionModel()
+                #expect(analysisModel == .ollama(.llama32))
+                #expect(analysisModel.supportsVision == false)
+                #expect(analysisModel != service.resolvedDefaultVisionModel)
+            }
+    }
+
+    @Test
+    @MainActor
+    func `An unreadable saved vision model is not replaced`() throws {
+        try self.withIsolatedAIService(
+            configJSON: """
+            {
+              "aiProviders": { "providers": "openai/gpt-5.6" },
+              "agent": { "visionModel": "not a model" }
+            }
+            """) { service in
+                do {
+                    _ = try service.resolvedAnalysisVisionModel()
+                    Issue.record("The unreadable saved model was replaced")
+                } catch {
+                    #expect(error.localizedDescription.contains("not a model"))
+                    #expect(error.localizedDescription.contains("Same as agent model"))
+                    #expect(!error.localizedDescription.contains("gpt-5.6"))
+                }
+            }
+    }
+
+    @Test
+    @MainActor
     func `Parses Ollama provider/model entries without defaulting to Llama`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("peekaboo-config-\(UUID().uuidString)", isDirectory: true)
