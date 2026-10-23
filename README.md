@@ -51,9 +51,9 @@ peekaboo see --app Finder --json
 
 That is the core loop: observe the current screen, choose an element from the result, and act on it.
 
-## What's new in 4.9.6
+## What's new in 4.9.7
 
-Peekaboo 4.9.6 is a fix release. Apps that re-exec themselves on launch, such as Xcode's Device Hub, are no longer invisible: AppKit reports their PID as -1, and Peekaboo now recovers the one verified live process so they can be listed, inspected and captured. `window close` reports success when an app keeps its closed window alive or quits, the Mac app's saved Vision model is used for image analysis, and the Mac chat keeps Stop attached across follow-ups, records each prompt and reply once, keeps the menu bar in sync and opens the recent session you clicked.
+Peekaboo 4.9.7 is a fix release. `window close` through the daemon now reports success when an app keeps its closed window alive, `see` works on Chrome windows whose titles carry the app name or are elided, `window close --foreground` handles apps that re-exec themselves, and `dock list` hides separators. In the Mac app, the chat keeps a streaming answer together when you queue a follow-up, failed tools show as failed, the saved Vision model is used even when its provider doesn't advertise vision, and the Inspector highlights the control you are actually pointing at on every display.
 
 ## Automate an app
 
