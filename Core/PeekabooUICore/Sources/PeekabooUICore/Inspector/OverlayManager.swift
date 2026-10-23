@@ -10,6 +10,7 @@ import AXorcist
 import Observation
 import os.log
 import PeekabooCore
+import PeekabooFoundation
 import SwiftUI
 
 /// Protocol for customizing overlay manager behavior
@@ -152,6 +153,8 @@ public final class OverlayManager {
     @ObservationIgnored
     private var eventMonitor: Any?
     @ObservationIgnored
+    private var localEventMonitor: Any?
+    @ObservationIgnored
     private var updateTimer: Timer?
     @ObservationIgnored
     private var overlayWindows: [String: NSWindow] = [:] // Bundle ID -> Window
@@ -178,6 +181,10 @@ public final class OverlayManager {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             self.eventMonitor = nil
+        }
+        if let monitor = localEventMonitor {
+            NSEvent.removeMonitor(monitor)
+            self.localEventMonitor = nil
         }
         self.updateTimer?.invalidate()
         self.updateTimer = nil
@@ -209,27 +216,20 @@ public final class OverlayManager {
     // MARK: - Private Methods
 
     private func setupEventMonitoring() {
-        self.eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [
-            .mouseMoved,
-            .leftMouseDown,
-        ]) { [weak self] event in
-            // Process the event asynchronously
+        let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDown]
+        // Global monitors do not receive events delivered to this app, and the
+        // overlay ignores the mouse so other apps never reach a local monitor.
+        self.eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+            let eventType = event.type
             Task { @MainActor in
-                guard let self else { return }
-
-                self.currentMouseLocation = event.locationInWindow
-
-                if event.type == .mouseMoved, self.isOverlayActive {
-                    await self.updateHoveredElement()
-                } else if event.type == .leftMouseDown, self.isOverlayActive {
-                    if let hovered = self.hoveredElement {
-                        self.selectedElement = hovered
-                        self.delegate?.overlayManager(self, didSelectElement: hovered)
-                    }
-                }
+                await self?.handleOverlayMouse(eventType)
             }
-
-            // Return the event unchanged to pass it through
+        }
+        self.localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            let eventType = event.type
+            Task { @MainActor in
+                await self?.handleOverlayMouse(eventType)
+            }
             return event
         }
 
@@ -388,15 +388,34 @@ public final class OverlayManager {
             keyboardShortcut: element.keyboardShortcut())
     }
 
+    private func handleOverlayMouse(_ eventType: NSEvent.EventType) async {
+        self.currentMouseLocation = NSEvent.mouseLocation
+        guard self.isOverlayActive else { return }
+        if eventType == .mouseMoved {
+            await self.updateHoveredElement()
+        } else if eventType == .leftMouseDown, let hovered = self.hoveredElement {
+            self.selectedElement = hovered
+            self.delegate?.overlayManager(self, didSelectElement: hovered)
+        }
+    }
+
     private func updateHoveredElement() async {
-        let mouseLocation = NSEvent.mouseLocation
-
-        // Find element at mouse location
-        for app in self.applications {
-            guard let element = app.elements.first(where: { $0.frame.contains(mouseLocation) }) else {
-                continue
-            }
-
+        let mouseLocation = OverlayHitTesting.accessibilityPoint(
+            fromAppKit: NSEvent.mouseLocation,
+            primaryScreen: NSScreen.screens.first { $0.frame.origin == .zero }?.frame)
+        let groups = self.elementGroups()
+        let groupFrames = groups.map { $0.elements.map(\.frame) }
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: groups.map { (ownerPID: Int($0.pid), frames: $0.elements.map(\.frame)) },
+            onScreenFrontToBack: self.onScreenWindows(),
+            frontmostPID: NSWorkspace.shared.frontmostApplication.map { Int($0.processIdentifier) })
+        if let hit = OverlayHitTesting.hoveredElement(
+            containing: mouseLocation,
+            layers: layers,
+            groupFrames: groupFrames),
+            groups[hit.group].elements.indices.contains(hit.element)
+        {
+            let element = groups[hit.group].elements[hit.element]
             if self.hoveredElement?.id != element.id {
                 self.hoveredElement = element
                 self.delegate?.overlayManager(self, didHoverElement: element)
@@ -409,6 +428,50 @@ public final class OverlayManager {
             self.hoveredElement = nil
             self.delegate?.overlayManager(self, didHoverElement: nil)
         }
+    }
+
+    private func elementGroups() -> [(pid: pid_t, elements: [UIElement])] {
+        var groups: [(pid: pid_t, elements: [UIElement])] = []
+        for app in self.applications {
+            var current: [UIElement] = []
+            for element in app.elements {
+                if element.parentID == nil, !current.isEmpty {
+                    groups.append((app.processID, current))
+                    current = []
+                }
+                current.append(element)
+            }
+            if !current.isEmpty {
+                groups.append((app.processID, current))
+            }
+        }
+        return groups
+    }
+
+    private func onScreenWindows() -> [(ownerPID: Int, bounds: CGRect)] {
+        guard let info = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID) as? [[String: Any]]
+        else { return [] }
+        var windows: [(ownerPID: Int, bounds: CGRect)] = []
+        // Keep every level: floating palettes and modal panels sit above normal windows.
+        // The Inspector's own overlays and fully transparent windows hide nothing.
+        let inspectorPID = Int(ProcessInfo.processInfo.processIdentifier)
+        for dict in info {
+            guard let pid = (dict[kCGWindowOwnerPID as String] as? NSNumber)?.intValue,
+                  pid != inspectorPID,
+                  ((dict[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1) > 0
+            else { continue }
+            guard let boundsDict = dict[kCGWindowBounds as String] as? [String: Any] else { continue }
+            let bounds = CGRect(
+                x: (boundsDict["X"] as? NSNumber)?.doubleValue ?? 0,
+                y: (boundsDict["Y"] as? NSNumber)?.doubleValue ?? 0,
+                width: (boundsDict["Width"] as? NSNumber)?.doubleValue ?? 0,
+                height: (boundsDict["Height"] as? NSNumber)?.doubleValue ?? 0)
+            guard bounds.width > 0, bounds.height > 0 else { continue }
+            windows.append((pid, bounds))
+        }
+        return windows
     }
 
     private func roleToElementCategory(_ role: String) -> ElementCategory {
