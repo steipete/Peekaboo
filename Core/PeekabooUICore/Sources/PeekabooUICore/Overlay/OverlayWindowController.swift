@@ -75,7 +75,13 @@ public class OverlayWindowController {
         let window = self.overlayWindows[screen] ?? self.createOverlayWindow(for: screen)
 
         // Update content
-        let overlayView = AllAppsOverlayView(overlayManager: overlayManager, preset: preset)
+        let screens = NSScreen.screens.map(\.frame)
+        let primary = OverlayScreenGeometry.primaryFrame(in: screens, fallback: screen.frame)
+        let overlayView = AllAppsOverlayView(
+            overlayManager: overlayManager,
+            preset: preset,
+            screenFrame: screen.frame,
+            primaryScreenFrame: primary)
         window.contentView = NSHostingView(rootView: overlayView)
 
         // Position and show

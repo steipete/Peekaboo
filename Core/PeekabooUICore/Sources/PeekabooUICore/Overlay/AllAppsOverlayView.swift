@@ -12,13 +12,19 @@ import SwiftUI
 public struct AllAppsOverlayView: View {
     @Bindable private var overlayManager: OverlayManager
     let preset: any ElementStyleProvider
+    let screenFrame: CGRect
+    let primaryScreenFrame: CGRect
 
     public init(
         overlayManager: OverlayManager,
-        preset: any ElementStyleProvider = InspectorVisualizationPreset())
+        preset: any ElementStyleProvider = InspectorVisualizationPreset(),
+        screenFrame: CGRect,
+        primaryScreenFrame: CGRect)
     {
         self._overlayManager = Bindable(overlayManager)
         self.preset = preset
+        self.screenFrame = screenFrame
+        self.primaryScreenFrame = primaryScreenFrame
     }
 
     public var body: some View {
@@ -31,24 +37,30 @@ public struct AllAppsOverlayView: View {
 
                 // Overlay elements from all applications
                 ForEach(self.overlayManager.applications) { app in
-                    AppOverlayView(application: app, preset: self.preset)
+                    AppOverlayView(
+                        application: app,
+                        preset: self.preset,
+                        screenFrame: self.screenFrame,
+                        primaryScreenFrame: self.primaryScreenFrame)
                 }
 
-                // Hover highlight
                 if let hoveredElement = overlayManager.hoveredElement {
                     HoverHighlightView(element: hoveredElement)
                         .position(
-                            x: hoveredElement.frame.midX,
-                            y: hoveredElement.frame.midY)
+                            OverlayScreenGeometry.swiftUICenter(
+                                for: hoveredElement.frame,
+                                on: self.screenFrame,
+                                primaryScreen: self.primaryScreenFrame))
                         .allowsHitTesting(false)
                 }
 
-                // Selection highlight
                 if let selectedElement = overlayManager.selectedElement {
                     SelectionHighlightView(element: selectedElement)
                         .position(
-                            x: selectedElement.frame.midX,
-                            y: selectedElement.frame.midY)
+                            OverlayScreenGeometry.swiftUICenter(
+                                for: selectedElement.frame,
+                                on: self.screenFrame,
+                                primaryScreen: self.primaryScreenFrame))
                         .allowsHitTesting(false)
                 }
             }
