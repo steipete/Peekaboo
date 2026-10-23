@@ -50,6 +50,14 @@ final class PeekabooAgent {
     @ObservationIgnored
     private var promptsAcceptedWhileStopping: [PendingPrompt] = []
 
+    /// User rows written before their turn starts. The live turn inserts ahead of these.
+    @ObservationIgnored
+    private var unstartedUserMessageIDs: [UUID] = []
+
+    /// Rows whose turn was dropped. They stop being an insertion point after this runner closes.
+    @ObservationIgnored
+    private var discardedUserMessageIDs: [UUID] = []
+
     /// True after Stop until that runner finishes. New prompts must not join its queue.
     @ObservationIgnored
     private var runnerIsStopping = false
@@ -177,8 +185,10 @@ final class PeekabooAgent {
         var prompt = self.pendingPrompt(for: content, sessionId: sessionId)
         if self.processingTask != nil {
             if let session = self.sessionStore.sessions.first(where: { $0.id == prompt.sessionId }) {
-                self.logUserMessage(prompt.content, in: session)
+                let messageID = self.logUserMessage(prompt.content, in: session)
                 prompt.userMessageLogged = true
+                prompt.earlyMessageID = messageID
+                self.unstartedUserMessageIDs.append(messageID)
             }
             if self.runnerIsStopping {
                 self.promptsAcceptedWhileStopping.append(prompt)
@@ -204,17 +214,21 @@ final class PeekabooAgent {
     private func runQueuedTasks(first prompt: PendingPrompt) async throws {
         var next: PendingPrompt? = prompt
         var failure: (any Error)?
+        var isFollowUp = false
         defer { self.finishRunner() }
         while let current = next {
             if self.runnerIsStopping || Task.isCancelled {
+                self.noteDiscarded(self.queuedFollowUps)
                 self.queuedFollowUps.removeAll()
                 throw CancellationError()
             }
             do {
                 try await self.executeTaskInternal(
                     prompt: current,
-                    agentService: self.services.agent)
+                    agentService: self.services.agent,
+                    isFollowUp: isFollowUp)
             } catch is CancellationError {
+                self.noteDiscarded(self.queuedFollowUps)
                 self.queuedFollowUps.removeAll()
                 throw CancellationError()
             } catch {
@@ -222,10 +236,12 @@ final class PeekabooAgent {
                     failure = error
                 }
                 if self.runnerIsStopping {
+                    self.noteDiscarded(self.queuedFollowUps)
                     self.queuedFollowUps.removeAll()
                     throw CancellationError()
                 }
             }
+            isFollowUp = true
             next = self.popFollowUp()
         }
         if let failure {
@@ -241,8 +257,11 @@ final class PeekabooAgent {
     /// Closes the current runner. Prompts accepted after Stop start a new one.
     private func finishRunner() {
         let acceptedWhileStopping = self.promptsAcceptedWhileStopping
+        let dropped = self.queuedFollowUps
         self.promptsAcceptedWhileStopping.removeAll()
         self.queuedFollowUps.removeAll()
+        self.noteDiscarded(dropped)
+        self.forgetDiscardedUserMessages()
         self.runnerIsStopping = false
         self.isProcessing = false
         self.currentTask = ""
@@ -265,11 +284,15 @@ final class PeekabooAgent {
     @MainActor
     private func executeTaskInternal(
         prompt: PendingPrompt,
-        agentService: (any AgentServiceProtocol)?) async throws
+        agentService: (any AgentServiceProtocol)?,
+        isFollowUp: Bool) async throws
     {
         let taskDescription = self.taskDescription(for: prompt.content)
         try self.useSession(prompt.sessionId)
-        self.prepareForTask(description: taskDescription)
+        if let earlyMessageID = prompt.earlyMessageID {
+            self.unstartedUserMessageIDs.removeAll { $0 == earlyMessageID }
+        }
+        self.prepareForTask(description: taskDescription, isFollowUp: isFollowUp)
         defer { self.cleanupAfterTask() }
 
         do {
@@ -279,14 +302,15 @@ final class PeekabooAgent {
             if !prompt.userMessageLogged {
                 self.logUserMessage(prompt.content, in: session)
             }
-            let messageCountAtStart = self.sessionStore.sessions
-                .first(where: { $0.id == session.id })?.messages.count ?? 0
+            let existingMessageIDs = Set(
+                self.sessionStore.sessions
+                    .first(where: { $0.id == session.id })?.messages.map(\.id) ?? [])
             let result = try await self.runCurrentTask(
                 content: prompt.content,
                 description: taskDescription,
                 agent: configuredAgent)
             try Task.checkCancellation()
-            await self.persistResult(result, for: session, messageCountAtStart: messageCountAtStart)
+            await self.persistResult(result, for: session, existingMessageIDs: existingMessageIDs)
         } catch {
             try self.handleTaskError(error, taskDescription: taskDescription)
             throw error
@@ -351,6 +375,8 @@ final class PeekabooAgent {
     func cancelCurrentTask() {
         guard self.processingTask != nil else { return }
         self.runnerIsStopping = true
+        self.noteDiscarded(self.queuedFollowUps)
+        self.noteDiscarded(self.promptsAcceptedWhileStopping)
         self.queuedFollowUps.removeAll()
         self.promptsAcceptedWhileStopping.removeAll()
         self.processingTask?.cancel()
@@ -362,6 +388,7 @@ private struct PendingPrompt {
     var content: ModelMessage.ContentPart
     var sessionId: String?
     var userMessageLogged = false
+    var earlyMessageID: UUID?
 }
 
 // MARK: - Private Methods
@@ -395,12 +422,14 @@ extension PeekabooAgent {
     }
 
     @MainActor
-    private func prepareForTask(description: String) {
+    private func prepareForTask(description: String, isFollowUp: Bool) {
         self.isProcessing = true
         self.currentTask = description
         self.lastError = nil
-        self.lastFailedTask = nil
-        self.lastFailedSessionId = nil
+        if !isFollowUp {
+            self.lastFailedTask = nil
+            self.lastFailedSessionId = nil
+        }
         self.isThinking = true
         self.currentTool = nil
         self.currentToolArgs = nil
@@ -438,13 +467,45 @@ extension PeekabooAgent {
     }
 
     @MainActor
-    private func logUserMessage(_ content: ModelMessage.ContentPart, in session: PeekabooCore.ConversationSession) {
+    @discardableResult
+    private func logUserMessage(
+        _ content: ModelMessage.ContentPart,
+        in session: PeekabooCore.ConversationSession) -> UUID
+    {
         let messageContent: String = self.taskDescription(for: content)
         let userMessage = PeekabooCore.ConversationMessage(role: .user, content: messageContent)
         self.sessionStore.addMessage(userMessage, to: session)
 
         if session.title == "New Session" || session.title.isEmpty {
             self.sessionStore.generateTitleForSession(session)
+        }
+        return userMessage.id
+    }
+
+    private func noteDiscarded(_ prompts: [PendingPrompt]) {
+        self.discardedUserMessageIDs.append(contentsOf: prompts.compactMap(\.earlyMessageID))
+    }
+
+    private func forgetDiscardedUserMessages() {
+        let discarded = Set(self.discardedUserMessageIDs)
+        guard !discarded.isEmpty else { return }
+        self.unstartedUserMessageIDs.removeAll { discarded.contains($0) }
+        self.discardedUserMessageIDs.removeAll()
+    }
+
+    private func appendTurnMessage(
+        _ message: PeekabooCore.ConversationMessage,
+        to session: PeekabooCore.ConversationSession)
+    {
+        guard let sessionIndex = self.sessionStore.sessions.firstIndex(where: { $0.id == session.id }) else { return }
+        let messages = self.sessionStore.sessions[sessionIndex].messages
+        guard let boundary = messages.firstIndex(where: { self.unstartedUserMessageIDs.contains($0.id) }) else {
+            self.sessionStore.addMessage(message, to: session)
+            return
+        }
+        self.sessionStore.sessions[sessionIndex].messages.insert(message, at: boundary)
+        Task { @MainActor in
+            self.sessionStore.saveSessions()
         }
     }
 
@@ -485,14 +546,14 @@ extension PeekabooAgent {
     private func persistResult(
         _ result: AgentExecutionResult,
         for session: PeekabooCore.ConversationSession,
-        messageCountAtStart: Int) async
+        existingMessageIDs: Set<UUID>) async
     {
         self.currentSessionId = result.sessionId
         self.updateModelNameIfNeeded(for: session)
         self.appendAssistantMessageIfNeeded(
             result: result,
             session: session,
-            messageCountAtStart: messageCountAtStart)
+            existingMessageIDs: existingMessageIDs)
         self.appendSummaryIfNeeded(to: session)
 
         if !result.content.isEmpty {
@@ -514,20 +575,24 @@ extension PeekabooAgent {
     private func appendAssistantMessageIfNeeded(
         result: AgentExecutionResult,
         session: PeekabooCore.ConversationSession,
-        messageCountAtStart: Int)
+        existingMessageIDs: Set<UUID>)
     {
         guard !result.content.isEmpty else { return }
-        // Streaming already recorded each turn; result.content concatenates them after multi-step runs.
+        // A later follow-up is already in the list, so this turn's bubble is inserted before it.
+        // A tail count would miss that bubble and append result.content again.
         let messages = self.sessionStore.sessions.first(where: { $0.id == session.id })?.messages ?? []
-        let streamedReply = messages.dropFirst(messageCountAtStart)
-            .contains(where: { $0.role == .assistant && !$0.content.isEmpty })
+        let streamedReply = messages.contains { message in
+            message.role == .assistant &&
+                !message.content.isEmpty &&
+                !existingMessageIDs.contains(message.id)
+        }
         guard !streamedReply else { return }
 
         let assistantMessage = ConversationMessage(
             role: .assistant,
             content: result.content,
             toolCalls: [])
-        self.sessionStore.addMessage(assistantMessage, to: session)
+        self.appendTurnMessage(assistantMessage, to: session)
     }
 
     @MainActor
@@ -552,7 +617,7 @@ extension PeekabooAgent {
         let summaryMessage = PeekabooCore.ConversationMessage(
             role: .system,
             content: summaryContent)
-        self.sessionStore.addMessage(summaryMessage, to: session)
+        self.appendTurnMessage(summaryMessage, to: session)
     }
 
     @MainActor
@@ -563,23 +628,26 @@ extension PeekabooAgent {
                 let cancelMessage = PeekabooCore.ConversationMessage(
                     role: .system,
                     content: "\(AgentDisplayTokens.Status.warning) Task was cancelled by user")
-                self.sessionStore.addMessage(cancelMessage, to: session)
+                self.appendTurnMessage(cancelMessage, to: session)
             }
             return
         }
 
         self.lastError = error.localizedDescription
-        self.lastFailedTask = taskDescription
-        self.lastFailedSessionId = self.sessionStore.currentSession?.id
+        // A later follow-up failure must not replace the prompt the banner retries.
+        if self.lastFailedTask == nil {
+            self.lastFailedTask = taskDescription
+            self.lastFailedSessionId = self.sessionStore.currentSession?.id
+        }
         if let session = self.sessionStore.currentSession {
             let errorMessage = PeekabooCore.ConversationMessage(
                 role: .system,
                 content: "\(AgentDisplayTokens.Status.failure) Error: \(error.localizedDescription)")
-            self.sessionStore.addMessage(errorMessage, to: session)
+            self.appendTurnMessage(errorMessage, to: session)
         }
     }
 
-    private func handleAgentEvent(_ event: PeekabooCore.AgentEvent) {
+    func handleAgentEvent(_ event: PeekabooCore.AgentEvent) {
         switch event {
         case let .error(message):
             self.handleAgentErrorEvent(message)
@@ -614,28 +682,32 @@ extension PeekabooAgent {
         self.currentTool = nil
         self.currentToolArgs = nil
 
-        guard let currentSession = sessionStore.currentSession,
-              let sessionIndex = sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id }) else { return }
+        guard let currentSession = self.sessionStore.currentSession,
+              let sessionIndex = self.sessionStore.sessions.firstIndex(where: { $0.id == currentSession.id })
+        else { return }
 
-        if let lastMessage = sessionStore.sessions[sessionIndex].messages.last,
-           lastMessage.role == .assistant,
-           lastMessage.timestamp.timeIntervalSinceNow > -5.0
-        {
-            let accumulatedContent = lastMessage.content + delta
-            let updatedMessage = ConversationMessage(
-                id: lastMessage.id,
-                role: .assistant,
-                content: accumulatedContent,
-                timestamp: lastMessage.timestamp,
-                toolCalls: lastMessage.toolCalls)
-            self.sessionStore.sessions[sessionIndex]
-                .messages[self.sessionStore.sessions[sessionIndex].messages.count - 1] = updatedMessage
-        } else if !delta.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
-            let assistantMessage = PeekabooCore.ConversationMessage(
-                role: .assistant,
-                content: delta)
-            self.sessionStore.addMessage(assistantMessage, to: currentSession)
+        let messages = self.sessionStore.sessions[sessionIndex].messages
+        let boundary = messages.firstIndex(where: { self.unstartedUserMessageIDs.contains($0.id) }) ?? messages.count
+        if boundary > 0 {
+            let lastMessage = messages[boundary - 1]
+            if lastMessage.role == .assistant,
+               lastMessage.timestamp.timeIntervalSinceNow > -5.0
+            {
+                let updatedMessage = ConversationMessage(
+                    id: lastMessage.id,
+                    role: .assistant,
+                    content: lastMessage.content + delta,
+                    timestamp: lastMessage.timestamp,
+                    toolCalls: lastMessage.toolCalls)
+                self.sessionStore.sessions[sessionIndex].messages[boundary - 1] = updatedMessage
+                return
+            }
         }
+        guard !delta.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else { return }
+        let assistantMessage = PeekabooCore.ConversationMessage(
+            role: .assistant,
+            content: delta)
+        self.appendTurnMessage(assistantMessage, to: currentSession)
     }
 
     private func handleThinkingMessage(_ content: String) {
@@ -645,11 +717,11 @@ extension PeekabooAgent {
         self.currentTool = nil
         self.currentToolArgs = nil
 
-        if let currentSession = sessionStore.currentSession {
+        if let currentSession = self.sessionStore.currentSession {
             let thinkingMessage = PeekabooCore.ConversationMessage(
                 role: .system,
                 content: "\(AgentDisplayTokens.Status.planning) \(content)")
-            self.sessionStore.addMessage(thinkingMessage, to: currentSession)
+            self.appendTurnMessage(thinkingMessage, to: currentSession)
         }
     }
 
@@ -667,12 +739,12 @@ extension PeekabooAgent {
             name: name,
             arguments: arguments)
 
-        if let currentSession = sessionStore.currentSession {
+        if let currentSession = self.sessionStore.currentSession {
             let toolMessage = ConversationMessage(
                 role: .system,
                 content: formattedMessage,
                 toolCalls: [ConversationToolCall(name: name, arguments: arguments, result: "Running...")])
-            self.sessionStore.addMessage(toolMessage, to: currentSession)
+            self.appendTurnMessage(toolMessage, to: currentSession)
         }
 
         let execution = ToolExecution(
