@@ -103,8 +103,12 @@ The initialize handshake accepts arbitrary JSON values in `capabilities.experime
 `PeekabooMCPInitializationTests` sends raw requests through the production server and verifies that a successful
 initialize reaches `tools/list`, without invoking desktop tools.
 
-Peekaboo temporarily pins Swift MCP SDK commit `f7077e0d5cd57e0b2a497862017aa94ee344252f`, the single-commit
-decoder repair in [swift-sdk#276](https://github.com/modelcontextprotocol/swift-sdk/pull/276) on top of 0.12.1.
+Peekaboo temporarily pins Swift MCP SDK commit `6f02d8e7b5c0795698f5a90366f2081ebc91530d`, the single-commit
+decoder repair in [swift-sdk#276](https://github.com/modelcontextprotocol/swift-sdk/pull/276) on top of SDK main
+`72a09adb`. The PR's fork rebases its branch, which orphans the previous head: SwiftPM then cannot find the pinned
+commit and every uncached build fails dependency resolution. If that happens, re-pin the Core and CLI manifests
+to the PR's current head (confirm with `git range-diff` that the commit itself is unchanged) and regenerate the
+lockfiles below.
 Replace the Core and CLI manifest pins with a tagged SDK containing that repair when available, then regenerate
 the Core, Mac, and Xcode workspace lockfiles. The SDK's Swift `Client.Capabilities.experimental` type becomes
 `[String: Value]?`; source integrations passing a typed `[String: String]` dictionary must convert its values
