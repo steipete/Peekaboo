@@ -18,6 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../PeekabooCore"),
+        .package(path: "../PeekabooFoundation"),
         .package(path: "../../AXorcist"),
     ],
     targets: [
@@ -25,6 +26,7 @@ let package = Package(
             name: "PeekabooUICore",
             dependencies: [
                 .product(name: "PeekabooCore", package: "PeekabooCore"),
+                .product(name: "PeekabooFoundation", package: "PeekabooFoundation"),
                 .product(name: "AXorcist", package: "AXorcist"),
             ],
             swiftSettings: approachableConcurrencySettings),
