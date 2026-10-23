@@ -643,7 +643,9 @@ enum PeekabooBridgeDesktopObservationBinding {
             if let windowID = context.windowID, windowID != targetWindow.windowID {
                 return "window-context window ID"
             }
-            if let title = context.windowTitle, title != targetWindow.title {
+            if let title = context.windowTitle,
+               !Self.windowTitlesAgree(title, targetWindow.title, applicationName: result.target.app?.name)
+            {
                 return "window-context window title"
             }
             if let bounds = context.windowBounds, bounds != targetWindow.bounds {
@@ -744,6 +746,84 @@ enum PeekabooBridgeDesktopObservationBinding {
 
     private static func windowContexts(_ result: DesktopObservationResult) -> [WindowContext] {
         [result.target.detectionContext, result.elements?.metadata.windowContext].compactMap(\.self)
+    }
+
+    /// Accepts a window title from another metadata layer when it identifies the same window.
+    ///
+    /// Windows Server reports the bare document title, while Accessibility may append the owning
+    /// application name (Chrome reports "Document - Google Chrome" where CG reports "Document").
+    /// WindowServer may additionally elide the middle of a long title with a single U+2026
+    /// ellipsis, so a truncated form must agree on both its visible prefix and suffix.
+    /// Only these documented forms are tolerated; every other difference still fails.
+    static func windowTitlesAgree(
+        _ candidate: String,
+        _ reference: String,
+        applicationName: String?) -> Bool
+    {
+        let left = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+        let right = reference.trimmingCharacters(in: .whitespacesAndNewlines)
+        if left == right {
+            return true
+        }
+        let appName = applicationName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffix = appName.flatMap { $0.isEmpty ? nil : " - \($0)" }
+        // Strip each side's application suffix first: an Accessibility-side suffix would
+        // otherwise hide the tail that a WindowServer-elided title must match.
+        let leftBare = Self.strippingApplicationSuffix(left, suffix: suffix)
+        let rightBare = Self.strippingApplicationSuffix(right, suffix: suffix)
+        if leftBare == rightBare {
+            return true
+        }
+        // WindowServer elides the middle of long titles; the AX layer still holds the full text.
+        // Either side may be the elided one. A miss in the first orientation must not short-circuit
+        // the second: a full title that itself contains an ellipsis is simply not a match for it.
+        if Self.elidedTitleMatches(leftBare, fullTitle: rightBare) {
+            return true
+        }
+        if Self.elidedTitleMatches(rightBare, fullTitle: leftBare) {
+            return true
+        }
+        return false
+    }
+
+    /// Drops a trailing application-name suffix when the title carries one.
+    private static func strippingApplicationSuffix(
+        _ title: String,
+        suffix: String?) -> String
+    {
+        guard let suffix, title.hasSuffix(suffix) else { return title }
+        return String(title.dropLast(suffix.count))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Reports whether `elided` is a WindowServer middle-elided form of `fullTitle`: it must carry
+    /// a U+2026 ellipsis whose visible fragments occur in `fullTitle` in the same order. A title
+    /// with no ellipsis, an unrelated fragment, or a reordered fragment never matches.
+    private static func elidedTitleMatches(
+        _ elided: String,
+        fullTitle: String) -> Bool
+    {
+        guard elided.contains("\u{2026}") else { return false }
+        let pieces = elided
+            .split(separator: "\u{2026}", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        // Middle elision leaves visible text on both sides of every ellipsis. A leading, trailing or
+        // doubled ellipsis would otherwise vanish here and let unrelated text pass.
+        guard pieces.count >= 2, pieces.allSatisfy({ !$0.isEmpty }),
+              let head = pieces.first,
+              let tail = pieces.last,
+              fullTitle.hasPrefix(head),
+              fullTitle.hasSuffix(tail)
+        else { return false }
+        // The elided text must preserve the order of its visible fragments.
+        var cursor = fullTitle.index(fullTitle.startIndex, offsetBy: head.count)
+        for piece in pieces.dropFirst().dropLast() {
+            guard let range = fullTitle.range(of: piece, range: cursor..<fullTitle.endIndex)
+            else { return false }
+            cursor = range.upperBound
+        }
+        let tailStart = fullTitle.index(fullTitle.endIndex, offsetBy: -tail.count)
+        return cursor <= tailStart
     }
 
     private static func isValidBounds(_ bounds: CGRect) -> Bool {
