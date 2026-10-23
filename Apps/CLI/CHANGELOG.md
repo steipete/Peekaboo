@@ -5,6 +5,15 @@ All notable changes to Peekaboo CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 4.9.7 - 2026-10-23
+
+- Report `window close` through the daemon or Bridge as closed when the app keeps the closed `NSWindow` alive, instead of exiting 1 with an indeterminate postcondition: the Bridge readback now applies the same exact-window Accessibility presence check as the in-process path. Thanks @goutamadwant! #1131, fixes #1129.
+- Let `peekaboo see` observe Chrome and other apps whose Accessibility window title appends the application name or whose WindowServer title is middle-elided, instead of failing with "inconsistent response evidence: window-context window title". Thanks @L1uYun! #1130.
+- Close windows of apps that re-exec themselves with `window close --foreground`, whose frontmost PID AppKit reports as -1. Thanks @SebTardif! #1124.
+- Classify Dock separators and the Trash from their Accessibility subroles, so `peekaboo dock list` hides separators unless `--include-all` is passed, reports included separators as `separator` instead of blank `unknown` items, and identifies a localized Trash (such as "Papierkorb") as `trash`. #1120.
+- Use the Mac app's saved Vision model for image analysis even when its provider does not report vision support (OpenRouter, OpenAI-compatible, LM Studio and many Ollama models), surfacing the provider's error instead of silently switching models. Thanks @SebTardif! #1127.
+- Restore source builds after the pinned MCP Swift SDK commit became unreachable upstream when its pull request branch was rebased. #1135.
+
 ## 4.9.6 - 2026-10-20
 
 - See, inspect, list and capture apps that re-exec themselves on launch, such as Xcode's Device Hub, whose PID AppKit reports as -1, by recovering one verified live process with matching executable and application metadata. Thanks @lukemyself-hub! #1121, fixes #1119.
