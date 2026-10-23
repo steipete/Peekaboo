@@ -2,8 +2,14 @@
 
 ## Unreleased
 
+- Report `window close` through the daemon or Bridge as closed when the app keeps the closed `NSWindow` alive, instead of exiting 1 with an indeterminate postcondition: the Bridge readback now applies the same exact-window Accessibility presence check as the in-process path. Thanks @goutamadwant! #1131, fixes #1129.
+- Let `peekaboo see` observe Chrome and other apps whose Accessibility window title appends the application name or whose WindowServer title is middle-elided, instead of failing with "inconsistent response evidence: window-context window title". Thanks @L1uYun! #1130.
+- Close windows of apps that re-exec themselves with `window close --foreground`, whose frontmost PID AppKit reports as -1. Thanks @SebTardif! #1124.
+- Use the Mac app's saved Vision model for image analysis even when its provider does not report vision support (OpenRouter, OpenAI-compatible, LM Studio and many Ollama models), surfacing the provider's error instead of silently switching models. Thanks @SebTardif! #1127.
+- Keep the Mac chat's streaming answer together when you queue a follow-up, and keep Retry on the prompt that failed. Thanks @SebTardif! #1126.
+- Show a failed Mac agent tool as failed, not completed, in the menu bar, while cancelled tools stay cancelled. Thanks @SebTardif! #1134.
+- Restore source builds after the pinned MCP Swift SDK commit became unreachable upstream when its pull request branch was rebased. #1135.
 - Classify Dock separators and the Trash from their Accessibility subroles, so `peekaboo dock list` hides separators unless `--include-all` is passed, reports included separators as `separator` instead of blank `unknown` items, and identifies a localized Trash (such as "Papierkorb") as `trash`. #1120.
-
 - Remove the unused public `DialogError.inputSuppressedUnderTests` case from PeekabooAutomationKit along with the dead test-only dialog typing hook that threw it; release builds could never throw it, so only SwiftPM consumers that switch over every `DialogError` case need to drop that branch. #1123.
 
 ## 4.9.6 - 2026-10-20
