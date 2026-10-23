@@ -148,4 +148,54 @@ struct OverlayHitTestingTests {
         #expect(hit?.window == 0)
         #expect(hit?.element == 1)
     }
+
+    @Test
+    func `a covering window from another app hides the document under it`() {
+        let document = (ownerPID: 1, frames: [
+            CGRect(x: 0, y: 0, width: 400, height: 300),
+            CGRect(x: 100, y: 100, width: 60, height: 20),
+        ])
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: [document],
+            onScreenFrontToBack: [
+                (ownerPID: 9, bounds: CGRect(x: 80, y: 80, width: 200, height: 100)),
+                (ownerPID: 1, bounds: CGRect(x: 0, y: 0, width: 400, height: 300)),
+            ],
+            frontmostPID: 1)
+        #expect(layers == [.occluder(CGRect(x: 80, y: 80, width: 200, height: 100)), .window(0)])
+        #expect(OverlayHitTesting.hoveredElement(
+            containing: CGPoint(x: 120, y: 110),
+            layers: layers,
+            groupFrames: [document.frames]) == nil)
+        let outside = OverlayHitTesting.hoveredElement(
+            containing: CGPoint(x: 20, y: 20),
+            layers: layers,
+            groupFrames: [document.frames])
+        #expect(outside?.group == 0)
+        #expect(outside?.element == 0)
+    }
+
+    @Test
+    func `an unmatched window of an app with an unmatched group does not hide anything`() {
+        let document = (ownerPID: 1, frames: [CGRect(x: 0, y: 0, width: 400, height: 300)])
+        let drifted = (ownerPID: 2, frames: [CGRect(x: 500, y: 0, width: 100, height: 100)])
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: [document, drifted],
+            onScreenFrontToBack: [
+                (ownerPID: 2, bounds: CGRect(x: 0, y: 0, width: 600, height: 300)),
+                (ownerPID: 1, bounds: CGRect(x: 0, y: 0, width: 400, height: 300)),
+            ],
+            frontmostPID: 1)
+        #expect(layers == [.window(0), .window(1)])
+    }
+
+    @Test
+    func `nothing matching the catalog keeps the fallback order without occluders`() {
+        let first = (ownerPID: 1, frames: [CGRect(x: 0, y: 0, width: 100, height: 100)])
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: [first],
+            onScreenFrontToBack: [(ownerPID: 9, bounds: CGRect(x: 0, y: 0, width: 50, height: 50))],
+            frontmostPID: 1)
+        #expect(layers == [.window(0)])
+    }
 }

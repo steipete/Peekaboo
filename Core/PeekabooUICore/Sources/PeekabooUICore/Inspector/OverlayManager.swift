@@ -404,18 +404,18 @@ public final class OverlayManager {
             fromAppKit: NSEvent.mouseLocation,
             primaryScreen: NSScreen.screens.first { $0.frame.origin == .zero }?.frame)
         let groups = self.elementGroups()
-        let order = OverlayHitTesting.windowOrder(
+        let groupFrames = groups.map { $0.elements.map(\.frame) }
+        let layers = OverlayHitTesting.hoverLayers(
             elementGroups: groups.map { (ownerPID: Int($0.pid), frames: $0.elements.map(\.frame)) },
             onScreenFrontToBack: self.onScreenWindows(),
             frontmostPID: NSWorkspace.shared.frontmostApplication.map { Int($0.processIdentifier) })
-        let ordered = order.map { groups[$0].elements }
-        if let hit = OverlayHitTesting.frontmostElementIndex(
+        if let hit = OverlayHitTesting.hoveredElement(
             containing: mouseLocation,
-            windowsFrontToBack: ordered.map { $0.map(\.frame) }),
-            ordered.indices.contains(hit.window),
-            ordered[hit.window].indices.contains(hit.element)
+            layers: layers,
+            groupFrames: groupFrames),
+            groups[hit.group].elements.indices.contains(hit.element)
         {
-            let element = ordered[hit.window][hit.element]
+            let element = groups[hit.group].elements[hit.element]
             if self.hoveredElement?.id != element.id {
                 self.hoveredElement = element
                 self.delegate?.overlayManager(self, didHoverElement: element)
@@ -455,11 +455,12 @@ public final class OverlayManager {
         else { return [] }
         var windows: [(ownerPID: Int, bounds: CGRect)] = []
         // Keep every level: floating palettes and modal panels sit above normal windows.
-        // Only the Inspector's own overlay windows are skipped.
+        // The Inspector's own overlays and fully transparent windows hide nothing.
         let inspectorPID = Int(ProcessInfo.processInfo.processIdentifier)
         for dict in info {
             guard let pid = (dict[kCGWindowOwnerPID as String] as? NSNumber)?.intValue,
-                  pid != inspectorPID
+                  pid != inspectorPID,
+                  ((dict[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1) > 0
             else { continue }
             guard let boundsDict = dict[kCGWindowBounds as String] as? [String: Any] else { continue }
             let bounds = CGRect(

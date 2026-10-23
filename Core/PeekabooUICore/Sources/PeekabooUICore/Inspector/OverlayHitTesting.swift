@@ -44,35 +44,95 @@ enum OverlayHitTesting {
             primaryScreenFrame: primaryScreen)
     }
 
+    /// One entry of the front-to-back hover stack.
+    enum HoverLayer: Equatable {
+        /// An Accessibility element group, by index.
+        case window(Int)
+        /// A visible on-screen window with no element group. It hides whatever lies behind it.
+        case occluder(CGRect)
+    }
+
     static func windowOrder(
         elementGroups: [(ownerPID: Int, frames: [CGRect])],
         onScreenFrontToBack: [(ownerPID: Int, bounds: CGRect)],
         frontmostPID: Int?) -> [Int]
     {
+        self.hoverLayers(
+            elementGroups: elementGroups,
+            onScreenFrontToBack: onScreenFrontToBack,
+            frontmostPID: frontmostPID)
+            .compactMap { layer in
+                if case let .window(index) = layer {
+                    index
+                } else {
+                    nil
+                }
+            }
+    }
+
+    static func hoverLayers(
+        elementGroups: [(ownerPID: Int, frames: [CGRect])],
+        onScreenFrontToBack: [(ownerPID: Int, bounds: CGRect)],
+        frontmostPID: Int?) -> [HoverLayer]
+    {
+        func fallback(_ indices: Set<Int>) -> [HoverLayer] {
+            let front = indices.filter { elementGroups[$0].ownerPID == frontmostPID }.sorted()
+            let rest = indices.subtracting(front).sorted()
+            return (front + rest).map { .window($0) }
+        }
         guard !onScreenFrontToBack.isEmpty else {
-            let front = elementGroups.indices.filter { elementGroups[$0].ownerPID == frontmostPID }
-            let rest = elementGroups.indices.filter { elementGroups[$0].ownerPID != frontmostPID }
-            return Array(front) + Array(rest)
+            return fallback(Set(elementGroups.indices))
         }
         var remaining = Set(elementGroups.indices)
-        var ordered: [Int] = []
+        var stack: [(group: Int?, window: (ownerPID: Int, bounds: CGRect))] = []
         for window in onScreenFrontToBack {
-            guard let index = elementGroups.indices.first(where: { candidate in
+            let index = elementGroups.indices.first { candidate in
                 guard remaining.contains(candidate),
                       elementGroups[candidate].ownerPID == window.ownerPID,
                       let axFrame = elementGroups[candidate].frames.first
                 else { return false }
                 return self.sameWindow(axFrame, window.bounds)
-            }) else { continue }
-            remaining.remove(index)
-            ordered.append(index)
+            }
+            if let index {
+                remaining.remove(index)
+            }
+            stack.append((index, window))
         }
-        let unmatchedFront = remaining.filter { elementGroups[$0].ownerPID == frontmostPID }.sorted()
-        let unmatchedRest = remaining.subtracting(unmatchedFront).sorted()
-        if ordered.isEmpty {
-            return unmatchedFront + unmatchedRest
+        guard stack.contains(where: { $0.group != nil }) else {
+            return fallback(remaining)
         }
-        return ordered + unmatchedFront + unmatchedRest
+        // An unmatched window from an app that still has an unmatched group may be that group with
+        // drifted frames, so only windows of other apps occlude.
+        let ownersWithUnmatchedGroups = Set(remaining.map { elementGroups[$0].ownerPID })
+        let layers: [HoverLayer] = stack.compactMap { entry in
+            if let group = entry.group {
+                return .window(group)
+            }
+            return ownersWithUnmatchedGroups.contains(entry.window.ownerPID) ? nil : .occluder(entry.window.bounds)
+        }
+        return layers + fallback(remaining)
+    }
+
+    /// Walks the stack front to back. An occluder under the point means nothing behind it is hovered.
+    static func hoveredElement(
+        containing point: CGPoint,
+        layers: [HoverLayer],
+        groupFrames: [[CGRect]]) -> (group: Int, element: Int)?
+    {
+        for layer in layers {
+            switch layer {
+            case let .occluder(bounds):
+                if bounds.standardized.contains(point) {
+                    return nil
+                }
+            case let .window(group):
+                guard groupFrames.indices.contains(group),
+                      let hit = self.frontmostElementIndex(containing: point, windowsFrontToBack: [groupFrames[group]])
+                else { continue }
+                return (group, hit.element)
+            }
+        }
+        return nil
     }
 
     /// Catalog bounds and Accessibility frames can disagree by a few points.
