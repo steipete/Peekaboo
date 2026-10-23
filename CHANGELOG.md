@@ -1,5 +1,7 @@
 # Changelog
 
+## Unreleased
+
 ## 4.9.7 - 2026-10-23
 
 **Highlights:** Report `window close` through the daemon as closed when an app keeps the closed window alive; let `see` observe Chrome windows whose titles carry the app name or are elided; close apps that re-exec themselves with `--foreground`; and keep the Mac chat, menu bar and Inspector accurate.
