@@ -123,7 +123,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/modelcontextprotocol/swift-sdk.git",
       "state" : {
-        "revision" : "f7077e0d5cd57e0b2a497862017aa94ee344252f"
+        "revision" : "6f02d8e7b5c0795698f5a90366f2081ebc91530d"
       }
     },
     {

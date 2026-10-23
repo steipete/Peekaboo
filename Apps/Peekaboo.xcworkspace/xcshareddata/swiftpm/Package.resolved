@@ -1,5 +1,5 @@
 {
-  "originHash" : "8747758d4128cf54feef65c45df7e3c233e1f7ecef0632c08ac76f869c637a5a",
+  "originHash" : "f8b52cb2e3fb60b7a04858b5005966ce0ae6f6aeed6aa180e1a3a384d60c14c3",
   "pins" : [
     {
       "identity" : "bluesignals",
@@ -195,7 +195,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/modelcontextprotocol/swift-sdk.git",
       "state" : {
-        "revision" : "f7077e0d5cd57e0b2a497862017aa94ee344252f"
+        "revision" : "6f02d8e7b5c0795698f5a90366f2081ebc91530d"
       }
     },
     {

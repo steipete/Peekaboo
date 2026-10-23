@@ -159,10 +159,11 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../../Commander"),
-        // Pin swift-sdk#276's capability decoder until it is included in a tagged SDK.
+        // Pin swift-sdk#276's capability decoder until it is included in a tagged SDK. Its fork rebases the
+        // branch, so re-pin to the PR's current head if this revision ever stops resolving.
         .package(
             url: "https://github.com/modelcontextprotocol/swift-sdk.git",
-            revision: "f7077e0d5cd57e0b2a497862017aa94ee344252f"),
+            revision: "6f02d8e7b5c0795698f5a90366f2081ebc91530d"),
         .package(url: "https://github.com/dominicegginton/Spinner", from: "2.2.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess.git", from: "1.0.0"),
         .package(path: "../../TauTUI"),
