@@ -182,6 +182,19 @@ public protocol WindowMutationInventoryProviding: WindowManagementServiceProtoco
         target: WindowTarget) async throws -> DesktopTargetPlanning.Inventory<ServiceWindowInfo>
 }
 
+/// Additive capability for proving whether an exact window remains after a close.
+public protocol WindowClosePresenceProviding: WindowManagementServiceProtocol {
+    func windowClosePresence(
+        expectedIdentity: WindowMutationIdentity) async throws -> WindowClosePresence
+}
+
+public enum WindowClosePresence: Sendable, Equatable {
+    case present
+    case missing
+    case replacement
+    case unverifiable
+}
+
 /// Additive capability for exact-window mutations that can report their canonical execution outcome.
 ///
 /// Existing conformers and callers use this compatibility surface from Peekaboo 4.1.0. New services

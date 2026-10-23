@@ -1089,6 +1089,89 @@ struct PeekabooBridgeHandlerMutationSemanticsTests {
 
     @Test
     @MainActor
+    func `current close accepts a retained row when exact presence is missing`() async throws {
+        let readback = ServiceWindowInfo(
+            windowID: Self.windowIdentity.windowID,
+            title: "Fixture",
+            bounds: Self.bounds,
+            isOffScreen: true,
+            isOnScreen: false,
+            mutationIdentity: Self.windowIdentity)
+        let windows = HandlerMutationWindowService(
+            readback: readback,
+            closePresence: .missing)
+
+        let requests: [PeekabooBridgeRequest] = [
+            .closeWindow(.init(target: .windowId(77), expectedIdentity: Self.windowIdentity)),
+            .backgroundCloseWindow(.init(target: .windowId(77), expectedIdentity: Self.windowIdentity)),
+        ]
+        for request in requests {
+            let handled = try await Self.handleCurrent(
+                request,
+                with: Self.server(services: StubServices(windows: windows)))
+
+            guard case .window(nil) = handled.response else {
+                Issue.record("Expected exact AX absence to override the retained catalog row")
+                continue
+            }
+            #expect(handled.outcome?.state == .confirmedChange)
+        }
+    }
+
+    @Test
+    @MainActor
+    func `current close rejects a retained row without exact absence`() async throws {
+        let readback = ServiceWindowInfo(
+            windowID: Self.windowIdentity.windowID,
+            title: "Fixture",
+            bounds: Self.bounds,
+            isOffScreen: true,
+            isOnScreen: false,
+            mutationIdentity: Self.windowIdentity)
+
+        for presence in [WindowClosePresence.present, .replacement, .unverifiable] {
+            let windows = HandlerMutationWindowService(
+                readback: readback,
+                closePresence: presence)
+            do {
+                _ = try await Self.handleCurrent(
+                    .closeWindow(.init(target: .windowId(77), expectedIdentity: Self.windowIdentity)),
+                    with: Self.server(services: StubServices(windows: windows)))
+                Issue.record("Expected retained row with \(presence) presence to remain indeterminate")
+            } catch let failure as DesktopActionFailure {
+                #expect(failure.outcome.state == .indeterminate)
+                #expect(failure.outcome.retrySafety == .unsafe)
+            }
+        }
+    }
+
+    @Test
+    @MainActor
+    func `current close keeps presence lookup failures indeterminate`() async throws {
+        let readback = ServiceWindowInfo(
+            windowID: Self.windowIdentity.windowID,
+            title: "Fixture",
+            bounds: Self.bounds,
+            isOffScreen: true,
+            isOnScreen: false,
+            mutationIdentity: Self.windowIdentity)
+        let windows = HandlerMutationWindowService(
+            readback: readback,
+            closePresenceError: .commandFailed("fixture presence failure"))
+
+        do {
+            _ = try await Self.handleCurrent(
+                .closeWindow(.init(target: .windowId(77), expectedIdentity: Self.windowIdentity)),
+                with: Self.server(services: StubServices(windows: windows)))
+            Issue.record("Expected close presence lookup failure to remain indeterminate")
+        } catch let failure as DesktopActionFailure {
+            #expect(failure.outcome.state == .indeterminate)
+            #expect(failure.outcome.retrySafety == .unsafe)
+        }
+    }
+
+    @Test
+    @MainActor
     func `current window mutations keep other readback failures indeterminate`() async throws {
         let cases: [(request: PeekabooBridgeRequest, error: PeekabooError)] = [
             (
@@ -1444,6 +1527,7 @@ extension StubAutomationService {
 }
 
 private final class HandlerMutationWindowService: WindowManagementServiceProtocol,
+    WindowClosePresenceProviding,
     WindowManagementActionResultProviding,
     WindowManagementPinnedFocusActionResultProviding
 {
@@ -1451,15 +1535,28 @@ private final class HandlerMutationWindowService: WindowManagementServiceProtoco
     private let maximizeOutcome: DesktopActionOutcome
     private let readback: ServiceWindowInfo?
     private let readbackError: PeekabooError?
+    private let closePresence: WindowClosePresence
+    private let closePresenceError: PeekabooError?
 
     init(
         maximizeOutcome: DesktopActionOutcome = .confirmedNoChange(),
         readback: ServiceWindowInfo? = nil,
-        readbackError: PeekabooError? = nil)
+        readbackError: PeekabooError? = nil,
+        closePresence: WindowClosePresence = .present,
+        closePresenceError: PeekabooError? = nil)
     {
         self.maximizeOutcome = maximizeOutcome
         self.readback = readback
         self.readbackError = readbackError
+        self.closePresence = closePresence
+        self.closePresenceError = closePresenceError
+    }
+
+    func windowClosePresence(expectedIdentity _: WindowMutationIdentity) async throws -> WindowClosePresence {
+        if let closePresenceError {
+            throw closePresenceError
+        }
+        return self.closePresence
     }
 
     func closeWindow(target _: WindowTarget) async throws {}
