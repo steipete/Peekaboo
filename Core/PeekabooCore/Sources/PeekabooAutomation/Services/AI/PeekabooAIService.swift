@@ -192,10 +192,15 @@ public final class PeekabooAIService {
     func resolvedAnalysisVisionModel() throws -> LanguageModel {
         let configured = self.configuration.configuration?.agent?.visionModel?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !configured.isEmpty,
-           let parsed = self.resolveConfiguredModel(configured),
-           parsed.supportsVision
-        {
+        if !configured.isEmpty {
+            // The supportsVision flag is false for whole providers the menu can save.
+            // Use the saved model. A provider that rejects the image surfaces that error later.
+            guard let parsed = self.resolveConfiguredModel(configured) else {
+                throw TachikomaError.unsupportedOperation(
+                    "Saved vision model \(configured) could not be resolved. "
+                        + "Choose a valid model in Settings → Agent → Vision model, "
+                        + "or choose Same as agent model to restore the default.")
+            }
             return parsed
         }
 
