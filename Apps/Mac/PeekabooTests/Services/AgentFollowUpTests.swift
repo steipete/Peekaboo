@@ -422,6 +422,87 @@ struct AgentFollowUpTests {
         }
         #expect(error as? AgentError == .executionFailed("The queued session no longer exists"))
     }
+
+    @Test
+    func `A streaming reply stays ahead of a queued follow-up`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate)
+        defer { gate.releaseAll() }
+
+        let first = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        try await agent.executeTask("second")
+        agent.handleAgentEvent(.thinkingMessage(content: "planning the reply"))
+        agent.handleAgentEvent(.assistantMessage(content: "partial"))
+
+        gate.release("first")
+        await gate.waitUntilEntered("second")
+        gate.release("second")
+        try await first.value
+
+        let contents = store.sessions.flatMap(\.messages).map(\.content)
+        let planning = try #require(contents.firstIndex(where: { $0.contains("planning the reply") }))
+        let partial = try #require(contents.firstIndex(of: "partial"))
+        let secondUser = try #require(contents.firstIndex(of: "second"))
+        let firstSummary = try #require(contents.firstIndex(where: { $0.hasPrefix("Task completed") }))
+        #expect(planning < secondUser)
+        #expect(partial < secondUser)
+        #expect(firstSummary < secondUser)
+        let userMessages = store.sessions.flatMap(\.messages).filter { $0.role == .user }.map(\.content)
+        #expect(userMessages == ["first", "second"])
+    }
+
+    @Test
+    func `A streamed middle follow-up is written once`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate)
+        defer { gate.releaseAll() }
+
+        let first = Task { try await agent.executeTask("one") }
+        await gate.waitUntilEntered("one")
+        try await agent.executeTask("two")
+        try await agent.executeTask("three")
+        gate.release("one")
+        await gate.waitUntilEntered("two")
+        agent.handleAgentEvent(.assistantMessage(content: "partial-two"))
+        gate.release("two")
+        await gate.waitUntilEntered("three")
+        gate.release("three")
+        try await first.value
+
+        let messages = store.sessions.flatMap(\.messages)
+        let assistant = messages.filter { $0.role == .assistant }.map(\.content)
+        #expect(assistant.filter { $0 == "partial-two" }.count == 1)
+        #expect(!assistant.contains("two"))
+        let contents = messages.map(\.content)
+        let partial = try #require(contents.firstIndex(of: "partial-two"))
+        let three = try #require(contents.firstIndex(of: "three"))
+        #expect(partial < three)
+        let userMessages = messages.filter { $0.role == .user }.map(\.content)
+        #expect(userMessages == ["one", "two", "three"])
+    }
+
+    @Test
+    func `A queued follow-up keeps the failed prompt the banner retries`() async throws {
+        let gate = FollowUpGate()
+        let (agent, store) = makeFollowUpAgent(gate: gate, failingTexts: ["first", "second"])
+        defer { gate.releaseAll() }
+        let sessionID = try #require(store.currentSession).id
+
+        let first = Task { try await agent.executeTask("first") }
+        await gate.waitUntilEntered("first")
+        try await agent.executeTask("second")
+        gate.release("first")
+        await gate.waitUntilEntered("second")
+        #expect(agent.lastTask == "first")
+        #expect(agent.lastTaskSessionId == sessionID)
+        gate.release("second")
+        _ = await first.result
+
+        #expect(agent.lastTask == "first")
+        #expect(agent.lastTaskSessionId == sessionID)
+        #expect(agent.lastTask != "second")
+    }
 }
 
 @MainActor
