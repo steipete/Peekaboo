@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import Foundation
 import PeekabooFoundation
@@ -511,6 +512,180 @@ struct WindowStateMutationPolicyTests {
     }
 
     @Test
+    func `foreground close recovers a re-exec frontmost pid`() {
+        let recovered = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: -1,
+            recover: { 42 })
+        let readiness = pinnedForegroundCloseReadiness(
+            focusSucceeded: true,
+            expectedIdentity: self.identity,
+            currentProcessStartIdentity: 7,
+            frontmostProcessIdentifier: recovered,
+            keyWindow: ExactKeyWindowSnapshot(
+                processIdentifier: 42,
+                windowID: 924,
+                isSheet: false,
+                hasAttachedSheet: false))
+
+        #expect(recovered == 42)
+        #expect(readiness == .ready)
+    }
+
+    @Test
+    func `foreground close recovers a zero reported frontmost pid`() {
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: 0,
+            recover: { 42 })
+
+        #expect(pid == 42)
+    }
+
+    @Test
+    func `foreground close keeps a positive frontmost pid without recovery`() {
+        var scanned = false
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: 42,
+            recover: {
+                scanned = true
+                return 99
+            })
+
+        #expect(pid == 42)
+        #expect(scanned == false)
+    }
+
+    @Test
+    func `foreground close fails closed when re-exec recovery finds nothing`() {
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: -1,
+            recover: { nil })
+        let readiness = pinnedForegroundCloseReadiness(
+            focusSucceeded: true,
+            expectedIdentity: self.identity,
+            currentProcessStartIdentity: 7,
+            frontmostProcessIdentifier: pid,
+            keyWindow: ExactKeyWindowSnapshot(
+                processIdentifier: 42,
+                windowID: 924,
+                isSheet: false,
+                hasAttachedSheet: false))
+
+        #expect(pid == nil)
+        #expect(readiness == .appNotFrontmost)
+    }
+
+    @Test
+    func `foreground close has no frontmost pid when no application is frontmost`() {
+        var scanned = false
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: nil,
+            recover: {
+                scanned = true
+                return 42
+            })
+
+        #expect(pid == nil)
+        #expect(scanned == false)
+    }
+
+    @Test
+    func `foreground close rejects a frontmost switch during re-exec recovery`() {
+        var recovered = false
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: -1,
+            recover: {
+                recovered = true
+                return 42
+            },
+            sampleAfterRecovery: {
+                #expect(recovered)
+                return ForegroundCloseFrontmostSample(processIdentifier: 77, ownsRecoveredProcess: false)
+            })
+        let readiness = pinnedForegroundCloseReadiness(
+            focusSucceeded: true,
+            expectedIdentity: self.identity,
+            currentProcessStartIdentity: 7,
+            frontmostProcessIdentifier: pid,
+            keyWindow: ExactKeyWindowSnapshot(
+                processIdentifier: 42,
+                windowID: 924,
+                isSheet: false,
+                hasAttachedSheet: false))
+
+        #expect(pid == nil)
+        #expect(readiness == .appNotFrontmost)
+    }
+
+    @Test
+    func `foreground close keeps a recovered pid when the same application stays frontmost`() {
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: -1,
+            recover: { 42 },
+            sampleAfterRecovery: {
+                ForegroundCloseFrontmostSample(processIdentifier: -1, ownsRecoveredProcess: true)
+            })
+
+        #expect(pid == 42)
+    }
+
+    @Test
+    func `foreground close rejects a new pid for the application that was recovered`() {
+        let pid = foregroundCloseFrontmostProcessIdentifier(
+            reportedProcessIdentifier: -1,
+            recover: { 42 },
+            sampleAfterRecovery: {
+                ForegroundCloseFrontmostSample(processIdentifier: 77, ownsRecoveredProcess: true)
+            })
+
+        #expect(pid == nil)
+    }
+
+    @Test
+    @MainActor
+    func `foreground close resamples process generation after frontmost recovery`() async {
+        let race = ForegroundCloseRecoveryRace()
+        let readiness = await readPinnedForegroundCloseReadiness(
+            focusSucceeded: true,
+            expectedIdentity: self.identity,
+            keyWindowReader: {
+                ExactKeyWindowSnapshot(
+                    processIdentifier: 42,
+                    windowID: 924,
+                    isSheet: false,
+                    hasAttachedSheet: false)
+            },
+            processStartIdentityReader: {
+                #expect(race.frontmostReaderFinished)
+                return race.generation
+            },
+            frontmostProcessIdentifierReader: {
+                foregroundCloseFrontmostProcessIdentifier(
+                    reportedProcessIdentifier: -1,
+                    recover: {
+                        race.generation = 8
+                        return 42
+                    },
+                    sampleAfterRecovery: {
+                        race.frontmostReaderFinished = true
+                        return ForegroundCloseFrontmostSample(
+                            processIdentifier: -1,
+                            ownsRecoveredProcess: true)
+                    })
+            })
+
+        #expect(readiness == .processGenerationMismatch)
+    }
+
+    @Test
+    @MainActor
+    func `foreground close treats the same running application as unchanged ownership`() {
+        let application = NSRunningApplication.current
+        #expect(foregroundCloseStillOwnsRecoveredProcess(scanned: application, current: application))
+        #expect(!foregroundCloseStillOwnsRecoveredProcess(scanned: application, current: nil))
+        #expect(foregroundCloseRecoveredProcessIdentifier(application) == nil)
+    }
+
+    @Test
     @MainActor
     func `foreground close resamples frontmost application after detached key window read`() async {
         let race = ForegroundCloseReadinessRace()
@@ -789,6 +964,12 @@ private enum ForegroundCloseTestError: Error {
     case focus
     case hotkey
     case sheet
+}
+
+@MainActor
+private final class ForegroundCloseRecoveryRace {
+    var generation: UInt64 = 7
+    var frontmostReaderFinished = false
 }
 
 @MainActor
