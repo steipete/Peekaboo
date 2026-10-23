@@ -219,7 +219,12 @@ extension WindowManagementService {
 }
 
 func foregroundCloseFocusOptions() -> FocusManagementService.FocusOptions {
-    .init(switchSpace: true)
+    .init(
+        timeout: 5.0,
+        retryCount: 3,
+        switchSpace: true,
+        bringToCurrentSpace: false,
+        recoverNonPositiveFrontmostProcessIdentifier: true)
 }
 
 @MainActor

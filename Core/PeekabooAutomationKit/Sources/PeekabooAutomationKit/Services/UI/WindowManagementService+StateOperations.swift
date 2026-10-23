@@ -498,6 +498,10 @@ extension WindowManagementService {
         while ContinuousClock.now < deadline {
             try Task.checkCancellation()
             let targetProcessIdentifier = expectedIdentity.ownerProcessIdentifier
+            // Scan before the key-window read. A switch during the scan must not authorize
+            // the application that was frontmost when recovery started.
+            let scannedApplication = NSWorkspace.shared.frontmostApplication
+            let recoveredProcessIdentifier = foregroundCloseRecoveredProcessIdentifier(scannedApplication)
             lastReadiness = await readPinnedForegroundCloseReadiness(
                 focusSucceeded: focusSucceeded,
                 expectedIdentity: expectedIdentity,
@@ -511,7 +515,9 @@ extension WindowManagementService {
                     SystemIdentityResolver.processStartIdentity(expectedIdentity.ownerProcessIdentifier)
                 },
                 frontmostProcessIdentifierReader: {
-                    NSWorkspace.shared.frontmostApplication?.processIdentifier
+                    foregroundCloseCurrentProcessIdentifier(
+                        scannedApplication: scannedApplication,
+                        recoveredProcessIdentifier: recoveredProcessIdentifier)
                 },
                 windowIdentityValidator: {
                     SystemIdentityResolver.validateWindowMutationIdentity(expectedIdentity)
@@ -754,18 +760,105 @@ func readPinnedForegroundCloseReadiness(
     guard focusSucceeded else { return .focusFailed }
     let keyWindow = await keyWindowReader()
 
-    // AX messaging can block long enough for the user to switch applications or for the target
-    // process to restart. Revalidate the capture receipt, then sample both ownership signals only
-    // after that read, with no suspension before the policy can authorize a global shortcut.
+    // AX and PID recovery can both outlive a foreground switch or a process restart.
+    // Revalidate the receipt, finish frontmost recovery, then sample the process generation
+    // with no further suspension before the policy can authorize a global shortcut.
     guard windowIdentityValidator() else { return .windowIdentityMismatch }
-    let currentProcessStartIdentity = processStartIdentityReader()
     let frontmostProcessIdentifier = frontmostProcessIdentifierReader()
+    let currentProcessStartIdentity = processStartIdentityReader()
     return pinnedForegroundCloseReadiness(
         focusSucceeded: true,
         expectedIdentity: expectedIdentity,
         currentProcessStartIdentity: currentProcessStartIdentity,
         frontmostProcessIdentifier: frontmostProcessIdentifier,
         keyWindow: keyWindow)
+}
+
+struct ForegroundCloseFrontmostSample: Equatable {
+    var processIdentifier: pid_t?
+    /// The application whose missing PID was recovered is still the frontmost application.
+    var ownsRecoveredProcess: Bool
+}
+
+func foregroundCloseRecoveredProcessIdentifier(_ application: NSRunningApplication?) -> pid_t? {
+    guard let application, application.processIdentifier <= 0 else { return nil }
+    return RunningApplicationProcessIdentity.resolve(application)
+}
+
+@MainActor
+func foregroundCloseCurrentProcessIdentifier(
+    scannedApplication: NSRunningApplication?,
+    recoveredProcessIdentifier: pid_t?) -> pid_t?
+{
+    let currentApplication = NSWorkspace.shared.frontmostApplication
+    return foregroundCloseFrontmostProcessIdentifier(
+        reportedProcessIdentifier: currentApplication?.processIdentifier,
+        recover: { recoveredProcessIdentifier },
+        sampleAfterRecovery: {
+            let latestApplication = NSWorkspace.shared.frontmostApplication
+            return ForegroundCloseFrontmostSample(
+                processIdentifier: latestApplication?.processIdentifier,
+                ownsRecoveredProcess: foregroundCloseStillOwnsRecoveredProcess(
+                    scanned: scannedApplication,
+                    current: latestApplication))
+        })
+}
+
+func foregroundCloseStillOwnsRecoveredProcess(
+    scanned: NSRunningApplication?,
+    current: NSRunningApplication?) -> Bool
+{
+    guard let scanned, let current else { return false }
+    if scanned === current {
+        return true
+    }
+    guard let scannedLaunch = scanned.launchDate, scannedLaunch == current.launchDate else { return false }
+    return RunningApplicationProcessIdentity.Metadata(scanned) == RunningApplicationProcessIdentity.Metadata(current)
+}
+
+@MainActor
+func focusVerificationCurrentFrontmostProcessIdentifier(
+    recoverNonPositiveFrontmostProcessIdentifier: Bool) -> pid_t?
+{
+    let scannedApplication = NSWorkspace.shared.frontmostApplication
+    let reportedProcessIdentifier = scannedApplication?.processIdentifier
+    guard recoverNonPositiveFrontmostProcessIdentifier else { return reportedProcessIdentifier }
+    return foregroundCloseCurrentProcessIdentifier(
+        scannedApplication: scannedApplication,
+        recoveredProcessIdentifier: foregroundCloseRecoveredProcessIdentifier(scannedApplication))
+}
+
+func focusVerificationFrontmostProcessIdentifier(
+    recoverNonPositiveFrontmostProcessIdentifier: Bool,
+    reportedProcessIdentifier: pid_t?,
+    recover: () -> pid_t? = { nil },
+    sampleAfterRecovery: () -> ForegroundCloseFrontmostSample = {
+        ForegroundCloseFrontmostSample(processIdentifier: nil, ownsRecoveredProcess: true)
+    }) -> pid_t?
+{
+    guard recoverNonPositiveFrontmostProcessIdentifier else { return reportedProcessIdentifier }
+    return foregroundCloseFrontmostProcessIdentifier(
+        reportedProcessIdentifier: reportedProcessIdentifier,
+        recover: recover,
+        sampleAfterRecovery: sampleAfterRecovery)
+}
+
+func foregroundCloseFrontmostProcessIdentifier(
+    reportedProcessIdentifier: pid_t?,
+    recover: () -> pid_t?,
+    sampleAfterRecovery: () -> ForegroundCloseFrontmostSample = {
+        ForegroundCloseFrontmostSample(processIdentifier: nil, ownsRecoveredProcess: true)
+    }) -> pid_t?
+{
+    guard let reportedProcessIdentifier else { return nil }
+    guard reportedProcessIdentifier <= 0 else { return reportedProcessIdentifier }
+    guard let recovered = recover() else { return nil }
+    let sample = sampleAfterRecovery()
+    guard sample.ownsRecoveredProcess else { return nil }
+    if let processIdentifier = sample.processIdentifier, processIdentifier > 0, processIdentifier != recovered {
+        return nil
+    }
+    return recovered
 }
 
 func pinnedForegroundCloseReadiness(
