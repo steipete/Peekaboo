@@ -101,14 +101,15 @@ enum OverlayHitTesting {
         guard stack.contains(where: { $0.group != nil }) else {
             return fallback(remaining)
         }
-        // An unmatched window from an app that still has an unmatched group may be that group with
-        // drifted frames, so only windows of other apps occlude.
-        let ownersWithUnmatchedGroups = Set(remaining.map { elementGroups[$0].ownerPID })
+        // Only windows of apps without any element group occlude (the Dock, the menu bar, untracked
+        // apps). A tracked app's unmatched surfaces, such as popup menus whose items live in another
+        // group or windows whose frames drifted, never hide anything.
+        let trackedOwners = Set(elementGroups.map(\.ownerPID))
         let layers: [HoverLayer] = stack.compactMap { entry in
             if let group = entry.group {
                 return .window(group)
             }
-            return ownersWithUnmatchedGroups.contains(entry.window.ownerPID) ? nil : .occluder(entry.window.bounds)
+            return trackedOwners.contains(entry.window.ownerPID) ? nil : .occluder(entry.window.bounds)
         }
         return layers + fallback(remaining)
     }

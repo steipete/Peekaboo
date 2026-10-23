@@ -176,7 +176,7 @@ struct OverlayHitTestingTests {
     }
 
     @Test
-    func `an unmatched window of an app with an unmatched group does not hide anything`() {
+    func `an unmatched window of a tracked app does not hide anything`() {
         let document = (ownerPID: 1, frames: [CGRect(x: 0, y: 0, width: 400, height: 300)])
         let drifted = (ownerPID: 2, frames: [CGRect(x: 500, y: 0, width: 100, height: 100)])
         let layers = OverlayHitTesting.hoverLayers(
@@ -195,6 +195,22 @@ struct OverlayHitTestingTests {
         let layers = OverlayHitTesting.hoverLayers(
             elementGroups: [first],
             onScreenFrontToBack: [(ownerPID: 9, bounds: CGRect(x: 0, y: 0, width: 50, height: 50))],
+            frontmostPID: 1)
+        #expect(layers == [.window(0)])
+    }
+
+    @Test
+    func `a popup menu of the hovered app does not hide its own items`() {
+        let host = (ownerPID: 1, frames: [
+            CGRect(x: 0, y: 0, width: 400, height: 300),
+            CGRect(x: 100, y: 100, width: 80, height: 20),
+        ])
+        let layers = OverlayHitTesting.hoverLayers(
+            elementGroups: [host],
+            onScreenFrontToBack: [
+                (ownerPID: 1, bounds: CGRect(x: 100, y: 120, width: 160, height: 200)),
+                (ownerPID: 1, bounds: CGRect(x: 0, y: 0, width: 400, height: 300)),
+            ],
             frontmostPID: 1)
         #expect(layers == [.window(0)])
     }
