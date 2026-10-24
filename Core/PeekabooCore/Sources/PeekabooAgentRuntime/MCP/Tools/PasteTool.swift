@@ -106,10 +106,11 @@ public struct PasteTool: MCPTool {
                 .string(description: "UTI for dataBase64, or a foreground-authorized file.")
             properties["alsoText"] = SchemaBuilder.string(description: "Optional plain-text companion for dataBase64.")
             properties["restore_delay_ms"] = SchemaBuilder.integer(
-                description: "Delay before restoring the previous clipboard (ms). Default: 150. Maximum: 10000.",
+                description: "Delay before restoring the previous clipboard (ms). Default: 250. Maximum: 10000. " +
+                    "Raise it for apps that read the clipboard slowly.",
                 minimum: 0,
                 maximum: 10000,
-                default: 150)
+                default: ClipboardPasteTransactionGate.defaultRestoreDelayMilliseconds)
         }
         if !foregroundCapable, temporaryClipboardGranted {
             properties["snapshot"] = SchemaBuilder.string(
@@ -1172,7 +1173,8 @@ public struct PasteTool: MCPTool {
     }
 
     private static func restoreDelayMilliseconds(_ arguments: ToolArguments) throws -> Int {
-        let restoreDelayMs = try arguments.validatedInt("restore_delay_ms") ?? 150
+        let restoreDelayMs = try arguments.validatedInt("restore_delay_ms")
+            ?? ClipboardPasteTransactionGate.defaultRestoreDelayMilliseconds
         guard (0...ClipboardPasteTransactionGate.maximumRestoreDelayMilliseconds).contains(restoreDelayMs) else {
             throw PasteToolError(
                 "restore_delay_ms must be between 0 and 10000ms",

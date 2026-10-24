@@ -5,6 +5,8 @@ import Testing
 @testable import PeekabooCLI
 @testable import PeekabooCore
 
+private let defaultRestoreDelay = Duration.milliseconds(ClipboardPasteTransactionGate.defaultRestoreDelayMilliseconds)
+
 @Suite(.tags(.safe), .serialized)
 struct PasteCommandTests {
     @Test
@@ -1007,7 +1009,7 @@ extension PasteCommandTests {
         #expect(result.exitStatus != 0)
         #expect(result.stdout.contains("Paste outcome is indeterminate"))
         #expect(result.stdout.contains("may have pasted; do not retry"))
-        #expect(clock.now - canceledAt >= .milliseconds(150))
+        #expect(clock.now - canceledAt >= defaultRestoreDelay)
         #expect(context.clipboard.current?.textPreview == "prior")
         #expect(context.clipboard.restoreCallCount == 1)
     }
@@ -1175,7 +1177,7 @@ extension PasteCommandTests {
         #expect(payload.error?.retry_safe == false)
         #expect(payload.target_receipt?.processIdentifier == 2468)
         #expect(payload.target_receipt?.processStartIdentity == 71)
-        #expect(clock.now - dispatchedAt >= .milliseconds(150))
+        #expect(clock.now - dispatchedAt >= defaultRestoreDelay)
         #expect(context.clipboard.current?.textPreview == "prior")
         #expect(context.clipboard.restoreCallCount == 0)
         #expect(flock(contenderFD, LOCK_EX | LOCK_NB) == 0)

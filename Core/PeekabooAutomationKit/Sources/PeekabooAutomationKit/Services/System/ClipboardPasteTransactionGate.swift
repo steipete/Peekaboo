@@ -227,6 +227,10 @@ public enum ClipboardPasteTransactionGate {
     /// Matches Press delay/hold so a huge restore delay cannot hold the exclusive paste lock unbounded.
     public static let maximumRestoreDelayMilliseconds = 10000
 
+    /// Restoration is time-based: macOS reports no read of the pasteboard, so a receiver slower than this
+    /// delay can read the previous contents. Callers pasting into slow apps should raise it.
+    public static let defaultRestoreDelayMilliseconds = 250
+
     public static func cappedRestoreDelayMilliseconds(_ milliseconds: Int) -> Int {
         min(max(0, milliseconds), self.maximumRestoreDelayMilliseconds)
     }

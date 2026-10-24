@@ -31,7 +31,7 @@ struct PasteCommand: ActionOutputFormattable, ErrorHandlingCommand, OutputFormat
 
     @Option(
         help: "Delay before restoring the previous clipboard (bare values are milliseconds; " +
-            "default: 150ms, maximum 10000ms)"
+            "default: 250ms, maximum 10000ms)"
     )
     var restoreDelay: CLIDuration?
 
@@ -50,7 +50,7 @@ struct PasteCommand: ActionOutputFormattable, ErrorHandlingCommand, OutputFormat
     }
 
     private var resolvedRestoreDelayMs: Int {
-        self.restoreDelay?.roundedMilliseconds ?? 150
+        self.restoreDelay?.roundedMilliseconds ?? ClipboardPasteTransactionGate.defaultRestoreDelayMilliseconds
     }
 
     private var hasExplicitPayload: Bool {

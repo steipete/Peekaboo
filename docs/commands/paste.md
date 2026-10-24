@@ -20,7 +20,7 @@ Human output reports the receiver outcome separately from clipboard cleanup. “
 | `--file-path` | Copy a file or image into the clipboard, then paste. |
 | `--data-base64` + `--uti` | Paste raw base64 payload with explicit UTI (e.g. `public.rtf`). |
 | `--also-text` | Optional plain-text companion when pasting binary. |
-| `--restore-delay <duration>` | Delay before restoring the previous clipboard (default `150ms`; bare values are milliseconds; maximum `10000ms`). |
+| `--restore-delay <duration>` | Delay before restoring the previous clipboard (default `250ms`; bare values are milliseconds; maximum `10000ms`). |
 | Target flags | `--app <name>`, `--pid <pid>`, or an exact window selector for background paste. |
 | `--foreground` | Focus a supplied target or intentionally send foreground/global Cmd+V. |
 | Focus flags | Foreground focus controls (`--space-switch`, `--no-auto-focus`, etc.). |
@@ -94,6 +94,7 @@ In a manual Notes test with Peekaboo 4.5.0 on macOS 26.7, an inserted HTML fragm
   optional `alsoText`, and a bounded restore delay. That model-facing form rejects app/PID/window selectors,
   file/image paths, `allowLarge`, current-clipboard paste, and foreground input. It uses this command's existing
   ownership-aware transaction and prepared exact-window route; it does not change standalone CLI authorization.
+- Restoration is time-based and best-effort. macOS does not report when the receiving app reads the clipboard, so an app that handles Command-V later than the restore delay (default `250ms`) can paste the previous clipboard contents instead. Raise `--restore-delay` (MCP `restore_delay_ms`) for slow receivers such as busy Electron apps.
 - Restore delays must be between `0` and `10000ms`, inclusive. Existing CLI scripts or MCP callers using longer delays must reduce them; invalid values fail before clipboard access or input delivery. Direct calls to the shared consumption-wait helper are capped at 10 seconds as a backstop.
 - File paths for `--file-path` accept `~/...`.
 - Successful background text JSON reports delivery mode and target PID. Clipboard-backed background delivery returns `INTERACTION_FAILED` with the explicit retry-unsafe message instead of a success payload.
