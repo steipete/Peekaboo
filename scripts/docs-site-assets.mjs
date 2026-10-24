@@ -168,6 +168,8 @@ body:not(.home) .doc>h1:first-child{display:none}
 .doc p{margin:0 0 1.05em}
 .doc ul,.doc ol{padding-left:1.3rem;margin:0 0 1.15em}
 .doc li{margin:.25em 0}
+.doc li.task{list-style:none}
+.doc li.task input{margin:0 .4em 0 0;accent-color:var(--ecto);vertical-align:middle}
 .doc li>p{margin:0 0 .4em}
 .doc strong{font-weight:600;color:var(--ink)}
 .doc em{font-style:italic;color:var(--ink)}
