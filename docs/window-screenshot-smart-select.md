@@ -15,14 +15,14 @@ Peekaboo’s screenshot tooling (`peekaboo see`, agent capture flows) must avoid
 | Source | Key | Purpose |
 | --- | --- | --- |
 | `CGWindowListCopyWindowInfo` | `kCGWindowNumber` | Stable `CGWindowID` for cross-referencing and duplicate suppression. |
-| `kCGWindowLayer` | Layer filtering (layer 0 = normal app windows). |
-| `kCGWindowAlpha` | Skip fully transparent/hidden overlays. |
-| `kCGWindowBounds` | Size thresholds + dedupe by area. |
-| `kCGWindowIsOnscreen` | Detect off-screen windows when `.optionOnScreenOnly` isn’t in use. |
-| `kCGWindowOwnerPID` / `Name` | Tie back to AX/Process info; drop background helpers. |
-| `kCGWindowSharingState` | Respect `NSWindow.sharingType == .none` (system replaces pixels with a “bubble”). |
-| `SCWindow` (`ScreenCaptureKit`) | `frame`, `isOnScreen`, `layer`, `sharingType`, `alpha`. |
-| `NSWindow` (our own process) | `isExcludedFromWindowsMenu` so we never export intentionally hidden internal windows. |
+| `CGWindowListCopyWindowInfo` | `kCGWindowLayer` | Layer filtering (layer 0 = normal app windows). |
+| `CGWindowListCopyWindowInfo` | `kCGWindowAlpha` | Skip fully transparent/hidden overlays. |
+| `CGWindowListCopyWindowInfo` | `kCGWindowBounds` | Size thresholds + dedupe by area. |
+| `CGWindowListCopyWindowInfo` | `kCGWindowIsOnscreen` | Detect off-screen windows when `.optionOnScreenOnly` isn’t in use. |
+| `CGWindowListCopyWindowInfo` | `kCGWindowOwnerPID` / `Name` | Tie back to AX/Process info; drop background helpers. |
+| `CGWindowListCopyWindowInfo` | `kCGWindowSharingState` | Respect `NSWindow.sharingType == .none` (system replaces pixels with a “bubble”). |
+| `SCWindow` (`ScreenCaptureKit`) | `frame`, `isOnScreen`, `layer`, `sharingType`, `alpha` | ScreenCaptureKit fields for the same visibility, layer, sharing, and alpha filters. |
+| `NSWindow` (our own process) | `isExcludedFromWindowsMenu` | Never export intentionally hidden internal windows. |
 
 `ServiceWindowInfo` should store these fields (or derived booleans like `isShareable`) so every CLI/agent feature can make the same decision.
 
