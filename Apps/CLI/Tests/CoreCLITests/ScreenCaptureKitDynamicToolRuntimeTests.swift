@@ -76,7 +76,7 @@ extension ScreenCaptureKitOwnerRuntimeTests {
     }
 
     @Test
-    func `capture-capable MCP runtime remains bound to the exact ScreenCaptureKit owner`() async throws {
+    func `capture-capable MCP runtime defers an unreachable owner refusal instead of failing startup`() async throws {
         let buildScopedSocket = Self.fixtureSocketPath()
         var options = try CommanderCLIBinder.makeRuntimeOptions(
             from: ParsedValues(positional: [], options: [:], flags: []),
@@ -89,53 +89,75 @@ extension ScreenCaptureKitOwnerRuntimeTests {
         var inspectSafetyCalls = 0
         var localFactoryCalls = 0
 
-        let error = await #expect(throws: PreDispatchActionError.self) {
-            _ = try await RuntimeHostResolver.resolveServices(
-                options: options,
-                environment: ["PEEKABOO_ALLOW_TOOLS": "browser,see"],
-                configurationInput: nil,
-                dependencies: Self.inertDependencies(
-                    makeLocalServices: { _ in
-                        localFactoryCalls += 1
-                        return OwnerPolicyFixtureServices(ownerAware: true)
-                    },
-                    claimScreenCaptureKitOwner: {
-                        claimCalls += 1
-                        return Self.ownerReceipt()
-                    },
-                    inspectScreenCaptureKitOwner: {
-                        inspectOwnerCalls += 1
-                        return Self.ownerReceipt()
-                    },
-                    inspectScreenCaptureKitSafety: { _, _, _, _ in
-                        inspectSafetyCalls += 1
-                        return nil
-                    },
-                    remoteCandidatePlan: { _, _ in
-                        RuntimeHostResolver.RemoteCandidatePlan(
-                            explicitSocket: nil,
-                            daemonSocketPath: "/tmp/peekaboo-browser-capture-daemon.sock",
-                            runtimeBuildIdentity: "browser-capture-build",
-                            buildScopedDaemonSocketPath: buildScopedSocket,
-                            historicalBuildScopedDaemonSocketPaths: [],
-                            candidates: [.init(
-                                socketPath: buildScopedSocket,
-                                requireReusableDaemon: true,
-                                requiredHostKind: .onDemand,
-                                requiresValidatedHistoricalDaemon: false
-                            )]
-                        )
-                    }
-                )
+        let resolution = try await RuntimeHostResolver.resolveServices(
+            options: options,
+            environment: ["PEEKABOO_ALLOW_TOOLS": "browser,see"],
+            configurationInput: nil,
+            dependencies: Self.inertDependencies(
+                makeLocalServices: { _ in
+                    localFactoryCalls += 1
+                    return OwnerPolicyFixtureServices(ownerAware: true)
+                },
+                claimScreenCaptureKitOwner: {
+                    claimCalls += 1
+                    return Self.ownerReceipt()
+                },
+                inspectScreenCaptureKitOwner: {
+                    inspectOwnerCalls += 1
+                    return Self.ownerReceipt()
+                },
+                inspectScreenCaptureKitSafety: { _, _, _, _ in
+                    inspectSafetyCalls += 1
+                    return nil
+                },
+                remoteCandidatePlan: { _, _ in
+                    RuntimeHostResolver.RemoteCandidatePlan(
+                        explicitSocket: nil,
+                        daemonSocketPath: "/tmp/peekaboo-browser-capture-daemon.sock",
+                        runtimeBuildIdentity: "browser-capture-build",
+                        buildScopedDaemonSocketPath: buildScopedSocket,
+                        historicalBuildScopedDaemonSocketPaths: [],
+                        candidates: [.init(
+                            socketPath: buildScopedSocket,
+                            requireReusableDaemon: true,
+                            requiredHostKind: .onDemand,
+                            requiresValidatedHistoricalDaemon: false
+                        )]
+                    )
+                }
             )
-        }
+        )
 
-        #expect(error?.code == .CAPTURE_FAILED)
-        #expect(error?.localizedDescription.contains(buildScopedSocket) == true)
+        let refusal = try #require(resolution.toolCapturePreflightRefusal)
+        #expect(resolution.selectedRemoteSocketPath == nil)
+        #expect(refusal.message.contains(buildScopedSocket))
+        #expect(refusal.message.contains("PID 4242, generation 9001"))
+        #expect(refusal.hint?.contains("Noncapture tools remain available") == true)
         #expect(claimCalls == 0)
         #expect(inspectOwnerCalls == 1)
         #expect(inspectSafetyCalls == 1)
-        #expect(localFactoryCalls == 0)
+        #expect(localFactoryCalls == 1)
+
+        let context = MCPToolContext(
+            services: resolution.services,
+            capturePreflightRefusal: refusal
+        )
+        let captureCounter = VerifyCaptureInvocationCounter()
+        let capture = try await context.execute(
+            tool: VerifyCaptureInvocationProbe(counter: captureCounter),
+            arguments: ToolArguments(value: .object(["final_screenshot": .bool(true)]))
+        )
+        #expect(capture.isError)
+        #expect(await !captureCounter.wasInvoked)
+        #expect(capture.meta?.objectValue?["error_code"] == .string("CAPTURE_FAILED"))
+
+        let nonCaptureCounter = VerifyCaptureInvocationCounter()
+        let nonCapture = try await context.execute(
+            tool: VerifyCaptureInvocationProbe(counter: nonCaptureCounter),
+            arguments: ToolArguments(value: .object(["final_screenshot": .bool(false)]))
+        )
+        #expect(!nonCapture.isError)
+        #expect(await nonCaptureCounter.wasInvoked)
     }
 
     @Test

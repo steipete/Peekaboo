@@ -589,6 +589,29 @@ extension RuntimeHostResolver {
         )
     }
 
+    /// Persistent MCP and Agent runtimes keep noncapture tools usable when a live
+    /// ScreenCaptureKit owner has no reachable Bridge. The immutable refusal is applied to
+    /// capture-capable tools instead of failing the whole server before the JSON-RPC handshake.
+    static func deferredPersistentOwnerCaptureRefusal(
+        owner: ScreenCaptureKitOwnerLease.OwnerReceipt,
+        requiredSocket: String?,
+        explicitSocket: String?,
+        options: CommandRuntimeOptions
+    ) -> MCPToolCapturePreflightRefusal? {
+        guard options.usesPersistentDynamicCaptureRuntime, explicitSocket == nil else { return nil }
+        let refusal = if let requiredSocket {
+            self.ownerExactBuildConflict(owner: owner, requiredSocket: requiredSocket)
+        } else {
+            self.ownerRefusal(owner: owner, callerLocal: false)
+        }
+        return MCPToolCapturePreflightRefusal(
+            message: refusal.localizedDescription,
+            hint: "Noncapture tools remain available. This capture refusal is fixed for the lifetime of this " +
+                "MCP or Agent session. Restart the owning process, or use classic capture where the selected " +
+                "host proves the ScreenCaptureKit-free path."
+        )
+    }
+
     static func firstScreenCaptureKitOwnerUnawareHost(
         candidates: [ImplicitRemoteCandidate],
         identity: PeekabooBridgeClientIdentity,
