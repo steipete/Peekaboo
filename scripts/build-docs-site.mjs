@@ -277,6 +277,12 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     html.push(`<p>${inline(paragraph.join(" "), currentRel)}</p>`);
     paragraph = [];
   };
+  const openListItem = (itemText) => {
+    const task = itemText.match(/^\[([ xX])\]\s+([\s\S]*)$/);
+    if (!task) return `<li>${inline(itemText, currentRel)}`;
+    const checked = task[1].toLowerCase() === "x" ? " checked" : "";
+    return `<li class="task"><input type="checkbox" disabled${checked}> ${inline(task[2], currentRel)}`;
+  };
   // an item with no nested content closes on its own line: <li>text</li>
   const closeItem = (list) => {
     if (html.length - 1 === list.itemAt) html[list.itemAt] += "</li>";
@@ -455,7 +461,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
         lists.push({ tag, indent, itemOpen: false, itemAt: -1, itemText: "" });
       }
       const itemText = bullet ? bullet[1] : numbered[2];
-      html.push(`<li>${inline(itemText, currentRel)}`);
+      html.push(openListItem(itemText));
       Object.assign(lists.at(-1), { itemOpen: true, itemAt: html.length - 1, itemText });
       continue;
     }
@@ -469,7 +475,7 @@ function markdownToHtml(markdown, currentRel, nested = false) {
     if (owner?.itemOpen && !paragraph.length && html.length - 1 === owner.itemAt) {
       // the next line of an item's own text, not a new paragraph
       owner.itemText += ` ${line.trim()}`;
-      html[owner.itemAt] = `<li>${inline(owner.itemText, currentRel)}`;
+      html[owner.itemAt] = openListItem(owner.itemText);
       continue;
     }
     paragraph.push(line.trim());
