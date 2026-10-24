@@ -122,11 +122,12 @@ reporting; a missing query bit never excuses inheritance. The runtime introducti
 has not been established, and no macOS 27 runtime was tested. Builds using older compiler/SDK combinations that omit
 `O_CLOFORK` retain close-on-exec only: there is no implemented atfork cleanup or pre-exec fork-safety guarantee.
 
-Long-running Agent and MCP modes remain available for non-capture tools when they discover a pre-lease Bridge. Peekaboo
-keeps that runtime local and records a process-lifetime SCK blocker instead of failing startup or routing capture to the
-old host. A later SCK leaf refuses before framework dispatch. The blocker is intentionally irreversible for that Agent
-or MCP process: after every old host is updated or stopped, restart the long-running process before retrying SCK. This
-closes transient PID lookup, multiple-old-host, and same-socket restart races.
+Long-running Agent and MCP modes remain available for non-capture tools when they discover a pre-lease Bridge or a
+live owner receipt without a reachable Bridge socket. Peekaboo keeps that runtime local and records a process-lifetime
+SCK blocker instead of failing startup or routing capture to the old host. A later SCK leaf refuses before framework
+dispatch. The blocker is intentionally irreversible for that Agent or MCP process: after every old host is updated or
+stopped, restart the long-running process before retrying SCK. This closes transient PID lookup, multiple-old-host,
+and same-socket restart races.
 
 Removing the warm stream makes full-display Watch and `capture live` cadence capture-latency-bound. Restore that
 performance only through an owner-affine cache or a disposable helper-process stream with a bounded lifetime and exact

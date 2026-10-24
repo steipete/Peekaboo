@@ -168,7 +168,8 @@ enum RuntimeHostResolver {
             preferredScreenCaptureKitOwner: preferredScreenCaptureKitOwner
         ))
         resolution.captureEngineSafetyOverride = captureSafety.engineOverride ?? resolution.captureEngineSafetyOverride
-        resolution.toolCapturePreflightRefusal = captureSafety.toolPreflightRefusal
+        resolution.toolCapturePreflightRefusal = captureSafety.toolPreflightRefusal ??
+            resolution.toolCapturePreflightRefusal
         return resolution
     }
 
@@ -392,6 +393,14 @@ enum RuntimeHostResolver {
                 return resolved
             }
             if prefersExactBuildScopedHost, let buildScopedDaemonSocketPath {
+                if let refusal = self.deferredPersistentOwnerCaptureRefusal(
+                    owner: preferredScreenCaptureKitOwner,
+                    requiredSocket: buildScopedDaemonSocketPath,
+                    explicitSocket: explicitSocket,
+                    options: options
+                ) {
+                    return self.deferredCaptureResolution(context: context, refusal: refusal)
+                }
                 throw self.ownerExactBuildConflict(
                     owner: preferredScreenCaptureKitOwner,
                     requiredSocket: buildScopedDaemonSocketPath
@@ -402,6 +411,14 @@ enum RuntimeHostResolver {
                     owner: preferredScreenCaptureKitOwner,
                     explicitSocket: explicitSocket
                 )
+            }
+            if let refusal = self.deferredPersistentOwnerCaptureRefusal(
+                owner: preferredScreenCaptureKitOwner,
+                requiredSocket: nil,
+                explicitSocket: explicitSocket,
+                options: options
+            ) {
+                return self.deferredCaptureResolution(context: context, refusal: refusal)
             }
             throw self.ownerRefusal(
                 owner: preferredScreenCaptureKitOwner,
@@ -480,6 +497,22 @@ enum RuntimeHostResolver {
                 options: options,
                 rejections: candidateRejections
             )
+        )
+    }
+
+    private static func deferredCaptureResolution(
+        context: RemoteResolutionContext,
+        refusal: MCPToolCapturePreflightRefusal
+    ) -> Resolution {
+        Resolution(
+            services: context.makeLocalServices(context.options),
+            hostDescription: "local (ScreenCaptureKit blocked by an unreachable owner)",
+            selectedRemoteSocketPath: nil,
+            selectedRemoteHostProcessIdentifier: nil,
+            snapshotInvalidationRemoteSocketPaths: context.snapshotInvalidationRemoteSocketPaths,
+            applicationRelaunchAllowed: !context.options.requiresApplicationRelaunch,
+            requiredHostFailure: nil,
+            toolCapturePreflightRefusal: refusal
         )
     }
 }
