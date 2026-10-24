@@ -194,6 +194,7 @@ body:not(.home) .doc>h1:first-child{display:none}
 .doc th,.doc td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}
 .doc th{font-weight:600;color:var(--ink);background:var(--panel);border-bottom:1px solid var(--line)}
 .doc hr{border:0;border-top:1px solid var(--line);margin:2.2em 0}
+.doc img{max-width:100%;height:auto}
 
 .toc{position:sticky;top:24px;align-self:start;font-size:.84rem;padding-left:14px;border-left:1px solid var(--line);max-height:calc(100vh - 48px);overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 .toc::-webkit-scrollbar{width:5px}

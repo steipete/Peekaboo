@@ -514,6 +514,16 @@ function inline(text, currentRel, inheritedStash = []) {
     stash.push({ html: `<code>${escapeHtml(code)}</code>`, raw });
     return `\u0000${stash.length - 1}\u0000`;
   });
+  out = out.replace(/!\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+)\)/g, (raw, alt, href) => {
+    const destination = imageSource(href
+      .replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].raw)
+      .replace(/\\\|/g, "|"));
+    stash.push({
+      html: `<img src="${escapeAttr(destination)}" alt="${escapeAttr(alt)}">`,
+      raw,
+    });
+    return `\u0000${stash.length - 1}\u0000`;
+  });
   out = out.replace(/\[([^\]]+)\]\(((?:[^()]|\([^()]*\))+)\)/g, (raw, label, href) => {
     const destination = href
       .replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].raw)
@@ -536,6 +546,12 @@ function inline(text, currentRel, inheritedStash = []) {
   out = out.replace(/\\\|/g, "|");
   out = out.replace(/&lt;br&gt;/g, "<br>");
   return out.replace(/\u0000(\d+)\u0000/g, (_, i) => stash[Number(i)].html);
+}
+
+function imageSource(href) {
+  const trimmed = href.trim();
+  const titled = trimmed.match(/^(\S+)\s+(?:"[^"]*"|'[^']*')$/);
+  return titled ? titled[1] : trimmed;
 }
 
 function rewriteHref(href, currentRel) {
