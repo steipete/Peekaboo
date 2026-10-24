@@ -868,32 +868,30 @@ function highlightJson(code) {
   ]);
 }
 
+function highlightClassified(code, pattern) {
+  // Earliest token wins, so a URL inside a string is not painted as a line comment
+  // and a comment that contains quotes stays one comment.
+  return renderFragments(highlightFragments([code], pattern, (match) => {
+    let cls = "hl-k";
+    if (match.startsWith("/*") || match.startsWith("//")) cls = "hl-c";
+    else if (match.startsWith("`") || match.startsWith('"') || match.startsWith("'")) cls = "hl-s";
+    else if (/^\d/.test(match)) cls = "hl-n";
+    return `<span class="${cls}">${escapeHtml(match)}</span>`;
+  }));
+}
+
 function highlightJs(code) {
-  return highlightWithPatterns(code, [
-    [/\/\/[^\n]*/g, "hl-c"],
-    [/\/\*[\s\S]*?\*\//g, "hl-c"],
-    [/`(?:\\.|[^`\\])*`/g, "hl-s"],
-    [/"(?:\\.|[^"\\])*"/g, "hl-s"],
-    [/'(?:\\.|[^'\\])*'/g, "hl-s"],
-    [
-      /\b(const|let|var|function|return|if|else|for|while|switch|case|break|continue|class|extends|new|import|from|export|default|async|await|try|catch|finally|throw|typeof|instanceof|interface|type|enum|as|of|in|null|undefined|true|false|this)\b/g,
-      "hl-k",
-    ],
-    [/\b(\d+(?:\.\d+)?)\b/g, "hl-n"],
-  ]);
+  return highlightClassified(
+    code,
+    /\/\*[\s\S]*?\*\/|(?<!:)\/\/[^\n]*|`(?:\\.|[^`\\])*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:const|let|var|function|return|if|else|for|while|switch|case|break|continue|class|extends|new|import|from|export|default|async|await|try|catch|finally|throw|typeof|instanceof|interface|type|enum|as|of|in|null|undefined|true|false|this)\b|\b\d+(?:\.\d+)?\b/g,
+  );
 }
 
 function highlightSwift(code) {
-  return highlightWithPatterns(code, [
-    [/\/\/[^\n]*/g, "hl-c"],
-    [/\/\*[\s\S]*?\*\//g, "hl-c"],
-    [/"(?:\\.|[^"\\])*"/g, "hl-s"],
-    [
-      /\b(let|var|func|class|struct|enum|protocol|extension|actor|import|return|if|else|for|while|switch|case|break|continue|try|throw|throws|async|await|guard|defer|do|public|private|internal|fileprivate|open|static|final|init|deinit|nil|true|false|self|Self|some|any)\b/g,
-      "hl-k",
-    ],
-    [/\b(\d+(?:\.\d+)?)\b/g, "hl-n"],
-  ]);
+  return highlightClassified(
+    code,
+    /\/\*[\s\S]*?\*\/|(?<!:)\/\/[^\n]*|"(?:\\.|[^"\\])*"|\b(?:let|var|func|class|struct|enum|protocol|extension|actor|import|return|if|else|for|while|switch|case|break|continue|try|throw|throws|async|await|guard|defer|do|public|private|internal|fileprivate|open|static|final|init|deinit|nil|true|false|self|Self|some|any)\b|\b\d+(?:\.\d+)?\b/g,
+  );
 }
 
 function highlightYaml(code) {
