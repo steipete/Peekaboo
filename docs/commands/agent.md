@@ -86,7 +86,7 @@ read_when:
   remains available through a generation-pinned app/PID/window authorization with a canonical background result.
   Targetless, foreground, current-clipboard, and binary paste remain refused by default.
 - `--allow-temporary-clipboard` independently admits `paste` with `dataBase64` + `uti`, a fresh exact non-dialog,
-  non-system-UI `snapshot`, and optional `alsoText` and `restore_delay_ms` (`0...10000`, default `150`). The data and
+  non-system-UI `snapshot`, and optional `alsoText` and `restore_delay_ms` (`0...10000`, default `250`). The data and
   text companion together are limited to 10 MB. This form rejects app/PID/window selectors, file/image paths,
   `allowLarge`, ambient current-clipboard paste, persistent clipboard writes, and foreground UI. Direct-text paste
   keeps its existing app/PID/window route and does not use the clipboard. A remote rich-paste host must negotiate

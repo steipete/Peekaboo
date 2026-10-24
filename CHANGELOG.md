@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Wait 250ms instead of 150ms before restoring the previous clipboard after a temporary paste, and document that restoration is time-based: an app that reads the clipboard later than the restore delay can paste the previous contents, so raise `--restore-delay` (MCP `restore_delay_ms`) for slow receivers. #1111.
+
 ## 4.9.7 - 2026-10-23
 
 **Highlights:** Report `window close` through the daemon as closed when an app keeps the closed window alive; let `see` observe Chrome windows whose titles carry the app name or are elided; close apps that re-exec themselves with `--foreground`; and keep the Mac chat, menu bar and Inspector accurate.

@@ -41,7 +41,7 @@ read_when:
   nested `agent` tool likewise retains immutable background-only authority and never exposes Shell.
 - A server started with `--allow-temporary-clipboard` also exposes `paste` with explicit `dataBase64` + `uti`, one
   fresh exact non-dialog/non-system-UI `snapshot`, optional `alsoText`, and `restore_delay_ms` (`0...10000`, default
-  `150`). The payload and companion are limited to 10 MB. This form cannot combine snapshot with app/PID/window
+  `250`). The payload and companion are limited to 10 MB. This form cannot combine snapshot with app/PID/window
   selectors. File/image paths, `allowLarge`, current-clipboard paste, persistent clipboard writes, and foreground UI
   remain unavailable. Remote delivery requires negotiated protocol 1.41 and prepared clipboard-guarded input.
   The grant belongs only to this server process, survives its scoped context copies, and does not reach nested Agent
